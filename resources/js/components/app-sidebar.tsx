@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, CalendarCheck, FileCheck, User, Calculator, Gift, ChartColumn, Clock     } from 'lucide-react';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -21,6 +21,41 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Attendance',
+        href: '/attendance',
+        icon: CalendarCheck,
+    },
+    {
+        title: 'Document Tracking',
+        href: '/document_tracking',
+        icon: FileCheck,
+    },
+    {
+        title: 'Employee',
+        href: '/employee',
+        icon: User,
+    },
+    {
+        title: 'Payroll',
+        href: '/payroll',
+        icon: Calculator,
+    },
+    {
+        title: 'Benefits',
+        href: '/benefits',
+        icon: Gift,
+    },
+    {
+        title: 'Reports and Analytics',
+        href: '/reports_and_analytics',
+        icon: ChartColumn,
+    },
+    {
+        title: 'Activity Logs',
+        href: '/activity_logs',
+        icon: Clock,
     },
 ];
 
