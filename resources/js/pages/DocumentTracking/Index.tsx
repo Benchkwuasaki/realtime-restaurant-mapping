@@ -9,7 +9,8 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: 'document_tracking',
     },
 ];
-import TablePage from '@/components/DocumentTracking/page';
+import TablePage from '@/components/DocumentTracking/DocumentTable/page';
+
 
 export default function Index() {
     return (
