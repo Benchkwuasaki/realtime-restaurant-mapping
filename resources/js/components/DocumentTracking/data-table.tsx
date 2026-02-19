@@ -1,7 +1,7 @@
 import { Input } from "@/components/ui/input"
 import React from "react"
 import { Button } from "@/components/ui/button"
-import { CreateRequest } from "../create-request"
+import { CreateRequest } from "./create-request"
 import { Search, ListFilter } from "lucide-react"
 import { DataTablePagination } from "./data-table-pagination"
 
