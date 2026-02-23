@@ -77,6 +77,84 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
     
     index.form = indexForm
-const EmployeeController = { index }
+/**
+* @see \App\Http\Controllers\EmployeeController::create
+ * @see app/Http/Controllers/EmployeeController.php:21
+ * @route '/employee/create'
+ */
+export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: create.url(options),
+    method: 'get',
+})
+
+create.definition = {
+    methods: ["get","head"],
+    url: '/employee/create',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\EmployeeController::create
+ * @see app/Http/Controllers/EmployeeController.php:21
+ * @route '/employee/create'
+ */
+create.url = (options?: RouteQueryOptions) => {
+    return create.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\EmployeeController::create
+ * @see app/Http/Controllers/EmployeeController.php:21
+ * @route '/employee/create'
+ */
+create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: create.url(options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\EmployeeController::create
+ * @see app/Http/Controllers/EmployeeController.php:21
+ * @route '/employee/create'
+ */
+create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: create.url(options),
+    method: 'head',
+})
+
+    /**
+* @see \App\Http\Controllers\EmployeeController::create
+ * @see app/Http/Controllers/EmployeeController.php:21
+ * @route '/employee/create'
+ */
+    const createForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: create.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\EmployeeController::create
+ * @see app/Http/Controllers/EmployeeController.php:21
+ * @route '/employee/create'
+ */
+        createForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: create.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\EmployeeController::create
+ * @see app/Http/Controllers/EmployeeController.php:21
+ * @route '/employee/create'
+ */
+        createForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: create.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    create.form = createForm
+const EmployeeController = { index, create }
 
 export default EmployeeController

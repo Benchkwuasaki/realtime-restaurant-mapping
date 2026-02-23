@@ -5,7 +5,7 @@ import { PageProps } from "@inertiajs/core"
 
 interface Task {
   id: string
-  employeeName: string
+  name: string
   position: string
   unit: string
   division: string
