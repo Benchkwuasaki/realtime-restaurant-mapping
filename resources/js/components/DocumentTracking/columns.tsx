@@ -14,7 +14,7 @@ import { ChevronDown } from "lucide-react"
 
 // This type is used to define the shape of our data.
 // You can use a Zod schema here if you want.
-export type Payment = {
+export type Document = {
   id: string
   title: string
   requestingOffice: string
@@ -23,7 +23,7 @@ export type Payment = {
   stepStatus: "pending" | "processing" | "success" | "failed"
 }
 
-export const columns: ColumnDef<Payment>[] = [
+export const columns: ColumnDef<Document>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -50,7 +50,7 @@ export const columns: ColumnDef<Payment>[] = [
     accessorKey: "title",
     header: ({ column }) => {
       return (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+        <Button className="-mx-3" variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Title
           <ChevronsUpDown/>
         </Button>
@@ -61,7 +61,7 @@ export const columns: ColumnDef<Payment>[] = [
     accessorKey: "requestingOffice",
     header: ({ column }) => {
       return (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+        <Button className="-mx-3" variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Requesting Office
           <ChevronsUpDown/>
         </Button>
@@ -72,7 +72,7 @@ export const columns: ColumnDef<Payment>[] = [
     accessorKey: "forwardingOffice",
     header: ({ column }) => {
       return (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+        <Button className="-mx-3" variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Forwarding Office
           <ChevronsUpDown/>
         </Button>
@@ -83,7 +83,7 @@ export const columns: ColumnDef<Payment>[] = [
     accessorKey: "currentHolder",
     header: ({ column }) => {
       return (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+        <Button className="-mx-3" variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Current Holder
           <ChevronsUpDown/>
         </Button>
@@ -94,7 +94,7 @@ export const columns: ColumnDef<Payment>[] = [
     accessorKey: "stepStatus",
     header: ({ column }) => {
       return (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+        <Button className="-mx-3" variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Step Status
           <ChevronsUpDown/>
         </Button>

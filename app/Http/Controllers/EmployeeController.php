@@ -7,7 +7,12 @@ use Inertia\Inertia;
 
 class EmployeeController extends Controller
 {
-    public function index(){
-        return Inertia::render('Employee/Index', []);
+    public function index()
+    {
+        $tasks = json_decode(file_get_contents(base_path('resources/js/components/Employeee/data/task.json')), true);
+
+        return Inertia::render('Employee/Index', [
+            'tasks' => $tasks,
+        ]);
     }
 }
