@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 
-import { labels, priorities, statuses } from "../data/data"
+import { status } from "../data/data"
 import { type Task } from "../data/schema"
 import { DataTableColumnHeader } from "@/components/Employeee/components/data-table-column-header"
 import { DataTableRowActions } from "@/components/Employeee/components/data-table-row-action"
@@ -120,38 +120,35 @@ export const columns: ColumnDef<Task>[] = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => {
-      const label = labels.find((label) => label.value === row.original.status)
+      const label = status.find((status) => status.value === row.original.status)
       return (
         <div className="flex items-center gap-2 min-w-[100px]">
           {label && <Badge variant="outline">{label.label}</Badge>}
-          <span className="truncate font-medium">{row.getValue("status")}</span>
         </div>
       )
     },
+    filterFn: (row, id, value) => value.includes(row.getValue(id)),
   },
   {
-  accessorKey: "toggle",
-  header: ({ column }) => (
-    <DataTableColumnHeader column={column} title="Toggle" />
-  ),
-  cell: ({ row }) => {
-    const isActive = row.getValue("status") === "Active"
+    accessorKey: "toggle",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Toggle" />
+    ),
+    cell: ({ row }) => {
+      const isActive = row.getValue("status") === "Active"
 
-    return (
-      <Switch
-        checked={isActive}
-        onCheckedChange={(checked) => {
-          // update your data here, e.g.:
-          // row.original.status = checked ? "Active" : "Inactive"
-          console.log(`Employee ${row.original.name} set to ${checked ? "Active" : "Inactive"}`)
-        }}
-      />
-    )
+      return (
+        <Switch
+          checked={isActive}
+          onCheckedChange={(checked) => {
+            // update your data here, e.g.:
+            // row.original.status = checked ? "Active" : "Inactive"
+            console.log(`Employee ${row.original.name} set to ${checked ? "Active" : "Inactive"}`)
+          }}
+        />
+      )
+    },
   },
-  filterFn: (row, id, value) => {
-    return value.includes(row.getValue(id))
-  },
-},
   {
     id: "actions",
     header: "Actions",

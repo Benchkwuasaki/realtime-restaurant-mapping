@@ -15,4 +15,9 @@ class EmployeeController extends Controller
             'tasks' => $tasks,
         ]);
     }
+
+    public function create()
+    {
+        return Inertia::render('Employee/CreateEmployee');
+    }
 }

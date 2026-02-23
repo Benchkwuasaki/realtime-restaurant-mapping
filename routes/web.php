@@ -23,7 +23,10 @@ Route::get('dashboard', function () {
 
 Route::get('/attendance', [AttendanceController::class, 'index'])->middleware(['auth', 'verified'])->name('attendance.index');
 Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->middleware(['auth', 'verified'])->name('document_tracking.index');
+
 Route::get('/employee',[EmployeeController::class,'index'])->middleware(['auth', 'verified'])->name('employee.index');
+Route::get('/employee/create',[EmployeeController::class,'create'])->middleware(['auth', 'verified'])->name('employee.create');
+
 Route::get('/payroll',[PayrollController::class,'index'])->middleware(['auth', 'verified'])->name('payroll.index');
 Route::get('/benefits',[BenefitsController::class,'index'])->middleware(['auth', 'verified'])->name('benefits.index');
 Route::get('/reports_and_analytics',[ReportsAndAnalyticsController::class,'index'])->middleware(['auth', 'verified'])->name('reports_and_analytics.index');

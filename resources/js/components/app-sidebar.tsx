@@ -13,7 +13,13 @@ import {
   SquareTerminal,
   User,
   Globe,
+  LayoutDashboard ,
   File,
+  Building2,
+  FileCheck,
+  FileCheck2,
+  Calendar,
+  Wallet,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -29,25 +35,146 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { url } from "inspector"
+import { title } from "process"
 
 const data = {
   navMain: [
     {
       title: "Dashboard",
       url: "/dashboard",
-      icon: Globe,
+      icon: LayoutDashboard,
       isActive: true,
     },
     {
       title: "Employee",
       url: "/employee",
       icon: User,
+    },
+    {
+      title: "Organization",
+      url: "/organization",
+      icon: Building2,
       items: [
         {
-          title: "Add Employee",
-          url: "employee/add",
+          title: "Organisational Chart",
+          url: "/organization/organizational_chart",
         },
-      ],
+        {
+          title: "Departments",
+          url: "/organization/departments",
+        },
+        {
+          title: "Divisions",
+          url: "/organization/divisions",
+        },
+        {
+          title: "Units",
+          url: "/organization/units",
+        },
+        {
+          title: "Positions",
+          url: "/organization/positions",
+        },
+        {
+          title: "Signatories",
+          url: "/organization/signatories",
+        },
+        {
+          title: "Internal Organization",
+          url: "/organization/internal_organization",
+        }
+      ]
+    },
+    {
+      title: "Attendance",
+      url: "/attendance",
+      icon: FileCheck2,
+      items: [
+        {
+          title: "Whereabout Slip",
+          url: "/organization/whereabout_slip",
+        },
+        {
+          title: "Holiday Management",
+          url: "/organization/holiday_management",
+        },
+        {
+          title: "Overtime Entry",
+          url: "/organization/overtime_entry",
+        },
+      ]
+    },
+    
+    {
+      title: "Leave",
+      url: "/leave",
+      icon: Calendar,
+      items: [
+        {
+          title: "Leave Calendar",
+          url: "/leave/leave_calendar",
+        },
+        {
+          title: "Leave Filing",
+          url: "/leave/leave_filing",
+        },
+        {
+          title: "Leave Approval Workflow",
+          url: "/leave/leaving_approval_workflow",
+        },
+        {
+          title: "Leave Adjustment Memo",
+          url: "/leave/leave_adjustment_memo",
+        },
+        {
+          title: "Monthly Earned Leave Posting",
+          url: "/leave/monthly_earned_leave_posting",
+        },
+        {
+          title: "Leave History",
+          url: "/leave/leave_history",
+        },
+        {
+          title: "Leave Settings",
+          url: "/leave/leave_settings",
+        }
+      ]
+    },
+    {
+      title: "Payroll",
+      url: "/payroll",
+      icon: Wallet,
+      items: [
+        {
+          title: "Payroll Processing",
+          url: "/payroll/payroll_processsing",
+        },
+        {
+          title: "Payroll Register",
+          url: "/payroll/payroll_register",
+        },
+        {
+          title: "Pay Slip Generation",
+          url: "/payroll/pay_slip_generation",
+        },
+        {
+          title: "Allowances Management",
+          url: "/payroll/allowances_management",
+        },
+        {
+          title: "Loan Entry",
+          url: "/payroll/loan_entry",
+        },
+        {
+          title: "Other Deduction Entry",
+          url: "/payroll/other_deduction_entry",
+        },
+        {
+          title: "Payroll Deduction Settings",
+          url: "/payroll/payroll_deduction_settings",
+        }
+      ]
     },
     {
       title: "Document Tracking",

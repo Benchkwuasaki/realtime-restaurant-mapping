@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTableViewOptions } from "@/components/Employeee/components/data-table-view-option"
 
-import { priorities, statuses } from "../data/data"
 import { DataTableFacetedFilter } from "./data-table-faceted-filter"
-import { CreateRequest } from "./create-request"
+import { router } from "@inertiajs/react"
+import { status } from "../data/data"
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -25,9 +25,9 @@ export function DataTableToolbar<TData>({
       <div className="flex flex-1 items-center gap-2">
         <Input
           placeholder="Search Employee..."
-          value={(table.getColumn("employeeName")?.getFilterValue() as string) ?? ""}
+          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("employeeName")?.setFilterValue(event.target.value)
+            table.getColumn("name")?.setFilterValue(event.target.value)
           }
           className="h-8 w-37.5 lg:w-62.5"
         />
@@ -35,14 +35,7 @@ export function DataTableToolbar<TData>({
           <DataTableFacetedFilter
             column={table.getColumn("status")}
             title="Status"
-            options={statuses}
-          />
-        )}
-        {table.getColumn("priority") && (
-          <DataTableFacetedFilter
-            column={table.getColumn("priority")}
-            title="Priority"
-            options={priorities}
+            options={status}
           />
         )}
         {isFiltered && (
@@ -58,7 +51,9 @@ export function DataTableToolbar<TData>({
       </div>
       <div className="flex items-center gap-2">
         <DataTableViewOptions table={table} />
-        <CreateRequest />
+        <Button variant="default" size="sm" onClick={() => router.visit('/employee/create')}>
+          Create Employee
+        </Button>
       </div>
     </div>
   )
