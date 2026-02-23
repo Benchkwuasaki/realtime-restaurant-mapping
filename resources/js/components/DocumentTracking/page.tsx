@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
-import { columns, Payment } from "./columns"
+import { columns, Document } from "./columns"
 import { DataTable } from "./data-table"
 
-async function getData(): Promise<Payment[]> {
+async function getData(): Promise<Document[]> {
   return [
     {
       id: "1",
@@ -18,13 +18,13 @@ async function getData(): Promise<Payment[]> {
       requestingOffice: "Office A",
       forwardingOffice: "Office B",
       currentHolder: "Kiks",
-      stepStatus: "pending"
+      stepStatus: "success"
     },
   ]
 }
 
 export default function TablePage() {
-  const [data, setData] = useState<Payment[]>([])
+  const [data, setData] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

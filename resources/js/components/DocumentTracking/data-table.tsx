@@ -122,7 +122,7 @@ export function DataTable<TData, TValue>({
         <CreateRequest />
       </div>
 
-      <div className="overflow-hidden rounded-md border border-gray-200">
+      <div className="w-full overflow-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

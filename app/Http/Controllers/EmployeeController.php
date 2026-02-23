@@ -9,16 +9,12 @@ use Inertia\Inertia;
 
 class EmployeeController extends Controller
 {
-    public function __construct(protected ActivityLogService $activityLogService) {}
-
-
     public function index()
     {
-        $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'employee',
-            'description' => 'Viewed Employee Page',
+        $tasks = json_decode(file_get_contents(base_path('resources/js/components/Employeee/data/task.json')), true);
+
+        return Inertia::render('Employee/Index', [
+            'tasks' => $tasks,
         ]);
-        return Inertia::render('Employee/Index', []);
     }
 }
