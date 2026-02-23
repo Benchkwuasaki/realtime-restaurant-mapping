@@ -9,6 +9,7 @@ import { DataTableViewOptions } from "@/components/Employeee/components/data-tab
 
 import { priorities, statuses } from "../data/data"
 import { DataTableFacetedFilter } from "./data-table-faceted-filter"
+import { CreateRequest } from "./create-request"
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -23,12 +24,12 @@ export function DataTableToolbar<TData>({
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center gap-2">
         <Input
-          placeholder="Filter tasks..."
-          value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+          placeholder="Search Employee..."
+          value={(table.getColumn("employeeName")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("title")?.setFilterValue(event.target.value)
+            table.getColumn("employeeName")?.setFilterValue(event.target.value)
           }
-          className="h-8 w-[150px] lg:w-[250px]"
+          className="h-8 w-37.5 lg:w-62.5"
         />
         {table.getColumn("status") && (
           <DataTableFacetedFilter
@@ -57,7 +58,7 @@ export function DataTableToolbar<TData>({
       </div>
       <div className="flex items-center gap-2">
         <DataTableViewOptions table={table} />
-        <Button size="sm">Add Task</Button>
+        <CreateRequest />
       </div>
     </div>
   )

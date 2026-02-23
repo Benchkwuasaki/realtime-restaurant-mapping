@@ -1,9 +1,11 @@
 "use client"
 
 import { type ColumnDef } from "@tanstack/react-table"
-
+import { useState } from "react"
+import { router } from "@inertiajs/react"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 
 import { labels, priorities, statuses } from "../data/data"
 import { type Task } from "../data/schema"
@@ -21,7 +23,7 @@ export const columns: ColumnDef<Task>[] = [
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
-        className="translate-y-[2px]"
+        className="translate-y-0.5"
       />
     ),
     cell: ({ row }) => (
@@ -29,38 +31,88 @@ export const columns: ColumnDef<Task>[] = [
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
-        className="translate-y-[2px]"
+        className="translate-y-0.5"
       />
     ),
     enableSorting: false,
     enableHiding: false,
   },
   {
-    accessorKey: "id",
+    accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Task" />
+      <DataTableColumnHeader column={column} title="Employee Name" />
     ),
-    cell: ({ row }) => <div className="w-[80px]">{row.getValue("id")}</div>,
-    enableSorting: false,
-    enableHiding: false,
+    cell: ({ row }) => (
+      <div className="min-w-[140px] font-medium">{row.getValue("name")}</div>
+    ),
+    enableSorting: true,
+    enableHiding: true,
   },
   {
-    accessorKey: "title",
+    accessorKey: "position",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Title" />
+      <DataTableColumnHeader column={column} title="Position" />
     ),
-    cell: ({ row }) => {
-      const label = labels.find((label) => label.value === row.original.label)
-
-      return (
-        <div className="flex gap-2">
-          {label && <Badge variant="outline">{label.label}</Badge>}
-          <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("title")}
-          </span>
-        </div>
-      )
-    },
+    cell: ({ row }) => (
+      <div className="min-w-[120px]">{row.getValue("position")}</div>
+    ),
+    enableSorting: true,
+    enableHiding: true,
+  },
+  {
+    accessorKey: "unit",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Unit" />
+    ),
+    cell: ({ row }) => (
+      <div className="min-w-[80px]">{row.getValue("unit")}</div>
+    ),
+    enableSorting: true,
+    enableHiding: true,
+  },
+  {
+    accessorKey: "division",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Division" />
+    ),
+    cell: ({ row }) => (
+      <div className="min-w-[100px]">{row.getValue("division")}</div>
+    ),
+    enableSorting: true,
+    enableHiding: true,
+  },
+  {
+    accessorKey: "department",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Department" />
+    ),
+    cell: ({ row }) => (
+      <div className="min-w-[130px]">{row.getValue("department")}</div>
+    ),
+    enableSorting: true,
+    enableHiding: true,
+  },
+  {
+    accessorKey: "contactNumber",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Contact Number" />
+    ),
+    cell: ({ row }) => (
+      <div className="min-w-[130px]">{row.getValue("contactNumber")}</div>
+    ),
+    enableSorting: true,
+    enableHiding: true,
+  },
+  {
+    accessorKey: "email",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Email" />
+    ),
+    cell: ({ row }) => (
+      <div className="min-w-[160px]">{row.getValue("email")}</div>
+    ),
+    enableSorting: true,
+    enableHiding: true,
   },
   {
     accessorKey: "status",
@@ -68,56 +120,41 @@ export const columns: ColumnDef<Task>[] = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => {
-      const status = statuses.find(
-        (status) => status.value === row.getValue("status")
-      )
-
-      if (!status) {
-        return null
-      }
-
+      const label = labels.find((label) => label.value === row.original.status)
       return (
-        <div className="flex w-[100px] items-center gap-2">
-          {status.icon && (
-            <status.icon className="text-muted-foreground size-4" />
-          )}
-          <span>{status.label}</span>
+        <div className="flex items-center gap-2 min-w-[100px]">
+          {label && <Badge variant="outline">{label.label}</Badge>}
+          <span className="truncate font-medium">{row.getValue("status")}</span>
         </div>
       )
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
     },
   },
   {
-    accessorKey: "priority",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Priority" />
-    ),
-    cell: ({ row }) => {
-      const priority = priorities.find(
-        (priority) => priority.value === row.getValue("priority")
-      )
+  accessorKey: "toggle",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Toggle" />
+  ),
+  cell: ({ row }) => {
+    const isActive = row.getValue("status") === "Active"
 
-      if (!priority) {
-        return null
-      }
-
-      return (
-        <div className="flex items-center gap-2">
-          {priority.icon && (
-            <priority.icon className="text-muted-foreground size-4" />
-          )}
-          <span>{priority.label}</span>
-        </div>
-      )
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
-    },
+    return (
+      <Switch
+        checked={isActive}
+        onCheckedChange={(checked) => {
+          // update your data here, e.g.:
+          // row.original.status = checked ? "Active" : "Inactive"
+          console.log(`Employee ${row.original.name} set to ${checked ? "Active" : "Inactive"}`)
+        }}
+      />
+    )
   },
+  filterFn: (row, id, value) => {
+    return value.includes(row.getValue(id))
+  },
+},
   {
     id: "actions",
+    header: "Actions",
     cell: ({ row }) => <DataTableRowActions row={row} />,
   },
 ]

@@ -5,10 +5,14 @@ import { PageProps } from "@inertiajs/core"
 
 interface Task {
   id: string
-  title: string
-  status: string
-  label: string
-  priority: string
+  employeeName: string
+  position: string
+  unit: string
+  division: string
+  department: string
+  contactNumber: string
+  email: string
+  status: "Active" | "Inactive"
 }
 
 interface Props extends PageProps {
