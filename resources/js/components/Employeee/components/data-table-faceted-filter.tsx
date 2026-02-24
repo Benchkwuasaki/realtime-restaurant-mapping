@@ -43,48 +43,38 @@ export function DataTableFacetedFilter<TData, TValue>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [column?.getFilterValue()]
   )
-  
+
 
   return (
     <Popover>
-      <PopoverTrigger>
-        <Button variant="outline" size="sm" className="h-8 border-dashed">
-          <PlusCircle />
-          {title}
-          {selectedValues?.size > 0 && (
-            <>
-              <Separator orientation="vertical" className="mx-2 h-4" />
-              <Badge
-                variant="secondary"
-                className="rounded-sm px-1 font-normal lg:hidden"
-              >
-                {selectedValues.size}
-              </Badge>
-              <div className="hidden gap-1 lg:flex">
-                {selectedValues.size > 2 ? (
-                  <Badge
-                    variant="secondary"
-                    className="rounded-sm px-1 font-normal"
-                  >
-                    {selectedValues.size} selected
-                  </Badge>
-                ) : (
-                  options
-                    .filter((option) => selectedValues.has(option.value))
-                    .map((option) => (
-                      <Badge
-                        variant="secondary"
-                        key={option.value}
-                        className="rounded-sm px-1 font-normal"
-                      >
-                        {option.label}
-                      </Badge>
-                    ))
-                )}
-              </div>
-            </>
-          )}
-        </Button>
+      <PopoverTrigger
+        className="inline-flex items-center gap-2 h-8 px-3 rounded-md border border-dashed border-input bg-background text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+      >
+        <PlusCircle className="size-4" />
+        {title}
+        {selectedValues?.size > 0 && (
+          <>
+            <Separator orientation="vertical" className="mx-2 h-4" />
+            <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+              {selectedValues.size}
+            </Badge>
+            <div className="hidden gap-1 lg:flex">
+              {selectedValues.size > 2 ? (
+                <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                  {selectedValues.size} selected
+                </Badge>
+              ) : (
+                options
+                  .filter((option) => selectedValues.has(option.value))
+                  .map((option) => (
+                    <Badge variant="secondary" key={option.value} className="rounded-sm px-1 font-normal">
+                      {option.label}
+                    </Badge>
+                  ))
+              )}
+            </div>
+          </>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0" align="start">
         <Command>

@@ -20,7 +20,12 @@ interface DataTableRowActionsProps<TData> {
 export function DataTableRowActions<TData>({
   row,
 }: DataTableRowActionsProps<TData>) {
-  const task = taskSchema.parse(row.original)
+  try {
+    const task = taskSchema.parse(row.original)
+  } catch (e) {
+    console.error("Schema parse error:", e)
+    console.error("Row data:", row.original)
+  }
 
   return (
     <DropdownMenu>

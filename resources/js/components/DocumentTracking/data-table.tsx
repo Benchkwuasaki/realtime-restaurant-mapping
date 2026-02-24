@@ -34,12 +34,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
 }
 
 export function DataTable<TData, TValue>({
+
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
@@ -48,6 +50,8 @@ export function DataTable<TData, TValue>({
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
+
+
 
   const table = useReactTable({
     data,
@@ -68,10 +72,11 @@ export function DataTable<TData, TValue>({
       columnFilters,
       columnVisibility,
     }
+
   })
 
-
   return (
+
     <div>
       <div className="flex items-center py-4 justify-between">
         <div className="flex align-middle space-x-4">
@@ -167,7 +172,7 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
 
-        <DataTablePagination table={table} />
+      <DataTablePagination table={table} />
     </div>
   )
 }

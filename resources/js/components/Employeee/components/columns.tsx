@@ -45,6 +45,7 @@ export const columns: ColumnDef<Task>[] = [
     cell: ({ row }) => (
       <div className="min-w-[140px] font-medium">{row.getValue("name")}</div>
     ),
+    filterFn: "includesString",
     enableSorting: true,
     enableHiding: true,
   },

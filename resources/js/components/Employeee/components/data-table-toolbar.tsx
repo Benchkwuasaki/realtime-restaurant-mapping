@@ -20,14 +20,19 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
 
+
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center gap-2">
         <Input
           placeholder="Search Employee..."
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
+          onChange={(event) => {
+            console.log("input changed:", event.target.value)  // ← ADD THIS
+            console.log("name column:", table.getColumn("name"))
             table.getColumn("name")?.setFilterValue(event.target.value)
+          }
           }
           className="h-8 w-37.5 lg:w-62.5"
         />

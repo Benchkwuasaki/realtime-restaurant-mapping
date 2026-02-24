@@ -33,6 +33,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
 }
 
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -59,7 +60,7 @@ export function DataTable<TData, TValue>({
         pageSize: 25,
       },
     },
-    enableRowSelection: true,
+    autoResetPageIndex: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -71,6 +72,11 @@ export function DataTable<TData, TValue>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
+
+  console.log("columnFilters:", columnFilters)
+  console.log("data:", data)
+  console.log("filtered rows data:", table.getFilteredRowModel().rows.map(r => r.original))
+
 
   return (
     <div className="flex flex-col gap-4">
@@ -86,9 +92,9 @@ export function DataTable<TData, TValue>({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   )
                 })}

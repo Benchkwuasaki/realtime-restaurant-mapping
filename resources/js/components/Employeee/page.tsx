@@ -1,5 +1,5 @@
 import { columns } from "@/components/Employeee/components/columns"
-import { DataTable } from "./components/data-table"
+import { DataTable } from "@/components/Employeee/components/data-table"
 import { usePage } from "@inertiajs/react"
 import { PageProps } from "@inertiajs/core"
 
