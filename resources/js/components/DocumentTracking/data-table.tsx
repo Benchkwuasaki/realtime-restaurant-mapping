@@ -1,23 +1,22 @@
-import { Input } from "@/components/ui/input"
-import React from "react"
-import { Button } from "@/components/ui/button"
-import { CreateRequest } from "./create-request"
-import { Search, ListFilter } from "lucide-react"
-import { DataTablePagination } from "./data-table-pagination"
-
 import {
-  ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
   getPaginationRowModel,
-  ColumnFiltersState,
   getFilteredRowModel,
-  SortingState,
-  VisibilityState,
   getSortedRowModel,
 } from "@tanstack/react-table"
-
+import type { ColumnDef, ColumnFiltersState, SortingState, VisibilityState } from "@tanstack/react-table"
+import { Search, ListFilter } from "lucide-react"
+import React from "react"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenuContent,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -26,13 +25,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { CreateRequest } from "./create-request"
+import { DataTablePagination } from "./data-table-pagination"
 
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -52,22 +48,22 @@ export function DataTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onRowSelectionChange: (updater) => {
       setRowSelection(typeof updater === 'function' ? updater(rowSelection) : updater)
     },
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
       rowSelection,
       columnFilters,
       columnVisibility,
-    }
+    },
+    getCoreRowModel: getCoreRowModel(),
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
   })
 
 
@@ -167,7 +163,7 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
 
-        <DataTablePagination table={table} />
+      <DataTablePagination table={table} />
     </div>
   )
 }
