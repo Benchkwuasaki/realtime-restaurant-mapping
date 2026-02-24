@@ -40,10 +40,16 @@ class ActivityLogService
         return $this->agent->platform() ?: 'Unknown';
     }
 
-    public function userFullName(string $firstName, string $lastName)
+    public function formatUserName(string $name)
     {
-        $first = ucfirst($firstName);
-        $last = ucfirst($lastName);
-        return "$first $last";
+        $parts = explode(' ', $name);
+        $firstName = $parts[0] ?? '';
+        $lastName = $parts[1] ?? '';
+        return "{$firstName} {$lastName}";
+    }
+
+    public function formatModuleName(string $module)
+    {
+        return ucfirst(str_replace('_', ' ', $module));
     }
 }
