@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, CalendarCheck, FileCheck, User, Calculator, Gift, ChartColumn, Clock     } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, CalendarCheck, FileCheck, User, Calculator, Gift, ChartColumn, Clock } from 'lucide-react';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -15,46 +15,47 @@ import {
 import type { NavItem } from '@/types';
 import AppLogo from './app-logo';
 import { dashboard } from '@/routes';
+import { route } from 'ziggy-js';
 
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
-        href: dashboard(),
+        href: route('dashboard'),
         icon: LayoutGrid,
     },
     {
         title: 'Attendance',
-        href: '/attendance',
+        href: route('attendance.index'),
         icon: CalendarCheck,
     },
     {
         title: 'Document Tracking',
-        href: '/document_tracking',
+        href: route('document_tracking.index'),
         icon: FileCheck,
     },
     {
         title: 'Employee',
-        href: '/employee',
+        href: route('employee.index'),
         icon: User,
     },
     {
         title: 'Payroll',
-        href: '/payroll',
+        href: route('payroll.index'),
         icon: Calculator,
     },
     {
         title: 'Benefits',
-        href: '/benefits',
+        href: route('benefits.index'),
         icon: Gift,
     },
     {
         title: 'Reports and Analytics',
-        href: '/reports_and_analytics',
+        href: route('reports_and_analytics.index'),
         icon: ChartColumn,
     },
     {
         title: 'Activity Logs',
-        href: '/activity_logs',
+        href: route('activity_logs.index'),
         icon: Clock,
     },
 ];
