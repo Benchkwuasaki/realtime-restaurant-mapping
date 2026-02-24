@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\EmployeeController::index
- * @see app/Http/Controllers/EmployeeController.php:12
+ * @see app/Http/Controllers/EmployeeController.php:14
  * @route '/employee'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\EmployeeController::index
- * @see app/Http/Controllers/EmployeeController.php:12
+ * @see app/Http/Controllers/EmployeeController.php:14
  * @route '/employee'
  */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\EmployeeController::index
- * @see app/Http/Controllers/EmployeeController.php:12
+ * @see app/Http/Controllers/EmployeeController.php:14
  * @route '/employee'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\EmployeeController::index
- * @see app/Http/Controllers/EmployeeController.php:12
+ * @see app/Http/Controllers/EmployeeController.php:14
  * @route '/employee'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\EmployeeController::index
- * @see app/Http/Controllers/EmployeeController.php:12
+ * @see app/Http/Controllers/EmployeeController.php:14
  * @route '/employee'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\EmployeeController::index
- * @see app/Http/Controllers/EmployeeController.php:12
+ * @see app/Http/Controllers/EmployeeController.php:14
  * @route '/employee'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\EmployeeController::index
- * @see app/Http/Controllers/EmployeeController.php:12
+ * @see app/Http/Controllers/EmployeeController.php:14
  * @route '/employee'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +79,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     index.form = indexForm
 /**
 * @see \App\Http\Controllers\EmployeeController::create
- * @see app/Http/Controllers/EmployeeController.php:21
+ * @see app/Http/Controllers/EmployeeController.php:29
  * @route '/employee/create'
  */
 export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +94,7 @@ create.definition = {
 
 /**
 * @see \App\Http\Controllers\EmployeeController::create
- * @see app/Http/Controllers/EmployeeController.php:21
+ * @see app/Http/Controllers/EmployeeController.php:29
  * @route '/employee/create'
  */
 create.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ create.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\EmployeeController::create
- * @see app/Http/Controllers/EmployeeController.php:21
+ * @see app/Http/Controllers/EmployeeController.php:29
  * @route '/employee/create'
  */
 create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -112,7 +112,7 @@ create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\EmployeeController::create
- * @see app/Http/Controllers/EmployeeController.php:21
+ * @see app/Http/Controllers/EmployeeController.php:29
  * @route '/employee/create'
  */
 create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -122,7 +122,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\EmployeeController::create
- * @see app/Http/Controllers/EmployeeController.php:21
+ * @see app/Http/Controllers/EmployeeController.php:29
  * @route '/employee/create'
  */
     const createForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -132,7 +132,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\EmployeeController::create
- * @see app/Http/Controllers/EmployeeController.php:21
+ * @see app/Http/Controllers/EmployeeController.php:29
  * @route '/employee/create'
  */
         createForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -141,7 +141,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\EmployeeController::create
- * @see app/Http/Controllers/EmployeeController.php:21
+ * @see app/Http/Controllers/EmployeeController.php:29
  * @route '/employee/create'
  */
         createForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

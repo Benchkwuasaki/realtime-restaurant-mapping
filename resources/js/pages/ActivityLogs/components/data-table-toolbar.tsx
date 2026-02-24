@@ -1,13 +1,14 @@
 "use client"
 
 import { type Table } from "@tanstack/react-table"
-import { FileDown, X } from "lucide-react"
+import { FileDown, Search, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 import { DataTableFacetedFilter } from "./data-table-faceted-filter"
 import { AArrowDown } from "lucide-react"
+import React from "react"
 
 interface DataTableToolbarProps<TData> {
     table: Table<TData>
@@ -17,6 +18,7 @@ export function DataTableToolbar<TData>({
     table,
 }: DataTableToolbarProps<TData>) {
     const isFiltered = table.getState().columnFilters.length > 0
+    const [searchValue, setSearchValue] = React.useState("")
     const modules = [
         {
             value: 'attendance',
@@ -40,10 +42,11 @@ export function DataTableToolbar<TData>({
             <div className="flex flex-1 items-center gap-2">
                 <Input
                     placeholder="Search tasks..."
-                    value={(table.getColumn("user")?.getFilterValue() as string) ?? ""}
-                    onChange={(event) =>
+                    value={searchValue}
+                    onChange={(event) => {
+                        setSearchValue(event.target.value)
                         table.getColumn("user")?.setFilterValue(event.target.value)
-                    }
+                    }}
                     className="h-8 w-[150px] lg:w-[250px]"
                 />
                 {table.getColumn("module") && (

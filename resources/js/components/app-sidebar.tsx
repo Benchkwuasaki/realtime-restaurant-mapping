@@ -20,6 +20,7 @@ import {
   FileCheck2,
   Calendar,
   Wallet,
+  Logs,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -187,36 +188,41 @@ const data = {
         },
       ],
     },
-  ],
-  navSecondary: [
     {
-      title: "Support",
-      url: "#",
-      icon: LifeBuoy,
-    },
-    {
-      title: "Feedback",
-      url: "#",
-      icon: Send,
+      title: "Activity Logs",
+      url: "/activity_logs",
+      icon: Logs,
     },
   ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
-  ],
+  // navSecondary: [
+  //   {
+  //     title: "Support",
+  //     url: "#",
+  //     icon: LifeBuoy,
+  //   },
+  //   {
+  //     title: "Feedback",
+  //     url: "#",
+  //     icon: Send,
+  //   },
+  // ],
+  // projects: [
+  //   {
+  //     name: "Design Engineering",
+  //     url: "#",
+  //     icon: Frame,
+  //   },
+  //   {
+  //     name: "Sales & Marketing",
+  //     url: "#",
+  //     icon: PieChart,
+  //   },
+  //   {
+  //     name: "Travel",
+  //     url: "#",
+  //     icon: Map,
+  //   },
+  // ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
