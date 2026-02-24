@@ -6,6 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\EmployeeAllowance;
+use App\Models\EmployeePayrollData;
+use App\Models\EmployeeServiceRecord;
+use App\Models\EmployeeSeminarAndTraining;
+use App\Models\EmployeeUploadedFile;
+use App\Models\EmployeeWaterBill;
+use App\Models\EligibilityInformation;
+use App\Models\GovernmentAccount;
 
 class Employee extends Model
 {
@@ -84,5 +92,10 @@ class Employee extends Model
     public function eligibilityInformation(): HasMany
     {
         return $this->hasMany(EligibilityInformation::class, 'employee_id', 'employee_id');
+    }
+
+    public function governmentAccounts(): HasMany
+    {
+        return $this->hasMany(GovernmentAccount::class, 'employee_id', 'employee_id');
     }
 }

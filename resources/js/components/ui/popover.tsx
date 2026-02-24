@@ -1,8 +1,8 @@
 "use client"
 
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
 
 function Popover({ ...props }: PopoverPrimitive.Root.Props) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />
@@ -86,8 +86,4 @@ export {
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 0ddddb0987cdf244066b80c2213c1e31c1a3553d
