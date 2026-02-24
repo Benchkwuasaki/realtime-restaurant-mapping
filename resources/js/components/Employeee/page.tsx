@@ -1,7 +1,7 @@
-import { columns } from "@/components/Employeee/components/columns"
-import { DataTable } from "@/components/Employeee/components/data-table"
+import type { PageProps } from "@inertiajs/core"
 import { usePage } from "@inertiajs/react"
-import { PageProps } from "@inertiajs/core"
+import { columns } from "@/components/Employeee/components/columns"
+import { DataTable } from "./components/data-table"
 
 interface Task {
   id: string

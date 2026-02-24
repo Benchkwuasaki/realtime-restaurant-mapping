@@ -1,15 +1,16 @@
 "use client"
 
+import { router } from "@inertiajs/react"
 import { type Table } from "@tanstack/react-table"
 import { X } from "lucide-react"
 
+import React from "react"
+import { DataTableViewOptions } from "@/components/Employeee/components/data-table-view-option"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { DataTableViewOptions } from "@/components/Employeee/components/data-table-view-option"
 
-import { DataTableFacetedFilter } from "./data-table-faceted-filter"
-import { router } from "@inertiajs/react"
 import { status } from "../data/data"
+import { DataTableFacetedFilter } from "./data-table-faceted-filter"
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -19,21 +20,18 @@ export function DataTableToolbar<TData>({
   table,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
-
-
+  const [searchValue, setSearchValue] = React.useState("")
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center gap-2">
         <Input
           placeholder="Search Employee..."
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+          value={searchValue}
           onChange={(event) => {
-            console.log("input changed:", event.target.value)  // ← ADD THIS
-            console.log("name column:", table.getColumn("name"))
+            setSearchValue(event.target.value)
             table.getColumn("name")?.setFilterValue(event.target.value)
-          }
-          }
+          }}
           className="h-8 w-37.5 lg:w-62.5"
         />
         {table.getColumn("status") && (
@@ -47,7 +45,10 @@ export function DataTableToolbar<TData>({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => table.resetColumnFilters()}
+            onClick={() => {
+              table.resetColumnFilters()
+              setSearchValue("")
+            }}
           >
             Reset
             <X />
