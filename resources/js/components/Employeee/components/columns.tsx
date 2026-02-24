@@ -1,24 +1,43 @@
 "use client"
 
-import { type ColumnDef } from "@tanstack/react-table"
-import React, { useState } from "react"
 import { router } from "@inertiajs/react"
+import { type ColumnDef } from "@tanstack/react-table"
+import React from "react"
+import { DataTableColumnHeader } from "@/components/Employeee/components/data-table-column-header"
+import { DataTableRowActions } from "@/components/Employeee/components/data-table-row-action"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 
-import { status } from "../data/data"
 import { type Task } from "../data/schema"
-import { DataTableColumnHeader } from "@/components/Employeee/components/data-table-column-header"
-import { DataTableRowActions } from "@/components/Employeee/components/data-table-row-action"
 
-function StatusToggle({ status }: { status: string }) {
-  const [isActive, setIsActive] = React.useState(status === "Active")
+function StatusToggle({ id, currentStatus }: { id: string; currentStatus: boolean }) {
+  const [isActive, setIsActive] = React.useState(currentStatus)
+  const [isPending, setIsPending] = React.useState(false)
+
+  const handleChange = (checked: boolean) => {
+    setIsActive(checked)
+    setIsPending(true)
+
+    router.patch(
+      `/employee/${id}/toggle`,
+      {},
+      {
+        preserveScroll: true,
+        onFinish: () => setIsPending(false),
+        onError: () => {
+          setIsActive(!checked)
+          setIsPending(false)
+        },
+      }
+    )
+  }
 
   return (
     <Switch
       checked={isActive}
-      onCheckedChange={(checked) => setIsActive(checked)}
+      onCheckedChange={handleChange}
+      disabled={isPending}
     />
   )
 }
@@ -131,21 +150,30 @@ export const columns: ColumnDef<Task>[] = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => {
-      const label = status.find((status) => status.value === row.original.status)
+      const isActive: boolean = row.getValue("status")
       return (
         <div className="flex items-center gap-2 min-w-[100px]">
-          {label && <Badge variant="outline">{label.label}</Badge>}
+          <Badge variant={isActive ? "default" : "secondary"}>
+            {isActive ? "Active" : "Inactive"}
+          </Badge>
         </div>
       )
     },
-    filterFn: (row, id, value) => value.includes(row.getValue(id)),
+    filterFn: (row, id, value: boolean[]) => value.includes(row.getValue(id)),
   },
   {
     accessorKey: "toggle",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Toggle" />
     ),
-    cell: ({ row }) => <StatusToggle status={row.original.status} />,
+    cell: ({ row }) => (
+      <StatusToggle
+        id={row.original.id}
+        currentStatus={row.original.status}
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
   },
   {
     id: "actions",

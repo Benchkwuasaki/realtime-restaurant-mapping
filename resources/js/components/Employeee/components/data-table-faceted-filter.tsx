@@ -1,3 +1,5 @@
+"use client"
+
 import { type Column } from "@tanstack/react-table"
 import { Check, PlusCircle } from "lucide-react"
 import * as React from "react"
@@ -19,7 +21,7 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   title?: string
   options: {
     label: string
-    value: string
+    value: boolean | string
     icon?: React.ComponentType<{ className?: string }>
   }[]
 }
@@ -31,26 +33,32 @@ export function DataTableFacetedFilter<TData, TValue>({
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const facets = column?.getFacetedUniqueValues()
 
-  const [selected, setSelected] = React.useState<Set<string>>(
-    () => new Set((column?.getFilterValue() as string[]) ?? [])
-  )
+  // Use string keys in the Set ("true"/"false") for reliable equality checks,
+  // but pass the original typed values into the column filter.
+  const [selectedKeys, setSelectedKeys] = React.useState<Set<string>>(new Set())
 
-  const handleSelect = (value: string) => {
-    setSelected((prev) => {
+  const handleSelect = (option: { value: boolean | string }) => {
+    const key = String(option.value)
+    setSelectedKeys((prev) => {
       const updated = new Set(prev)
-      if (updated.has(value)) {
-        updated.delete(value)
+      if (updated.has(key)) {
+        updated.delete(key)
       } else {
-        updated.add(value)
+        updated.add(key)
       }
-      const filterValues = Array.from(updated)
+
+      // Pass actual typed values (true/false) to the filterFn
+      const filterValues = options
+        .filter((o) => updated.has(String(o.value)))
+        .map((o) => o.value)
+
       column?.setFilterValue(filterValues.length ? filterValues : undefined)
       return updated
     })
   }
 
   const handleClear = () => {
-    setSelected(new Set())
+    setSelectedKeys(new Set())
     column?.setFilterValue(undefined)
   }
 
@@ -60,27 +68,27 @@ export function DataTableFacetedFilter<TData, TValue>({
         <Button variant="outline" size="sm" className="h-8 border-dashed">
           <PlusCircle />
           {title}
-          {selected.size > 0 && (
+          {selectedKeys.size > 0 && (
             <>
               <Separator orientation="vertical" className="mx-2 h-4" />
               <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
-                {selected.size}
+                {selectedKeys.size}
               </Badge>
               <div className="hidden gap-1 lg:flex">
-                {selected.size > 2 ? (
+                {selectedKeys.size > 2 ? (
                   <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                    {selected.size} selected
+                    {selectedKeys.size} selected
                   </Badge>
                 ) : (
                   options
-                    .filter((option) => selected.has(option.value))
-                    .map((option) => (
+                    .filter((o) => selectedKeys.has(String(o.value)))
+                    .map((o) => (
                       <Badge
                         variant="secondary"
-                        key={option.value}
+                        key={String(o.value)}
                         className="rounded-sm px-1 font-normal"
                       >
-                        {option.label}
+                        {o.label}
                       </Badge>
                     ))
                 )}
@@ -91,13 +99,16 @@ export function DataTableFacetedFilter<TData, TValue>({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[200px]">
         {options.map((option) => {
-          const isSelected = selected.has(option.value)
+          const key = String(option.value)
+          const isSelected = selectedKeys.has(key)
+          // TanStack stores facet keys using the raw row value type (boolean)
+          const count = facets?.get(option.value)
           return (
             <DropdownMenuItem
-              key={option.value}
+              key={key}
               onSelect={(e) => {
                 e.preventDefault()
-                handleSelect(option.value)
+                handleSelect(option)
               }}
               className="flex items-center gap-2"
             >
@@ -115,15 +126,15 @@ export function DataTableFacetedFilter<TData, TValue>({
                 <option.icon className="text-muted-foreground size-4" />
               )}
               <span>{option.label}</span>
-              {facets?.get(option.value) && (
+              {count !== undefined && (
                 <span className="text-muted-foreground ml-auto font-mono text-xs">
-                  {facets.get(option.value)}
+                  {count}
                 </span>
               )}
             </DropdownMenuItem>
           )
         })}
-        {selected.size > 0 && (
+        {selectedKeys.size > 0 && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem

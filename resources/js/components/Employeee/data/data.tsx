@@ -1,12 +1,10 @@
-
-
 export const status = [
   {
-    value: "Active",
+    value: true,
     label: "Active",
   },
   {
-    value: "Inactive",
+    value: false,
     label: "Inactive",
   },
 ]

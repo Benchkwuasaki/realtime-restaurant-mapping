@@ -24,8 +24,17 @@ Route::get('dashboard', function () {
 Route::get('/attendance', [AttendanceController::class, 'index'])->middleware(['auth', 'verified'])->name('attendance.index');
 Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->middleware(['auth', 'verified'])->name('document_tracking.index');
 
-Route::get('/employee',[EmployeeController::class,'index'])->middleware(['auth', 'verified'])->name('employee.index');
-Route::get('/employee/create',[EmployeeController::class,'create'])->middleware(['auth', 'verified'])->name('employee.create');
+// Employee Routes
+Route::prefix('employee')->name('employee.')->group(function () {
+    Route::get('/',          [EmployeeController::class, 'index'])->name('index');
+    Route::get('/create',    [EmployeeController::class, 'create'])->name('create');
+    Route::post('/',         [EmployeeController::class, 'store'])->name('store');
+    Route::get('/{employee}',         [EmployeeController::class, 'show'])->name('show');
+    Route::get('/{employee}/edit',    [EmployeeController::class, 'edit'])->name('edit');
+    Route::put('/{employee}',         [EmployeeController::class, 'update'])->name('update');
+    Route::patch('/{employee}/toggle',[EmployeeController::class, 'toggleStatus'])->name('toggleStatus');
+    Route::delete('/{employee}',      [EmployeeController::class, 'destroy'])->name('destroy');
+});
 
 Route::get('/payroll',[PayrollController::class,'index'])->middleware(['auth', 'verified'])->name('payroll.index');
 Route::get('/benefits',[BenefitsController::class,'index'])->middleware(['auth', 'verified'])->name('benefits.index');
