@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import TaskPage from '@/components/Employeee/page';
+import CreateEmployeeForm from '@/components/Employeee/create_employee';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -18,9 +19,7 @@ export default function Index() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Create Employee" />
-            <div className='p-4'>
-                Hi
-            </div>
+                <CreateEmployeeForm/>
         </AppLayout>
     );
 }

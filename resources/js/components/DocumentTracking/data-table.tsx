@@ -28,6 +28,10 @@ import {
 import { CreateRequest } from "./create-request"
 import { DataTablePagination } from "./data-table-pagination"
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0ddddb0987cdf244066b80c2213c1e31c1a3553d
 
 
 interface DataTableProps<TData, TValue> {
@@ -36,6 +40,7 @@ interface DataTableProps<TData, TValue> {
 }
 
 export function DataTable<TData, TValue>({
+
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
@@ -44,6 +49,8 @@ export function DataTable<TData, TValue>({
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
+
+
 
   const table = useReactTable({
     data,
@@ -66,8 +73,8 @@ export function DataTable<TData, TValue>({
     onColumnVisibilityChange: setColumnVisibility,
   })
 
-
   return (
+
     <div>
       <div className="flex items-center py-4 justify-between">
         <div className="flex align-middle space-x-4">
@@ -164,6 +171,10 @@ export function DataTable<TData, TValue>({
       </div>
 
       <DataTablePagination table={table} />
+<<<<<<< HEAD
+=======
+      <DataTablePagination table={table} />
+>>>>>>> 0ddddb0987cdf244066b80c2213c1e31c1a3553d
     </div>
   )
 }
