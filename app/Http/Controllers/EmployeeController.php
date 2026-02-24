@@ -2,22 +2,17 @@
 
 namespace App\Http\Controllers;
 
-<<<<<<< HEAD
-use App\Models\Employee;
+use App\Models\Employee ;
 use App\Models\EmployeeBasicInfo;
 use App\Models\Item;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-=======
 use App\Services\ActivityLogService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
->>>>>>> 0ddddb0987cdf244066b80c2213c1e31c1a3553d
 use Inertia\Inertia;
 
 class EmployeeController extends Controller
 {
-<<<<<<< HEAD
     /**
      * Display the employee list page.
      */
@@ -31,31 +26,15 @@ class EmployeeController extends Controller
         ])
             ->get()
             ->map(fn(Employee $employee) => $this->formatForTable($employee));
-=======
-    public function index()
-    {
-        $tasks = json_decode(file_get_contents(base_path('resources/js/components/Employeee/data/task.json')), true);
->>>>>>> 0ddddb0987cdf244066b80c2213c1e31c1a3553d
 
         return Inertia::render('Employee/Index', [
             'tasks' => $tasks,
         ]);
-<<<<<<< HEAD
-=======
     }
 
     public function create()
     {
         return Inertia::render('Employee/CreateEmployee');
->>>>>>> 0ddddb0987cdf244066b80c2213c1e31c1a3553d
-    }
-
-    /**
-     * Show the create employee form.
-     */
-    public function create()
-    {
-        return Inertia::render('Employee/Create');
     }
 
     /**
