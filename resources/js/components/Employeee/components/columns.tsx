@@ -1,7 +1,7 @@
 "use client"
 
 import { type ColumnDef } from "@tanstack/react-table"
-import { useState } from "react"
+import React, { useState } from "react"
 import { router } from "@inertiajs/react"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -11,6 +11,17 @@ import { status } from "../data/data"
 import { type Task } from "../data/schema"
 import { DataTableColumnHeader } from "@/components/Employeee/components/data-table-column-header"
 import { DataTableRowActions } from "@/components/Employeee/components/data-table-row-action"
+
+function StatusToggle({ status }: { status: string }) {
+  const [isActive, setIsActive] = React.useState(status === "Active")
+
+  return (
+    <Switch
+      checked={isActive}
+      onCheckedChange={(checked) => setIsActive(checked)}
+    />
+  )
+}
 
 export const columns: ColumnDef<Task>[] = [
   {
@@ -134,20 +145,7 @@ export const columns: ColumnDef<Task>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Toggle" />
     ),
-    cell: ({ row }) => {
-      const isActive = row.getValue("status") === "Active"
-
-      return (
-        <Switch
-          checked={isActive}
-          onCheckedChange={(checked) => {
-            // update your data here, e.g.:
-            // row.original.status = checked ? "Active" : "Inactive"
-            console.log(`Employee ${row.original.name} set to ${checked ? "Active" : "Inactive"}`)
-          }}
-        />
-      )
-    },
+    cell: ({ row }) => <StatusToggle status={row.original.status} />,
   },
   {
     id: "actions",
