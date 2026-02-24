@@ -21,12 +21,15 @@ Route::get('dashboard', function () {
     return Inertia::render('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::get('/attendance', [AttendanceController::class, 'index'])->middleware(['auth', 'verified'])->name('attendance.index');
-Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->middleware(['auth', 'verified'])->name('document_tracking.index');
-Route::get('/employee',[EmployeeController::class,'index'])->middleware(['auth', 'verified'])->name('employee.index');
-Route::get('/payroll',[PayrollController::class,'index'])->middleware(['auth', 'verified'])->name('payroll.index');
-Route::get('/benefits',[BenefitsController::class,'index'])->middleware(['auth', 'verified'])->name('benefits.index');
-Route::get('/reports_and_analytics',[ReportsAndAnalyticsController::class,'index'])->middleware(['auth', 'verified'])->name('reports_and_analytics.index');
-Route::get('/activity_logs',[ActivityLogsController::class,'index'])->middleware(['auth', 'verified'])->name('activity_logs.index');   
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
+    Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
+    Route::get('/employee', [EmployeeController::class, 'index'])->name('employee.index');
+    Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
+    Route::get('/benefits', [BenefitsController::class, 'index'])->name('benefits.index');
+    Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
+    Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
+});
+
 
 require __DIR__ . '/settings.php';
