@@ -10,6 +10,10 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call([
+            UserSeeder::class,
+        ]);
+
         // ── 1. Salary Grade Steps ──────────────────────────────────
         $salaryGradeSteps = [
             ['salary_grade' => 10, 'step' => 1, 'salary_amount' => 22316.00],
