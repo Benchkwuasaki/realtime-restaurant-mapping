@@ -16,6 +16,8 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table"
 import * as React from "react"
+import { router } from "@inertiajs/react"
+import { route } from "ziggy-js"
 
 import {
   Table,
@@ -73,7 +75,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="flex flex-col gap-4">
-      <DataTableToolbar table={table} />
+      <DataTableToolbar table={table} rowSelection={rowSelection} />
       <div className="overflow-x-auto rounded-md border border-gray-200">
         <Table>
           <TableHeader>
@@ -95,9 +97,14 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="cursor-pointer"
+                  onClick={() => router.visit(route("employee.show", row.id))}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      onClick={cell.column.id === "select" ? (e) => e.stopPropagation() : undefined}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -113,7 +120,6 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      {/* Pass rowSelection explicitly so DataTablePagination re-renders on change */}
       <DataTablePagination table={table} rowSelection={rowSelection} />
     </div>
   )
