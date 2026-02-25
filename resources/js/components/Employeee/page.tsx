@@ -23,7 +23,7 @@ export default function TaskPage() {
   const { tasks } = usePage<Props>().props
 
   return (
-    <div className="hidden h-full flex-1 flex-col gap-8 py-4 md:flex">
+    <div className="flex h-full flex-1 flex-col gap-8 py-4">
       <DataTable data={tasks} columns={columns} />
     </div>
   )
