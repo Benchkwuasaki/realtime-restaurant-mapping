@@ -7,6 +7,7 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\BenefitsController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\ActivityLogsController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -17,13 +18,13 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
+
 Route::get('dashboard', function () {
     return Inertia::render('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::get('/attendance', [AttendanceController::class, 'index'])->middleware(['auth', 'verified'])->name('attendance.index');
 Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->middleware(['auth', 'verified'])->name('document_tracking.index');
-
 // Employee Routes
 Route::prefix('employee')->name('employee.')->group(function () {
     Route::get('/',          [EmployeeController::class, 'index'])->name('index');
