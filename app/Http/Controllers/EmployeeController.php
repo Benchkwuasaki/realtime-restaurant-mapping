@@ -21,8 +21,21 @@ use Inertia\Inertia;
 
 class EmployeeController extends Controller
 {
+    /**
+     * Display the employee list page.
+     */
+    // public function __construct(protected ActivityLogService $activityLogService)
+    // {
+    // }
+
     public function index()
     {
+
+        // $this->activityLogService->createLog([
+        //     'user_id' => Auth::id(),
+        //     'module' => 'attendance',
+        //     'description' => 'Viewed Employee Page',
+        // ]);
         $tasks = Employee::with([
             'basicInfo',
             'item.position.department',
@@ -235,15 +248,27 @@ class EmployeeController extends Controller
         ]);
 
         $employee->basicInfo->update($request->only([
-            'first_name', 'last_name', 'middle_name', 'name_extension',
-            'birth_date', 'sex', 'personal_email', 'phone_number',
-            'civil_status', 'place_of_birth',
+            'first_name',
+            'last_name',
+            'middle_name',
+            'name_extension',
+            'birth_date',
+            'sex',
+            'personal_email',
+            'phone_number',
+            'civil_status',
+            'place_of_birth',
         ]));
 
         $employeeData = $request->only([
-            'item_id', 'salary_grade_step_id', 'employment_classification',
-            'work_email', 'date_applied', 'date_hired',
-            'work_schedule_start', 'work_schedule_end',
+            'item_id',
+            'salary_grade_step_id',
+            'employment_classification',
+            'work_email',
+            'date_applied',
+            'date_hired',
+            'work_schedule_start',
+            'work_schedule_end',
         ]);
 
         if ($request->has('status')) {
@@ -384,17 +409,15 @@ class EmployeeController extends Controller
     }
 
     public function bulkDestroy(Request $request)
-{
-    $request->validate(['ids' => ['required', 'array'], 'ids.*' => ['exists:employees,employee_id']]);
+    {
+        $request->validate(['ids' => ['required', 'array'], 'ids.*' => ['exists:employees,employee_id']]);
 
-    $employees = Employee::whereIn('employee_id', $request->ids)->get();
+        $employees = Employee::whereIn('employee_id', $request->ids)->get();
 
-    foreach ($employees as $employee) {
-        $basicInfo = $employee->basicInfo;
-        $employee->delete();
-        $basicInfo?->delete();
+        foreach ($employees as $employee) {
+            $basicInfo = $employee->basicInfo;
+            $employee->delete();
+            $basicInfo?->delete();
+        }
     }
-
-    return back()->with('success', count($request->ids) . ' employee(s) deleted.');
-}
 }

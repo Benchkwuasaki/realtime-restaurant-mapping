@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { DataTableFacetedFilter } from "./data-table-faceted-filter"
 import { AArrowDown } from "lucide-react"
 import React from "react"
+import { modules } from "../data/data"
 
 interface DataTableToolbarProps<TData> {
     table: Table<TData>
@@ -19,23 +20,6 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
     const isFiltered = table.getState().columnFilters.length > 0
     const [searchValue, setSearchValue] = React.useState("")
-    const modules = [
-        {
-            value: 'attendance',
-            label: 'Attendance',
-            icon: AArrowDown
-        },
-        {
-            value: 'employee',
-            label: 'Employee',
-            icon: AArrowDown
-        },
-        {
-            value: 'document_tracking',
-            label: 'Document Tracking',
-            icon: AArrowDown
-        },
-    ]
 
     return (
         <div className="flex items-center justify-between">

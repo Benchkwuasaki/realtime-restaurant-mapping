@@ -64,6 +64,7 @@ export const columns: ColumnDef<ActivityLogRow>[] = [
                 <div className="font-medium">{row.getValue("module")}</div>
             )
         },
+        filterFn: (row, id, value: boolean[]) => value.includes(row.getValue(id)),
     },
     {
         accessorKey: "description",
