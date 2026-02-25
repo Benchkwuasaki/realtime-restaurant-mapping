@@ -28,12 +28,6 @@ import {
 import { CreateRequest } from "./create-request"
 import { DataTablePagination } from "./data-table-pagination"
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 0ddddb0987cdf244066b80c2213c1e31c1a3553d
-
-
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
@@ -171,10 +165,6 @@ export function DataTable<TData, TValue>({
       </div>
 
       <DataTablePagination table={table} />
-<<<<<<< HEAD
-=======
-      <DataTablePagination table={table} />
->>>>>>> 0ddddb0987cdf244066b80c2213c1e31c1a3553d
     </div>
   )
 }
