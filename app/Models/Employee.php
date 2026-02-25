@@ -44,6 +44,7 @@ class Employee extends Model
 
     // ── Relationships ──────────────────────────────────────────────
 
+    
     public function basicInfo(): BelongsTo
     {
         return $this->belongsTo(EmployeeBasicInfo::class, 'employee_basic_info_id', 'employee_basic_info_id');

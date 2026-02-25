@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmployeeAddress extends Model
 {
-    protected $table = 'employee_adresses'; // note: typo preserved from migration
+    protected $table = 'employee_addresses'; // note: typo preserved from migration
     protected $primaryKey = 'employee_address_id';
 
     protected $fillable = [

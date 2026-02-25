@@ -12,14 +12,14 @@ interface Task {
   department: string
   contactNumber: string
   email: string
-  status: "Active" | "Inactive"
+  status: boolean
 }
 
 interface Props extends PageProps {
   tasks: Task[]
 }
 
-export default function TaskPage() {
+export default function EmployeePage() {
   const { tasks } = usePage<Props>().props
 
   return (

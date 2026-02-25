@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import TaskPage from '@/components/Employeee/page';
+import EmployeePage from '@/components/Employeee/page';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -16,7 +16,7 @@ export default function Index() {
             <AppLayout breadcrumbs={breadcrumbs}>
                 <Head title="Employee" />
                 <div className='p-4'>
-                    <TaskPage />
+                    <EmployeePage />
                 </div>
             </AppLayout>
             );

@@ -223,11 +223,13 @@ class EmployeeController extends Controller
             'item.position.division',
             'item.position.unit',
             'allowances',
+            'salaryGradeStep',
             'serviceRecords',
             'seminarsAndTrainings',
             'eligibilityInformation',
+            'governmentAccounts',
             'uploadedFiles',
-            'waterBill',
+            // 'waterBill',
         ]);
 
         return Inertia::render('Employee/Show', [
