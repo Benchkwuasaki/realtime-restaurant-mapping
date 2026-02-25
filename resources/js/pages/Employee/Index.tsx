@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import EmployeePage from '@/components/Employeee/page';
+import EmployeePage from '@/components/Employeee/page'
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
