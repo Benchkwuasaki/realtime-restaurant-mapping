@@ -50,6 +50,6 @@ class ActivityLogService
 
     public function formatModuleName(string $module)
     {
-        return ucfirst(str_replace('_', ' ', $module));
+        return ucwords(str_replace('_', ' ', $module));
     }
 }

@@ -25,7 +25,7 @@ export function DataTableToolbar<TData>({
         <div className="flex items-center justify-between">
             <div className="flex flex-1 items-center gap-2">
                 <Input
-                    placeholder="Search tasks..."
+                    placeholder="Search users..."
                     value={searchValue}
                     onChange={(event) => {
                         setSearchValue(event.target.value)
