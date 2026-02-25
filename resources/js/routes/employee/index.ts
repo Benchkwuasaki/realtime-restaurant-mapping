@@ -213,6 +213,71 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     
     store.form = storeForm
 /**
+* @see \App\Http\Controllers\EmployeeController::bulkDestroy
+ * @see app/Http/Controllers/EmployeeController.php:398
+ * @route '/employee/bulk-destroy'
+ */
+export const bulkDestroy = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
+    url: bulkDestroy.url(options),
+    method: 'delete',
+})
+
+bulkDestroy.definition = {
+    methods: ["delete"],
+    url: '/employee/bulk-destroy',
+} satisfies RouteDefinition<["delete"]>
+
+/**
+* @see \App\Http\Controllers\EmployeeController::bulkDestroy
+ * @see app/Http/Controllers/EmployeeController.php:398
+ * @route '/employee/bulk-destroy'
+ */
+bulkDestroy.url = (options?: RouteQueryOptions) => {
+    return bulkDestroy.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\EmployeeController::bulkDestroy
+ * @see app/Http/Controllers/EmployeeController.php:398
+ * @route '/employee/bulk-destroy'
+ */
+bulkDestroy.delete = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
+    url: bulkDestroy.url(options),
+    method: 'delete',
+})
+
+    /**
+* @see \App\Http\Controllers\EmployeeController::bulkDestroy
+ * @see app/Http/Controllers/EmployeeController.php:398
+ * @route '/employee/bulk-destroy'
+ */
+    const bulkDestroyForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: bulkDestroy.url({
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'DELETE',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\EmployeeController::bulkDestroy
+ * @see app/Http/Controllers/EmployeeController.php:398
+ * @route '/employee/bulk-destroy'
+ */
+        bulkDestroyForm.delete = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: bulkDestroy.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'DELETE',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    bulkDestroy.form = bulkDestroyForm
+/**
 * @see \App\Http\Controllers\EmployeeController::show
  * @see app/Http/Controllers/EmployeeController.php:175
  * @route '/employee/{employee}'
@@ -507,7 +572,7 @@ update.put = (args: { employee: number | { employee_id: number } } | [employee: 
     update.form = updateForm
 /**
 * @see \App\Http\Controllers\EmployeeController::toggleStatus
- * @see app/Http/Controllers/EmployeeController.php:263
+ * @see app/Http/Controllers/EmployeeController.php:275
  * @route '/employee/{employee}/toggle'
  */
 export const toggleStatus = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -522,7 +587,7 @@ toggleStatus.definition = {
 
 /**
 * @see \App\Http\Controllers\EmployeeController::toggleStatus
- * @see app/Http/Controllers/EmployeeController.php:263
+ * @see app/Http/Controllers/EmployeeController.php:275
  * @route '/employee/{employee}/toggle'
  */
 toggleStatus.url = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions) => {
@@ -555,7 +620,7 @@ toggleStatus.url = (args: { employee: number | { employee_id: number } } | [empl
 
 /**
 * @see \App\Http\Controllers\EmployeeController::toggleStatus
- * @see app/Http/Controllers/EmployeeController.php:263
+ * @see app/Http/Controllers/EmployeeController.php:275
  * @route '/employee/{employee}/toggle'
  */
 toggleStatus.patch = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -565,7 +630,7 @@ toggleStatus.patch = (args: { employee: number | { employee_id: number } } | [em
 
     /**
 * @see \App\Http\Controllers\EmployeeController::toggleStatus
- * @see app/Http/Controllers/EmployeeController.php:263
+ * @see app/Http/Controllers/EmployeeController.php:275
  * @route '/employee/{employee}/toggle'
  */
     const toggleStatusForm = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -580,7 +645,7 @@ toggleStatus.patch = (args: { employee: number | { employee_id: number } } | [em
 
             /**
 * @see \App\Http\Controllers\EmployeeController::toggleStatus
- * @see app/Http/Controllers/EmployeeController.php:263
+ * @see app/Http/Controllers/EmployeeController.php:275
  * @route '/employee/{employee}/toggle'
  */
         toggleStatusForm.patch = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -596,7 +661,7 @@ toggleStatus.patch = (args: { employee: number | { employee_id: number } } | [em
     toggleStatus.form = toggleStatusForm
 /**
 * @see \App\Http\Controllers\EmployeeController::destroy
- * @see app/Http/Controllers/EmployeeController.php:270
+ * @see app/Http/Controllers/EmployeeController.php:282
  * @route '/employee/{employee}'
  */
 export const destroy = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -611,7 +676,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\EmployeeController::destroy
- * @see app/Http/Controllers/EmployeeController.php:270
+ * @see app/Http/Controllers/EmployeeController.php:282
  * @route '/employee/{employee}'
  */
 destroy.url = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions) => {
@@ -644,7 +709,7 @@ destroy.url = (args: { employee: number | { employee_id: number } } | [employee:
 
 /**
 * @see \App\Http\Controllers\EmployeeController::destroy
- * @see app/Http/Controllers/EmployeeController.php:270
+ * @see app/Http/Controllers/EmployeeController.php:282
  * @route '/employee/{employee}'
  */
 destroy.delete = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -654,7 +719,7 @@ destroy.delete = (args: { employee: number | { employee_id: number } } | [employ
 
     /**
 * @see \App\Http\Controllers\EmployeeController::destroy
- * @see app/Http/Controllers/EmployeeController.php:270
+ * @see app/Http/Controllers/EmployeeController.php:282
  * @route '/employee/{employee}'
  */
     const destroyForm = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -669,7 +734,7 @@ destroy.delete = (args: { employee: number | { employee_id: number } } | [employ
 
             /**
 * @see \App\Http\Controllers\EmployeeController::destroy
- * @see app/Http/Controllers/EmployeeController.php:270
+ * @see app/Http/Controllers/EmployeeController.php:282
  * @route '/employee/{employee}'
  */
         destroyForm.delete = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -683,81 +748,16 @@ destroy.delete = (args: { employee: number | { employee_id: number } } | [employ
         })
     
     destroy.form = destroyForm
-/**
-* @see \App\Http\Controllers\EmployeeController::bulkDestroy
- * @see app/Http/Controllers/EmployeeController.php:386
- * @route '/employee/bulk-destroy'
- */
-export const bulkDestroy = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
-    url: bulkDestroy.url(options),
-    method: 'delete',
-})
-
-bulkDestroy.definition = {
-    methods: ["delete"],
-    url: '/employee/bulk-destroy',
-} satisfies RouteDefinition<["delete"]>
-
-/**
-* @see \App\Http\Controllers\EmployeeController::bulkDestroy
- * @see app/Http/Controllers/EmployeeController.php:386
- * @route '/employee/bulk-destroy'
- */
-bulkDestroy.url = (options?: RouteQueryOptions) => {
-    return bulkDestroy.definition.url + queryParams(options)
-}
-
-/**
-* @see \App\Http\Controllers\EmployeeController::bulkDestroy
- * @see app/Http/Controllers/EmployeeController.php:386
- * @route '/employee/bulk-destroy'
- */
-bulkDestroy.delete = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
-    url: bulkDestroy.url(options),
-    method: 'delete',
-})
-
-    /**
-* @see \App\Http\Controllers\EmployeeController::bulkDestroy
- * @see app/Http/Controllers/EmployeeController.php:386
- * @route '/employee/bulk-destroy'
- */
-    const bulkDestroyForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: bulkDestroy.url({
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\EmployeeController::bulkDestroy
- * @see app/Http/Controllers/EmployeeController.php:386
- * @route '/employee/bulk-destroy'
- */
-        bulkDestroyForm.delete = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: bulkDestroy.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    bulkDestroy.form = bulkDestroyForm
 const employee = {
     index: Object.assign(index, index),
 create: Object.assign(create, create),
 store: Object.assign(store, store),
+bulkDestroy: Object.assign(bulkDestroy, bulkDestroy),
 show: Object.assign(show, show),
 edit: Object.assign(edit, edit),
 update: Object.assign(update, update),
 toggleStatus: Object.assign(toggleStatus, toggleStatus),
 destroy: Object.assign(destroy, destroy),
-bulkDestroy: Object.assign(bulkDestroy, bulkDestroy),
 governmentAccount: Object.assign(governmentAccount, governmentAccount),
 eligibility: Object.assign(eligibility, eligibility),
 }
