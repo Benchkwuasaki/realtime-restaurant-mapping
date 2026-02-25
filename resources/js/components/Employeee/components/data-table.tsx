@@ -16,6 +16,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table"
 import * as React from "react"
+import { router } from "@inertiajs/react"
 
 import {
   Table,
@@ -95,6 +96,8 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="cursor-pointer"
+                  onClick={() => router.visit(`/employee/${row.id}`)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -113,7 +116,6 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      {/* Pass rowSelection explicitly so DataTablePagination re-renders on change */}
       <DataTablePagination table={table} rowSelection={rowSelection} />
     </div>
   )

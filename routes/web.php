@@ -26,15 +26,28 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
     // Employee Routes
     Route::prefix('employee')->name('employee.')->group(function () {
-        Route::get('/',          [EmployeeController::class, 'index'])->name('index');
-        Route::get('/create',    [EmployeeController::class, 'create'])->name('create');
-        Route::post('/',         [EmployeeController::class, 'store'])->name('store');
-        Route::get('/{employee}',         [EmployeeController::class, 'show'])->name('show');
-        Route::get('/{employee}/edit',    [EmployeeController::class, 'edit'])->name('edit');
-        Route::put('/{employee}',         [EmployeeController::class, 'update'])->name('update');
+        Route::get('/', [EmployeeController::class, 'index'])->name('index');
+        Route::get('/create', [EmployeeController::class, 'create'])->name('create');
+        Route::post('/', [EmployeeController::class, 'store'])->name('store');
+        Route::get('/{employee}', [EmployeeController::class, 'show'])->name('show');
+        Route::get('/{employee}/edit', [EmployeeController::class, 'edit'])->name('edit');
+        Route::put('/{employee}', [EmployeeController::class, 'update'])->name('update');
         Route::patch('/{employee}/toggle', [EmployeeController::class, 'toggleStatus'])->name('toggleStatus');
-        Route::delete('/{employee}',      [EmployeeController::class, 'destroy'])->name('destroy');
+        Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
+        Route::delete('/bulk-destroy', [EmployeeController::class, 'bulkDestroy'])->name('bulk-destroy');
+
+        // Government Accounts
+        Route::post('/{employee}/government-account', [EmployeeController::class, 'storeGovernmentAccount'])->name('government-account.store');
+        Route::put('/{employee}/government-account/{account}', [EmployeeController::class, 'updateGovernmentAccount'])->name('government-account.update');
+        Route::delete('/{employee}/government-account/{account}', [EmployeeController::class, 'destroyGovernmentAccount'])->name('government-account.destroy');
+
+        // Eligibility
+        Route::post('/{employee}/eligibility', [EmployeeController::class, 'storeEligibility'])->name('eligibility.store');
+        Route::put('/{employee}/eligibility/{eligibility}', [EmployeeController::class, 'updateEligibility'])->name('eligibility.update');
+        Route::delete('/{employee}/eligibility/{eligibility}', [EmployeeController::class, 'destroyEligibility'])->name('eligibility.destroy');
     });
+
+
 
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
     Route::get('/benefits', [BenefitsController::class, 'index'])->name('benefits.index');
