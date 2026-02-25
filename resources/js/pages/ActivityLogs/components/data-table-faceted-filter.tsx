@@ -39,6 +39,11 @@ export function DataTableFacetedFilter<TData, TValue>({
     const facets = column?.getFacetedUniqueValues()
     const [selectedKeys, setSelectedKeys] = React.useState<Set<string>>(new Set())
 
+    const handleClear = () => {
+        setSelectedKeys(new Set())
+        column?.setFilterValue(undefined)
+    }
+
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -132,7 +137,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                                 <CommandSeparator />
                                 <CommandGroup>
                                     <CommandItem
-                                        onSelect={() => column?.setFilterValue(undefined)}
+                                        onSelect={handleClear}
                                         className="hover:cursor-pointer justify-center text-center"
                                     >
                                         Clear filters

@@ -179,6 +179,12 @@ class EmployeeController extends Controller
             }
         });
 
+        $this->activityLogService->createLog([
+            'user_id' => Auth::id(),
+            'module' => 'employee',
+            'description' => 'Created employee: ' . $request->first_name . ' ' . $request->last_name,
+        ]);
+
         return redirect()->route('employee.index')
             ->with('success', 'Employee created successfully.');
     }

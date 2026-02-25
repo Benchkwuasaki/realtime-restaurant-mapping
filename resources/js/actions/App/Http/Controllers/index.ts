@@ -1,3 +1,4 @@
+import DashboardController from './DashboardController'
 import AttendanceController from './AttendanceController'
 import DocumentTrackingController from './DocumentTrackingController'
 import EmployeeController from './EmployeeController'
@@ -7,7 +8,8 @@ import ReportsAndAnalyticsController from './ReportsAndAnalyticsController'
 import ActivityLogsController from './ActivityLogsController'
 import Settings from './Settings'
 const Controllers = {
-    AttendanceController: Object.assign(AttendanceController, AttendanceController),
+    DashboardController: Object.assign(DashboardController, DashboardController),
+AttendanceController: Object.assign(AttendanceController, AttendanceController),
 DocumentTrackingController: Object.assign(DocumentTrackingController, DocumentTrackingController),
 EmployeeController: Object.assign(EmployeeController, EmployeeController),
 PayrollController: Object.assign(PayrollController, PayrollController),
