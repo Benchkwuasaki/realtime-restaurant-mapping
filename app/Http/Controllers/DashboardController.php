@@ -1,0 +1,24 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\ActivityLogService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class DashboardController extends Controller
+{
+    public function __construct(protected ActivityLogService $activityLogService) {}
+
+    public function index()
+    {
+        $this->activityLogService->createLog([
+            'user_id' => Auth::id(),
+            'module' => 'general',
+            'description' => 'Accessed the dashboard',
+        ]);
+
+        return Inertia::render('dashboard');
+    }
+}

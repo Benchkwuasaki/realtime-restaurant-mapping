@@ -1,4 +1,4 @@
-import { type Table } from "@tanstack/react-table"
+import { type RowSelectionState, type Table } from "@tanstack/react-table"
 import {
     ChevronLeft,
     ChevronRight,
@@ -17,16 +17,20 @@ import {
 
 interface DataTablePaginationProps<TData> {
     table: Table<TData>
+    rowSelection: RowSelectionState
 }
-
 export function DataTablePagination<TData>({
     table,
+    rowSelection,
 }: DataTablePaginationProps<TData>) {
+
+    const selectedCount = Object.values(rowSelection).filter(Boolean).length
+    const totalCount = table.getFilteredRowModel().rows.length
+
     return (
         <div className="flex items-center justify-between px-2">
             <div className="text-muted-foreground flex-1 text-sm">
-                {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                {table.getFilteredRowModel().rows.length} row(s) selected.
+                {selectedCount} of {totalCount} row(s) selected.
             </div>
             <div className="flex items-center space-x-6 lg:space-x-8">
                 <div className="flex items-center space-x-2">

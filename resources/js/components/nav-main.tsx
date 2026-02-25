@@ -1,5 +1,5 @@
 import { ChevronRight, type LucideIcon } from "lucide-react"
-import { usePage } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
 import {
   Collapsible,
   CollapsibleContent,
@@ -28,30 +28,49 @@ export function NavMain({
     items?: { title: string; url: string }[]
   }[]
 }) {
-  const { url: pathname } = usePage()
+  const { url } = usePage()
+
+  const stripQuery = (u: string) => u.split("?")[0]
+
+  const toPath = (u: string) => {
+    const clean = stripQuery(u)
+    try {
+      // If u is absolute (from route()), this converts it to "/path"
+      return new URL(clean, window.location.origin).pathname
+    } catch {
+      // If u is already "/path"
+      return clean
+    }
+  }
+
+  const currentPath = toPath(url)
+
+  const isActivePath = (targetUrl: string) => {
+    const targetPath = toPath(targetUrl)
+    if (targetPath === "/") return currentPath === "/"
+    return currentPath === targetPath || currentPath.startsWith(targetPath + "/")
+  }
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const isActive = pathname === item.url || pathname.startsWith(item.url + "/")
-          const hasActiveChild = item.items?.some(
-            (child) => pathname === child.url || pathname.startsWith(child.url)
-          )
+          const isActive = isActivePath(item.url)
+          const hasActiveChild = item.items?.some((child) => isActivePath(child.url))
 
           return (
-            <Collapsible
-              key={item.title}
-              asChild
-              defaultOpen={hasActiveChild}
-            >
+            <Collapsible key={item.title} asChild defaultOpen={hasActiveChild}>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
-                  <a href={item.url}>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.title}
+                  isActive={isActive || hasActiveChild}
+                >
+                  <Link href={item.url}>
                     <item.icon />
                     <span>{item.title}</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
 
                 {item.items?.length ? (
@@ -62,17 +81,18 @@ export function NavMain({
                         <span className="sr-only">Toggle</span>
                       </SidebarMenuAction>
                     </CollapsibleTrigger>
+
                     <CollapsibleContent>
                       <SidebarMenuSub>
                         {item.items.map((subItem) => {
+                          const isChildActive = isActivePath(subItem.url)
 
-                          const isChildActive = pathname === subItem.url || pathname.startsWith(subItem.url)
                           return (
                             <SidebarMenuSubItem key={subItem.title}>
                               <SidebarMenuSubButton asChild isActive={isChildActive}>
-                                <a href={subItem.url}>
+                                <Link href={subItem.url}>
                                   <span>{subItem.title}</span>
-                                </a>
+                                </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                           )
