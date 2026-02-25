@@ -40,7 +40,7 @@ class DatabaseSeeder extends Seeder
             'department_id'       => $deptId,
             'division_name'       => 'Human Resources Division',
             'division_acronym'    => 'HRD',
-            'division_description'=> 'Manages recruitment, payroll, and employee relations.',
+            'division_description' => 'Manages recruitment, payroll, and employee relations.',
             'created_at'          => now(),
             'updated_at'          => now(),
         ]);
@@ -49,7 +49,7 @@ class DatabaseSeeder extends Seeder
             'department_id'       => $deptId,
             'division_name'       => 'Information Technology Division',
             'division_acronym'    => 'ITD',
-            'division_description'=> 'Manages all IT infrastructure and software systems.',
+            'division_description' => 'Manages all IT infrastructure and software systems.',
             'created_at'          => now(),
             'updated_at'          => now(),
         ]);
@@ -124,7 +124,7 @@ class DatabaseSeeder extends Seeder
             DB::table('items')->insertGetId(['position_id' => $posHrOfficerId,  'item_name' => 'HR Officer Item 1',          'created_at' => now(), 'updated_at' => now()]),
             DB::table('items')->insertGetId(['position_id' => $posHrManagerId,  'item_name' => 'HR Manager Item 1',          'created_at' => now(), 'updated_at' => now()]),
             DB::table('items')->insertGetId(['position_id' => $posDevId,         'item_name' => 'Software Developer Item 1',  'created_at' => now(), 'updated_at' => now()]),
-            DB::table('items')->insertGetId(['position_id' => $posSysAdminId,    'item_name' => 'Systems Administrator Item 1','created_at' => now(), 'updated_at' => now()]),
+            DB::table('items')->insertGetId(['position_id' => $posSysAdminId,    'item_name' => 'Systems Administrator Item 1', 'created_at' => now(), 'updated_at' => now()]),
             DB::table('items')->insertGetId(['position_id' => $posItManagerId,   'item_name' => 'IT Manager Item 1',          'created_at' => now(), 'updated_at' => now()]),
         ];
 
@@ -174,7 +174,7 @@ class DatabaseSeeder extends Seeder
                 ],
                 'gov_accounts' => [
                     ['account_type' => 'SSS',     'account_number' => '03-1234567-8'],
-                    ['account_type' => 'PhilHealth','account_number' => '12-345678901-2'],
+                    ['account_type' => 'PhilHealth', 'account_number' => '12-345678901-2'],
                     ['account_type' => 'Pag-IBIG', 'account_number' => '1234-5678-9012'],
                 ],
                 'allowances' => [
@@ -250,7 +250,7 @@ class DatabaseSeeder extends Seeder
                 ],
                 'gov_accounts' => [
                     ['account_type' => 'SSS',     'account_number' => '04-9876543-2'],
-                    ['account_type' => 'PhilHealth','account_number' => '13-987654321-0'],
+                    ['account_type' => 'PhilHealth', 'account_number' => '13-987654321-0'],
                     ['account_type' => 'Pag-IBIG', 'account_number' => '9876-5432-1098'],
                     ['account_type' => 'GSIS',     'account_number' => 'GSIS-0001-2012'],
                 ],
@@ -331,7 +331,7 @@ class DatabaseSeeder extends Seeder
                 ],
                 'gov_accounts' => [
                     ['account_type' => 'SSS',     'account_number' => '05-5551234-9'],
-                    ['account_type' => 'PhilHealth','account_number' => '14-555123456-7'],
+                    ['account_type' => 'PhilHealth', 'account_number' => '14-555123456-7'],
                     ['account_type' => 'Pag-IBIG', 'account_number' => '5551-2345-6789'],
                 ],
                 'allowances' => [
@@ -408,7 +408,7 @@ class DatabaseSeeder extends Seeder
                 ],
                 'gov_accounts' => [
                     ['account_type' => 'SSS',     'account_number' => '06-4441234-0'],
-                    ['account_type' => 'PhilHealth','account_number' => '15-444123456-3'],
+                    ['account_type' => 'PhilHealth', 'account_number' => '15-444123456-3'],
                     ['account_type' => 'Pag-IBIG', 'account_number' => '4441-2345-6780'],
                 ],
                 'allowances' => [
@@ -440,7 +440,7 @@ class DatabaseSeeder extends Seeder
                 'water_bill' => ['water_bill_number' => 'WB-004-2024', 'account_name' => 'Carlo A. Mendoza', 'address' => '22 Luna Street, Mandaluyong City'],
                 'uploaded_files' => [
                     ['file_name' => 'nbi_clearance.pdf', 'file_size' => '300KB', 'file_database_location' => 'employees/4/nbi_clearance.pdf'],
-                    ['file_name' => 'certifications.pdf','file_size' => '1.5MB', 'file_database_location' => 'employees/4/certifications.pdf'],
+                    ['file_name' => 'certifications.pdf', 'file_size' => '1.5MB', 'file_database_location' => 'employees/4/certifications.pdf'],
                 ],
             ],
             [
@@ -487,7 +487,7 @@ class DatabaseSeeder extends Seeder
                 ],
                 'gov_accounts' => [
                     ['account_type' => 'SSS',     'account_number' => '07-3331234-5'],
-                    ['account_type' => 'PhilHealth','account_number' => '16-333123456-8'],
+                    ['account_type' => 'PhilHealth', 'account_number' => '16-333123456-8'],
                     ['account_type' => 'Pag-IBIG', 'account_number' => '3331-2345-6785'],
                     ['account_type' => 'GSIS',     'account_number' => 'GSIS-0005-2008'],
                 ],

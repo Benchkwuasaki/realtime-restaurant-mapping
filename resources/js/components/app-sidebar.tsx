@@ -13,7 +13,7 @@ import {
   SquareTerminal,
   User,
   Globe,
-  LayoutDashboard ,
+  LayoutDashboard,
   File,
   Building2,
   FileCheck,
@@ -21,6 +21,7 @@ import {
   Calendar,
   Wallet,
   Logs,
+  Pencil,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -39,6 +40,8 @@ import {
 import { url } from "inspector"
 import { title } from "process"
 import { route } from "ziggy-js"
+import { Link } from "@inertiajs/react"
+import Logo from "@/assets/images/logo.svg"
 
 const data = {
   navMain: [
@@ -108,7 +111,7 @@ const data = {
         },
       ]
     },
-    
+
     {
       title: "Leave",
       url: "/leave",
@@ -233,21 +236,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="/dashboard">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Command className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Metro Kidapawan Water District</span>
+            <SidebarMenuButton asChild className="h-auto min-h-0 py-3">
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-3 px-2"
+              >
+                <img
+                  src={Logo}
+                  alt="Metro Kidapawan Water District Logo"
+                  className="h-12 w-12 object-contain shrink-0"
+                />
 
+                <div
+                  className="h-12 flex flex-col justify-between leading-none font-bold"
+                  aria-label="MKWD"
+                >
+                  <p>Metro Kidapawan</p>
+                  <p>Water District</p>
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent>
+      </SidebarHeader>      <SidebarContent>
         <NavMain items={data.navMain} />
         {/* <NavProjects projects={data.projects} /> */}
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}

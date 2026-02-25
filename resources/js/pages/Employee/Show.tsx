@@ -5,6 +5,7 @@ import {
     Pencil, Mail, Phone, Calendar, MapPin, User, Heart, Home,
     Briefcase, Clock, FileText, Landmark, Camera, XCircle,
     Eye, EyeOff, Plus, Trash2, Save, ChevronUp,
+    Pen,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -522,7 +523,9 @@ function CompensationTab({ employee }: { employee: Employee }) {
                 <div className="bg-card border border-border rounded-xl overflow-hidden">
                     <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                         <span className="text-sm font-bold text-foreground">Salary Classification</span>
-                        <button onClick={() => setSalaryEditOpen(true)} className="text-xs text-primary hover:underline font-medium">edit</button>
+                        <Button onClick={() => setSalaryEditOpen(true)} variant="ghost" size="icon-xs" >
+                            <Pen className="w-3 h-3" />
+                        </Button>
                     </div>
                     {sgs ? (
                         <div className="divide-y divide-border">
