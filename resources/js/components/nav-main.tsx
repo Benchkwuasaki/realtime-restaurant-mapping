@@ -1,3 +1,4 @@
+import * as React from "react"
 import { ChevronRight, type LucideIcon } from "lucide-react"
 import { Link, usePage } from "@inertiajs/react"
 import {
@@ -9,7 +10,6 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -17,89 +17,118 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 
-export function NavMain({
-  items,
-}: {
-  items: {
-    title: string
-    url: string
-    icon: LucideIcon
-    isActive?: boolean
-    items?: { title: string; url: string }[]
-  }[]
-}) {
+type NavItem = {
+  title: string
+  url?: string | null
+  icon: LucideIcon
+  isActive?: boolean
+  items?: { title: string; url?: string | null }[]
+}
+
+export function NavMain({ items }: { items: NavItem[] }) {
   const { url } = usePage()
 
-  const stripQuery = (u: string) => u.split("?")[0]
+  const stripQuery = (u?: string | null) => {
+    if (!u) return ""
+    return u.split("?")[0]
+  }
 
-  const toPath = (u: string) => {
+  const toPath = (u?: string | null) => {
+    if (!u) return ""
     const clean = stripQuery(u)
+
     try {
-      // If u is absolute (from route()), this converts it to "/path"
+      // Handles absolute URLs produced by route() and converts to "/path"
       return new URL(clean, window.location.origin).pathname
     } catch {
-      // If u is already "/path"
+      // Handles already-relative paths like "/dashboard"
       return clean
     }
   }
 
   const currentPath = toPath(url)
 
-  const isActivePath = (targetUrl: string) => {
+  const isActivePath = (targetUrl?: string | null) => {
+    if (!targetUrl) return false
+
     const targetPath = toPath(targetUrl)
+    if (!targetPath) return false
+
     if (targetPath === "/") return currentPath === "/"
+
     return currentPath === targetPath || currentPath.startsWith(targetPath + "/")
   }
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
+
       <SidebarMenu>
         {items.map((item) => {
+          const hasChildren = !!item.items?.length
+
           const isActive = isActivePath(item.url)
-          const hasActiveChild = item.items?.some((child) => isActivePath(child.url))
+          const hasActiveChild =
+            item.items?.some((child) => isActivePath(child.url)) ?? false
+
+          const defaultOpen = hasActiveChild
 
           return (
-            <Collapsible key={item.title} asChild defaultOpen={hasActiveChild}>
+            <Collapsible key={item.title} defaultOpen={defaultOpen}>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  tooltip={item.title}
-                  isActive={isActive || hasActiveChild}
-                >
-                  <Link href={item.url}>
+                {hasChildren ? (
+                  // Parent with children: whole row toggles the collapsible
+                  <CollapsibleTrigger className="hover:cursor-pointer" asChild>
+                    <SidebarMenuButton
+                      tooltip={item.title}
+                      isActive={isActive || hasActiveChild}
+                    >
+                      <item.icon />
+                      <span className="flex-1">{item.title}</span>
+                      <ChevronRight className="ml-auto transition-transform data-[state=open]:rotate-90" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                ) : item.url ? (
+                  // Leaf item with URL: normal navigation
+                  <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
+                    <Link href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                ) : (
+                  // Leaf item with no URL: static (no navigation)
+                  <SidebarMenuButton tooltip={item.title} isActive={false}>
                     <item.icon />
                     <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
+                  </SidebarMenuButton>
+                )}
 
-                {item.items?.length ? (
-                  <>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuAction className="data-[state=open]:rotate-90">
-                        <ChevronRight />
-                        <span className="sr-only">Toggle</span>
-                      </SidebarMenuAction>
-                    </CollapsibleTrigger>
+                {hasChildren ? (
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {item.items!.map((subItem) => {
+                        const isChildActive = isActivePath(subItem.url)
 
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {item.items.map((subItem) => {
-                          const isChildActive = isActivePath(subItem.url)
-
-                          return (
-                            <SidebarMenuSubItem key={subItem.title}>
+                        // If a child has no URL, render it as static
+                        return (
+                          <SidebarMenuSubItem key={subItem.title}>
+                            {subItem.url ? (
                               <SidebarMenuSubButton asChild isActive={isChildActive}>
                                 <Link href={subItem.url}>
                                   <span>{subItem.title}</span>
                                 </Link>
                               </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          )
-                        })}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </>
+                            ) : (
+                              <SidebarMenuSubButton isActive={false}>
+                                <span>{subItem.title}</span>
+                              </SidebarMenuSubButton>
+                            )}
+                          </SidebarMenuSubItem>
+                        )
+                      })}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
                 ) : null}
               </SidebarMenuItem>
             </Collapsible>

@@ -20,6 +20,7 @@ export default function Index({ activity_logs }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Activity Logs" />
+            {/* TODO: redo padding and margin after adding stat cards */}
             <div className="h-full flex-1 flex-col gap-8 p-8 md:flex">
                 <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-col gap-1">

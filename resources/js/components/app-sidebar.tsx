@@ -58,7 +58,7 @@ const data = {
     },
     {
       title: "Organization",
-      url: "/organization",
+      url: null,
       icon: Building2,
       items: [
         // TODO: Update the URLs for the organization sub-menu items
@@ -94,7 +94,7 @@ const data = {
     },
     {
       title: "Attendance",
-      url: route("attendance.index"),
+      url: null,
       icon: FileCheck2,
       items: [
         {
@@ -149,7 +149,7 @@ const data = {
     },
     {
       title: "Payroll",
-      url: route("payroll.index"),
+      url: null,
       icon: Wallet,
       items: [
         {
@@ -186,12 +186,6 @@ const data = {
       title: "Document Tracking",
       url: route("document_tracking.index"),
       icon: File,
-      items: [
-        {
-          title: "Create Request",
-          url: "document_tracking/create",
-        },
-      ],
     },
     {
       title: "Activity Logs",
