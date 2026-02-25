@@ -38,18 +38,19 @@ import {
 } from "@/components/ui/sidebar"
 import { url } from "inspector"
 import { title } from "process"
+import { route } from "ziggy-js"
 
 const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "/dashboard",
+      url: route("dashboard"),
       icon: LayoutDashboard,
       isActive: true,
     },
     {
       title: "Employee",
-      url: "/employee",
+      url: route("employee.index"),
       icon: User,
     },
     {
@@ -57,6 +58,7 @@ const data = {
       url: "/organization",
       icon: Building2,
       items: [
+        // TODO: Update the URLs for the organization sub-menu items
         {
           title: "Organisational Chart",
           url: "/organization/organizational_chart",
@@ -89,7 +91,7 @@ const data = {
     },
     {
       title: "Attendance",
-      url: "/attendance",
+      url: route("attendance.index"),
       icon: FileCheck2,
       items: [
         {
@@ -144,7 +146,7 @@ const data = {
     },
     {
       title: "Payroll",
-      url: "/payroll",
+      url: route("payroll.index"),
       icon: Wallet,
       items: [
         {
@@ -179,7 +181,7 @@ const data = {
     },
     {
       title: "Document Tracking",
-      url: "document_tracking",
+      url: route("document_tracking.index"),
       icon: File,
       items: [
         {

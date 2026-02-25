@@ -2,7 +2,8 @@ import { useForm } from "@inertiajs/react"
 import {
     BadgeCheck, BriefcaseBusiness, User, MapPin, Users, Landmark, GraduationCap, Award, Plus, Trash2
 } from "lucide-react"
-import { type FormEventHandler, useEffect, useState } from "react"
+
+import { type FormEventHandler, useState } from "react"
 import { route } from "ziggy-js"
 import { Button } from "@/components/ui/button"
 import { FieldLabel } from "@/components/ui/field"

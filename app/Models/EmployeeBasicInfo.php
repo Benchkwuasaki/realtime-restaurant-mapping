@@ -30,6 +30,8 @@ class EmployeeBasicInfo extends Model
         'sex'        => 'boolean',
     ];
 
+    protected $appends = ['full_name'];
+
     // ── Computed ───────────────────────────────────────────────────
 
     public function getFullNameAttribute(): string

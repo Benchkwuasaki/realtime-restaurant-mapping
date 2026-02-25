@@ -552,8 +552,8 @@ class DatabaseSeeder extends Seeder
 
             $createdEmployeeIds[] = $employeeId;
 
-            // employee_adresses
-            DB::table('employee_adresses')->insert(
+            // employee_addresses
+            DB::table('employee_addresses')->insert(
                 array_merge($data['address'], [
                     'employee_basic_info_id' => $basicInfoId,
                     'created_at'             => now(),
