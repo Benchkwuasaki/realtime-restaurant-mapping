@@ -6,7 +6,14 @@ use App\Models\Employee;
 use App\Models\EmployeeBasicInfo;
 use App\Models\Item;
 use App\Models\SalaryGradeStep;
+use App\Models\EmployeeAddress;
+use App\Models\EmployeeEducation;
+use App\Models\EmployeeAllowance;
+use App\Models\FamilyInfo;
+use App\Models\GovernmentAccount;
+use App\Models\EligibilityInformation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Services\ActivityLogService;
 use Illuminate\Support\Facades\Auth;
@@ -17,19 +24,18 @@ class EmployeeController extends Controller
     /**
      * Display the employee list page.
      */
-    public function __construct(protected ActivityLogService $activityLogService)
-    {
-    }
+    // public function __construct(protected ActivityLogService $activityLogService)
+    // {
+    // }
 
     public function index()
     {
-        $tasks = json_decode(file_get_contents(base_path('resources/js/components/Employeee/data/task.json')), true);
 
-        $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'attendance',
-            'description' => 'Viewed Employee Page',
-        ]);
+        // $this->activityLogService->createLog([
+        //     'user_id' => Auth::id(),
+        //     'module' => 'attendance',
+        //     'description' => 'Viewed Employee Page',
+        // ]);
         $tasks = Employee::with([
             'basicInfo',
             'item.position.department',
@@ -48,9 +54,7 @@ class EmployeeController extends Controller
     {
         return Inertia::render('Employee/CreateEmployee', [
             // Only items that don't yet have an assigned employee
-            'items' => Item::with('position.department')
-                ->doesntHave('employee')
-                ->get(),
+            'items' => Item::with('position.department')->get(),
 
             'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')
                 ->orderBy('step')

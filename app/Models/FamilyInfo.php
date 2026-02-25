@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\EmployeeBasicInfo;
 
 class FamilyInfo extends Model
 {
+    protected $table = 'family_info';
     protected $primaryKey = 'family_info_id';
 
     protected $fillable = [
