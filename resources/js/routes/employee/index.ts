@@ -213,6 +213,71 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     
     store.form = storeForm
 /**
+* @see \App\Http\Controllers\EmployeeController::bulkDestroy
+ * @see app/Http/Controllers/EmployeeController.php:415
+ * @route '/employee/bulk-destroy'
+ */
+export const bulkDestroy = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
+    url: bulkDestroy.url(options),
+    method: 'delete',
+})
+
+bulkDestroy.definition = {
+    methods: ["delete"],
+    url: '/employee/bulk-destroy',
+} satisfies RouteDefinition<["delete"]>
+
+/**
+* @see \App\Http\Controllers\EmployeeController::bulkDestroy
+ * @see app/Http/Controllers/EmployeeController.php:415
+ * @route '/employee/bulk-destroy'
+ */
+bulkDestroy.url = (options?: RouteQueryOptions) => {
+    return bulkDestroy.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\EmployeeController::bulkDestroy
+ * @see app/Http/Controllers/EmployeeController.php:415
+ * @route '/employee/bulk-destroy'
+ */
+bulkDestroy.delete = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
+    url: bulkDestroy.url(options),
+    method: 'delete',
+})
+
+    /**
+* @see \App\Http\Controllers\EmployeeController::bulkDestroy
+ * @see app/Http/Controllers/EmployeeController.php:415
+ * @route '/employee/bulk-destroy'
+ */
+    const bulkDestroyForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: bulkDestroy.url({
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'DELETE',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\EmployeeController::bulkDestroy
+ * @see app/Http/Controllers/EmployeeController.php:415
+ * @route '/employee/bulk-destroy'
+ */
+        bulkDestroyForm.delete = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: bulkDestroy.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'DELETE',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    bulkDestroy.form = bulkDestroyForm
+/**
 * @see \App\Http\Controllers\EmployeeController::show
  * @see app/Http/Controllers/EmployeeController.php:192
  * @route '/employee/{employee}'
@@ -683,81 +748,16 @@ destroy.delete = (args: { employee: number | { employee_id: number } } | [employ
         })
     
     destroy.form = destroyForm
-/**
-* @see \App\Http\Controllers\EmployeeController::bulkDestroy
- * @see app/Http/Controllers/EmployeeController.php:415
- * @route '/employee/bulk-destroy'
- */
-export const bulkDestroy = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
-    url: bulkDestroy.url(options),
-    method: 'delete',
-})
-
-bulkDestroy.definition = {
-    methods: ["delete"],
-    url: '/employee/bulk-destroy',
-} satisfies RouteDefinition<["delete"]>
-
-/**
-* @see \App\Http\Controllers\EmployeeController::bulkDestroy
- * @see app/Http/Controllers/EmployeeController.php:415
- * @route '/employee/bulk-destroy'
- */
-bulkDestroy.url = (options?: RouteQueryOptions) => {
-    return bulkDestroy.definition.url + queryParams(options)
-}
-
-/**
-* @see \App\Http\Controllers\EmployeeController::bulkDestroy
- * @see app/Http/Controllers/EmployeeController.php:415
- * @route '/employee/bulk-destroy'
- */
-bulkDestroy.delete = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
-    url: bulkDestroy.url(options),
-    method: 'delete',
-})
-
-    /**
-* @see \App\Http\Controllers\EmployeeController::bulkDestroy
- * @see app/Http/Controllers/EmployeeController.php:415
- * @route '/employee/bulk-destroy'
- */
-    const bulkDestroyForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: bulkDestroy.url({
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\EmployeeController::bulkDestroy
- * @see app/Http/Controllers/EmployeeController.php:415
- * @route '/employee/bulk-destroy'
- */
-        bulkDestroyForm.delete = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: bulkDestroy.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    bulkDestroy.form = bulkDestroyForm
 const employee = {
     index: Object.assign(index, index),
 create: Object.assign(create, create),
 store: Object.assign(store, store),
+bulkDestroy: Object.assign(bulkDestroy, bulkDestroy),
 show: Object.assign(show, show),
 edit: Object.assign(edit, edit),
 update: Object.assign(update, update),
 toggleStatus: Object.assign(toggleStatus, toggleStatus),
 destroy: Object.assign(destroy, destroy),
-bulkDestroy: Object.assign(bulkDestroy, bulkDestroy),
 governmentAccount: Object.assign(governmentAccount, governmentAccount),
 eligibility: Object.assign(eligibility, eligibility),
 }
