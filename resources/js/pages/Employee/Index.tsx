@@ -16,8 +16,8 @@ export default function Index() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employee" />
-            <div className='m-5'>
-                <div className="flex h-full flex-1 flex-col overflow-x-auto rounded-xl p-4">
+            <div className="m-5">
+                <div className="flex h-full flex-1 flex-col rounded-xl p-4 gap-4">
                     <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                         <Card className="p-4 border border-gray-200 gap-0">
                             <div className="flex items-start justify-between mb-2">
@@ -73,4 +73,4 @@ export default function Index() {
             </div>
         </AppLayout>
     );
-}  
+}
