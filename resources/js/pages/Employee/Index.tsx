@@ -73,4 +73,4 @@ export default function Index() {
             </div>
         </AppLayout>
     );
-}
+}  
