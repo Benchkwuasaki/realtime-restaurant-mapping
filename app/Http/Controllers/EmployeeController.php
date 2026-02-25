@@ -24,18 +24,18 @@ class EmployeeController extends Controller
     /**
      * Display the employee list page.
      */
-    // public function __construct(protected ActivityLogService $activityLogService)
-    // {
-    // }
+    public function __construct(protected ActivityLogService $activityLogService)
+    {
+    }
 
     public function index()
     {
 
-        // $this->activityLogService->createLog([
-        //     'user_id' => Auth::id(),
-        //     'module' => 'attendance',
-        //     'description' => 'Viewed Employee Page',
-        // ]);
+        $this->activityLogService->createLog([
+            'user_id' => Auth::id(),
+            'module' => 'attendance',
+            'description' => 'Viewed Employee Page',
+        ]);
         $tasks = Employee::with([
             'basicInfo',
             'item.position.department',

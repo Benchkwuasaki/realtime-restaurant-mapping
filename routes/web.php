@@ -11,6 +11,8 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+use App\Http\Controllers\HolidayController;
+
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -42,6 +44,10 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
 });
+
+Route::resource('holiday', HolidayController::class)->parameters([
+    'holiday' => 'holiday:holiday_id',
+]);
 
 
 require __DIR__ . '/settings.php';

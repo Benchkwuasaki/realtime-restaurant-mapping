@@ -29,7 +29,7 @@ class HolidayController extends Controller
                 'is_recurring' => $h->is_recurring,
             ]);
 
-        return Inertia::render('Holiday/Index', [
+        return Inertia::render('Attendance/Holiday/Index', [
             'holidays'     => $holidays,
             'currentYear'  => (int) $year,
             'holidayTypes' => Holiday::distinct()->pluck('type'),
@@ -38,7 +38,7 @@ class HolidayController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Holiday/CreateEdit', [
+        return Inertia::render('Attendance/Holiday/CreateEdit', [
             'holiday'      => null,
             'holidayTypes' => [
                 'Regular Holiday',
@@ -66,7 +66,7 @@ class HolidayController extends Controller
 
     public function edit(Holiday $holiday): Response
     {
-        return Inertia::render('Holiday/CreateEdit', [
+        return Inertia::render('Attendance/Holiday/CreateEdit', [
             'holiday' => [
                 'holiday_id'   => $holiday->holiday_id,
                 'name'         => $holiday->name,

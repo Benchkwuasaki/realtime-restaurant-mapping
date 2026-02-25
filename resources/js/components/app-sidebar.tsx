@@ -100,7 +100,7 @@ const data = {
         },
         {
           title: "Holiday Management",
-          url: "/organization/holiday_management",
+          url: "/holiday",
         },
         {
           title: "Overtime Entry",
