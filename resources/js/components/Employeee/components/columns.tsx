@@ -10,37 +10,18 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 
 import { type Task } from "../data/schema"
+import { route } from "ziggy-js"
 
-function StatusToggle({ id, currentStatus }: { id: string; currentStatus: boolean }) {
-  const [isActive, setIsActive] = React.useState(currentStatus)
-  const [isPending, setIsPending] = React.useState(false)
+// function StatusToggle({ id, currentStatus }: { id: string; currentStatus: boolean }) {
 
-  const handleChange = (checked: boolean) => {
-    setIsActive(checked)
-    setIsPending(true)
-
-    router.patch(
-      `/employee/${id}/toggle`,
-      {},
-      {
-        preserveScroll: true,
-        onFinish: () => setIsPending(false),
-        onError: () => {
-          setIsActive(!checked)
-          setIsPending(false)
-        },
-      }
-    )
-  }
-
-  return (
-    <Switch
-      checked={isActive}
-      onCheckedChange={handleChange}
-      disabled={isPending}
-    />
-  )
-}
+//   return (
+//     <Switch
+//       checked={isActive}
+//       onCheckedChange={handleChange}
+//       disabled={isPending}
+//     />
+//   )
+// }
 
 export const columns: ColumnDef<Task>[] = [
   {
@@ -62,6 +43,7 @@ export const columns: ColumnDef<Task>[] = [
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
         className="translate-y-0.5"
+        onClick={(e) => e.stopPropagation()}
       />
     ),
     enableSorting: false,
@@ -84,7 +66,7 @@ export const columns: ColumnDef<Task>[] = [
       <DataTableColumnHeader column={column} title="Position" />
     ),
     cell: ({ row }) => (
-      <div className="min-w-[120px]">{row.getValue("position")}</div>
+      <div className="min-w-30">{row.getValue("position")}</div>
     ),
     enableSorting: true,
     enableHiding: true,
@@ -166,12 +148,37 @@ export const columns: ColumnDef<Task>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Toggle" />
     ),
-    cell: ({ row }) => (
-      <StatusToggle
-        id={row.original.id}
-        currentStatus={row.original.status}
-      />
-    ),
+    cell: ({ row }) => {
+      const [isActive, setIsActive] = React.useState(row.original.status)
+      const [isPending, setIsPending] = React.useState(false)
+
+      const handleChange = (checked: boolean) => {
+        setIsActive(checked)
+        setIsPending(true)
+
+        router.patch(
+          route('employee.toggleStatus', row.original.id),
+          {},
+          {
+            preserveScroll: true,
+            onFinish: () => setIsPending(false),
+            onError: () => {
+              setIsActive(!checked)
+              setIsPending(false)
+            },
+          }
+        )
+      }
+
+      return (
+        <Switch
+          onClick={(e) => e.stopPropagation()}
+          checked={isActive}
+          onCheckedChange={handleChange}
+          disabled={isPending}
+        />
+      )
+    },
     enableSorting: false,
     enableHiding: false,
   },
