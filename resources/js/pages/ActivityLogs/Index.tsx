@@ -1,22 +1,37 @@
 import { Head } from '@inertiajs/react';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import { dashboard } from '@/routes';
+import { ActivityLogRow, columns } from './components/columns';
+import { route } from 'ziggy-js';
+import { DataTable } from './components/data-table';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Activity Logs',
-        href: 'activity_logs',
+        href: route('activity_logs.index'),
     },
 ];
 
-export default function Index() {
+type Props = {
+    activity_logs: ActivityLogRow[];
+}
+
+export default function Index({ activity_logs }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Activity Logs" />
-            <div>
-                
+            <div className="hidden h-full flex-1 flex-col gap-8 p-8 md:flex">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col gap-1">
+                        <h2 className="text-2xl font-semibold tracking-tight">
+                            Welcome back!
+                        </h2>
+                        <p className="text-muted-foreground">
+                            Here&apos;s a list of your tasks for this month.
+                        </p>
+                    </div>
+                </div>
+                <DataTable data={activity_logs} columns={columns} />
             </div>
         </AppLayout>
     );

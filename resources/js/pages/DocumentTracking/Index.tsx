@@ -16,54 +16,60 @@ export default function Index() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Document Tracking" />
-            <div>
+            <div className="mx-10 mt-5">
                 <div className="flex h-full flex-1 flex-col overflow-x-auto rounded-xl p-4">
-                    <div className="grid auto-rows-min gap-4 md:grid-cols-3 ">
+                    <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                         <Card className="p-4 border border-gray-200">
-                            <div className="flex items-center gap-4">
-                                <File className="size-10 shrink-0" />
+                            <div className="flex items-start justify-between">
                                 <div className="flex flex-col">
-                                    <CardTitle className="text-2xl font-mono font-thin">
+                                    <CardTitle className="text-base font-medium text-gray-700">
                                         Total Requests
                                     </CardTitle>
-                                    <CardTitle className="text-3xl font-mono">
+                                    <CardTitle className="text-3xl font-bold mt-2">
                                         4
                                     </CardTitle>
-                                    <CardDescription className="text-lg font-mono font-thin">
+                                    <CardDescription className="text-sm text-gray-400 mt-1">
                                         Incoming and outgoing requests
                                     </CardDescription>
                                 </div>
-                            </div>
-                        </Card>
-                        <Card className="p-4 border border-gray-200">
-                            <div className="flex items-center gap-4">
-                                <Check className="size-10 shrink-0" />
-                                <div className="flex flex-col">
-                                    <CardTitle className="text-2xl font-mono font-thin">
-                                        Total Done Requests
-                                    </CardTitle>
-                                    <CardTitle className="text-3xl font-mono">
-                                        1
-                                    </CardTitle>
-                                    <CardDescription className="text-lg font-mono font-thin">
-                                        Checked and reviewed requests
-                                    </CardDescription>
+                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 shrink-0">
+                                    <File className="size-5 text-blue-500" />
                                 </div>
                             </div>
                         </Card>
                         <Card className="p-4 border border-gray-200">
-                            <div className="flex items-center gap-4">
-                                <Inbox className="size-10 shrink-0" />
+                            <div className="flex items-start justify-between">
                                 <div className="flex flex-col">
-                                    <CardTitle className="text-2xl font-mono font-thin">
+                                    <CardTitle className="text-base font-medium text-gray-700">
+                                        Total Done Requests
+                                    </CardTitle>
+                                    <CardTitle className="text-3xl font-bold mt-2">
+                                        1
+                                    </CardTitle>
+                                    <CardDescription className="text-sm text-gray-400 mt-1">
+                                        Checked and reviewed requests
+                                    </CardDescription>
+                                </div>
+                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-green-100 shrink-0">
+                                    <Check className="size-5 text-green-500" />
+                                </div>
+                            </div>
+                        </Card>
+                        <Card className="p-4 border border-gray-200">
+                            <div className="flex items-start justify-between">
+                                <div className="flex flex-col">
+                                    <CardTitle className="text-base font-medium text-gray-700">
                                         Incoming Requests
                                     </CardTitle>
-                                    <CardTitle className="text-3xl font-mono">
+                                    <CardTitle className="text-3xl font-bold mt-2">
                                         3
                                     </CardTitle>
-                                    <CardDescription className="text-lg font-mono font-thin">
+                                    <CardDescription className="text-sm text-gray-400 mt-1">
                                         Requests to process
                                     </CardDescription>
+                                </div>
+                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-red-100 shrink-0">
+                                    <Inbox className="size-5 text-red-400" />
                                 </div>
                             </div>
                         </Card>
@@ -71,6 +77,6 @@ export default function Index() {
                     <TablePage />
                 </div>
             </div>
-        </AppLayout >
+        </AppLayout>
     );
 }
