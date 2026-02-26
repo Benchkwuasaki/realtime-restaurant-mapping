@@ -58,7 +58,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Divis
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
-                <Badge variant="outline" className="font-mono text-xs">
+                <Badge variant="default" className="font-mono text-xs">
                     {row.getValue("division_acronym")}
                 </Badge>
             ),

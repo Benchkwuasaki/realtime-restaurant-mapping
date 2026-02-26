@@ -69,12 +69,12 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
     const isEdit = editingDivision !== null
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        division_name:        editingDivision?.division_name        ?? "",
-        division_acronym:     editingDivision?.division_acronym     ?? "",
+        division_name: editingDivision?.division_name ?? "",
+        division_acronym: editingDivision?.division_acronym ?? "",
         division_description: editingDivision?.division_description ?? "",
-        department_id:        editingDivision?.department_id
-                                ? String(editingDivision.department_id)
-                                : "",
+        department_id: editingDivision?.department_id
+            ? String(editingDivision.department_id)
+            : "",
     })
 
     function handleClose() {
@@ -243,8 +243,8 @@ function DeleteAlertDialog({ division, onClose }: DeleteDialogProps) {
 export default function DivisionIndex({ divisions, departments }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
-    const [modalOpen, setModalOpen]               = useState(false)
-    const [editingDivision, setEditingDivision]   = useState<Division | null>(null)
+    const [modalOpen, setModalOpen] = useState(false)
+    const [editingDivision, setEditingDivision] = useState<Division | null>(null)
     const [deletingDivision, setDeletingDivision] = useState<Division | null>(null)
 
     function openCreate() {
@@ -301,6 +301,7 @@ export default function DivisionIndex({ divisions, departments }: Props) {
 
             {/* Create / Edit modal */}
             <DivisionModal
+                key={editingDivision?.division_id ?? "create"}
                 open={modalOpen}
                 editingDivision={editingDivision}
                 departments={departments}

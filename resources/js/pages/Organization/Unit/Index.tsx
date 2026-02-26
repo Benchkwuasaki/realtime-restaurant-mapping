@@ -91,7 +91,7 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
 
     return (
         <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
-            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-lg">
+            <DialogContent className="p-2 gap-0 overflow-hidden w-md sm:max-w-md">
 
                 {/* Header */}
                 <DialogHeader className="px-5 py-4 border-b border-border">
