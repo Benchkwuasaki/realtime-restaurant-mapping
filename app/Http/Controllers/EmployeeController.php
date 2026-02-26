@@ -46,7 +46,7 @@ class EmployeeController extends Controller
             ->map(fn(Employee $employee) => $this->formatForTable($employee));
 
         return Inertia::render('Employee/Index', [
-            'employee' => $employees,
+            'employees' => $employees,
             'totalEmployees' => $employees->count(),
             'activeEmployees' => $employees->where('status', true)->count(),
             'inactiveEmployees' => $employees->where('status', false)->count(),
