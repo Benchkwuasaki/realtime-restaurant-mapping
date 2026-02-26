@@ -24,9 +24,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { logout } from "@/routes"
-import { edit } from "@/routes/profile"
 import { UserInfo } from "@/components/user-info"
+import { route } from "ziggy-js"
 
 export function NavUser() {
   const { props } = usePage()
@@ -34,7 +33,7 @@ export function NavUser() {
   const { isMobile } = useSidebar()
 
   const handleLogout = () => {
-    router.post(logout())
+    router.post(route('logout'))
   }
 
   if (!user) return null
@@ -75,7 +74,7 @@ export function NavUser() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href={edit()}>
+                <Link href={route('profile.edit')}>
                   <Settings />
                   Settings
                 </Link>

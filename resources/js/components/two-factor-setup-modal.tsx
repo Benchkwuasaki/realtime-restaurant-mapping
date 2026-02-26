@@ -21,7 +21,6 @@ import { useClipboard } from '@/hooks/use-clipboard';
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
 import AlertError from './alert-error';
 import { Spinner } from './ui/spinner';
-import { confirm } from '@/routes/two-factor';
 
 function GridScanIcon() {
     return (
