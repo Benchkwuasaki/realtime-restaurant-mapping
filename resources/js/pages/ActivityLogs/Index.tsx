@@ -28,7 +28,7 @@ export default function Index({ activity_logs, stat }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Activity Logs" />
 
-            <div className="h-full flex-1 flex-col gap-8 p-8 md:flex">
+            <div className="flex h-full flex-1 flex-col gap-8 p-8">
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                     {/* Total Logs */}
                     <Card className="p-4 gap-0">
