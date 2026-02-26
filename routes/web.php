@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\DepartmentController;
 
 
 Route::get('/', function () {
@@ -55,15 +56,22 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::get('/benefits', [BenefitsController::class, 'index'])->name('benefits.index');
     Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
-});
 
-Route::prefix('organization/units')->name('unit.')->group(function () {
-    Route::get('/', [UnitController::class, 'index'])->name('index');
-    Route::get('/{unit}', [UnitController::class, 'show'])->name('show');
-    Route::post('/', [UnitController::class, 'store'])->name('store');
-    Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
-    Route::delete('/bulk-destroy', [UnitController::class, 'bulkDestroy'])->name('bulk-destroy');
-    Route::delete('/{unit}', [UnitController::class, 'destroy'])->name('destroy');
+    Route::prefix('organization/units')->name('unit.')->group(function () {
+        Route::get('/', [UnitController::class, 'index'])->name('index');
+        Route::get('/{unit}', [UnitController::class, 'show'])->name('show');
+        Route::post('/', [UnitController::class, 'store'])->name('store');
+        Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
+        Route::delete('/bulk-destroy', [UnitController::class, 'bulkDestroy'])->name('bulk-destroy');
+        Route::delete('/{unit}', [UnitController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('organization/departments')->name('department.')->group(function () {
+        Route::get('/', [DepartmentController::class, 'index'])->name('index');
+        Route::post('/', [DepartmentController::class, 'store'])->name('store');
+        Route::put('/{department}', [DepartmentController::class, 'update'])->name('update');
+        Route::delete('/{department}', [DepartmentController::class, 'destroy'])->name('destroy');
+    });
 });
 
 Route::resource('holiday', HolidayController::class)->parameters([
