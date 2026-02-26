@@ -24,7 +24,9 @@ class EmployeeController extends Controller
     /**
      * Display the employee list page.
      */
-    public function __construct(protected ActivityLogService $activityLogService) {}
+    public function __construct(protected ActivityLogService $activityLogService)
+    {
+    }
 
     public function index()
     {
@@ -45,6 +47,9 @@ class EmployeeController extends Controller
 
         return Inertia::render('Employee/Index', [
             'employee' => $employees,
+            'totalEmployees' => $employees->count(),
+            'activeEmployees' => $employees->where('status', true)->count(),
+            'inactiveEmployees' => $employees->where('status', false)->count(),
         ]);
     }
 
