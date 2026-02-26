@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 
-import { type Task } from "../data/schema"
+import { type Employee } from "../data/schema"
 import { route } from "ziggy-js"
 
 // function StatusToggle({ id, currentStatus }: { id: string; currentStatus: boolean }) {
@@ -23,7 +23,7 @@ import { route } from "ziggy-js"
 //   )
 // }
 
-export const columns: ColumnDef<Task>[] = [
+export const columns: ColumnDef<Employee>[] = [
   {
     id: "select",
     header: ({ table }) => (

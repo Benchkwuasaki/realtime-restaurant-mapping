@@ -14,9 +14,12 @@ use App\Models\EmployeeUploadedFile;
 use App\Models\EmployeeWaterBill;
 use App\Models\EligibilityInformation;
 use App\Models\GovernmentAccount;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Employee extends Model
 {
+    use SoftDeletes;
+
     protected $primaryKey = 'employee_id';
 
     protected $fillable = [

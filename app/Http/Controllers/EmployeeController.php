@@ -44,7 +44,10 @@ class EmployeeController extends Controller
             ->map(fn(Employee $employee) => $this->formatForTable($employee));
 
         return Inertia::render('Employee/Index', [
-            'employee' => $employees,
+            'employees' => $employees,
+            'totalEmployees' => $employees->count(),
+            'activeEmployees' => $employees->where('status', true)->count(),
+            'inactiveEmployees' => $employees->where('status', false)->count(),
         ]);
     }
 
@@ -293,14 +296,24 @@ class EmployeeController extends Controller
     {
         $employee->update(['status' => !$employee->status]);
 
+        $this->activityLogService->createLog([
+            'user_id' => Auth::id(),
+            'module' => 'employee',
+            'description' => ($employee->status ? 'Activated' : 'Deactivated') . ' employee: ' . $employee->basicInfo?->full_name,
+        ]);
+
         return back()->with('success', 'Employee status updated.');
     }
 
     public function destroy(Employee $employee)
     {
-        $basicInfo = $employee->basicInfo;
         $employee->delete();
-        $basicInfo->delete();
+
+        $this->activityLogService->createLog([
+            'user_id' => Auth::id(),
+            'module' => 'employee',
+            'description' => 'Deleted employee: ' . $employee->basicInfo?->full_name,
+        ]);
 
         return redirect()->route('employee.index')->with('success', 'Employee deleted successfully.');
     }
@@ -419,9 +432,7 @@ class EmployeeController extends Controller
         $employees = Employee::whereIn('employee_id', $request->ids)->get();
 
         foreach ($employees as $employee) {
-            $basicInfo = $employee->basicInfo;
             $employee->delete();
-            $basicInfo?->delete();
         }
 
         return back()->with('success', count($request->ids) . ' employee(s) deleted.');

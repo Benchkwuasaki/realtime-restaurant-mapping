@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\EmployeeController::store
- * @see app/Http/Controllers/EmployeeController.php:331
+ * @see app/Http/Controllers/EmployeeController.php:344
  * @route '/employee/{employee}/government-account'
  */
 export const store = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\EmployeeController::store
- * @see app/Http/Controllers/EmployeeController.php:331
+ * @see app/Http/Controllers/EmployeeController.php:344
  * @route '/employee/{employee}/government-account'
  */
 store.url = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ store.url = (args: { employee: number | { employee_id: number } } | [employee: n
 
 /**
 * @see \App\Http\Controllers\EmployeeController::store
- * @see app/Http/Controllers/EmployeeController.php:331
+ * @see app/Http/Controllers/EmployeeController.php:344
  * @route '/employee/{employee}/government-account'
  */
 store.post = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -59,7 +59,7 @@ store.post = (args: { employee: number | { employee_id: number } } | [employee: 
 
     /**
 * @see \App\Http\Controllers\EmployeeController::store
- * @see app/Http/Controllers/EmployeeController.php:331
+ * @see app/Http/Controllers/EmployeeController.php:344
  * @route '/employee/{employee}/government-account'
  */
     const storeForm = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -69,7 +69,7 @@ store.post = (args: { employee: number | { employee_id: number } } | [employee: 
 
             /**
 * @see \App\Http\Controllers\EmployeeController::store
- * @see app/Http/Controllers/EmployeeController.php:331
+ * @see app/Http/Controllers/EmployeeController.php:344
  * @route '/employee/{employee}/government-account'
  */
         storeForm.post = (args: { employee: number | { employee_id: number } } | [employee: number | { employee_id: number } ] | number | { employee_id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -80,7 +80,7 @@ store.post = (args: { employee: number | { employee_id: number } } | [employee: 
     store.form = storeForm
 /**
 * @see \App\Http\Controllers\EmployeeController::update
- * @see app/Http/Controllers/EmployeeController.php:352
+ * @see app/Http/Controllers/EmployeeController.php:365
  * @route '/employee/{employee}/government-account/{account}'
  */
 export const update = (args: { employee: number | { employee_id: number }, account: number | { government_account_id: number } } | [employee: number | { employee_id: number }, account: number | { government_account_id: number } ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -95,7 +95,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\EmployeeController::update
- * @see app/Http/Controllers/EmployeeController.php:352
+ * @see app/Http/Controllers/EmployeeController.php:365
  * @route '/employee/{employee}/government-account/{account}'
  */
 update.url = (args: { employee: number | { employee_id: number }, account: number | { government_account_id: number } } | [employee: number | { employee_id: number }, account: number | { government_account_id: number } ], options?: RouteQueryOptions) => {
@@ -125,7 +125,7 @@ update.url = (args: { employee: number | { employee_id: number }, account: numbe
 
 /**
 * @see \App\Http\Controllers\EmployeeController::update
- * @see app/Http/Controllers/EmployeeController.php:352
+ * @see app/Http/Controllers/EmployeeController.php:365
  * @route '/employee/{employee}/government-account/{account}'
  */
 update.put = (args: { employee: number | { employee_id: number }, account: number | { government_account_id: number } } | [employee: number | { employee_id: number }, account: number | { government_account_id: number } ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -135,7 +135,7 @@ update.put = (args: { employee: number | { employee_id: number }, account: numbe
 
     /**
 * @see \App\Http\Controllers\EmployeeController::update
- * @see app/Http/Controllers/EmployeeController.php:352
+ * @see app/Http/Controllers/EmployeeController.php:365
  * @route '/employee/{employee}/government-account/{account}'
  */
     const updateForm = (args: { employee: number | { employee_id: number }, account: number | { government_account_id: number } } | [employee: number | { employee_id: number }, account: number | { government_account_id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -150,7 +150,7 @@ update.put = (args: { employee: number | { employee_id: number }, account: numbe
 
             /**
 * @see \App\Http\Controllers\EmployeeController::update
- * @see app/Http/Controllers/EmployeeController.php:352
+ * @see app/Http/Controllers/EmployeeController.php:365
  * @route '/employee/{employee}/government-account/{account}'
  */
         updateForm.put = (args: { employee: number | { employee_id: number }, account: number | { government_account_id: number } } | [employee: number | { employee_id: number }, account: number | { government_account_id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -166,7 +166,7 @@ update.put = (args: { employee: number | { employee_id: number }, account: numbe
     update.form = updateForm
 /**
 * @see \App\Http\Controllers\EmployeeController::destroy
- * @see app/Http/Controllers/EmployeeController.php:362
+ * @see app/Http/Controllers/EmployeeController.php:375
  * @route '/employee/{employee}/government-account/{account}'
  */
 export const destroy = (args: { employee: number | { employee_id: number }, account: number | { government_account_id: number } } | [employee: number | { employee_id: number }, account: number | { government_account_id: number } ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -181,7 +181,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\EmployeeController::destroy
- * @see app/Http/Controllers/EmployeeController.php:362
+ * @see app/Http/Controllers/EmployeeController.php:375
  * @route '/employee/{employee}/government-account/{account}'
  */
 destroy.url = (args: { employee: number | { employee_id: number }, account: number | { government_account_id: number } } | [employee: number | { employee_id: number }, account: number | { government_account_id: number } ], options?: RouteQueryOptions) => {
@@ -211,7 +211,7 @@ destroy.url = (args: { employee: number | { employee_id: number }, account: numb
 
 /**
 * @see \App\Http\Controllers\EmployeeController::destroy
- * @see app/Http/Controllers/EmployeeController.php:362
+ * @see app/Http/Controllers/EmployeeController.php:375
  * @route '/employee/{employee}/government-account/{account}'
  */
 destroy.delete = (args: { employee: number | { employee_id: number }, account: number | { government_account_id: number } } | [employee: number | { employee_id: number }, account: number | { government_account_id: number } ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -221,7 +221,7 @@ destroy.delete = (args: { employee: number | { employee_id: number }, account: n
 
     /**
 * @see \App\Http\Controllers\EmployeeController::destroy
- * @see app/Http/Controllers/EmployeeController.php:362
+ * @see app/Http/Controllers/EmployeeController.php:375
  * @route '/employee/{employee}/government-account/{account}'
  */
     const destroyForm = (args: { employee: number | { employee_id: number }, account: number | { government_account_id: number } } | [employee: number | { employee_id: number }, account: number | { government_account_id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -236,7 +236,7 @@ destroy.delete = (args: { employee: number | { employee_id: number }, account: n
 
             /**
 * @see \App\Http\Controllers\EmployeeController::destroy
- * @see app/Http/Controllers/EmployeeController.php:362
+ * @see app/Http/Controllers/EmployeeController.php:375
  * @route '/employee/{employee}/government-account/{account}'
  */
         destroyForm.delete = (args: { employee: number | { employee_id: number }, account: number | { government_account_id: number } } | [employee: number | { employee_id: number }, account: number | { government_account_id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

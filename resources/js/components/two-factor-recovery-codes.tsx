@@ -10,7 +10,6 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import AlertError from './alert-error';
-import { regenerateRecoveryCodes } from '@/routes/two-factor';
 
 type Props = {
     recoveryCodesList: string[];

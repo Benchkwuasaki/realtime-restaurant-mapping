@@ -6,30 +6,27 @@ import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn, toUrl } from '@/lib/utils';
 import type { NavItem } from '@/types';
-import { edit as editAppearance } from '@/routes/appearance';
-import { edit } from '@/routes/profile';
-import { show } from '@/routes/two-factor';
-import { edit as editPassword } from '@/routes/user-password';
+import { route } from 'ziggy-js';
 
 const sidebarNavItems: NavItem[] = [
     {
         title: 'Profile',
-        href: edit(),
+        href: route('profile.edit'),
         icon: null,
     },
     {
         title: 'Password',
-        href: editPassword(),
+        href: route('user-password.edit'),
         icon: null,
     },
     {
         title: 'Two-Factor Auth',
-        href: show(),
+        href: route('two-factor.show'),
         icon: null,
     },
     {
         title: 'Appearance',
-        href: editAppearance(),
+        href: route('appearance.edit'),
         icon: null,
     },
 ];
