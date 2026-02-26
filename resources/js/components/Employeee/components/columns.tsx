@@ -3,14 +3,17 @@
 import { router } from "@inertiajs/react"
 import { type ColumnDef } from "@tanstack/react-table"
 import React from "react"
-import { DataTableColumnHeader } from "@/components/Employeee/components/data-table-column-header"
-import { DataTableRowActions } from "@/components/Employeee/components/data-table-row-action"
+import { route } from "ziggy-js"
+import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 
 import { type Employee } from "../data/schema"
-import { route } from "ziggy-js"
+import {
+  DataTableRowActions,
+  deleteAction,
+} from "@/components/shared/data-table/data-table-row-action"
 
 // function StatusToggle({ id, currentStatus }: { id: string; currentStatus: boolean }) {
 
@@ -185,6 +188,16 @@ export const columns: ColumnDef<Employee>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => <DataTableRowActions row={row} />,
-  },
+    cell: ({ row }) => (
+      <DataTableRowActions
+        row={row}
+        actions={[
+          deleteAction(
+            (employee) => router.delete(route("employee.destroy", employee.id), { preserveScroll: true }),
+            { getName: (e) => e.name }
+          ),
+        ]}
+      />
+    ),
+  }, 
 ]

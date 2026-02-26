@@ -11,13 +11,12 @@ import {
   useReactTable,
   type ColumnDef,
   type ColumnFiltersState,
+  type Row,
   type RowSelectionState,
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table"
 import * as React from "react"
-import { router } from "@inertiajs/react"
-import { route } from "ziggy-js"
 
 import {
   Table,
@@ -29,16 +28,55 @@ import {
 } from "@/components/ui/table"
 
 import { DataTablePagination } from "./data-table-pagination"
-import { DataTableToolbar } from "./data-table-toolbar"
+import {
+  DataTableToolbar,
+  type ToolbarAddButtonConfig,
+  type ToolbarBulkDeleteConfig,
+  type ToolbarFilterConfig,
+} from "./data-table-toolbar"
+
+// ─── Props ─────────────────────────────────────────────────────────────────────
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+
+  /**
+   * How to derive the stable row id from each record.
+   * Defaults to `(row) => String((row as any).id)`.
+   */
+  getRowId?: (row: TData) => string
+
+  /**
+   * Optional click handler for an entire row (e.g. navigate to detail page).
+   * Receives the full row object. When omitted, rows are not clickable.
+   */
+  onRowClick?: (row: Row<TData>) => void
+
+  /** Default page size (defaults to 25) */
+  defaultPageSize?: number
+
+  // ── Toolbar config ──────────────────────────────────────────────────────────
+  searchColumnId?: string
+  searchPlaceholder?: string
+  filters?: ToolbarFilterConfig[]
+  addButton?: ToolbarAddButtonConfig
+  bulkDelete?: ToolbarBulkDeleteConfig
 }
+
+// ─── Component ─────────────────────────────────────────────────────────────────
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  getRowId,
+  onRowClick,
+  defaultPageSize = 25,
+  searchColumnId,
+  searchPlaceholder,
+  filters,
+  addButton,
+  bulkDelete,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -46,13 +84,23 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
-    pageSize: 25,
+    pageSize: defaultPageSize,
   })
 
   const table = useReactTable({
     data,
     columns,
-    getRowId: (row) => (row as { id: string }).id,
+    getRowId: getRowId ?? ((row) => {
+      const r = row as Record<string, unknown>
+      const id = r["id"] ?? r["holiday_id"] ?? r["employee_id"]
+      if (id === undefined && process.env.NODE_ENV === "development") {
+        console.warn(
+          "[DataTable] getRowId could not find a unique id on row. " +
+          "Pass the getRowId prop explicitly. Row:", row
+        )
+      }
+      return String(id ?? Math.random())
+    }),
     state: {
       sorting,
       columnVisibility,
@@ -76,7 +124,16 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="flex flex-col gap-4">
-      <DataTableToolbar table={table} rowSelection={rowSelection} />
+      <DataTableToolbar
+        table={table}
+        rowSelection={rowSelection}
+        searchColumnId={searchColumnId}
+        searchPlaceholder={searchPlaceholder}
+        filters={filters}
+        addButton={addButton}
+        bulkDelete={bulkDelete}
+      />
+
       <div className="overflow-x-auto rounded-md border border-gray-200">
         <Table>
           <TableHeader>
@@ -86,7 +143,10 @@ export function DataTable<TData, TValue>({
                   <TableHead key={header.id} colSpan={header.colSpan}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -98,21 +158,25 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="cursor-pointer"
-                  onClick={() => router.get(route("employee.show", row.id))}
+                  className={onRowClick ? "cursor-pointer" : undefined}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
                   No results.
                 </TableCell>
               </TableRow>
@@ -120,14 +184,12 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
+
       <DataTablePagination
         table={table}
         rowSelection={rowSelection}
-        pageIndex={table.getState().pagination.pageIndex}
-        pageSize={table.getState().pagination.pageSize}
-        pageCount={table.getPageCount()}
-        canPreviousPage={table.getCanPreviousPage()}
-        canNextPage={table.getCanNextPage()}
+        pageIndex={pagination.pageIndex}
+        pageSize={pagination.pageSize}
       />
     </div>
   )

@@ -1,10 +1,14 @@
 "use client"
 
 import { type ColumnDef } from "@tanstack/react-table"
+import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Checkbox } from "@/components/ui/checkbox"
 import { type Position } from "../data/schema"
-import { DataTableColumnHeader } from "./data-table-column-header"
-import { DataTableRowActions } from "./data-table-row-action"
+import {
+    DataTableRowActions,
+    editAction,
+    deleteAction,
+} from "@/components/shared/data-table/data-table-row-action"
 
 interface ColumnOptions {
     onEdit: (position: Position) => void
@@ -44,9 +48,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Posit
                 <DataTableColumnHeader column={column} title="Position Name" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-40 font-medium text-foreground">
-                    {row.getValue("position_name")}
-                </div>
+                <div className="min-w-[180px] font-medium">{row.getValue("position_name")}</div>
             ),
             enableSorting: true,
             enableHiding: true,
@@ -58,7 +60,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Posit
                 <DataTableColumnHeader column={column} title="Department" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-35 text-sm text-muted-foreground">
+                <div className="min-w-[140px]">
                     {row.original.department?.department_name ?? "—"}
                 </div>
             ),
@@ -74,7 +76,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Posit
                 <DataTableColumnHeader column={column} title="Division" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-35 text-sm text-muted-foreground">
+                <div className="min-w-[140px]">
                     {row.original.division?.division_name ?? "—"}
                 </div>
             ),
@@ -90,10 +92,8 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Posit
                 <DataTableColumnHeader column={column} title="Unit" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-35 text-sm text-muted-foreground">
-                    {row.original.unit?.unit_name ?? (
-                        <span className="italic text-muted-foreground/50">No unit</span>
-                    )}
+                <div className="min-w-[120px]">
+                    {row.original.unit?.unit_name ?? "—"}
                 </div>
             ),
             filterFn: (row, _id, value: string[]) =>
@@ -102,28 +102,24 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Posit
             enableHiding: true,
         },
         {
-            id: "slots",
-            accessorFn: (row) => row.total_slots,
+            accessorKey: "total_slots",
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Slots" />
+                <DataTableColumnHeader column={column} title="Total Slots" />
             ),
-            cell: ({ row }) => {
-                const total    = row.original.total_slots
-                const occupied = row.original.occupied_slots
-                const vacant   = total - occupied
-
-                return (
-                    <div className="text-sm min-w-28">
-                        <span className="font-medium text-foreground">{occupied}</span>
-                        <span className="text-muted-foreground"> / {total} occupied</span>
-                        {vacant > 0 && (
-                            <span className="ml-1.5 text-xs text-green-600 dark:text-green-400">
-                                ({vacant} vacant)
-                            </span>
-                        )}
-                    </div>
-                )
-            },
+            cell: ({ row }) => (
+                <div className="min-w-[80px] text-center">{row.getValue("total_slots")}</div>
+            ),
+            enableSorting: true,
+            enableHiding: true,
+        },
+        {
+            accessorKey: "occupied_slots",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Occupied" />
+            ),
+            cell: ({ row }) => (
+                <div className="min-w-[80px] text-center">{row.getValue("occupied_slots")}</div>
+            ),
             enableSorting: true,
             enableHiding: true,
         },
@@ -133,8 +129,22 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Posit
             cell: ({ row }) => (
                 <DataTableRowActions
                     row={row}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
+                    actions={[
+                        editAction(onEdit),
+                        deleteAction(onDelete, {
+                            getName: (p) => p.position_name,
+                            // Override dialog — position deletion has a special warning
+                            description: (p) => (
+                                <>
+                                    Are you sure you want to delete{" "}
+                                    <span className="font-medium text-foreground">{p.position_name}</span>?{" "}
+                                    This will also affect any items assigned to this position.
+                                    This action cannot be undone.
+                                </>
+                            ),
+                            confirmLabel: "Delete Position",
+                        }),
+                    ]}
                 />
             ),
             enableHiding: false,

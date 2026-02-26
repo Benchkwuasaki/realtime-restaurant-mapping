@@ -1,19 +1,15 @@
 import { Head, router, useForm, usePage } from "@inertiajs/react"
-import { Briefcase, X } from "lucide-react"
+import { Briefcase } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { getColumns } from "@/components/Organization/Position/components/columns"
-import { DataTable } from "@/components/Organization/Position/components/data-table"
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+    type Department,
+    type Division,
+    type Position,
+    type Unit,
+} from "@/components/Organization/Position/data/schema"
+import { DataTable } from "@/components/shared/data-table/data-table"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -32,12 +28,6 @@ import {
 } from "@/components/ui/select"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
-import {
-    type Department,
-    type Division,
-    type Position,
-    type Unit,
-} from "@/components/Organization/Position/data/schema"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,8 +37,6 @@ interface Props {
     divisions: Division[]
     units: Unit[]
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: "Organization", href: "#" },
@@ -117,7 +105,6 @@ function PositionModal({
     return (
         <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
             <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-lg">
-
                 <DialogHeader className="px-5 py-4 border-b border-border">
                     <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Briefcase className="w-4 h-4 text-primary" />
@@ -127,7 +114,6 @@ function PositionModal({
 
                 <form onSubmit={handleSubmit}>
                     <div className="px-5 py-5 space-y-4">
-
                         {/* Position Name */}
                         <div>
                             <label htmlFor="position_name" className="block text-xs font-medium text-foreground mb-1.5">
@@ -261,44 +247,6 @@ function PositionModal({
         </Dialog>
     )
 }
-// ─── Delete Alert Dialog ──────────────────────────────────────────────────────
-
-interface DeleteDialogProps {
-    position: Position | null
-    onClose: () => void
-}
-
-function DeleteAlertDialog({ position, onClose }: DeleteDialogProps) {
-    function handleConfirm() {
-        if (position) {
-            router.delete(route("position.destroy", position.position_id), {
-                onFinish: onClose,
-            })
-        }
-    }
-
-    return (
-        <AlertDialog open={position !== null} onOpenChange={(o) => { if (!o) onClose() }}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Position</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Are you sure you want to delete{" "}
-                        <span className="font-medium text-foreground">{position?.position_name}</span>?
-                        {" "}This will also affect any items assigned to this position.
-                        This action cannot be undone.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction variant="destructive" onClick={handleConfirm}>
-                        Delete Position
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    )
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -307,7 +255,6 @@ export default function PositionIndex({ positions, departments, divisions, units
 
     const [modalOpen, setModalOpen] = useState(false)
     const [editingPosition, setEditingPosition] = useState<Position | null>(null)
-    const [deletingPosition, setDeletingPosition] = useState<Position | null>(null)
 
     function openCreate() {
         setEditingPosition(null)
@@ -324,14 +271,15 @@ export default function PositionIndex({ positions, departments, divisions, units
         setEditingPosition(null)
     }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: setDeletingPosition })
+    // Delete is now handled inside DataTableRowActions via deleteAction()
+    // — no separate DeleteAlertDialog state needed here
+    const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Positions" />
 
             <div className="flex h-full flex-1 flex-col gap-6 py-4 px-6">
-
                 <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -353,10 +301,43 @@ export default function PositionIndex({ positions, departments, divisions, units
                 <DataTable
                     columns={columns}
                     data={positions}
-                    departments={departments}
-                    divisions={divisions}
-                    units={units}
-                    onCreatePosition={openCreate}
+                    getRowId={(row) => String(row.position_id)}
+                    searchPlaceholder="Search positions..."
+                    filters={[
+                        {
+                            columnId: "department",
+                            title: "Department",
+                            options: departments.map((d) => ({
+                                value: String(d.department_id),
+                                label: d.department_name,
+                            })),
+                        },
+                        {
+                            columnId: "division",
+                            title: "Division",
+                            options: divisions.map((d) => ({
+                                value: String(d.division_id),
+                                label: d.division_name,
+                            })),
+                        },
+                        {
+                            columnId: "unit",
+                            title: "Unit",
+                            options: units.map((u) => ({
+                                value: String(u.unit_id),
+                                label: u.unit_name,
+                            })),
+                        },
+                    ]}
+                    addButton={{
+                        label: "Create Position",
+                        onClick: openCreate,
+                    }}
+                    bulkDelete={{
+                        route: route("position.bulk-destroy"),
+                        entityName: "Position",
+                        getId: (row) => (row as Position).position_id,
+                    }}
                 />
             </div>
 
@@ -368,11 +349,6 @@ export default function PositionIndex({ positions, departments, divisions, units
                 divisions={divisions}
                 units={units}
                 onClose={closeModal}
-            />
-
-            <DeleteAlertDialog
-                position={deletingPosition}
-                onClose={() => setDeletingPosition(null)}
             />
         </AppLayout>
     )

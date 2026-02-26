@@ -1,12 +1,12 @@
-import { Head } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { Head, router } from '@inertiajs/react';
 import { Users, UserCheck, UserX } from 'lucide-react';
 import { route } from 'ziggy-js';
-import { DataTable } from '@/components/Employeee/components/data-table';
 import { columns } from '@/components/Employeee/components/columns';
 import { type Employee } from '@/components/Employeee/data/schema';
+import { DataTable } from '@/components/shared/data-table/data-table';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 interface Props {
     employees: Employee[];
@@ -19,12 +19,18 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Employee', href: route('employee.index') },
 ];
 
+const statusFilterOptions = [
+    { value: true,  label: 'Active' },
+    { value: false, label: 'Inactive' },
+]
+
 export default function Index({ employees, totalEmployees, activeEmployees, inactiveEmployees }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employee" />
 
             <div className="flex h-full flex-1 flex-col gap-8 p-8">
+                {/* ── Summary Cards ── */}
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                     <Card className="p-4 gap-0">
                         <div className="flex items-start justify-between mb-2">
@@ -57,8 +63,32 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
                         <CardDescription className="text-md font-thin">On leave or inactive</CardDescription>
                     </Card>
                 </div>
-                <DataTable data={employees} columns={columns} />
+
+                {/* ── Table ── */}
+                <DataTable
+                    data={employees}
+                    columns={columns}
+                    getRowId={(row) => String(row.id)}
+                    onRowClick={(row) => router.get(route('employee.show', row.original.id))}
+                    searchPlaceholder="Search employees..."
+                    filters={[
+                        {
+                            columnId: 'status',
+                            title: 'Status',
+                            options: statusFilterOptions,
+                        },
+                    ]}
+                    addButton={{
+                        label: 'Create Employee',
+                        onClick: () => router.visit(route('employee.create')),
+                    }}
+                    bulkDelete={{
+                        route: route('employee.bulk-destroy'),
+                        entityName: 'Employee',
+                        getId: (row) => (row as Employee).id,
+                    }}
+                />
             </div>
-        </AppLayout >
+        </AppLayout>
     );
 }

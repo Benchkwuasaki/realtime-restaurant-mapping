@@ -1,19 +1,9 @@
 import { Head, router, useForm, usePage } from "@inertiajs/react"
-import { Building2, Pencil, Plus, Trash2 } from "lucide-react"
+import { Building2 } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { getColumns } from "@/components/Organization/Unit/components/columns"
-import { DataTable } from "@/components/Organization/Unit/components/data-table"
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { DataTable } from "@/components/shared/data-table/data-table"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -41,8 +31,6 @@ interface Props {
     units: Unit[]
     divisions: Division[]
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: "Organization", href: "#" },
@@ -92,8 +80,6 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
     return (
         <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
             <DialogContent className="p-2 gap-0 overflow-hidden w-md sm:max-w-md">
-
-                {/* Header */}
                 <DialogHeader className="px-5 py-4 border-b border-border">
                     <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Building2 className="w-4 h-4 text-primary" />
@@ -101,7 +87,6 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
                     </DialogTitle>
                 </DialogHeader>
 
-                {/* Body */}
                 <form onSubmit={handleSubmit}>
                     <div className="px-5 py-5 space-y-4">
 
@@ -176,15 +161,8 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
                         </div>
                     </div>
 
-                    {/* Footer */}
                     <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleClose}
-                            className="text-xs"
-                        >
+                        <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
                             Cancel
                         </Button>
                         <Button type="submit" size="sm" disabled={processing} className="text-xs">
@@ -197,45 +175,6 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
     )
 }
 
-// ─── Delete Alert Dialog ──────────────────────────────────────────────────────
-
-interface DeleteDialogProps {
-    unit: Unit | null
-    onClose: () => void
-}
-
-function DeleteAlertDialog({ unit, onClose }: DeleteDialogProps) {
-    function handleConfirm() {
-        if (unit) {
-            router.delete(route("unit.destroy", unit.unit_id), {
-                onFinish: onClose,
-            })
-        }
-    }
-
-    return (
-        <AlertDialog open={unit !== null} onOpenChange={(o) => { if (!o) onClose() }}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Unit</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Are you sure you want to delete{" "}
-                        <span className="font-medium text-foreground">{unit?.unit_name}</span>?
-                        {" "}This will also affect any positions assigned to this unit.
-                        This action cannot be undone.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction variant="destructive" onClick={handleConfirm}>
-                        Delete Unit
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    )
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UnitIndex({ units, divisions }: Props) {
@@ -243,7 +182,6 @@ export default function UnitIndex({ units, divisions }: Props) {
 
     const [modalOpen, setModalOpen] = useState(false)
     const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
-    const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null)
 
     function openCreate() {
         setEditingUnit(null)
@@ -260,15 +198,14 @@ export default function UnitIndex({ units, divisions }: Props) {
         setEditingUnit(null)
     }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: setDeletingUnit })
+    // Delete is handled inside DataTableRowActions via deleteAction() in columns.tsx
+    const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Units" />
 
             <div className="flex h-full flex-1 flex-col gap-6 py-4 px-6">
-
-                {/* Header */}
                 <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -281,35 +218,45 @@ export default function UnitIndex({ units, divisions }: Props) {
                     </div>
                 </div>
 
-                {/* Flash */}
                 {props.flash?.success && (
                     <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
                         {props.flash.success}
                     </div>
                 )}
 
-                {/* Table */}
                 <DataTable
                     columns={columns}
                     data={units}
-                    divisions={divisions}
-                    onCreateUnit={openCreate}
+                    getRowId={(row) => String(row.unit_id)}
+                    searchPlaceholder="Search units..."
+                    filters={[
+                        {
+                            columnId: "division",
+                            title: "Division",
+                            options: divisions.map((d) => ({
+                                value: String(d.division_id),
+                                label: d.division_name,
+                            })),
+                        },
+                    ]}
+                    addButton={{
+                        label: "Create Unit",
+                        onClick: openCreate,
+                    }}
+                    bulkDelete={{
+                        route: route("unit.bulk-destroy"),
+                        entityName: "Unit",
+                        getId: (row) => (row as Unit).unit_id,
+                    }}
                 />
             </div>
 
-            {/* Create / Edit modal */}
             <UnitModal
                 key={editingUnit?.unit_id ?? "create"}
                 open={modalOpen}
                 editingUnit={editingUnit}
                 divisions={divisions}
                 onClose={closeModal}
-            />
-
-            {/* Delete confirmation */}
-            <DeleteAlertDialog
-                unit={deletingUnit}
-                onClose={() => setDeletingUnit(null)}
             />
         </AppLayout>
     )

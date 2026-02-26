@@ -16,14 +16,16 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 
+export interface FacetedFilterOption {
+  label: string
+  value: string | boolean
+  icon?: React.ComponentType<{ className?: string }>
+}
+
 interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>
   title?: string
-  options: {
-    label: string
-    value: boolean | string
-    icon?: React.ComponentType<{ className?: string }>
-  }[]
+  options: FacetedFilterOption[]
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
@@ -32,12 +34,9 @@ export function DataTableFacetedFilter<TData, TValue>({
   options,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const facets = column?.getFacetedUniqueValues()
-
-  // Use string keys in the Set ("true"/"false") for reliable equality checks,
-  // but pass the original typed values into the column filter.
   const [selectedKeys, setSelectedKeys] = React.useState<Set<string>>(new Set())
 
-  const handleSelect = (option: { value: boolean | string }) => {
+  const handleSelect = (option: FacetedFilterOption) => {
     const key = String(option.value)
     setSelectedKeys((prev) => {
       const updated = new Set(prev)
@@ -47,7 +46,6 @@ export function DataTableFacetedFilter<TData, TValue>({
         updated.add(key)
       }
 
-      // Pass actual typed values (true/false) to the filterFn
       const filterValues = options
         .filter((o) => updated.has(String(o.value)))
         .map((o) => o.value)
@@ -71,12 +69,18 @@ export function DataTableFacetedFilter<TData, TValue>({
           {selectedKeys.size > 0 && (
             <>
               <Separator orientation="vertical" className="mx-2 h-4" />
-              <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+              <Badge
+                variant="secondary"
+                className="rounded-sm px-1 font-normal lg:hidden"
+              >
                 {selectedKeys.size}
               </Badge>
               <div className="hidden gap-1 lg:flex">
                 {selectedKeys.size > 2 ? (
-                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                  <Badge
+                    variant="secondary"
+                    className="rounded-sm px-1 font-normal"
+                  >
                     {selectedKeys.size} selected
                   </Badge>
                 ) : (
@@ -97,11 +101,10 @@ export function DataTableFacetedFilter<TData, TValue>({
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[200px]">
+      <DropdownMenuContent align="start" className="w-[220px]">
         {options.map((option) => {
           const key = String(option.value)
           const isSelected = selectedKeys.has(key)
-          // TanStack stores facet keys using the raw row value type (boolean)
           const count = facets?.get(option.value)
           return (
             <DropdownMenuItem
@@ -120,12 +123,14 @@ export function DataTableFacetedFilter<TData, TValue>({
                     : "border-input"
                 )}
               >
-                {isSelected && <Check className="size-3 stroke-primary-foreground" />}
+                {isSelected && (
+                  <Check className="size-3 stroke-primary-foreground" />
+                )}
               </div>
               {option.icon && (
                 <option.icon className="text-muted-foreground size-4" />
               )}
-              <span>{option.label}</span>
+              <span className="text-sm">{option.label}</span>
               {count !== undefined && (
                 <span className="text-muted-foreground ml-auto font-mono text-xs">
                   {count}

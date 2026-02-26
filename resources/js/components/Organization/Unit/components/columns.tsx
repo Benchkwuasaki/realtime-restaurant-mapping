@@ -1,11 +1,14 @@
 "use client"
 
 import { type ColumnDef } from "@tanstack/react-table"
-import { Badge } from "@/components/ui/badge"
+import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Checkbox } from "@/components/ui/checkbox"
 import { type Unit } from "../data/schema"
-import { DataTableColumnHeader } from "./data-table-column-header"
-import { DataTableRowActions } from "./data-table-row-action"
+import {
+    DataTableRowActions,
+    editAction,
+    deleteAction,
+} from "@/components/shared/data-table/data-table-row-action"
 
 interface ColumnOptions {
     onEdit: (unit: Unit) => void
@@ -16,7 +19,6 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
     return [
         {
             id: "select",
-            size: 40,
             header: ({ table }) => (
                 <Checkbox
                     checked={
@@ -42,75 +44,73 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
         },
         {
             accessorKey: "unit_name",
-            size: 260,
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Unit Name" />
             ),
             cell: ({ row }) => (
-                <div className="font-medium text-foreground truncate">
-                    {row.getValue("unit_name")}
-                </div>
+                <div className="min-w-[160px] font-medium">{row.getValue("unit_name")}</div>
             ),
             enableSorting: true,
             enableHiding: true,
         },
         {
             accessorKey: "unit_acronym",
-            size: 120,
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
-                <Badge variant="default" className="font-mono text-xs">
-                    {row.getValue("unit_acronym")}
-                </Badge>
+                <div className="min-w-[80px] font-mono text-sm">{row.getValue("unit_acronym")}</div>
+            ),
+            enableSorting: true,
+            enableHiding: true,
+        },
+        {
+            accessorKey: "division",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Division" />
+            ),
+            cell: ({ row }) => (
+                <div className="min-w-[140px]">
+                    {row.original.division?.division_name ?? "—"}
+                </div>
             ),
             enableSorting: true,
             enableHiding: true,
         },
         {
             accessorKey: "unit_description",
-            size: 300,
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Description" />
             ),
-            cell: ({ row }) => {
-                const desc: string | null = row.getValue("unit_description")
-                return (
-                    <div className="truncate text-sm text-muted-foreground">
-                        {desc ?? <span className="italic text-muted-foreground/50">No description</span>}
-                    </div>
-                )
-            },
+            cell: ({ row }) => (
+                <div className="min-w-[200px] text-sm text-muted-foreground truncate max-w-[300px]">
+                    {row.getValue("unit_description") || "—"}
+                </div>
+            ),
             enableSorting: false,
             enableHiding: true,
         },
         {
-            id: "division",
-            size: 200,
-            accessorFn: (row) => row.division?.division_name ?? "",
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Division" />
-            ),
-            cell: ({ row }) => (
-                <div className="truncate text-sm text-muted-foreground">
-                    {row.original.division?.division_name ?? "—"}
-                </div>
-            ),
-            filterFn: (row, _id, value: string[]) =>
-                value.includes(String(row.original.division_id)),
-            enableSorting: true,
-            enableHiding: true,
-        },
-        {
             id: "actions",
-            size: 80,
             header: "Actions",
             cell: ({ row }) => (
                 <DataTableRowActions
                     row={row}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
+                    actions={[
+                        editAction(onEdit),
+                        deleteAction(onDelete, {
+                            getName: (u) => u.unit_name,
+                            description: (u) => (
+                                <>
+                                    Are you sure you want to delete{" "}
+                                    <span className="font-medium text-foreground">{u.unit_name}</span>?{" "}
+                                    This will also affect any positions assigned to this unit.
+                                    This action cannot be undone.
+                                </>
+                            ),
+                            confirmLabel: "Delete Unit",
+                        }),
+                    ]}
                 />
             ),
             enableHiding: false,

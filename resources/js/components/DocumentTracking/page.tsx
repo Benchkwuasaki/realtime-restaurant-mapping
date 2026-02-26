@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
+import { DataTable } from "@/components/shared/data-table/data-table"
 import { columns, Document } from "./columns"
-import { DataTable } from "./data-table"
 
 async function getData(): Promise<Document[]> {
   return [
