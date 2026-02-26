@@ -5,6 +5,7 @@ import {
   ChevronsUpDown,
   CreditCard,
   LogOut,
+  Settings,
   Sparkles,
 } from "lucide-react"
 
@@ -62,24 +63,24 @@ export function NavUser() {
                 <UserInfo user={user} showEmail={true} />
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
+            {/* <DropdownMenuSeparator /> */}
+            {/* <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link href="#">
                   <Sparkles />
                   Upgrade to Pro
                 </Link>
               </DropdownMenuItem>
-            </DropdownMenuGroup>
+            </DropdownMenuGroup> */}
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link href={edit()}>
-                  <BadgeCheck />
-                  Account
+                  <Settings />
+                  Settings
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
+              {/* <DropdownMenuItem asChild>
                 <Link href="#">
                   <CreditCard />
                   Billing
@@ -90,7 +91,7 @@ export function NavUser() {
                   <Bell />
                   Notifications
                 </Link>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={handleLogout} className="cursor-pointer">

@@ -98,12 +98,11 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className="cursor-pointer"
-                  onClick={() => router.visit(route("employee.show", row.id))}
+                  onClick={() => router.get(route("employee.show", row.id))}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      onClick={cell.column.id === "select" ? (e) => e.stopPropagation() : undefined}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>

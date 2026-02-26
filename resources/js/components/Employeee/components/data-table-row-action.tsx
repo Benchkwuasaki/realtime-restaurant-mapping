@@ -59,6 +59,7 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant={'destructive'}
             >
               Delete Employee
             </AlertDialogAction>

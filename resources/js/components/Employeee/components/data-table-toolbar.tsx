@@ -111,6 +111,7 @@ export function DataTableToolbar<TData>({ table, rowSelection }: DataTableToolba
             <AlertDialogAction
               onClick={handleBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant={'destructive'}
             >
               Delete {selectedCount > 1 ? `${selectedCount} Employees` : "Employee"}
             </AlertDialogAction>
