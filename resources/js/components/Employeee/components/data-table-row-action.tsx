@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { employeeSchema } from "../data/schema"
+import { route } from "ziggy-js"
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>
@@ -27,7 +28,7 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
   const [open, setOpen] = React.useState(false)
 
   const handleDelete = () => {
-    router.delete(`/employee/${task.id}`, { preserveScroll: true })
+    router.delete(route('employee.destroy', task.id), { preserveScroll: true })
     setOpen(false)
   }
 
