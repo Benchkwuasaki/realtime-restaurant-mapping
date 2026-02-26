@@ -24,7 +24,7 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employee" />
 
-            <div className="h-full flex-1 flex-col gap-8 p-8 md:flex">
+            <div className="flex h-full flex-1 flex-col gap-8 p-8">
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                     <Card className="p-4 gap-0">
                         <div className="flex items-start justify-between mb-2">
