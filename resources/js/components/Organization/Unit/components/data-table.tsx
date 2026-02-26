@@ -59,6 +59,7 @@ export function DataTable<TData, TValue>({
         data,
         columns,
         getRowId: (row) => String((row as Unit).unit_id),
+        columnResizeMode: "onChange",
         state: {
             sorting,
             columnVisibility,
@@ -89,12 +90,16 @@ export function DataTable<TData, TValue>({
                 onCreateUnit={onCreateUnit}
             />
             <div className="overflow-x-auto rounded-md border border-gray-200">
-                <Table>
+                <Table style={{ tableLayout: "fixed", width: "100%" }}>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id} colSpan={header.colSpan}>
+                                    <TableHead
+                                        key={header.id}
+                                        colSpan={header.colSpan}
+                                        style={{ width: header.getSize() }}
+                                    >
                                         {header.isPlaceholder
                                             ? null
                                             : flexRender(header.column.columnDef.header, header.getContext())}
@@ -113,7 +118,10 @@ export function DataTable<TData, TValue>({
                                     onClick={() => router.get(route("unit.show", row.id))}
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
+                                        <TableCell
+                                            key={cell.id}
+                                            style={{ width: cell.column.getSize() }}
+                                        >
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </TableCell>
                                     ))}
@@ -130,14 +138,14 @@ export function DataTable<TData, TValue>({
                 </Table>
             </div>
             <DataTablePagination
-                    table={table}
-                    rowSelection={rowSelection}
-                    pageIndex={table.getState().pagination.pageIndex}
-                    pageSize={table.getState().pagination.pageSize}
-                    pageCount={table.getPageCount()}
-                    canPreviousPage={table.getCanPreviousPage()}
-                    canNextPage={table.getCanNextPage()}
-                  />
+                table={table}
+                rowSelection={rowSelection}
+                pageIndex={table.getState().pagination.pageIndex}
+                pageSize={table.getState().pagination.pageSize}
+                pageCount={table.getPageCount()}
+                canPreviousPage={table.getCanPreviousPage()}
+                canNextPage={table.getCanNextPage()}
+            />
         </div>
     )
 }

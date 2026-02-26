@@ -69,10 +69,10 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
     const isEdit = editingUnit !== null
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        unit_name:        editingUnit?.unit_name        ?? "",
-        unit_acronym:     editingUnit?.unit_acronym     ?? "",
+        unit_name: editingUnit?.unit_name ?? "",
+        unit_acronym: editingUnit?.unit_acronym ?? "",
         unit_description: editingUnit?.unit_description ?? "",
-        division_id:      editingUnit?.division_id      ? String(editingUnit.division_id) : "",
+        division_id: editingUnit?.division_id ? String(editingUnit.division_id) : "",
     })
 
     function handleClose() {
@@ -241,9 +241,9 @@ function DeleteAlertDialog({ unit, onClose }: DeleteDialogProps) {
 export default function UnitIndex({ units, divisions }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
-    const [modalOpen, setModalOpen]         = useState(false)
-    const [editingUnit, setEditingUnit]     = useState<Unit | null>(null)
-    const [deletingUnit, setDeletingUnit]   = useState<Unit | null>(null)
+    const [modalOpen, setModalOpen] = useState(false)
+    const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
+    const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null)
 
     function openCreate() {
         setEditingUnit(null)
@@ -299,6 +299,7 @@ export default function UnitIndex({ units, divisions }: Props) {
 
             {/* Create / Edit modal */}
             <UnitModal
+                key={editingUnit?.unit_id ?? "create"}
                 open={modalOpen}
                 editingUnit={editingUnit}
                 divisions={divisions}

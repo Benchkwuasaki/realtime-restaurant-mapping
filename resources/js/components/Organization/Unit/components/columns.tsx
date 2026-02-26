@@ -16,6 +16,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
     return [
         {
             id: "select",
+            size: 40,
             header: ({ table }) => (
                 <Checkbox
                     checked={
@@ -41,11 +42,12 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
         },
         {
             accessorKey: "unit_name",
+            size: 260,
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Unit Name" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-40 font-medium text-foreground">
+                <div className="font-medium text-foreground truncate">
                     {row.getValue("unit_name")}
                 </div>
             ),
@@ -54,11 +56,12 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
         },
         {
             accessorKey: "unit_acronym",
+            size: 120,
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
-                <Badge variant="outline" className="font-mono text-xs">
+                <Badge variant="default" className="font-mono text-xs">
                     {row.getValue("unit_acronym")}
                 </Badge>
             ),
@@ -67,13 +70,14 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
         },
         {
             accessorKey: "unit_description",
+            size: 300,
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Description" />
             ),
             cell: ({ row }) => {
                 const desc: string | null = row.getValue("unit_description")
                 return (
-                    <div className="min-w-50max-w-[320px] text-sm text-muted-foreground truncate">
+                    <div className="truncate text-sm text-muted-foreground">
                         {desc ?? <span className="italic text-muted-foreground/50">No description</span>}
                     </div>
                 )
@@ -83,12 +87,13 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
         },
         {
             id: "division",
+            size: 200,
             accessorFn: (row) => row.division?.division_name ?? "",
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Division" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-35 text-sm text-muted-foreground">
+                <div className="truncate text-sm text-muted-foreground">
                     {row.original.division?.division_name ?? "—"}
                 </div>
             ),
@@ -99,6 +104,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
         },
         {
             id: "actions",
+            size: 80,
             header: "Actions",
             cell: ({ row }) => (
                 <DataTableRowActions
