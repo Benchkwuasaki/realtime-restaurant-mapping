@@ -51,8 +51,8 @@ export interface ToolbarBulkDeleteConfig {
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
   rowSelection: RowSelectionState
-  /** Column id to use for the text search input (defaults to "name") */
-  searchColumnId?: string
+  /** Column id to use for the text search input — must match an accessorKey or column id */
+  searchColumnId: string
   searchPlaceholder?: string
   filters?: ToolbarFilterConfig[]
   addButton?: ToolbarAddButtonConfig
@@ -64,7 +64,7 @@ interface DataTableToolbarProps<TData> {
 export function DataTableToolbar<TData>({
   table,
   rowSelection,
-  searchColumnId = "name",
+  searchColumnId,
   searchPlaceholder = "Search...",
   filters = [],
   addButton,
@@ -108,7 +108,11 @@ export function DataTableToolbar<TData>({
             value={searchValue}
             onChange={(e) => {
               setSearchValue(e.target.value)
-              table.getColumn(searchColumnId)?.setFilterValue(e.target.value)
+              const col = table.getColumn(searchColumnId)
+              if (!col && process.env.NODE_ENV === "development") {
+                console.warn(`[DataTableToolbar] searchColumnId "${searchColumnId}" not found. Check your column accessorKey or id.`)
+              }
+              col?.setFilterValue(e.target.value)
             }}
             className="h-8 w-[180px] lg:w-[250px]"
           />

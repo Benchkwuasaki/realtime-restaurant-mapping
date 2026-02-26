@@ -302,6 +302,7 @@ export default function PositionIndex({ positions, departments, divisions, units
                     columns={columns}
                     data={positions}
                     getRowId={(row) => String(row.position_id)}
+                    searchColumnId="position_name"
                     searchPlaceholder="Search positions..."
                     filters={[
                         {

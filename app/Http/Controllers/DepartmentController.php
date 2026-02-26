@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Department;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 
 class DepartmentController extends Controller
@@ -46,5 +48,13 @@ class DepartmentController extends Controller
         $department->delete();
 
         return redirect()->route('department.index')->with('success', 'Department deleted successfully.');
+    }
+
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $ids = $request->input('ids', []);
+        Department::whereIn('department_id', $ids)->delete();
+
+        return back()->with('success', count($ids) . ' department(s) deleted.');
     }
 }

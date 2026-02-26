@@ -3,7 +3,6 @@ import { Building2 } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { getColumns } from "@/components/Organization/Division/components/columns"
-import { type Department, type Division } from "@/components/Organization/Division/data/schema"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,6 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
+import { type Department, type Division } from "@/components/Organization/Division/data/schema"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -230,6 +230,7 @@ export default function DivisionIndex({ divisions, departments }: Props) {
                     columns={columns}
                     data={divisions}
                     getRowId={(row) => String(row.division_id)}
+                    searchColumnId="division_name"
                     searchPlaceholder="Search divisions..."
                     filters={[
                         {

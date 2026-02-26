@@ -70,6 +70,7 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
                     columns={columns}
                     getRowId={(row) => String(row.id)}
                     onRowClick={(row) => router.get(route('employee.show', row.original.id))}
+                    searchColumnId="name"
                     searchPlaceholder="Search employees..."
                     filters={[
                         {

@@ -228,17 +228,8 @@ export default function UnitIndex({ units, divisions }: Props) {
                     columns={columns}
                     data={units}
                     getRowId={(row) => String(row.unit_id)}
+                    searchColumnId="unit_name"
                     searchPlaceholder="Search units..."
-                    filters={[
-                        {
-                            columnId: "division",
-                            title: "Division",
-                            options: divisions.map((d) => ({
-                                value: String(d.division_id),
-                                label: d.division_name,
-                            })),
-                        },
-                    ]}
                     addButton={{
                         label: "Create Unit",
                         onClick: openCreate,

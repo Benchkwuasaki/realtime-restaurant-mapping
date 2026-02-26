@@ -57,7 +57,7 @@ interface DataTableProps<TData, TValue> {
   defaultPageSize?: number
 
   // ── Toolbar config ──────────────────────────────────────────────────────────
-  searchColumnId?: string
+  searchColumnId: string
   searchPlaceholder?: string
   filters?: ToolbarFilterConfig[]
   addButton?: ToolbarAddButtonConfig
@@ -113,7 +113,11 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
+    onPaginationChange: (updater) => {
+      setPagination((old) =>
+        typeof updater === "function" ? updater(old) : updater
+      )
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),

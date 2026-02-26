@@ -10,12 +10,12 @@ use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
+use App\Http\Controllers\PositionController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
-use App\Http\Controllers\PositionController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -67,7 +67,11 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
     Route::prefix('organization/departments')->name('department.')->group(function () {
         Route::get('/', [DepartmentController::class, 'index'])->name('index');
+        Route::get('/create', [DepartmentController::class, 'create'])->name('create');
         Route::post('/', [DepartmentController::class, 'store'])->name('store');
+        Route::delete('/bulk-destroy', [DepartmentController::class, 'bulkDestroy'])->name('bulk-destroy');
+        Route::get('/{department}', [DepartmentController::class, 'show'])->name('show');
+        Route::get('/{department}/edit', [DepartmentController::class, 'edit'])->name('edit');
         Route::put('/{department}', [DepartmentController::class, 'update'])->name('update');
         Route::delete('/{department}', [DepartmentController::class, 'destroy'])->name('destroy');
     });
