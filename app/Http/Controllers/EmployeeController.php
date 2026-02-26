@@ -24,7 +24,9 @@ class EmployeeController extends Controller
     /**
      * Display the employee list page.
      */
-    public function __construct(protected ActivityLogService $activityLogService) {}
+    public function __construct(protected ActivityLogService $activityLogService)
+    {
+    }
 
     public function index()
     {
@@ -436,5 +438,232 @@ class EmployeeController extends Controller
         }
 
         return back()->with('success', count($request->ids) . ' employee(s) deleted.');
+    }
+
+
+    public function storeFamily(Request $request, Employee $employee)
+    {
+        $request->validate([
+            'full_name' => ['required', 'string', 'max:255'],
+            'relationship' => ['nullable', 'string', 'max:100'],
+            'contact_number' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        FamilyInfo::create([
+            'employee_basic_info_id' => $employee->employee_basic_info_id,
+            'full_name' => $request->full_name,
+            'relationship' => $request->relationship,
+            'contact_number' => $request->contact_number,
+        ]);
+
+        return back()->with('success', 'Family member added.');
+    }
+
+    public function updateFamily(Request $request, Employee $employee, int $index)
+    {
+        $request->validate([
+            'full_name' => ['required', 'string', 'max:255'],
+            'relationship' => ['nullable', 'string', 'max:100'],
+            'contact_number' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        // Load ordered family records and find the one at this index
+        $member = FamilyInfo::where('employee_basic_info_id', $employee->employee_basic_info_id)
+            ->orderBy((new FamilyInfo)->getKeyName())
+            ->get()
+            ->get($index);
+
+        abort_if(!$member, 404, 'Family member not found.');
+
+        $member->update([
+            'full_name' => $request->full_name,
+            'relationship' => $request->relationship,
+            'contact_number' => $request->contact_number,
+        ]);
+
+        return back()->with('success', 'Family member updated.');
+    }
+
+    public function destroyFamily(Employee $employee, int $index)
+    {
+        $member = FamilyInfo::where('employee_basic_info_id', $employee->employee_basic_info_id)
+            ->orderBy('id')
+            ->get()
+            ->get($index);
+
+        abort_if(!$member, 404, 'Family member not found.');
+
+        $member->delete();
+
+        return back()->with('success', 'Family member deleted.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+// Education
+// Uses index-based lookup since EmployeeEducation is linked via employee_basic_info_id
+// ─────────────────────────────────────────────────────────────────────────
+
+    public function storeEducation(Request $request, Employee $employee)
+    {
+        $request->validate([
+            'school_name' => ['required', 'string', 'max:255'],
+            'level' => ['nullable', 'string', 'max:100'],
+            'school_address' => ['nullable', 'string', 'max:255'],
+            'degree' => ['nullable', 'string', 'max:255'],
+            'graduation_date' => ['nullable', 'date'],
+        ]);
+
+        EmployeeEducation::create([
+            'employee_basic_info_id' => $employee->employee_basic_info_id,
+            'school_name' => $request->school_name,
+            'level' => $request->level,
+            'school_address' => $request->school_address,
+            'degree' => $request->degree,
+            'graduation_date' => $request->graduation_date,
+        ]);
+
+        return back()->with('success', 'Education record added.');
+    }
+
+    public function updateEducation(Request $request, Employee $employee, int $index)
+    {
+        $request->validate([
+            'school_name' => ['required', 'string', 'max:255'],
+            'level' => ['nullable', 'string', 'max:100'],
+            'school_address' => ['nullable', 'string', 'max:255'],
+            'degree' => ['nullable', 'string', 'max:255'],
+            'graduation_date' => ['nullable', 'date'],
+        ]);
+
+        $edu = EmployeeEducation::where('employee_basic_info_id', $employee->employee_basic_info_id)
+            ->orderBy((new EmployeeEducation)->getKeyName())
+            ->get()
+            ->get($index);
+
+        abort_if(!$edu, 404, 'Education record not found.');
+
+        $edu->update([
+            'school_name' => $request->school_name,
+            'level' => $request->level,
+            'school_address' => $request->school_address,
+            'degree' => $request->degree,
+            'graduation_date' => $request->graduation_date,
+        ]);
+
+        return back()->with('success', 'Education record updated.');
+    }
+
+    public function destroyEducation(Employee $employee, int $index)
+    {
+        $edu = EmployeeEducation::where('employee_basic_info_id', $employee->employee_basic_info_id)
+            ->orderBy('id')
+            ->get()
+            ->get($index);
+
+        abort_if(!$edu, 404, 'Education record not found.');
+
+        $edu->delete();
+
+        return back()->with('success', 'Education record deleted.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+// Seminars & Trainings
+// ─────────────────────────────────────────────────────────────────────────
+
+    public function storeSeminar(Request $request, Employee $employee)
+    {
+        $request->validate([
+            'seminar_name' => ['required', 'string', 'max:255'],
+            'organizer' => ['nullable', 'string', 'max:255'],
+            'date_attended' => ['nullable', 'date'],
+        ]);
+
+        $employee->seminarsAndTrainings()->create([
+            'seminar_name' => $request->seminar_name,
+            'organizer' => $request->organizer,
+            'date_attended' => $request->date_attended,
+        ]);
+
+        return back()->with('success', 'Seminar added.');
+    }
+
+    public function updateSeminar(Request $request, Employee $employee, $seminar)
+    {
+        $request->validate([
+            'seminar_name' => ['required', 'string', 'max:255'],
+            'organizer' => ['nullable', 'string', 'max:255'],
+            'date_attended' => ['nullable', 'date'],
+        ]);
+
+        $record = $employee->seminarsAndTrainings()->findOrFail($seminar);
+
+        $record->update([
+            'seminar_name' => $request->seminar_name,
+            'organizer' => $request->organizer,
+            'date_attended' => $request->date_attended,
+        ]);
+
+        return back()->with('success', 'Seminar updated.');
+    }
+
+    public function destroySeminar(Employee $employee, $seminar)
+    {
+        $record = $employee->seminarsAndTrainings()->findOrFail($seminar);
+        $record->delete();
+
+        return back()->with('success', 'Seminar deleted.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+// Service Records
+// ─────────────────────────────────────────────────────────────────────────
+
+    public function storeServiceRecord(Request $request, Employee $employee)
+    {
+        $request->validate([
+            'position_name' => ['required', 'string', 'max:255'],
+            'department_name' => ['nullable', 'string', 'max:255'],
+            'year_start' => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
+            'year_end' => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
+        ]);
+
+        $employee->serviceRecords()->create([
+            'position_name' => $request->position_name,
+            'department_name' => $request->department_name,
+            'year_start' => $request->year_start,
+            'year_end' => $request->year_end,
+        ]);
+
+        return back()->with('success', 'Service record added.');
+    }
+
+    public function updateServiceRecord(Request $request, Employee $employee, $record)
+    {
+        $request->validate([
+            'position_name' => ['required', 'string', 'max:255'],
+            'department_name' => ['nullable', 'string', 'max:255'],
+            'year_start' => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
+            'year_end' => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
+        ]);
+
+        $serviceRecord = $employee->serviceRecords()->findOrFail($record);
+
+        $serviceRecord->update([
+            'position_name' => $request->position_name,
+            'department_name' => $request->department_name,
+            'year_start' => $request->year_start,
+            'year_end' => $request->year_end,
+        ]);
+
+        return back()->with('success', 'Service record updated.');
+    }
+
+    public function destroyServiceRecord(Employee $employee, $record)
+    {
+        $serviceRecord = $employee->serviceRecords()->findOrFail($record);
+        $serviceRecord->delete();
+
+        return back()->with('success', 'Service record deleted.');
     }
 }
