@@ -49,6 +49,26 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::post('/{employee}/eligibility', [EmployeeController::class, 'storeEligibility'])->name('eligibility.store');
         Route::put('/{employee}/eligibility/{eligibility}', [EmployeeController::class, 'updateEligibility'])->name('eligibility.update');
         Route::delete('/{employee}/eligibility/{eligibility}', [EmployeeController::class, 'destroyEligibility'])->name('eligibility.destroy');
+        // Family
+        Route::post('/{employee}/family', [EmployeeController::class, 'storeFamily'])->name('family.store');
+        Route::put('/{employee}/family/{index}', [EmployeeController::class, 'updateFamily'])->name('family.update');
+        Route::delete('/{employee}/family/{index}', [EmployeeController::class, 'destroyFamily'])->name('family.destroy');
+
+        // Education
+        Route::post('/{employee}/education', [EmployeeController::class, 'storeEducation'])->name('education.store');
+        Route::put('/{employee}/education/{index}', [EmployeeController::class, 'updateEducation'])->name('education.update');
+        Route::delete('/{employee}/education/{index}', [EmployeeController::class, 'destroyEducation'])->name('education.destroy');
+
+        // Seminars & Trainings
+        Route::post('/{employee}/seminar', [EmployeeController::class, 'storeSeminar'])->name('seminar.store');
+        Route::put('/{employee}/seminar/{seminar}', [EmployeeController::class, 'updateSeminar'])->name('seminar.update');
+        Route::delete('/{employee}/seminar/{seminar}', [EmployeeController::class, 'destroySeminar'])->name('seminar.destroy');
+
+        // Service Records
+        Route::post('/{employee}/service-record', [EmployeeController::class, 'storeServiceRecord'])->name('service-record.store');
+        Route::put('/{employee}/service-record/{record}', [EmployeeController::class, 'updateServiceRecord'])->name('service-record.update');
+        Route::delete('/{employee}/service-record/{record}', [EmployeeController::class, 'destroyServiceRecord'])->name('service-record.destroy');
+
     });
 
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
