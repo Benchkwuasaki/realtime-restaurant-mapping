@@ -3,7 +3,7 @@ import { Building2 } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { getColumns } from "@/components/Organization/Division/components/columns"
-import { DataTable } from "@/components/Organization/Division/components/data-table"
+import { DataTable } from "@/components/shared/data-table/data-table"
 import {
     AlertDialog,
     AlertDialogAction,

@@ -1,11 +1,11 @@
 "use client"
 
 import { type ColumnDef } from "@tanstack/react-table"
+import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { type Division } from "../data/schema"
-import { DataTableColumnHeader } from "./data-table-column-header"
-import { DataTableRowActions } from "./data-table-row-action"
+import { DataTableRowActions } from "@/components/shared/data-table/data-table-row-action"
 
 interface ColumnOptions {
     onEdit: (division: Division) => void

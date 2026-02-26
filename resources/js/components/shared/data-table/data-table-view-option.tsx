@@ -25,7 +25,9 @@ export function DataTableViewOptions<TData>({
       const init: Record<string, boolean> = {}
       table
         .getAllColumns()
-        .filter((col) => typeof col.accessorFn !== "undefined" && col.getCanHide())
+        .filter(
+          (col) => typeof col.accessorFn !== "undefined" && col.getCanHide()
+        )
         .forEach((col) => {
           init[col.id] = col.getIsVisible()
         })
@@ -53,7 +55,7 @@ export function DataTableViewOptions<TData>({
           View
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[150px]">
+      <DropdownMenuContent align="end" className="w-[160px]">
         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
@@ -81,9 +83,11 @@ export function DataTableViewOptions<TData>({
                       : "border-input"
                   )}
                 >
-                  {isVisible && <Check className="size-3 stroke-primary-foreground" />}
+                  {isVisible && (
+                    <Check className="size-3 stroke-primary-foreground" />
+                  )}
                 </div>
-                {column.id}
+                {column.id.replace(/_/g, " ")}
               </DropdownMenuItem>
             )
           })}
