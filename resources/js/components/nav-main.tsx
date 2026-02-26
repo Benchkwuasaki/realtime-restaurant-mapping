@@ -74,7 +74,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
           const defaultOpen = hasActiveChild
 
           return (
-            <Collapsible key={item.title} defaultOpen={defaultOpen}>
+            <Collapsible key={item.title} defaultOpen={defaultOpen} className="group/collapsible">
               <SidebarMenuItem>
                 {hasChildren ? (
                   // Parent with children: whole row toggles the collapsible
@@ -85,7 +85,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     >
                       <item.icon />
                       <span className="flex-1">{item.title}</span>
-                      <ChevronRight className="ml-auto transition-transform data-[state=open]:rotate-90" />
+                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                 ) : item.url ? (

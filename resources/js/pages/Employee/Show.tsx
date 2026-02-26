@@ -1,11 +1,12 @@
 import { useState } from "react"
+import React from "react"
 import { Head, router } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import {
     Pencil, Mail, Phone, Calendar, MapPin, User, Heart, Home,
     Briefcase, Clock, FileText, Landmark, Camera, XCircle,
     Eye, EyeOff, Plus, Trash2, Save, ChevronUp,
-    Pen,
+    Pen, Upload, Download, FolderOpen, ArrowLeftRight,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -30,8 +31,8 @@ import { type BreadcrumbItem } from "@/types"
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Department { department_name: string }
-interface Division { division_name: string }
-interface Unit { unit_name: string }
+interface Division   { division_name: string }
+interface Unit       { unit_name: string }
 interface Position {
     position_name: string
     department?: Department
@@ -39,21 +40,61 @@ interface Position {
     unit?: Unit
 }
 interface Item { item_id: number; position?: Position }
-interface SalaryGradeStep { salary_grade_step_id: number; salary_grade: number; step: number; monthly_salary: number }
-interface Address { id?: number; street_address?: string; city?: string; state?: string; zip_code?: string }
-interface Education { level?: string; school_name: string; degree?: string; graduation_date?: string }
-interface FamilyMember { full_name: string; relationship?: string; contact_number?: string }
-
-interface BasicInfo {
-    first_name: string; last_name: string; middle_name?: string; name_extension?: string
-    full_name: string; birth_date?: string; sex?: boolean; civil_status?: string
-    place_of_birth?: string; personal_email?: string; phone_number?: string
-    addresses?: Address[]; educations?: Education[]; family_info?: FamilyMember[]
+interface SalaryGradeStep {
+    salary_grade_step_id: number
+    salary_grade: number
+    step: number
+    monthly_salary: number
 }
-interface GovernmentAccount { government_account_id: number; account_type: string; account_number: string }
-interface EligibilityInfo { eligibility_information_id: number; eligibility_name: string; year_passed?: string }
-interface Allowance { allowance_type: string; amount: number }
-
+interface Address {
+    id?: number
+    street_address?: string
+    city?: string
+    state?: string
+    zip_code?: string
+}
+interface Education {
+    level?: string
+    school_name: string
+    school_address?: string
+    degree?: string
+    graduation_date?: string
+}
+interface FamilyMember {
+    full_name: string
+    relationship?: string
+    contact_number?: string
+}
+interface BasicInfo {
+    first_name: string
+    last_name: string
+    middle_name?: string
+    name_extension?: string
+    full_name: string
+    birth_date?: string
+    sex?: boolean
+    civil_status?: string
+    place_of_birth?: string
+    personal_email?: string
+    phone_number?: string
+    addresses?: Address[]
+    educations?: Education[]
+    family_info?: FamilyMember[]
+}
+interface GovernmentAccount {
+    government_account_id: number
+    account_type: string
+    account_number: string
+}
+interface EligibilityInfo {
+    eligibility_information_id: number
+    eligibility_name: string
+    year_passed?: string
+}
+interface Allowance {
+    allowance_type: string
+    amount: number
+}
 interface LeaveBalance {
     id: number
     leave_type: string
@@ -71,18 +112,47 @@ interface LeaveAvailment {
     date_filed: string
     status: "Approved" | "Pending" | "Rejected"
 }
-
+interface UploadedFile {
+    id: number
+    file_name: string
+    file_size: number
+    created_at: string
+    file_url: string
+}
+interface SeminarTraining {
+    id: number
+    seminar_name: string
+    organizer?: string
+    date_attended?: string
+}
+interface ServiceRecord {
+    id: number
+    position_name: string
+    department_name?: string
+    year_start?: string
+    year_end?: string
+}
 interface Employee {
-    employee_id: number; work_email: string; employment_classification: string
-    date_applied?: string; date_hired?: string
-    work_schedule_start?: string; work_schedule_end?: string; status: boolean
-    basic_info?: BasicInfo; item?: Item; salary_grade_step?: SalaryGradeStep
-    allowances?: Allowance[]; eligibility_information?: EligibilityInfo[]
+    employee_id: number
+    work_email: string
+    employment_classification: string
+    date_applied?: string
+    date_hired?: string
+    work_schedule_start?: string
+    work_schedule_end?: string
+    status: boolean
+    basic_info?: BasicInfo
+    item?: Item
+    salary_grade_step?: SalaryGradeStep
+    allowances?: Allowance[]
+    eligibility_information?: EligibilityInfo[]
     government_accounts?: GovernmentAccount[]
     leave_balances?: LeaveBalance[]
     leave_availments?: LeaveAvailment[]
+    uploadedFiles?: UploadedFile[]
+    seminarsAndTrainings?: SeminarTraining[]
+    serviceRecords?: ServiceRecord[]
 }
-
 interface Props {
     employee: Employee
     items: Item[]
@@ -124,7 +194,7 @@ function InfoRow({ icon: Icon, label, value, onEdit }: {
                 </p>
             </div>
             {onEdit && (
-                <Button size={"icon-xs"} onClick={onEdit} variant={"ghost"} >
+                <Button size={"icon-xs"} onClick={onEdit} variant={"ghost"}>
                     <Pencil className="w-3 h-3" />
                 </Button>
             )}
@@ -145,7 +215,7 @@ function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatu
                 {isStatus ? (
                     <Switch checked={statusValue} onCheckedChange={onToggleStatus} className="scale-90" />
                 ) : onEdit ? (
-                    <Button size={'icon-xs'} onClick={onEdit} variant={"ghost"} >
+                    <Button size={'icon-xs'} onClick={onEdit} variant={"ghost"}>
                         <Pencil className="w-3 h-3" />
                     </Button>
                 ) : null}
@@ -190,26 +260,26 @@ function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatu
 // ─── Basic Info Edit Dialog ────────────────────────────────────────────────────
 
 function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; open: boolean; onClose: () => void }) {
-    const basic = employee.basic_info
+    const basic        = employee.basic_info
     const firstAddress = (basic?.addresses ?? [])[0]
 
     const [form, setForm] = useState({
-        first_name: basic?.first_name ?? "",
-        last_name: basic?.last_name ?? "",
-        middle_name: basic?.middle_name ?? "",
-        name_extension: basic?.name_extension ?? "",
-        birth_date: toInputDate(basic?.birth_date),
-        sex: basic?.sex !== undefined ? String(Number(basic.sex)) : "",
-        civil_status: basic?.civil_status ?? "",
-        place_of_birth: basic?.place_of_birth ?? "",
-        personal_email: basic?.personal_email ?? "",
-        phone_number: basic?.phone_number ?? "",
-        street_address: firstAddress?.street_address ?? "",
-        city: firstAddress?.city ?? "",
-        state: firstAddress?.state ?? "",
-        zip_code: firstAddress?.zip_code ?? "",
+        first_name:      basic?.first_name      ?? "",
+        last_name:       basic?.last_name        ?? "",
+        middle_name:     basic?.middle_name      ?? "",
+        name_extension:  basic?.name_extension   ?? "",
+        birth_date:      toInputDate(basic?.birth_date),
+        sex:             basic?.sex !== undefined ? String(Number(basic.sex)) : "",
+        civil_status:    basic?.civil_status     ?? "",
+        place_of_birth:  basic?.place_of_birth   ?? "",
+        personal_email:  basic?.personal_email   ?? "",
+        phone_number:    basic?.phone_number      ?? "",
+        street_address:  firstAddress?.street_address ?? "",
+        city:            firstAddress?.city           ?? "",
+        state:           firstAddress?.state          ?? "",
+        zip_code:        firstAddress?.zip_code       ?? "",
     })
-    const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+    const set  = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
     const save = () => router.put(route("employee.update", employee.employee_id), form, { preserveScroll: true, onSuccess: onClose })
 
     return (
@@ -319,12 +389,12 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
     const open = field !== null
 
     const [form, setForm] = useState({
-        item_id: employee.item?.item_id?.toString() ?? "",
-        date_hired: toInputDate(employee.date_hired),
-        date_applied: toInputDate(employee.date_applied),
-        employment_classification: employee.employment_classification ?? "",
-        work_schedule_start: employee.work_schedule_start ?? "",
-        work_schedule_end: employee.work_schedule_end ?? "",
+        item_id:                   employee.item?.item_id?.toString()      ?? "",
+        date_hired:                toInputDate(employee.date_hired),
+        date_applied:              toInputDate(employee.date_applied),
+        employment_classification: employee.employment_classification      ?? "",
+        work_schedule_start:       employee.work_schedule_start            ?? "",
+        work_schedule_end:         employee.work_schedule_end              ?? "",
     })
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
@@ -332,21 +402,21 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 
     const save = () => {
         let data: Record<string, string> = {}
-        if (field === "position") data = { item_id: form.item_id }
-        if (field === "date_hired") data = { date_hired: form.date_hired }
-        if (field === "date_applied") data = { date_applied: form.date_applied }
+        if (field === "position")                  data = { item_id: form.item_id }
+        if (field === "date_hired")                data = { date_hired: form.date_hired }
+        if (field === "date_applied")              data = { date_applied: form.date_applied }
         if (field === "employment_classification") data = { employment_classification: form.employment_classification }
-        if (field === "work_schedule") data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
+        if (field === "work_schedule")             data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
         router.put(route("employee.update", employee.employee_id), data, { preserveScroll: true, onSuccess: onClose })
     }
 
     const titles: Record<NonNullable<EditField>, string> = {
-        position: "Edit Position",
-        date_hired: "Edit Date Hired",
-        unit_division_department: "Unit / Division / Department",
+        position:                  "Edit Position",
+        date_hired:                "Edit Date Hired",
+        unit_division_department:  "Unit / Division / Department",
         employment_classification: "Edit Employment Classification",
-        date_applied: "Edit Date Applied",
-        work_schedule: "Edit Work Schedule",
+        date_applied:              "Edit Date Applied",
+        work_schedule:             "Edit Work Schedule",
     }
 
     return (
@@ -396,14 +466,12 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                             )}
                         </div>
                     )}
-
                     {field === "date_hired" && (
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Hired</Label>
                             <Input type="date" value={form.date_hired} onChange={e => set("date_hired", e.target.value)} autoFocus />
                         </div>
                     )}
-
                     {field === "unit_division_department" && (
                         <div className="space-y-2">
                             <p className="text-sm text-muted-foreground">
@@ -425,7 +493,6 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                             </div>
                         </div>
                     )}
-
                     {field === "employment_classification" && (
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Employment Classification</Label>
@@ -439,14 +506,12 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                             </Select>
                         </div>
                     )}
-
                     {field === "date_applied" && (
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Applied</Label>
                             <Input type="date" value={form.date_applied} onChange={e => set("date_applied", e.target.value)} autoFocus />
                         </div>
                     )}
-
                     {field === "work_schedule" && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -477,21 +542,21 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 // ─── Employment Tab ───────────────────────────────────────────────────────────
 
 function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: Item[] }) {
-    const position = employee.item?.position
+    const position   = employee.item?.position
     const [editField, setEditField] = useState<EditField>(null)
     const toggleStatus = () => router.patch(route("employee.toggleStatus", employee.employee_id), {}, { preserveScroll: true })
 
     return (
         <div className="p-5">
             <div className="grid grid-cols-3 gap-3">
-                <DetailCard title="Position" value={position?.position_name} onEdit={() => setEditField("position")} />
-                <DetailCard title="Date Hired" value={fmt(employee.date_hired)} onEdit={() => setEditField("date_hired")} />
-                <DetailCard title="Status" isStatus statusValue={employee.status} onToggleStatus={toggleStatus} />
-                <DetailCard title="Unit" value={position?.unit?.unit_name} onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Division" value={position?.division?.division_name} onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Department" value={position?.department?.department_name} onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Employment Classification" value={employee.employment_classification} onEdit={() => setEditField("employment_classification")} />
-                <DetailCard title="Date Applied" value={fmt(employee.date_applied)} onEdit={() => setEditField("date_applied")} />
+                <DetailCard title="Position"                value={position?.position_name}                     onEdit={() => setEditField("position")} />
+                <DetailCard title="Date Hired"             value={fmt(employee.date_hired)}                    onEdit={() => setEditField("date_hired")} />
+                <DetailCard title="Status" isStatus        statusValue={employee.status}                       onToggleStatus={toggleStatus} />
+                <DetailCard title="Unit"                   value={position?.unit?.unit_name}                   onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Division"               value={position?.division?.division_name}           onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Department"             value={position?.department?.department_name}       onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Employment Classification" value={employee.employment_classification}       onEdit={() => setEditField("employment_classification")} />
+                <DetailCard title="Date Applied"           value={fmt(employee.date_applied)}                  onEdit={() => setEditField("date_applied")} />
                 <DetailCard
                     title="Work Schedule"
                     value={employee.work_schedule_start && employee.work_schedule_end
@@ -500,12 +565,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                     onEdit={() => setEditField("work_schedule")}
                 />
             </div>
-            <EmploymentEditDialog
-                employee={employee}
-                field={editField}
-                onClose={() => setEditField(null)}
-                items={items}
-            />
+            <EmploymentEditDialog employee={employee} field={editField} onClose={() => setEditField(null)} items={items} />
         </div>
     )
 }
@@ -513,7 +573,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
 // ─── Compensation Tab ─────────────────────────────────────────────────────────
 
 function CompensationTab({ employee }: { employee: Employee }) {
-    const sgs = employee.salary_grade_step
+    const sgs        = employee.salary_grade_step
     const allowances = employee.allowances ?? []
     const [salaryEditOpen, setSalaryEditOpen] = useState(false)
 
@@ -523,7 +583,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
                 <div className="bg-card border border-border rounded-xl overflow-hidden">
                     <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                         <span className="text-sm font-bold text-foreground">Salary Classification</span>
-                        <Button onClick={() => setSalaryEditOpen(true)} variant="ghost" size="icon-xs" >
+                        <Button onClick={() => setSalaryEditOpen(true)} variant="ghost" size="icon-xs">
                             <Pen className="w-3 h-3" />
                         </Button>
                     </div>
@@ -575,7 +635,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
 // ─── Leave Information Tab ────────────────────────────────────────────────────
 
 function LeaveInformationTab({ employee }: { employee: Employee }) {
-    const balances = employee.leave_balances ?? []
+    const balances   = employee.leave_balances   ?? []
     const availments = employee.leave_availments ?? []
 
     const [balanceDialog, setBalanceDialog] = useState<{
@@ -586,15 +646,15 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
     const openBalanceDialog = (b?: LeaveBalance) => setBalanceDialog({
         open: true, id: b?.id,
         leave_type: b?.leave_type ?? "",
-        remaining: b?.remaining?.toString() ?? "",
-        used: b?.used?.toString() ?? "",
+        remaining:  b?.remaining?.toString() ?? "",
+        used:       b?.used?.toString()      ?? "",
     })
 
     const saveBalance = () => {
         const data = {
             leave_type: balanceDialog.leave_type,
-            remaining: parseFloat(balanceDialog.remaining),
-            used: parseFloat(balanceDialog.used),
+            remaining:  parseFloat(balanceDialog.remaining),
+            used:       parseFloat(balanceDialog.used),
         }
         if (balanceDialog.id) {
             router.put(
@@ -652,10 +712,10 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-foreground font-medium text-right">{b.remaining}</span>
                                 <span className="text-sm text-foreground font-medium text-right">{b.used}</span>
                                 <div className="flex items-center justify-end gap-1">
-                                    <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs" >
+                                    <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs">
                                         <Pencil className="w-3.5 h-3.5" />
                                     </Button>
-                                    <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs" >
+                                    <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs">
                                         <Trash2 className="w-3.5 h-3.5" />
                                     </Button>
                                 </div>
@@ -703,10 +763,11 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-muted-foreground">{fmtShort(a.leave_date_start)} — {fmtShort(a.leave_date_end)}</span>
                                 <span className="text-sm text-foreground font-medium">{a.duration} days</span>
                                 <span className="text-sm text-muted-foreground">{fmtShort(a.date_filed)}</span>
-                                <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
-                                    a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
-                                        "bg-destructive/10 text-destructive"
-                                    }`}>● {a.status}</Badge>
+                                <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${
+                                    a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
+                                    a.status === "Pending"  ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
+                                                              "bg-destructive/10 text-destructive"
+                                }`}>● {a.status}</Badge>
                             </div>
                         ))}
                     </div>
@@ -741,7 +802,6 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Balance Confirm */}
             <AlertDialog open={!!deleteBalanceId} onOpenChange={open => !open && setDeleteBalanceId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -760,26 +820,18 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
 
 // ─── Government & Eligibility Tab ─────────────────────────────────────────────
 
-// The 4 standard gov ID types — always shown
 const STANDARD_GOV_ID_TYPES = ["GSIS", "PhilHealth", "Pag-IBIG", "TIN"]
 
 function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
-    const govAccounts = employee.government_accounts ?? []
+    const govAccounts  = employee.government_accounts   ?? []
     const eligibilities = employee.eligibility_information ?? []
 
-    // ── Visibility toggles ────────────────────────────────────────
     const [visibleIds, setVisibleIds] = useState<Record<string, boolean>>({})
     const toggleVisibility = (key: string) => setVisibleIds(prev => ({ ...prev, [key]: !prev[key] }))
 
-    // ── Government ID dialog (edit existing OR add new) ───────────
-    // mode: "standard" = editing a known type, "custom" = adding brand-new type
     const [govDialog, setGovDialog] = useState<{
-        open: boolean
-        mode: "standard" | "custom"
-        type: string       // for standard: the type name; for custom: user-entered
-        id?: number        // present when editing an existing record
-        value: string      // account_number
-        customTypeName: string  // only used in custom mode step 1
+        open: boolean; mode: "standard" | "custom"
+        type: string; id?: number; value: string; customTypeName: string
     }>({ open: false, mode: "standard", type: "", value: "", customTypeName: "" })
 
     const openEditGovDialog = (type: string, existing: GovernmentAccount) =>
@@ -794,14 +846,12 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
         if (!accountType.trim()) return
 
         if (govDialog.id) {
-            // Editing existing
             router.put(
                 route("employee.government-account.update", { employee: employee.employee_id, account: govDialog.id }),
                 { account_number: govDialog.value },
                 { preserveScroll: true, onSuccess: () => setGovDialog(p => ({ ...p, open: false })) }
             )
         } else {
-            // Creating new (standard type with no record yet, or custom type)
             router.post(
                 route("employee.government-account.store", employee.employee_id),
                 { account_type: accountType, account_number: govDialog.value },
@@ -810,21 +860,17 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
         }
     }
 
-    // Build a lookup map: account_type (lowercased) → account record
-    const accountMap = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
-
-    // Collect "extra" accounts — those not in the 4 standard types
-    const standardKeys = STANDARD_GOV_ID_TYPES.map(t => t.toLowerCase())
+    const accountMap    = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
+    const standardKeys  = STANDARD_GOV_ID_TYPES.map(t => t.toLowerCase())
     const extraAccounts = govAccounts.filter(g => !standardKeys.includes(g.account_type.toLowerCase()))
 
-    // ── Eligibility dialog ────────────────────────────────────────
     const [eligDialog, setEligDialog] = useState<{ open: boolean; id?: number; name: string; year: string }>
         ({ open: false, name: "", year: "" })
 
     const openEligDialog = (existing?: EligibilityInfo) =>
         setEligDialog({
             open: true,
-            id: existing?.eligibility_information_id,
+            id:   existing?.eligibility_information_id,
             name: existing?.eligibility_name ?? "",
             year: existing?.year_passed?.slice(0, 10) ?? "",
         })
@@ -833,14 +879,12 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
         if (!eligDialog.name.trim()) return
         const data = { eligibility_name: eligDialog.name, year_passed: eligDialog.year || null }
         if (eligDialog.id) {
-            // UPDATE existing record — id is eligibility_information_id
             router.put(
                 route("employee.eligibility.update", { employee: employee.employee_id, eligibility: eligDialog.id }),
                 data,
                 { preserveScroll: true, onSuccess: () => setEligDialog(p => ({ ...p, open: false })) }
             )
         } else {
-            // CREATE new record
             router.post(
                 route("employee.eligibility.store", employee.employee_id),
                 data,
@@ -851,28 +895,19 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
 
     return (
         <div className="p-5 space-y-5">
-
-            {/* ── Government IDs ───────────────────────────────────── */}
+            {/* Government IDs */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Government ID Numbers</span>
-                    {/* + button to add a custom ID type */}
-                    <button
-                        onClick={openAddCustomDialog}
-                        className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
-                        title="Add government ID"
-                    >
+                    <button onClick={openAddCustomDialog} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                         <Plus className="w-4 h-4" />
                     </button>
                 </div>
-
                 <div className="divide-y divide-border">
-                    {/* Standard 4 rows — always rendered */}
                     {STANDARD_GOV_ID_TYPES.map(type => {
-                        const key = type.toLowerCase()
+                        const key     = type.toLowerCase()
                         const account = accountMap[key]
                         const isVisible = visibleIds[key]
-
                         return (
                             <div key={type} className="flex items-center gap-4 px-5 py-3">
                                 <span className="text-sm text-foreground w-28 shrink-0 font-medium">{type}</span>
@@ -882,34 +917,18 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                         : <span className="italic text-muted-foreground/40 font-sans tracking-normal text-xs">Not provided</span>
                                     }
                                 </span>
-                                {/* Actions — always visible (no hover gate) */}
                                 <div className="flex items-center gap-1">
                                     {account ? (
                                         <>
-                                            <button
-                                                onClick={() => toggleVisibility(key)}
-                                                className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
-                                                title={isVisible ? "Hide" : "Show"}
-                                            >
+                                            <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                                                 {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                             </button>
-                                            <Button
-                                                onClick={() => openEditGovDialog(type, account)}
-                                                variant={"ghost"}
-                                                size={"icon-xs"}
-                                                title="Edit"
-                                            >
+                                            <Button onClick={() => openEditGovDialog(type, account)} variant={"ghost"} size={"icon-xs"}>
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </Button>
                                         </>
                                     ) : (
-                                        /* No record yet — show a small + to add this specific standard type */
-                                        <Button
-                                            onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })}
-                                            variant={"ghost"}
-                                            size={"icon-xs"}
-                                            title={`Add ${type}`}
-                                        >
+                                        <Button onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })} variant={"ghost"} size={"icon-xs"}>
                                             <Plus className="w-3.5 h-3.5" />
                                         </Button>
                                     )}
@@ -917,12 +936,9 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                             </div>
                         )
                     })}
-
-                    {/* Extra (custom) rows */}
                     {extraAccounts.map(account => {
-                        const key = account.account_type.toLowerCase()
+                        const key     = account.account_type.toLowerCase()
                         const isVisible = visibleIds[key]
-
                         return (
                             <div key={account.government_account_id} className="flex items-center gap-4 px-5 py-3">
                                 <span className="text-sm text-foreground w-28 shrink-0 font-medium">{account.account_type}</span>
@@ -930,19 +946,10 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                     {isVisible ? account.account_number : "•".repeat(10)}
                                 </span>
                                 <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => toggleVisibility(key)}
-                                        className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
-                                        title={isVisible ? "Hide" : "Show"}
-                                    >
+                                    <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                     </button>
-                                    <Button
-                                        onClick={() => openEditGovDialog(account.account_type, account)}
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        title="Edit"
-                                    >
+                                    <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs">
                                         <Pencil className="w-3.5 h-3.5" />
                                     </Button>
                                 </div>
@@ -952,14 +959,11 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 </div>
             </div>
 
-            {/* ── Eligibility ──────────────────────────────────────── */}
+            {/* Eligibility */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Eligibility and Credentials</span>
-                    <button
-                        onClick={() => openEligDialog()}
-                        className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
-                    >
+                    <button onClick={() => openEligDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                         <Plus className="w-4 h-4" />
                     </button>
                 </div>
@@ -975,19 +979,9 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         {eligibilities.map(e => (
                             <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3">
                                 <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
-                                <span className="text-sm text-muted-foreground w-36 text-right shrink-0">
-                                    {e.year_passed ? fmt(e.year_passed) : "—"}
-                                </span>
-                                <Badge className="text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5 shrink-0">
-                                    ✓ Active
-                                </Badge>
-                                {/* Edit only — no delete */}
-                                <Button
-                                    onClick={() => openEligDialog(e)}
-                                    title="Edit"
-                                    variant={"ghost"}
-                                    size={"icon-xs"}
-                                >
+                                <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
+                                <Badge className="text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5 shrink-0">✓ Active</Badge>
+                                <Button onClick={() => openEligDialog(e)} variant={"ghost"} size={"icon-xs"}>
                                     <Pencil className="w-3.5 h-3.5" />
                                 </Button>
                             </div>
@@ -996,7 +990,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* ── Government ID Dialog ─────────────────────────────── */}
+            {/* Government ID Dialog */}
             <Dialog open={govDialog.open} onOpenChange={open => setGovDialog(p => ({ ...p, open }))}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -1010,24 +1004,14 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         </DialogTitle>
                     </DialogHeader>
                     <div className="py-2 space-y-3">
-                        {/* Only show the "ID name" field when adding a custom type */}
                         {govDialog.mode === "custom" && !govDialog.id && (
                             <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">
-                                    ID Type / Name
-                                </Label>
-                                <Input
-                                    value={govDialog.customTypeName}
-                                    onChange={e => setGovDialog(p => ({ ...p, customTypeName: e.target.value }))}
-                                    placeholder="e.g. Postal ID, Voter's ID…"
-                                    autoFocus
-                                />
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">ID Type / Name</Label>
+                                <Input value={govDialog.customTypeName} onChange={e => setGovDialog(p => ({ ...p, customTypeName: e.target.value }))} placeholder="e.g. Postal ID, Voter's ID…" autoFocus />
                             </div>
                         )}
                         <div>
-                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">
-                                Account / ID Number
-                            </Label>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Account / ID Number</Label>
                             <Input
                                 value={govDialog.value}
                                 onChange={e => setGovDialog(p => ({ ...p, value: e.target.value }))}
@@ -1040,42 +1024,25 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setGovDialog(p => ({ ...p, open: false }))}>Cancel</Button>
-                        <Button
-                            onClick={saveGovAccount}
-                            disabled={
-                                !govDialog.value.trim() ||
-                                (govDialog.mode === "custom" && !govDialog.id && !govDialog.customTypeName.trim())
-                            }
-                        >
+                        <Button onClick={saveGovAccount} disabled={!govDialog.value.trim() || (govDialog.mode === "custom" && !govDialog.id && !govDialog.customTypeName.trim())}>
                             <Save className="w-3.5 h-3.5 mr-1.5" />Save
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* ── Eligibility Dialog ───────────────────────────────── */}
+            {/* Eligibility Dialog */}
             <Dialog open={eligDialog.open} onOpenChange={open => setEligDialog(p => ({ ...p, open }))}>
                 <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>{eligDialog.id ? "Edit" : "Add"} Eligibility</DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>{eligDialog.id ? "Edit" : "Add"} Eligibility</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Eligibility Name</Label>
-                            <Input
-                                value={eligDialog.name}
-                                onChange={e => setEligDialog(p => ({ ...p, name: e.target.value }))}
-                                placeholder="e.g. Career Service Professional"
-                                autoFocus
-                            />
+                            <Input value={eligDialog.name} onChange={e => setEligDialog(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Career Service Professional" autoFocus />
                         </div>
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Passed</Label>
-                            <Input
-                                type="date"
-                                value={eligDialog.year}
-                                onChange={e => setEligDialog(p => ({ ...p, year: e.target.value }))}
-                            />
+                            <Input type="date" value={eligDialog.year} onChange={e => setEligDialog(p => ({ ...p, year: e.target.value }))} />
                         </div>
                     </div>
                     <DialogFooter>
@@ -1090,13 +1057,488 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
     )
 }
 
+// ─── Background Information Tab ───────────────────────────────────────────────
+
+function BackgroundInformationTab({ employee }: { employee: Employee }) {
+    const basic        = employee.basic_info
+    const familyMembers = basic?.family_info  ?? []
+    const educations   = basic?.educations    ?? []
+    const seminars     = employee.seminarsAndTrainings ?? []
+    const serviceRecs  = employee.serviceRecords       ?? []
+
+    // ── Family ────────────────────────────────────────────────────
+    const [familyDialog, setFamilyDialog] = useState<{
+        open: boolean; index?: number
+        full_name: string; relationship: string; contact_number: string
+    }>({ open: false, full_name: "", relationship: "", contact_number: "" })
+    const [deleteFamilyIndex, setDeleteFamilyIndex] = useState<number | null>(null)
+
+    const openFamilyDialog = (member?: FamilyMember, index?: number) =>
+        setFamilyDialog({ open: true, index, full_name: member?.full_name ?? "", relationship: member?.relationship ?? "", contact_number: member?.contact_number ?? "" })
+
+    const saveFamilyMember = () => {
+        const data = { full_name: familyDialog.full_name, relationship: familyDialog.relationship, contact_number: familyDialog.contact_number }
+        if (familyDialog.index !== undefined) {
+            router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, { preserveScroll: true, onSuccess: () => setFamilyDialog(p => ({ ...p, open: false })) })
+        } else {
+            router.post(route("employee.family.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setFamilyDialog(p => ({ ...p, open: false })) })
+        }
+    }
+
+    const confirmDeleteFamily = () => {
+        if (deleteFamilyIndex === null) return
+        router.delete(route("employee.family.destroy", { employee: employee.employee_id, index: deleteFamilyIndex }), { preserveScroll: true, onSuccess: () => setDeleteFamilyIndex(null) })
+    }
+
+    // ── Education ──────────────────────────────────────────────────
+    const [educDialog, setEducDialog] = useState<{
+        open: boolean; index?: number
+        level: string; school_name: string; school_address: string; degree: string; graduation_date: string
+    }>({ open: false, level: "", school_name: "", school_address: "", degree: "", graduation_date: "" })
+    const [deleteEducIndex, setDeleteEducIndex] = useState<number | null>(null)
+
+    const openEducDialog = (edu?: Education, index?: number) =>
+        setEducDialog({ open: true, index, level: edu?.level ?? "", school_name: edu?.school_name ?? "", school_address: edu?.school_address ?? "", degree: edu?.degree ?? "", graduation_date: toInputDate(edu?.graduation_date) })
+
+    const saveEducation = () => {
+        const data = { level: educDialog.level, school_name: educDialog.school_name, school_address: educDialog.school_address, degree: educDialog.degree, graduation_date: educDialog.graduation_date || null }
+        if (educDialog.index !== undefined) {
+            router.put(route("employee.education.update", { employee: employee.employee_id, index: educDialog.index }), data, { preserveScroll: true, onSuccess: () => setEducDialog(p => ({ ...p, open: false })) })
+        } else {
+            router.post(route("employee.education.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setEducDialog(p => ({ ...p, open: false })) })
+        }
+    }
+
+    const confirmDeleteEduc = () => {
+        if (deleteEducIndex === null) return
+        router.delete(route("employee.education.destroy", { employee: employee.employee_id, index: deleteEducIndex }), { preserveScroll: true, onSuccess: () => setDeleteEducIndex(null) })
+    }
+
+    const educByLevel = educations.reduce<Record<string, Education[]>>((acc, edu) => {
+        const key = edu.level ?? "Other"
+        if (!acc[key]) acc[key] = []
+        acc[key].push(edu)
+        return acc
+    }, {})
+
+    // ── Seminars ───────────────────────────────────────────────────
+    const [seminarDialog, setSeminarDialog] = useState<{
+        open: boolean; id?: number; seminar_name: string; organizer: string; date_attended: string
+    }>({ open: false, seminar_name: "", organizer: "", date_attended: "" })
+    const [deleteSeminarId, setDeleteSeminarId] = useState<number | null>(null)
+
+    const openSeminarDialog = (s?: SeminarTraining) =>
+        setSeminarDialog({ open: true, id: s?.id, seminar_name: s?.seminar_name ?? "", organizer: s?.organizer ?? "", date_attended: toInputDate(s?.date_attended) })
+
+    const saveSeminar = () => {
+        const data = { seminar_name: seminarDialog.seminar_name, organizer: seminarDialog.organizer, date_attended: seminarDialog.date_attended || null }
+        if (seminarDialog.id) {
+            router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, { preserveScroll: true, onSuccess: () => setSeminarDialog(p => ({ ...p, open: false })) })
+        } else {
+            router.post(route("employee.seminar.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setSeminarDialog(p => ({ ...p, open: false })) })
+        }
+    }
+
+    const confirmDeleteSeminar = () => {
+        if (!deleteSeminarId) return
+        router.delete(route("employee.seminar.destroy", { employee: employee.employee_id, seminar: deleteSeminarId }), { preserveScroll: true, onSuccess: () => setDeleteSeminarId(null) })
+    }
+
+    // ── Service Records ────────────────────────────────────────────
+    const [serviceDialog, setServiceDialog] = useState<{
+        open: boolean; id?: number; position_name: string; department_name: string; year_start: string; year_end: string
+    }>({ open: false, position_name: "", department_name: "", year_start: "", year_end: "" })
+    const [deleteServiceId, setDeleteServiceId] = useState<number | null>(null)
+
+    const openServiceDialog = (s?: ServiceRecord) =>
+        setServiceDialog({ open: true, id: s?.id, position_name: s?.position_name ?? "", department_name: s?.department_name ?? "", year_start: s?.year_start ?? "", year_end: s?.year_end ?? "" })
+
+    const saveServiceRecord = () => {
+        const data = { position_name: serviceDialog.position_name, department_name: serviceDialog.department_name, year_start: serviceDialog.year_start, year_end: serviceDialog.year_end }
+        if (serviceDialog.id) {
+            router.put(route("employee.service-record.update", { employee: employee.employee_id, record: serviceDialog.id }), data, { preserveScroll: true, onSuccess: () => setServiceDialog(p => ({ ...p, open: false })) })
+        } else {
+            router.post(route("employee.service-record.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setServiceDialog(p => ({ ...p, open: false })) })
+        }
+    }
+
+    const confirmDeleteService = () => {
+        if (!deleteServiceId) return
+        router.delete(route("employee.service-record.destroy", { employee: employee.employee_id, record: deleteServiceId }), { preserveScroll: true, onSuccess: () => setDeleteServiceId(null) })
+    }
+
+    return (
+        <div className="p-5 space-y-5">
+
+            {/* ── Family Information ───────────────────────────────── */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Family Information</span>
+                    <button onClick={() => openFamilyDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                        <Plus className="w-4 h-4" />
+                    </button>
+                </div>
+                {familyMembers.length === 0 ? (
+                    <div className="px-5 py-8 text-center">
+                        <p className="text-sm text-muted-foreground italic mb-3">No family information on file.</p>
+                        <Button variant="outline" size="sm" onClick={() => openFamilyDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Family Member</Button>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {familyMembers.map((member, i) => (
+                            <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                <Checkbox className="w-4 h-4" />
+                                <span className="text-sm text-foreground font-medium">{member.full_name}</span>
+                                <span className="text-sm text-muted-foreground">{member.relationship ?? "—"}</span>
+                                <span className="text-sm text-muted-foreground">{member.contact_number ?? "—"}</span>
+                                <div className="flex items-center justify-end gap-1">
+                                    <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ── Educational Background ───────────────────────────── */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Educational Background</span>
+                    <button onClick={() => openEducDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                        <Plus className="w-4 h-4" />
+                    </button>
+                </div>
+                {educations.length === 0 ? (
+                    <div className="px-5 py-8 text-center">
+                        <p className="text-sm text-muted-foreground italic mb-3">No educational records on file.</p>
+                        <Button variant="outline" size="sm" onClick={() => openEducDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Education</Button>
+                    </div>
+                ) : (
+                    Object.entries(educByLevel).map(([level, edus]) => (
+                        <div key={level}>
+                            <div className="px-5 py-2 bg-muted/30 border-y border-border">
+                                <span className="text-xs font-semibold text-muted-foreground">{level}</span>
+                            </div>
+                            <div className="divide-y divide-border">
+                                {edus.map((edu, i) => {
+                                    const globalIndex = educations.indexOf(edu)
+                                    return (
+                                        <div key={i} className="grid grid-cols-[auto_1fr_1fr_80px_100px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                            <Checkbox className="w-4 h-4" />
+                                            <span className="text-sm text-foreground font-medium">{edu.school_name}</span>
+                                            <span className="text-sm text-muted-foreground">{edu.school_address ?? "—"}</span>
+                                            <span className="text-sm text-muted-foreground">{edu.degree ?? "—"}</span>
+                                            <span className="text-sm text-muted-foreground text-right">{edu.graduation_date ? new Date(edu.graduation_date).getFullYear() : "—"}</span>
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                                <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteEducIndex(globalIndex)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* ── Seminars and Trainings ───────────────────────────── */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Seminars and Trainings</span>
+                    <button onClick={() => openSeminarDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                        <Plus className="w-4 h-4" />
+                    </button>
+                </div>
+                {seminars.length === 0 ? (
+                    <div className="px-5 py-8 text-center">
+                        <p className="text-sm text-muted-foreground italic mb-3">No seminars or trainings on file.</p>
+                        <Button variant="outline" size="sm" onClick={() => openSeminarDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Seminar</Button>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {seminars.map(s => (
+                            <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                <Checkbox className="w-4 h-4" />
+                                <span className="text-sm text-foreground font-medium">{s.seminar_name}</span>
+                                <span className="text-sm text-muted-foreground">{s.organizer ?? "—"}</span>
+                                <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
+                                <div className="flex items-center justify-end gap-1">
+                                    <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ── Service Records ──────────────────────────────────── */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Service Records</span>
+                    <button onClick={() => openServiceDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                        <Plus className="w-4 h-4" />
+                    </button>
+                </div>
+                {serviceRecs.length === 0 ? (
+                    <div className="px-5 py-8 text-center">
+                        <p className="text-sm text-muted-foreground italic mb-3">No service records on file.</p>
+                        <Button variant="outline" size="sm" onClick={() => openServiceDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Service Record</Button>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {serviceRecs.map(s => (
+                            <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                <Checkbox className="w-4 h-4" />
+                                <span className="text-sm text-foreground font-medium">{s.position_name}</span>
+                                <span className="text-sm text-muted-foreground">{s.department_name ?? "—"}</span>
+                                <span className="text-sm text-muted-foreground text-right">{s.year_start && s.year_end ? `${s.year_start}–${s.year_end}` : s.year_start ?? "—"}</span>
+                                <div className="flex items-center justify-end gap-1">
+                                    <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ══ DIALOGS ══════════════════════════════════════════ */}
+
+            {/* Family Dialog */}
+            <Dialog open={familyDialog.open} onOpenChange={o => setFamilyDialog(p => ({ ...p, open: o }))}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader><DialogTitle>{familyDialog.index !== undefined ? "Edit" : "Add"} Family Member</DialogTitle></DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Full Name *</Label>
+                            <Input value={familyDialog.full_name} onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))} autoFocus /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Relationship</Label>
+                            <Select value={familyDialog.relationship} onValueChange={v => setFamilyDialog(p => ({ ...p, relationship: v }))}>
+                                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                                <SelectContent>
+                                    {["Spouse", "Child", "Parent", "Sibling", "Guardian", "Other"].map(r => (
+                                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Contact Number</Label>
+                            <Input value={familyDialog.contact_number} onChange={e => setFamilyDialog(p => ({ ...p, contact_number: e.target.value }))} /></div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setFamilyDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveFamilyMember} disabled={!familyDialog.full_name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Education Dialog */}
+            <Dialog open={educDialog.open} onOpenChange={o => setEducDialog(p => ({ ...p, open: o }))}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader><DialogTitle>{educDialog.index !== undefined ? "Edit" : "Add"} Education</DialogTitle></DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Education Level</Label>
+                            <Select value={educDialog.level} onValueChange={v => setEducDialog(p => ({ ...p, level: v }))}>
+                                <SelectTrigger><SelectValue placeholder="Select level…" /></SelectTrigger>
+                                <SelectContent>
+                                    {["Elementary Education", "Secondary Education", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Other"].map(l => (
+                                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Name *</Label>
+                            <Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label>
+                            <Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} /></div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label>
+                                <Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Graduation Date</Label>
+                                <Input type="date" value={educDialog.graduation_date} onChange={e => setEducDialog(p => ({ ...p, graduation_date: e.target.value }))} /></div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEducDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveEducation} disabled={!educDialog.school_name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Seminar Dialog */}
+            <Dialog open={seminarDialog.open} onOpenChange={o => setSeminarDialog(p => ({ ...p, open: o }))}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label>
+                            <Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label>
+                            <Input value={seminarDialog.organizer} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label>
+                            <Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSeminarDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveSeminar} disabled={!seminarDialog.seminar_name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Service Record Dialog */}
+            <Dialog open={serviceDialog.open} onOpenChange={o => setServiceDialog(p => ({ ...p, open: o }))}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader><DialogTitle>{serviceDialog.id ? "Edit" : "Add"} Service Record</DialogTitle></DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position Name *</Label>
+                            <Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Department</Label>
+                            <Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} /></div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Start</Label>
+                                <Input type="number" min="1900" max="2100" placeholder="e.g. 2020" value={serviceDialog.year_start} onChange={e => setServiceDialog(p => ({ ...p, year_start: e.target.value }))} /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year End</Label>
+                                <Input type="number" min="1900" max="2100" placeholder="e.g. 2026" value={serviceDialog.year_end} onChange={e => setServiceDialog(p => ({ ...p, year_end: e.target.value }))} /></div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setServiceDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveServiceRecord} disabled={!serviceDialog.position_name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirms */}
+            {[
+                { open: deleteFamilyIndex !== null, onClose: () => setDeleteFamilyIndex(null), onConfirm: confirmDeleteFamily,  label: "family member"   },
+                { open: deleteEducIndex   !== null, onClose: () => setDeleteEducIndex(null),   onConfirm: confirmDeleteEduc,    label: "education record" },
+                { open: !!deleteSeminarId,           onClose: () => setDeleteSeminarId(null),  onConfirm: confirmDeleteSeminar, label: "seminar"          },
+                { open: !!deleteServiceId,           onClose: () => setDeleteServiceId(null),  onConfirm: confirmDeleteService, label: "service record"   },
+            ].map(({ open, onClose, onConfirm, label }) => (
+                <AlertDialog key={label} open={open} onOpenChange={o => !o && onClose()}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete {label}?</AlertDialogTitle>
+                            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={onConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            ))}
+        </div>
+    )
+}
+
+// ─── Documents Tab ────────────────────────────────────────────────────────────
+
+function DocumentsTab({ employee }: { employee: Employee }) {
+    const uploadedFiles = employee.uploadedFiles ?? []
+    const fileInputRef  = React.useRef<HTMLInputElement>(null)
+    const [deleteFileId, setDeleteFileId] = useState<number | null>(null)
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        const formData = new FormData()
+        formData.append("file", file)
+        router.post(route("employee.file.store", employee.employee_id), formData, { preserveScroll: true })
+        e.target.value = ""
+    }
+
+    const confirmDeleteFile = () => {
+        if (!deleteFileId) return
+        router.delete(
+            route("employee.file.destroy", { employee: employee.employee_id, file: deleteFileId }),
+            { preserveScroll: true, onSuccess: () => setDeleteFileId(null) }
+        )
+    }
+
+    const formatBytes = (bytes: number) => {
+        if (bytes < 1024)           return bytes + " B"
+        if (bytes < 1024 * 1024)    return (bytes / 1024).toFixed(1) + " KB"
+        return (bytes / (1024 * 1024)).toFixed(1) + " MB"
+    }
+
+    return (
+        <div className="p-5">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Uploaded Files</span>
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                        title="Upload file"
+                    >
+                        <Upload className="w-4 h-4" />
+                    </button>
+                    <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+                </div>
+
+                {uploadedFiles.length === 0 ? (
+                    <div className="px-5 py-12 text-center">
+                        <FolderOpen className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
+                        <p className="text-sm text-muted-foreground italic mb-3">No files uploaded yet.</p>
+                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5">
+                            <Upload className="w-3.5 h-3.5" /> Upload File
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {uploadedFiles.map(file => (
+                            <div key={file.id} className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                <Checkbox className="w-4 h-4" />
+                                <span className="text-sm text-foreground truncate">{file.file_name}</span>
+                                <span className="text-sm text-muted-foreground text-right">{formatBytes(file.file_size)}</span>
+                                <span className="text-sm text-muted-foreground text-right">{fmtShort(file.created_at)}</span>
+                                <div className="flex items-center justify-end gap-1">
+                                    <a href={file.file_url} download>
+                                        <Button variant="ghost" size="icon-xs" title="Download">
+                                            <Download className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </a>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-xs"
+                                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => setDeleteFileId(file.id)}
+                                        title="Delete"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <AlertDialog open={!!deleteFileId} onOpenChange={o => !o && setDeleteFileId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete File?</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently delete the file. This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteFile} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
+    )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ShowEmployee({ employee, items }: Props) {
-    const basic = employee.basic_info
-    const position = employee.item?.position
+    const basic        = employee.basic_info
+    const position     = employee.item?.position
     const firstAddress = (basic?.addresses ?? [])[0]
-    const addressStr = firstAddress
+    const addressStr   = firstAddress
         ? [firstAddress.street_address, firstAddress.city, firstAddress.state].filter(Boolean).join(", ")
         : undefined
 
@@ -1108,11 +1550,13 @@ export default function ShowEmployee({ employee, items }: Props) {
     ]
 
     const tabs = [
-        { value: "employment", label: "Employment Details", icon: Briefcase },
-        { value: "compensation", label: "Compensation", icon: FileText },
-        { value: "leave", label: "Leave Information", icon: Calendar },
-        { value: "time", label: "Time Records", icon: Clock },
-        { value: "government", label: "Government & Eligibility", icon: Landmark },
+        { value: "employment",  label: "Employment Details",        icon: Briefcase      },
+        { value: "compensation",label: "Compensation",              icon: FileText       },
+        { value: "leave",       label: "Leave Information",         icon: Calendar       },
+        { value: "time",        label: "Time Records",              icon: Clock          },
+        { value: "government",  label: "Government Eligibility",    icon: Landmark       },
+        { value: "background",  label: "Background Information",    icon: User           },
+        { value: "documents",   label: "Documents",                 icon: FolderOpen     },
     ]
 
     return (
@@ -1124,7 +1568,7 @@ export default function ShowEmployee({ employee, items }: Props) {
                 <div className="w-72 shrink-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
                     <div className="relative flex flex-col items-center pt-8 pb-5 px-5 bg-gradient-to-b from-accent/30 to-card border-b border-border">
                         <div className="absolute top-3 right-3">
-                            <Button size={"icon-xs"} onClick={() => setBasicEditOpen(true)} variant={"ghost"} >
+                            <Button size={"icon-xs"} onClick={() => setBasicEditOpen(true)} variant={"ghost"}>
                                 <Pencil className="w-3.5 h-3.5" />
                             </Button>
                         </div>
@@ -1151,13 +1595,13 @@ export default function ShowEmployee({ employee, items }: Props) {
 
                     <div className="flex-1 px-4 py-3 overflow-y-auto">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Basic Information</p>
-                        <InfoRow icon={Mail} label="Email" value={basic?.personal_email} onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Home} label="Address" value={addressStr} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Mail}     label="Email"          value={basic?.personal_email}                                           onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Phone}    label="Contact Number" value={basic?.phone_number}                                             onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Calendar} label="Date of Birth"  value={fmt(basic?.birth_date)}                                         onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={MapPin}   label="Place of Birth" value={basic?.place_of_birth}                                          onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={User}     label="Sex"            value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Heart}    label="Civil Status"   value={cap(basic?.civil_status)}                                       onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Home}     label="Address"        value={addressStr}                                                     onEdit={() => setBasicEditOpen(true)} />
                     </div>
 
                     <div className="px-4 pb-4 pt-2 border-t border-border">
@@ -1169,8 +1613,8 @@ export default function ShowEmployee({ employee, items }: Props) {
                 {/* ── Right Panel ── */}
                 <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col min-w-0">
                     <Tabs defaultValue="employment" className="flex flex-col flex-1">
-                        <div className="border-b border-border px-4 pt-1 shrink-0">
-                            <TabsList className="h-auto bg-transparent gap-0 p-0 flex-wrap">
+                        <div className="border-b border-border px-4 pt-1 shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+                            <TabsList className="h-auto bg-transparent gap-0 p-0 flex flex-nowrap w-max min-w-full">
                                 {tabs.map(({ value, label, icon: Icon }) => (
                                     <TabsTrigger
                                         key={value}
@@ -1182,16 +1626,19 @@ export default function ShowEmployee({ employee, items }: Props) {
                                 ))}
                             </TabsList>
                         </div>
-                        <TabsContent value="employment" className="flex-1 mt-0 overflow-y-auto"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
+
+                        <TabsContent value="employment"  className="flex-1 mt-0 overflow-y-auto"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
                         <TabsContent value="compensation" className="flex-1 mt-0 overflow-y-auto"><CompensationTab employee={employee} /></TabsContent>
-                        <TabsContent value="leave" className="flex-1 mt-0 overflow-y-auto"><LeaveInformationTab employee={employee} /></TabsContent>
-                        <TabsContent value="time" className="flex-1 mt-0 overflow-y-auto">
+                        <TabsContent value="leave"       className="flex-1 mt-0 overflow-y-auto"><LeaveInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="time"        className="flex-1 mt-0 overflow-y-auto">
                             <div className="flex flex-col items-center justify-center h-64 gap-3">
                                 <Clock className="w-10 h-10 text-muted-foreground/30" />
                                 <p className="text-sm italic text-muted-foreground">Time records coming soon.</p>
                             </div>
                         </TabsContent>
-                        <TabsContent value="government" className="flex-1 mt-0 overflow-y-auto"><GovernmentEligibilityTab employee={employee} /></TabsContent>
+                        <TabsContent value="government"  className="flex-1 mt-0 overflow-y-auto"><GovernmentEligibilityTab employee={employee} /></TabsContent>
+                        <TabsContent value="background"  className="flex-1 mt-0 overflow-y-auto"><BackgroundInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="documents"   className="flex-1 mt-0 overflow-y-auto"><DocumentsTab employee={employee} /></TabsContent>
                     </Tabs>
                 </div>
             </div>
