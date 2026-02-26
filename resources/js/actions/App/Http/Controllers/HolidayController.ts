@@ -1,5 +1,4 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\HolidayController::index
  * @see app/Http/Controllers/HolidayController.php:13
@@ -616,9 +615,6 @@ destroy.delete = (args: { holiday: number | { holiday_id: number } } | [holiday:
         })
     
     destroy.form = destroyForm
-const HolidayController = { index, create, store, show, edit, update, destroy }
-
-export default HolidayController    destroy.form = destroyForm
 const HolidayController = { index, create, store, show, edit, update, destroy }
 
 export default HolidayController

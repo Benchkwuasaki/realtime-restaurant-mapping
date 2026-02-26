@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\PositionController;
 use PhpParser\Node\Scalar\MagicConst\Dir;
 
 Route::get('/', function () {
@@ -72,6 +73,15 @@ Route::prefix('organization/divisions')->name('division.')->group(function () {
     Route::put('/{division}', [DivisionController::class, 'update'])->name('update');
     Route::delete('/bulk-destroy', [DivisionController::class, 'bulkDestroy'])->name('bulk-destroy');
     Route::delete('/{division}', [DivisionController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('organization/positions')->name('position.')->group(function () {
+    Route::get('/', [PositionController::class, 'index'])->name('index');
+    Route::get('/{position}', [PositionController::class, 'show'])->name('show');
+    Route::post('/', [PositionController::class, 'store'])->name('store');
+    Route::put('/{position}', [PositionController::class, 'update'])->name('update');
+    Route::delete('/bulk-destroy', [PositionController::class, 'bulkDestroy'])->name('bulk-destroy');
+    Route::delete('/{position}', [PositionController::class, 'destroy'])->name('destroy');
 });
 
 Route::resource('holiday', HolidayController::class)->parameters([
