@@ -27,40 +27,38 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { type Division, type Unit } from "../data/schema"
+import { type Department, type Division } from "../data/schema"
 import { DataTablePagination } from "./data-table-pagination"
 import { DataTableToolbar } from "./data-table-toolbar"
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
-    divisions: Division[]
-    onCreateUnit: () => void
+    departments: Department[]
+    onCreateDivision: () => void
 }
 
 export function DataTable<TData, TValue>({
     columns,
     data,
-    divisions,
-    onCreateUnit,
+    departments,
+    onCreateDivision,
 }: DataTableProps<TData, TValue>) {
     const [rowSelection, setRowSelection]         = React.useState<RowSelectionState>({})
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [columnFilters, setColumnFilters]       = React.useState<ColumnFiltersState>([])
     const [sorting, setSorting]                   = React.useState<SortingState>([
-        { id: "unit_name", desc: false },
+        { id: "division_name", desc: false },
     ])
     const [pagination, setPagination]             = React.useState<PaginationState>({
         pageIndex: 0,
         pageSize: 25,
     })
 
-    
     const table = useReactTable({
         data,
         columns,
-        getRowId: (row) => String((row as Unit).unit_id),
-        columnResizeMode: "onChange",
+        getRowId: (row) => String((row as Division).division_id),
         state: {
             sorting,
             columnVisibility,
@@ -87,20 +85,16 @@ export function DataTable<TData, TValue>({
             <DataTableToolbar
                 table={table}
                 rowSelection={rowSelection}
-                divisions={divisions}
-                onCreateUnit={onCreateUnit}
+                departments={departments}
+                onCreateDivision={onCreateDivision}
             />
             <div className="overflow-x-auto rounded-md border border-gray-200">
-                <Table style={{ tableLayout: "fixed", width: "100%" }}>
+                <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
-                                    <TableHead
-                                        key={header.id}
-                                        colSpan={header.colSpan}
-                                        style={{ width: header.getSize() }}
-                                    >
+                                    <TableHead key={header.id} colSpan={header.colSpan}>
                                         {header.isPlaceholder
                                             ? null
                                             : flexRender(header.column.columnDef.header, header.getContext())}
@@ -116,13 +110,10 @@ export function DataTable<TData, TValue>({
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
                                     className="cursor-pointer"
-                                    onClick={() => router.get(route("unit.show", row.id))}
+                                    onClick={() => router.get(route("division.show", row.id))}
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell
-                                            key={cell.id}
-                                            style={{ width: cell.column.getSize() }}
-                                        >
+                                        <TableCell key={cell.id}>
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </TableCell>
                                     ))}
@@ -131,7 +122,7 @@ export function DataTable<TData, TValue>({
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    No units found.
+                                    No divisions found.
                                 </TableCell>
                             </TableRow>
                         )}

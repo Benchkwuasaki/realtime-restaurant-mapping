@@ -27,47 +27,43 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { type Division, type Unit } from "../data/schema"
+import { type Department, type Division, type Position, type Unit } from "../data/schema"
 import { DataTablePagination } from "./data-table-pagination"
 import { DataTableToolbar } from "./data-table-toolbar"
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
+    departments: Department[]
     divisions: Division[]
-    onCreateUnit: () => void
+    units: Unit[]
+    onCreatePosition: () => void
 }
 
 export function DataTable<TData, TValue>({
     columns,
     data,
+    departments,
     divisions,
-    onCreateUnit,
+    units,
+    onCreatePosition,
 }: DataTableProps<TData, TValue>) {
     const [rowSelection, setRowSelection]         = React.useState<RowSelectionState>({})
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [columnFilters, setColumnFilters]       = React.useState<ColumnFiltersState>([])
     const [sorting, setSorting]                   = React.useState<SortingState>([
-        { id: "unit_name", desc: false },
+        { id: "position_name", desc: false },
     ])
     const [pagination, setPagination]             = React.useState<PaginationState>({
         pageIndex: 0,
         pageSize: 25,
     })
 
-    
     const table = useReactTable({
         data,
         columns,
-        getRowId: (row) => String((row as Unit).unit_id),
-        columnResizeMode: "onChange",
-        state: {
-            sorting,
-            columnVisibility,
-            rowSelection,
-            columnFilters,
-            pagination,
-        },
+        getRowId: (row) => String((row as Position).position_id),
+        state: { sorting, columnVisibility, rowSelection, columnFilters, pagination },
         onPaginationChange: setPagination,
         enableRowSelection: true,
         onRowSelectionChange: setRowSelection,
@@ -87,20 +83,18 @@ export function DataTable<TData, TValue>({
             <DataTableToolbar
                 table={table}
                 rowSelection={rowSelection}
+                departments={departments}
                 divisions={divisions}
-                onCreateUnit={onCreateUnit}
+                units={units}
+                onCreatePosition={onCreatePosition}
             />
             <div className="overflow-x-auto rounded-md border border-gray-200">
-                <Table style={{ tableLayout: "fixed", width: "100%" }}>
+                <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
-                                    <TableHead
-                                        key={header.id}
-                                        colSpan={header.colSpan}
-                                        style={{ width: header.getSize() }}
-                                    >
+                                    <TableHead key={header.id} colSpan={header.colSpan}>
                                         {header.isPlaceholder
                                             ? null
                                             : flexRender(header.column.columnDef.header, header.getContext())}
@@ -116,13 +110,10 @@ export function DataTable<TData, TValue>({
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
                                     className="cursor-pointer"
-                                    onClick={() => router.get(route("unit.show", row.id))}
+                                    onClick={() => router.get(route("position.show", row.id))}
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell
-                                            key={cell.id}
-                                            style={{ width: cell.column.getSize() }}
-                                        >
+                                        <TableCell key={cell.id}>
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </TableCell>
                                     ))}
@@ -131,7 +122,7 @@ export function DataTable<TData, TValue>({
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    No units found.
+                                    No positions found.
                                 </TableCell>
                             </TableRow>
                         )}

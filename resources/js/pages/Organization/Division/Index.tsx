@@ -1,9 +1,9 @@
 import { Head, router, useForm, usePage } from "@inertiajs/react"
-import { Building2, Pencil, Plus, Trash2 } from "lucide-react"
+import { Building2 } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
-import { getColumns } from "@/components/Organization/Unit/components/columns"
-import { DataTable } from "@/components/Organization/Unit/components/data-table"
+import { getColumns } from "@/components/Organization/Division/components/columns"
+import { DataTable } from "@/components/Organization/Division/components/data-table"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -33,20 +33,20 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
-import { type Division, type Unit } from "@/components/Organization/Unit/data/schema"
+import { type Department, type Division } from "@/components/Organization/Division/data/schema"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
-    units: Unit[]
     divisions: Division[]
+    departments: Department[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: "Organization", href: "#" },
-    { title: "Units", href: "/unit" },
+    { title: "Divisions", href: "/organization/division" },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -56,23 +56,25 @@ function FieldError({ message }: { message?: string }) {
     return <p className="text-xs text-destructive mt-1">{message}</p>
 }
 
-// ─── Unit Modal ───────────────────────────────────────────────────────────────
+// ─── Division Modal ───────────────────────────────────────────────────────────
 
-interface UnitModalProps {
+interface DivisionModalProps {
     open: boolean
-    editingUnit: Unit | null
-    divisions: Division[]
+    editingDivision: Division | null
+    departments: Department[]
     onClose: () => void
 }
 
-function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
-    const isEdit = editingUnit !== null
+function DivisionModal({ open, editingDivision, departments, onClose }: DivisionModalProps) {
+    const isEdit = editingDivision !== null
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        unit_name: editingUnit?.unit_name ?? "",
-        unit_acronym: editingUnit?.unit_acronym ?? "",
-        unit_description: editingUnit?.unit_description ?? "",
-        division_id: editingUnit?.division_id ? String(editingUnit.division_id) : "",
+        division_name: editingDivision?.division_name ?? "",
+        division_acronym: editingDivision?.division_acronym ?? "",
+        division_description: editingDivision?.division_description ?? "",
+        department_id: editingDivision?.department_id
+            ? String(editingDivision.department_id)
+            : "",
     })
 
     function handleClose() {
@@ -83,21 +85,21 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (isEdit) {
-            put(route("unit.update", editingUnit!.unit_id), { onSuccess: handleClose })
+            put(route("division.update", editingDivision!.division_id), { onSuccess: handleClose })
         } else {
-            post(route("unit.store"), { onSuccess: handleClose })
+            post(route("division.store"), { onSuccess: handleClose })
         }
     }
 
     return (
         <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
-            <DialogContent className="p-2 gap-0 overflow-hidden w-md sm:max-w-md">
+            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-lg">
 
                 {/* Header */}
                 <DialogHeader className="px-5 py-4 border-b border-border">
                     <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Building2 className="w-4 h-4 text-primary" />
-                        {isEdit ? "Edit Unit" : "Create Unit"}
+                        {isEdit ? "Edit Division" : "Create Division"}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -105,74 +107,74 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
                 <form onSubmit={handleSubmit}>
                     <div className="px-5 py-5 space-y-4">
 
-                        {/* Division */}
+                        {/* Department */}
                         <div>
-                            <label htmlFor="division_id" className="block text-xs font-medium text-foreground mb-1.5">
-                                Division <span className="text-destructive">*</span>
+                            <label htmlFor="department_id" className="block text-xs font-medium text-foreground mb-1.5">
+                                Department <span className="text-destructive">*</span>
                             </label>
                             <Select
-                                value={data.division_id}
-                                onValueChange={(v) => setData("division_id", v)}
+                                value={data.department_id}
+                                onValueChange={(v) => setData("department_id", v)}
                             >
-                                <SelectTrigger id="division_id" className="text-sm">
-                                    <SelectValue placeholder="Select division" />
+                                <SelectTrigger id="department_id" className="text-sm">
+                                    <SelectValue placeholder="Select department" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {divisions.map((d) => (
-                                        <SelectItem key={d.division_id} value={String(d.division_id)}>
-                                            {d.division_name}
+                                    {departments.map((d) => (
+                                        <SelectItem key={d.department_id} value={String(d.department_id)}>
+                                            {d.department_name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <FieldError message={errors.division_id} />
+                            <FieldError message={errors.department_id} />
                         </div>
 
-                        {/* Unit Name + Acronym */}
+                        {/* Division Name + Acronym */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label htmlFor="unit_name" className="block text-xs font-medium text-foreground mb-1.5">
-                                    Unit Name <span className="text-destructive">*</span>
+                                <label htmlFor="division_name" className="block text-xs font-medium text-foreground mb-1.5">
+                                    Division Name <span className="text-destructive">*</span>
                                 </label>
                                 <Input
-                                    id="unit_name"
-                                    value={data.unit_name}
-                                    onChange={(e) => setData("unit_name", e.target.value)}
+                                    id="division_name"
+                                    value={data.division_name}
+                                    onChange={(e) => setData("division_name", e.target.value)}
                                     placeholder="e.g. Information Technology"
                                     className="text-sm"
                                 />
-                                <FieldError message={errors.unit_name} />
+                                <FieldError message={errors.division_name} />
                             </div>
                             <div>
-                                <label htmlFor="unit_acronym" className="block text-xs font-medium text-foreground mb-1.5">
+                                <label htmlFor="division_acronym" className="block text-xs font-medium text-foreground mb-1.5">
                                     Acronym <span className="text-destructive">*</span>
                                 </label>
                                 <Input
-                                    id="unit_acronym"
-                                    value={data.unit_acronym}
-                                    onChange={(e) => setData("unit_acronym", e.target.value.toUpperCase())}
+                                    id="division_acronym"
+                                    value={data.division_acronym}
+                                    onChange={(e) => setData("division_acronym", e.target.value.toUpperCase())}
                                     placeholder="e.g. IT"
                                     className="text-sm font-mono"
                                     maxLength={10}
                                 />
-                                <FieldError message={errors.unit_acronym} />
+                                <FieldError message={errors.division_acronym} />
                             </div>
                         </div>
 
                         {/* Description */}
                         <div>
-                            <label htmlFor="unit_description" className="block text-xs font-medium text-foreground mb-1.5">
+                            <label htmlFor="division_description" className="block text-xs font-medium text-foreground mb-1.5">
                                 Description
                             </label>
                             <Textarea
-                                id="unit_description"
-                                value={data.unit_description ?? ""}
-                                onChange={(e) => setData("unit_description", e.target.value)}
-                                placeholder="Optional description of this unit's responsibilities..."
+                                id="division_description"
+                                value={data.division_description ?? ""}
+                                onChange={(e) => setData("division_description", e.target.value)}
+                                placeholder="Optional description of this division's responsibilities..."
                                 rows={3}
                                 className="text-sm resize-none"
                             />
-                            <FieldError message={errors.unit_description} />
+                            <FieldError message={errors.division_description} />
                         </div>
                     </div>
 
@@ -188,7 +190,7 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
                             Cancel
                         </Button>
                         <Button type="submit" size="sm" disabled={processing} className="text-xs">
-                            {processing ? "Saving…" : isEdit ? "Update Unit" : "Create Unit"}
+                            {processing ? "Saving…" : isEdit ? "Update Division" : "Create Division"}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -200,35 +202,35 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
 // ─── Delete Alert Dialog ──────────────────────────────────────────────────────
 
 interface DeleteDialogProps {
-    unit: Unit | null
+    division: Division | null
     onClose: () => void
 }
 
-function DeleteAlertDialog({ unit, onClose }: DeleteDialogProps) {
+function DeleteAlertDialog({ division, onClose }: DeleteDialogProps) {
     function handleConfirm() {
-        if (unit) {
-            router.delete(route("unit.destroy", unit.unit_id), {
+        if (division) {
+            router.delete(route("division.destroy", division.division_id), {
                 onFinish: onClose,
             })
         }
     }
 
     return (
-        <AlertDialog open={unit !== null} onOpenChange={(o) => { if (!o) onClose() }}>
+        <AlertDialog open={division !== null} onOpenChange={(o) => { if (!o) onClose() }}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Unit</AlertDialogTitle>
+                    <AlertDialogTitle>Delete Division</AlertDialogTitle>
                     <AlertDialogDescription>
                         Are you sure you want to delete{" "}
-                        <span className="font-medium text-foreground">{unit?.unit_name}</span>?
-                        {" "}This will also affect any positions assigned to this unit.
+                        <span className="font-medium text-foreground">{division?.division_name}</span>?
+                        {" "}This will also affect any units assigned to this division.
                         This action cannot be undone.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
                     <AlertDialogAction variant="destructive" onClick={handleConfirm}>
-                        Delete Unit
+                        Delete Division
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
@@ -238,33 +240,33 @@ function DeleteAlertDialog({ unit, onClose }: DeleteDialogProps) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function UnitIndex({ units, divisions }: Props) {
+export default function DivisionIndex({ divisions, departments }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
     const [modalOpen, setModalOpen] = useState(false)
-    const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
-    const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null)
+    const [editingDivision, setEditingDivision] = useState<Division | null>(null)
+    const [deletingDivision, setDeletingDivision] = useState<Division | null>(null)
 
     function openCreate() {
-        setEditingUnit(null)
+        setEditingDivision(null)
         setModalOpen(true)
     }
 
-    function openEdit(unit: Unit) {
-        setEditingUnit(unit)
+    function openEdit(division: Division) {
+        setEditingDivision(division)
         setModalOpen(true)
     }
 
     function closeModal() {
         setModalOpen(false)
-        setEditingUnit(null)
+        setEditingDivision(null)
     }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: setDeletingUnit })
+    const columns = getColumns({ onEdit: openEdit, onDelete: setDeletingDivision })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Units" />
+            <Head title="Divisions" />
 
             <div className="flex h-full flex-1 flex-col gap-6 py-4 px-6">
 
@@ -273,10 +275,10 @@ export default function UnitIndex({ units, divisions }: Props) {
                     <div>
                         <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
                             <Building2 className="w-5 h-5 text-primary" />
-                            Units
+                            Divisions
                         </h1>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {units.length} unit{units.length !== 1 ? "s" : ""} across {divisions.length} division{divisions.length !== 1 ? "s" : ""}
+                            {divisions.length} division{divisions.length !== 1 ? "s" : ""} across {departments.length} department{departments.length !== 1 ? "s" : ""}
                         </p>
                     </div>
                 </div>
@@ -291,25 +293,25 @@ export default function UnitIndex({ units, divisions }: Props) {
                 {/* Table */}
                 <DataTable
                     columns={columns}
-                    data={units}
-                    divisions={divisions}
-                    onCreateUnit={openCreate}
+                    data={divisions}
+                    departments={departments}
+                    onCreateDivision={openCreate}
                 />
             </div>
 
             {/* Create / Edit modal */}
-            <UnitModal
-                key={editingUnit?.unit_id ?? "create"}
+            <DivisionModal
+                key={editingDivision?.division_id ?? "create"}
                 open={modalOpen}
-                editingUnit={editingUnit}
-                divisions={divisions}
+                editingDivision={editingDivision}
+                departments={departments}
                 onClose={closeModal}
             />
 
             {/* Delete confirmation */}
             <DeleteAlertDialog
-                unit={deletingUnit}
-                onClose={() => setDeletingUnit(null)}
+                division={deletingDivision}
+                onClose={() => setDeletingDivision(null)}
             />
         </AppLayout>
     )
