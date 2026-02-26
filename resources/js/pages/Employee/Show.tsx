@@ -5,6 +5,7 @@ import {
     Pencil, Mail, Phone, Calendar, MapPin, User, Heart, Home,
     Briefcase, Clock, FileText, Landmark, Camera, XCircle,
     Eye, EyeOff, Plus, Trash2, Save, ChevronUp,
+    Pen,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,8 +30,8 @@ import { type BreadcrumbItem } from "@/types"
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Department { department_name: string }
-interface Division   { division_name: string }
-interface Unit       { unit_name: string }
+interface Division { division_name: string }
+interface Unit { unit_name: string }
 interface Position {
     position_name: string
     department?: Department
@@ -50,8 +51,8 @@ interface BasicInfo {
     addresses?: Address[]; educations?: Education[]; family_info?: FamilyMember[]
 }
 interface GovernmentAccount { government_account_id: number; account_type: string; account_number: string }
-interface EligibilityInfo   { eligibility_information_id: number; eligibility_name: string; year_passed?: string }
-interface Allowance         { allowance_type: string; amount: number }
+interface EligibilityInfo { eligibility_information_id: number; eligibility_name: string; year_passed?: string }
+interface Allowance { allowance_type: string; amount: number }
 
 interface LeaveBalance {
     id: number
@@ -123,9 +124,9 @@ function InfoRow({ icon: Icon, label, value, onEdit }: {
                 </p>
             </div>
             {onEdit && (
-                <button onClick={onEdit} className="mt-1 w-6 h-6 rounded-md opacity-0 group-hover/row:opacity-100 hover:bg-accent flex items-center justify-center transition-all text-muted-foreground hover:text-primary shrink-0">
+                <Button size={"icon-xs"} onClick={onEdit} variant={"ghost"} >
                     <Pencil className="w-3 h-3" />
-                </button>
+                </Button>
             )}
         </div>
     )
@@ -144,9 +145,9 @@ function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatu
                 {isStatus ? (
                     <Switch checked={statusValue} onCheckedChange={onToggleStatus} className="scale-90" />
                 ) : onEdit ? (
-                    <button onClick={onEdit} className="w-6 h-6 rounded-md opacity-0 group-hover:opacity-100 hover:bg-accent flex items-center justify-center transition-all text-muted-foreground hover:text-primary">
+                    <Button size={'icon-xs'} onClick={onEdit} variant={"ghost"} >
                         <Pencil className="w-3 h-3" />
-                    </button>
+                    </Button>
                 ) : null}
             </div>
             <div className="flex items-center gap-2">
@@ -193,20 +194,20 @@ function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; 
     const firstAddress = (basic?.addresses ?? [])[0]
 
     const [form, setForm] = useState({
-        first_name:     basic?.first_name ?? "",
-        last_name:      basic?.last_name ?? "",
-        middle_name:    basic?.middle_name ?? "",
+        first_name: basic?.first_name ?? "",
+        last_name: basic?.last_name ?? "",
+        middle_name: basic?.middle_name ?? "",
         name_extension: basic?.name_extension ?? "",
-        birth_date:     toInputDate(basic?.birth_date),
-        sex:            basic?.sex !== undefined ? String(Number(basic.sex)) : "",
-        civil_status:   basic?.civil_status ?? "",
+        birth_date: toInputDate(basic?.birth_date),
+        sex: basic?.sex !== undefined ? String(Number(basic.sex)) : "",
+        civil_status: basic?.civil_status ?? "",
         place_of_birth: basic?.place_of_birth ?? "",
         personal_email: basic?.personal_email ?? "",
-        phone_number:   basic?.phone_number ?? "",
+        phone_number: basic?.phone_number ?? "",
         street_address: firstAddress?.street_address ?? "",
-        city:           firstAddress?.city ?? "",
-        state:          firstAddress?.state ?? "",
-        zip_code:       firstAddress?.zip_code ?? "",
+        city: firstAddress?.city ?? "",
+        state: firstAddress?.state ?? "",
+        zip_code: firstAddress?.zip_code ?? "",
     })
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
     const save = () => router.put(route("employee.update", employee.employee_id), form, { preserveScroll: true, onSuccess: onClose })
@@ -318,12 +319,12 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
     const open = field !== null
 
     const [form, setForm] = useState({
-        item_id:                   employee.item?.item_id?.toString() ?? "",
-        date_hired:                toInputDate(employee.date_hired),
-        date_applied:              toInputDate(employee.date_applied),
+        item_id: employee.item?.item_id?.toString() ?? "",
+        date_hired: toInputDate(employee.date_hired),
+        date_applied: toInputDate(employee.date_applied),
         employment_classification: employee.employment_classification ?? "",
-        work_schedule_start:       employee.work_schedule_start ?? "",
-        work_schedule_end:         employee.work_schedule_end ?? "",
+        work_schedule_start: employee.work_schedule_start ?? "",
+        work_schedule_end: employee.work_schedule_end ?? "",
     })
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
@@ -331,21 +332,21 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 
     const save = () => {
         let data: Record<string, string> = {}
-        if (field === "position")                  data = { item_id: form.item_id }
-        if (field === "date_hired")                data = { date_hired: form.date_hired }
-        if (field === "date_applied")              data = { date_applied: form.date_applied }
+        if (field === "position") data = { item_id: form.item_id }
+        if (field === "date_hired") data = { date_hired: form.date_hired }
+        if (field === "date_applied") data = { date_applied: form.date_applied }
         if (field === "employment_classification") data = { employment_classification: form.employment_classification }
-        if (field === "work_schedule")             data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
+        if (field === "work_schedule") data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
         router.put(route("employee.update", employee.employee_id), data, { preserveScroll: true, onSuccess: onClose })
     }
 
     const titles: Record<NonNullable<EditField>, string> = {
-        position:                  "Edit Position",
-        date_hired:                "Edit Date Hired",
-        unit_division_department:  "Unit / Division / Department",
+        position: "Edit Position",
+        date_hired: "Edit Date Hired",
+        unit_division_department: "Unit / Division / Department",
         employment_classification: "Edit Employment Classification",
-        date_applied:              "Edit Date Applied",
-        work_schedule:             "Edit Work Schedule",
+        date_applied: "Edit Date Applied",
+        work_schedule: "Edit Work Schedule",
     }
 
     return (
@@ -483,14 +484,14 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
     return (
         <div className="p-5">
             <div className="grid grid-cols-3 gap-3">
-                <DetailCard title="Position"                  value={position?.position_name}              onEdit={() => setEditField("position")} />
-                <DetailCard title="Date Hired"                value={fmt(employee.date_hired)}              onEdit={() => setEditField("date_hired")} />
-                <DetailCard title="Status" isStatus           statusValue={employee.status}                 onToggleStatus={toggleStatus} />
-                <DetailCard title="Unit"                      value={position?.unit?.unit_name}             onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Division"                  value={position?.division?.division_name}     onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Department"                value={position?.department?.department_name} onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Employment Classification" value={employee.employment_classification}    onEdit={() => setEditField("employment_classification")} />
-                <DetailCard title="Date Applied"              value={fmt(employee.date_applied)}            onEdit={() => setEditField("date_applied")} />
+                <DetailCard title="Position" value={position?.position_name} onEdit={() => setEditField("position")} />
+                <DetailCard title="Date Hired" value={fmt(employee.date_hired)} onEdit={() => setEditField("date_hired")} />
+                <DetailCard title="Status" isStatus statusValue={employee.status} onToggleStatus={toggleStatus} />
+                <DetailCard title="Unit" value={position?.unit?.unit_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Division" value={position?.division?.division_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Department" value={position?.department?.department_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Employment Classification" value={employee.employment_classification} onEdit={() => setEditField("employment_classification")} />
+                <DetailCard title="Date Applied" value={fmt(employee.date_applied)} onEdit={() => setEditField("date_applied")} />
                 <DetailCard
                     title="Work Schedule"
                     value={employee.work_schedule_start && employee.work_schedule_end
@@ -512,7 +513,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
 // ─── Compensation Tab ─────────────────────────────────────────────────────────
 
 function CompensationTab({ employee }: { employee: Employee }) {
-    const sgs        = employee.salary_grade_step
+    const sgs = employee.salary_grade_step
     const allowances = employee.allowances ?? []
     const [salaryEditOpen, setSalaryEditOpen] = useState(false)
 
@@ -522,7 +523,9 @@ function CompensationTab({ employee }: { employee: Employee }) {
                 <div className="bg-card border border-border rounded-xl overflow-hidden">
                     <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                         <span className="text-sm font-bold text-foreground">Salary Classification</span>
-                        <button onClick={() => setSalaryEditOpen(true)} className="text-xs text-primary hover:underline font-medium">edit</button>
+                        <Button onClick={() => setSalaryEditOpen(true)} variant="ghost" size="icon-xs" >
+                            <Pen className="w-3 h-3" />
+                        </Button>
                     </div>
                     {sgs ? (
                         <div className="divide-y divide-border">
@@ -572,7 +575,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
 // ─── Leave Information Tab ────────────────────────────────────────────────────
 
 function LeaveInformationTab({ employee }: { employee: Employee }) {
-    const balances   = employee.leave_balances   ?? []
+    const balances = employee.leave_balances ?? []
     const availments = employee.leave_availments ?? []
 
     const [balanceDialog, setBalanceDialog] = useState<{
@@ -583,15 +586,15 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
     const openBalanceDialog = (b?: LeaveBalance) => setBalanceDialog({
         open: true, id: b?.id,
         leave_type: b?.leave_type ?? "",
-        remaining:  b?.remaining?.toString() ?? "",
-        used:       b?.used?.toString() ?? "",
+        remaining: b?.remaining?.toString() ?? "",
+        used: b?.used?.toString() ?? "",
     })
 
     const saveBalance = () => {
         const data = {
             leave_type: balanceDialog.leave_type,
-            remaining:  parseFloat(balanceDialog.remaining),
-            used:       parseFloat(balanceDialog.used),
+            remaining: parseFloat(balanceDialog.remaining),
+            used: parseFloat(balanceDialog.used),
         }
         if (balanceDialog.id) {
             router.put(
@@ -649,12 +652,12 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-foreground font-medium text-right">{b.remaining}</span>
                                 <span className="text-sm text-foreground font-medium text-right">{b.used}</span>
                                 <div className="flex items-center justify-end gap-1">
-                                    <button onClick={() => openBalanceDialog(b)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                                    <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs" >
                                         <Pencil className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button onClick={() => setDeleteBalanceId(b.id)} className="w-7 h-7 rounded-lg hover:bg-destructive/10 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
+                                    </Button>
+                                    <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs" >
                                         <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         ))}
@@ -700,11 +703,10 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-muted-foreground">{fmtShort(a.leave_date_start)} — {fmtShort(a.leave_date_end)}</span>
                                 <span className="text-sm text-foreground font-medium">{a.duration} days</span>
                                 <span className="text-sm text-muted-foreground">{fmtShort(a.date_filed)}</span>
-                                <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${
-                                    a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
-                                    a.status === "Pending"  ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
-                                    "bg-destructive/10 text-destructive"
-                                }`}>● {a.status}</Badge>
+                                <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
+                                    a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
+                                        "bg-destructive/10 text-destructive"
+                                    }`}>● {a.status}</Badge>
                             </div>
                         ))}
                     </div>
@@ -762,7 +764,7 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
 const STANDARD_GOV_ID_TYPES = ["GSIS", "PhilHealth", "Pag-IBIG", "TIN"]
 
 function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
-    const govAccounts   = employee.government_accounts ?? []
+    const govAccounts = employee.government_accounts ?? []
     const eligibilities = employee.eligibility_information ?? []
 
     // ── Visibility toggles ────────────────────────────────────────
@@ -822,7 +824,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
     const openEligDialog = (existing?: EligibilityInfo) =>
         setEligDialog({
             open: true,
-            id:   existing?.eligibility_information_id,
+            id: existing?.eligibility_information_id,
             name: existing?.eligibility_name ?? "",
             year: existing?.year_passed?.slice(0, 10) ?? "",
         })
@@ -867,8 +869,8 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 <div className="divide-y divide-border">
                     {/* Standard 4 rows — always rendered */}
                     {STANDARD_GOV_ID_TYPES.map(type => {
-                        const key       = type.toLowerCase()
-                        const account   = accountMap[key]
+                        const key = type.toLowerCase()
+                        const account = accountMap[key]
                         const isVisible = visibleIds[key]
 
                         return (
@@ -891,23 +893,25 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                             >
                                                 {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                             </button>
-                                            <button
+                                            <Button
                                                 onClick={() => openEditGovDialog(type, account)}
-                                                className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                                                variant={"ghost"}
+                                                size={"icon-xs"}
                                                 title="Edit"
                                             >
                                                 <Pencil className="w-3.5 h-3.5" />
-                                            </button>
+                                            </Button>
                                         </>
                                     ) : (
                                         /* No record yet — show a small + to add this specific standard type */
-                                        <button
+                                        <Button
                                             onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })}
-                                            className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                                            variant={"ghost"}
+                                            size={"icon-xs"}
                                             title={`Add ${type}`}
                                         >
                                             <Plus className="w-3.5 h-3.5" />
-                                        </button>
+                                        </Button>
                                     )}
                                 </div>
                             </div>
@@ -916,7 +920,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
 
                     {/* Extra (custom) rows */}
                     {extraAccounts.map(account => {
-                        const key       = account.account_type.toLowerCase()
+                        const key = account.account_type.toLowerCase()
                         const isVisible = visibleIds[key]
 
                         return (
@@ -933,13 +937,14 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                     >
                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                     </button>
-                                    <button
+                                    <Button
                                         onClick={() => openEditGovDialog(account.account_type, account)}
-                                        className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                                        variant="ghost"
+                                        size="icon-xs"
                                         title="Edit"
                                     >
                                         <Pencil className="w-3.5 h-3.5" />
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         )
@@ -977,13 +982,14 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                     ✓ Active
                                 </Badge>
                                 {/* Edit only — no delete */}
-                                <button
+                                <Button
                                     onClick={() => openEligDialog(e)}
-                                    className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors shrink-0"
                                     title="Edit"
+                                    variant={"ghost"}
+                                    size={"icon-xs"}
                                 >
                                     <Pencil className="w-3.5 h-3.5" />
-                                </button>
+                                </Button>
                             </div>
                         ))}
                     </div>
@@ -1087,7 +1093,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ShowEmployee({ employee, items }: Props) {
-    const basic    = employee.basic_info
+    const basic = employee.basic_info
     const position = employee.item?.position
     const firstAddress = (basic?.addresses ?? [])[0]
     const addressStr = firstAddress
@@ -1102,11 +1108,11 @@ export default function ShowEmployee({ employee, items }: Props) {
     ]
 
     const tabs = [
-        { value: "employment",   label: "Employment Details",       icon: Briefcase },
-        { value: "compensation", label: "Compensation",             icon: FileText  },
-        { value: "leave",        label: "Leave Information",        icon: Calendar  },
-        { value: "time",         label: "Time Records",             icon: Clock     },
-        { value: "government",   label: "Government & Eligibility", icon: Landmark  },
+        { value: "employment", label: "Employment Details", icon: Briefcase },
+        { value: "compensation", label: "Compensation", icon: FileText },
+        { value: "leave", label: "Leave Information", icon: Calendar },
+        { value: "time", label: "Time Records", icon: Clock },
+        { value: "government", label: "Government & Eligibility", icon: Landmark },
     ]
 
     return (
@@ -1118,9 +1124,9 @@ export default function ShowEmployee({ employee, items }: Props) {
                 <div className="w-72 shrink-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
                     <div className="relative flex flex-col items-center pt-8 pb-5 px-5 bg-gradient-to-b from-accent/30 to-card border-b border-border">
                         <div className="absolute top-3 right-3">
-                            <button onClick={() => setBasicEditOpen(true)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                            <Button size={"icon-xs"} onClick={() => setBasicEditOpen(true)} variant={"ghost"} >
                                 <Pencil className="w-3.5 h-3.5" />
-                            </button>
+                            </Button>
                         </div>
                         <div className="relative">
                             <div className="w-24 h-24 rounded-full overflow-hidden bg-muted border-4 border-card shadow-lg ring-2 ring-primary/20">
@@ -1145,13 +1151,13 @@ export default function ShowEmployee({ employee, items }: Props) {
 
                     <div className="flex-1 px-4 py-3 overflow-y-auto">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Basic Information</p>
-                        <InfoRow icon={Mail}     label="Email"          value={basic?.personal_email}  onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Phone}    label="Contact Number" value={basic?.phone_number}    onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Calendar} label="Date of Birth"  value={fmt(basic?.birth_date)} onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={MapPin}   label="Place of Birth" value={basic?.place_of_birth}  onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={User}     label="Sex"            value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Heart}    label="Civil Status"   value={cap(basic?.civil_status)} onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Home}     label="Address"        value={addressStr}             onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Mail} label="Email" value={basic?.personal_email} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Home} label="Address" value={addressStr} onEdit={() => setBasicEditOpen(true)} />
                     </div>
 
                     <div className="px-4 pb-4 pt-2 border-t border-border">
@@ -1176,16 +1182,16 @@ export default function ShowEmployee({ employee, items }: Props) {
                                 ))}
                             </TabsList>
                         </div>
-                        <TabsContent value="employment"   className="flex-1 mt-0 overflow-y-auto"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
+                        <TabsContent value="employment" className="flex-1 mt-0 overflow-y-auto"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
                         <TabsContent value="compensation" className="flex-1 mt-0 overflow-y-auto"><CompensationTab employee={employee} /></TabsContent>
-                        <TabsContent value="leave"        className="flex-1 mt-0 overflow-y-auto"><LeaveInformationTab employee={employee} /></TabsContent>
-                        <TabsContent value="time"         className="flex-1 mt-0 overflow-y-auto">
+                        <TabsContent value="leave" className="flex-1 mt-0 overflow-y-auto"><LeaveInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="time" className="flex-1 mt-0 overflow-y-auto">
                             <div className="flex flex-col items-center justify-center h-64 gap-3">
                                 <Clock className="w-10 h-10 text-muted-foreground/30" />
                                 <p className="text-sm italic text-muted-foreground">Time records coming soon.</p>
                             </div>
                         </TabsContent>
-                        <TabsContent value="government"   className="flex-1 mt-0 overflow-y-auto"><GovernmentEligibilityTab employee={employee} /></TabsContent>
+                        <TabsContent value="government" className="flex-1 mt-0 overflow-y-auto"><GovernmentEligibilityTab employee={employee} /></TabsContent>
                     </Tabs>
                 </div>
             </div>

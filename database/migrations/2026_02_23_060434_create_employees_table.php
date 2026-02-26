@@ -24,6 +24,7 @@ return new class extends Migration
             $table->date('date_hired');
             $table->time('work_schedule_start');
             $table->time('work_schedule_end');
+            $table->softDeletes();
             $table->timestamps();
         });
     }

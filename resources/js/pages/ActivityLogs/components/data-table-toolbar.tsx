@@ -10,6 +10,7 @@ import { DataTableFacetedFilter } from "./data-table-faceted-filter"
 import { AArrowDown } from "lucide-react"
 import React from "react"
 import { modules } from "../data/data"
+import { DataTableViewOptions } from "./data-table-view-option"
 
 interface DataTableToolbarProps<TData> {
     table: Table<TData>
@@ -52,6 +53,7 @@ export function DataTableToolbar<TData>({
                 )}
             </div>
             <div className="flex items-center gap-2">
+                <DataTableViewOptions table={table} />
                 <Button size="sm">
                     <FileDown className="mr-2 h-4 w-4" />
                     Export

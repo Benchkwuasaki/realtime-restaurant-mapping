@@ -5,6 +5,7 @@ import {
   ChevronsUpDown,
   CreditCard,
   LogOut,
+  Settings,
   Sparkles,
 } from "lucide-react"
 
@@ -23,9 +24,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { logout } from "@/routes"
-import { edit } from "@/routes/profile"
 import { UserInfo } from "@/components/user-info"
+import { route } from "ziggy-js"
 
 export function NavUser() {
   const { props } = usePage()
@@ -33,7 +33,7 @@ export function NavUser() {
   const { isMobile } = useSidebar()
 
   const handleLogout = () => {
-    router.post(logout())
+    router.post(route('logout'))
   }
 
   if (!user) return null
@@ -62,24 +62,24 @@ export function NavUser() {
                 <UserInfo user={user} showEmail={true} />
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
+            {/* <DropdownMenuSeparator /> */}
+            {/* <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link href="#">
                   <Sparkles />
                   Upgrade to Pro
                 </Link>
               </DropdownMenuItem>
-            </DropdownMenuGroup>
+            </DropdownMenuGroup> */}
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href={edit()}>
-                  <BadgeCheck />
-                  Account
+                <Link href={route('profile.edit')}>
+                  <Settings />
+                  Settings
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
+              {/* <DropdownMenuItem asChild>
                 <Link href="#">
                   <CreditCard />
                   Billing
@@ -90,7 +90,7 @@ export function NavUser() {
                   <Bell />
                   Notifications
                 </Link>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={handleLogout} className="cursor-pointer">

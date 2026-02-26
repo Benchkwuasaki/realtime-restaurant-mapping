@@ -75,7 +75,7 @@ export function DataTable<TData, TValue>({
     return (
         <div className="flex flex-col gap-4">
             <DataTableToolbar table={table} />
-            <div className="overflow-hidden rounded-md border">
+            <div className="overflow-x-auto rounded-md border">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -125,7 +125,15 @@ export function DataTable<TData, TValue>({
                     </TableBody>
                 </Table>
             </div>
-            <DataTablePagination table={table} rowSelection={rowSelection} />
+            <DataTablePagination
+                    table={table}
+                    rowSelection={rowSelection}
+                    pageIndex={table.getState().pagination.pageIndex}
+                    pageSize={table.getState().pagination.pageSize}
+                    pageCount={table.getPageCount()}
+                    canPreviousPage={table.getCanPreviousPage()}
+                    canNextPage={table.getCanNextPage()}
+                  />
         </div>
     )
 }

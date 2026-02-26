@@ -10,13 +10,26 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call([
+            UserSeeder::class,
+        ]);
+
         // ── 1. Salary Grade Steps ──────────────────────────────────
         $salaryGradeSteps = [
-            ['salary_grade' => 10, 'step' => 1, 'salary_amount' => 22316.00],
-            ['salary_grade' => 12, 'step' => 1, 'salary_amount' => 27608.00],
-            ['salary_grade' => 15, 'step' => 1, 'salary_amount' => 36619.00],
-            ['salary_grade' => 18, 'step' => 1, 'salary_amount' => 48597.00],
-            ['salary_grade' => 24, 'step' => 1, 'salary_amount' => 97744.00],
+            ['salary_grade' =>  7, 'step' => 1, 'salary_amount' =>  17899.00],
+            ['salary_grade' =>  8, 'step' => 1, 'salary_amount' =>  19077.00],
+            ['salary_grade' => 10, 'step' => 1, 'salary_amount' =>  22316.00],
+            ['salary_grade' => 11, 'step' => 1, 'salary_amount' =>  24887.00],
+            ['salary_grade' => 12, 'step' => 1, 'salary_amount' =>  27608.00],
+            ['salary_grade' => 13, 'step' => 1, 'salary_amount' =>  30531.00],
+            ['salary_grade' => 14, 'step' => 1, 'salary_amount' =>  33452.00],
+            ['salary_grade' => 15, 'step' => 1, 'salary_amount' =>  36619.00],
+            ['salary_grade' => 16, 'step' => 1, 'salary_amount' =>  40208.00],
+            ['salary_grade' => 18, 'step' => 1, 'salary_amount' =>  48597.00],
+            ['salary_grade' => 20, 'step' => 1, 'salary_amount' =>  60268.00],
+            ['salary_grade' => 22, 'step' => 1, 'salary_amount' =>  75406.00],
+            ['salary_grade' => 24, 'step' => 1, 'salary_amount' =>  97744.00],
+            ['salary_grade' => 26, 'step' => 1, 'salary_amount' => 126462.00],
         ];
 
         $sgStepIds = [];
@@ -37,21 +50,48 @@ class DatabaseSeeder extends Seeder
 
         // ── 3. Divisions ───────────────────────────────────────────
         $divHrId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptId,
-            'division_name'       => 'Human Resources Division',
-            'division_acronym'    => 'HRD',
-            'division_description'=> 'Manages recruitment, payroll, and employee relations.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptId,
+            'division_name'        => 'Human Resources Division',
+            'division_acronym'     => 'HRD',
+            'division_description' => 'Manages recruitment, payroll, and employee relations.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
 
         $divItId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptId,
-            'division_name'       => 'Information Technology Division',
-            'division_acronym'    => 'ITD',
-            'division_description'=> 'Manages all IT infrastructure and software systems.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptId,
+            'division_name'        => 'Information Technology Division',
+            'division_acronym'     => 'ITD',
+            'division_description' => 'Manages all IT infrastructure and software systems.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
+        ]);
+
+        $divFinId = DB::table('divisions')->insertGetId([
+            'department_id'        => $deptId,
+            'division_name'        => 'Finance and Budget Division',
+            'division_acronym'     => 'FBD',
+            'division_description' => 'Manages financial planning, budget allocation, and accounting.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
+        ]);
+
+        $divAdminId = DB::table('divisions')->insertGetId([
+            'department_id'        => $deptId,
+            'division_name'        => 'Administrative Services Division',
+            'division_acronym'     => 'ASD',
+            'division_description' => 'Handles general administrative support and records management.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
+        ]);
+
+        $divLegalId = DB::table('divisions')->insertGetId([
+            'department_id'        => $deptId,
+            'division_name'        => 'Legal and Compliance Division',
+            'division_acronym'     => 'LCD',
+            'division_description' => 'Provides legal counsel and ensures regulatory compliance.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
 
         // ── 4. Units ───────────────────────────────────────────────
@@ -60,6 +100,15 @@ class DatabaseSeeder extends Seeder
             'unit_name'        => 'Recruitment Unit',
             'unit_acronym'     => 'RU',
             'unit_description' => 'Handles hiring and onboarding of new employees.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitPayrollId = DB::table('units')->insertGetId([
+            'division_id'      => $divHrId,
+            'unit_name'        => 'Payroll and Benefits Unit',
+            'unit_acronym'     => 'PBU',
+            'unit_description' => 'Processes payroll, benefits, and leave administration.',
             'created_at'       => now(),
             'updated_at'       => now(),
         ]);
@@ -73,674 +122,605 @@ class DatabaseSeeder extends Seeder
             'updated_at'       => now(),
         ]);
 
+        $unitInfraId = DB::table('units')->insertGetId([
+            'division_id'      => $divItId,
+            'unit_name'        => 'Infrastructure and Networks Unit',
+            'unit_acronym'     => 'INU',
+            'unit_description' => 'Manages servers, networks, and IT infrastructure.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitAccountingId = DB::table('units')->insertGetId([
+            'division_id'      => $divFinId,
+            'unit_name'        => 'Accounting Unit',
+            'unit_acronym'     => 'AU',
+            'unit_description' => 'Handles general accounting, ledger, and audit support.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitBudgetId = DB::table('units')->insertGetId([
+            'division_id'      => $divFinId,
+            'unit_name'        => 'Budget Unit',
+            'unit_acronym'     => 'BU',
+            'unit_description' => 'Prepares and monitors budget allocations and utilization.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitRecordsId = DB::table('units')->insertGetId([
+            'division_id'      => $divAdminId,
+            'unit_name'        => 'Records Management Unit',
+            'unit_acronym'     => 'RMU',
+            'unit_description' => 'Manages official documents and records.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitProcurementId = DB::table('units')->insertGetId([
+            'division_id'      => $divAdminId,
+            'unit_name'        => 'Procurement Unit',
+            'unit_acronym'     => 'PU',
+            'unit_description' => 'Handles procurement of supplies and services.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitLegalId = DB::table('units')->insertGetId([
+            'division_id'      => $divLegalId,
+            'unit_name'        => 'Legal Affairs Unit',
+            'unit_acronym'     => 'LAU',
+            'unit_description' => 'Handles legal documentation and case management.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
         // ── 5. Positions ───────────────────────────────────────────
-        $posHrOfficerId = DB::table('positions')->insertGetId([
-            'department_id' => $deptId,
-            'division_id'   => $divHrId,
-            'unit_id'       => $unitRecruitId,
-            'position_name' => 'HR Officer',
-            'created_at'    => now(),
-            'updated_at'    => now(),
-        ]);
-
-        $posHrManagerId = DB::table('positions')->insertGetId([
-            'department_id' => $deptId,
-            'division_id'   => $divHrId,
-            'unit_id'       => null,
-            'position_name' => 'HR Manager',
-            'created_at'    => now(),
-            'updated_at'    => now(),
-        ]);
-
-        $posDevId = DB::table('positions')->insertGetId([
-            'department_id' => $deptId,
-            'division_id'   => $divItId,
-            'unit_id'       => $unitDevId,
-            'position_name' => 'Software Developer',
-            'created_at'    => now(),
-            'updated_at'    => now(),
-        ]);
-
-        $posSysAdminId = DB::table('positions')->insertGetId([
-            'department_id' => $deptId,
-            'division_id'   => $divItId,
-            'unit_id'       => $unitDevId,
-            'position_name' => 'Systems Administrator',
-            'created_at'    => now(),
-            'updated_at'    => now(),
-        ]);
-
-        $posItManagerId = DB::table('positions')->insertGetId([
-            'department_id' => $deptId,
-            'division_id'   => $divItId,
-            'unit_id'       => null,
-            'position_name' => 'IT Manager',
-            'created_at'    => now(),
-            'updated_at'    => now(),
-        ]);
-
-        // ── 6. Items (one item per position slot) ─────────────────
-        $itemIds = [
-            DB::table('items')->insertGetId(['position_id' => $posHrOfficerId,  'item_name' => 'HR Officer Item 1',          'created_at' => now(), 'updated_at' => now()]),
-            DB::table('items')->insertGetId(['position_id' => $posHrManagerId,  'item_name' => 'HR Manager Item 1',          'created_at' => now(), 'updated_at' => now()]),
-            DB::table('items')->insertGetId(['position_id' => $posDevId,         'item_name' => 'Software Developer Item 1',  'created_at' => now(), 'updated_at' => now()]),
-            DB::table('items')->insertGetId(['position_id' => $posSysAdminId,    'item_name' => 'Systems Administrator Item 1','created_at' => now(), 'updated_at' => now()]),
-            DB::table('items')->insertGetId(['position_id' => $posItManagerId,   'item_name' => 'IT Manager Item 1',          'created_at' => now(), 'updated_at' => now()]),
+        $positions = [
+            // HR
+            ['dept' => $deptId, 'div' => $divHrId,    'unit' => $unitRecruitId,    'name' => 'HR Officer',              'sg_idx' => 2],  // SG10
+            ['dept' => $deptId, 'div' => $divHrId,    'unit' => $unitRecruitId,    'name' => 'Recruitment Specialist',  'sg_idx' => 4],  // SG12
+            ['dept' => $deptId, 'div' => $divHrId,    'unit' => $unitPayrollId,    'name' => 'Payroll Officer',         'sg_idx' => 4],  // SG12
+            ['dept' => $deptId, 'div' => $divHrId,    'unit' => $unitPayrollId,    'name' => 'Benefits Administrator',  'sg_idx' => 3],  // SG11
+            ['dept' => $deptId, 'div' => $divHrId,    'unit' => null,              'name' => 'HR Division Chief',       'sg_idx' => 9],  // SG18
+            ['dept' => $deptId, 'div' => $divHrId,    'unit' => null,              'name' => 'HR Manager',              'sg_idx' => 9],  // SG18
+            // IT
+            ['dept' => $deptId, 'div' => $divItId,    'unit' => $unitDevId,        'name' => 'Software Developer',      'sg_idx' => 4],  // SG12
+            ['dept' => $deptId, 'div' => $divItId,    'unit' => $unitDevId,        'name' => 'Senior Developer',        'sg_idx' => 6],  // SG14
+            ['dept' => $deptId, 'div' => $divItId,    'unit' => $unitDevId,        'name' => 'Systems Analyst',         'sg_idx' => 5],  // SG13
+            ['dept' => $deptId, 'div' => $divItId,    'unit' => $unitInfraId,      'name' => 'Systems Administrator',   'sg_idx' => 7],  // SG15
+            ['dept' => $deptId, 'div' => $divItId,    'unit' => $unitInfraId,      'name' => 'Network Engineer',        'sg_idx' => 6],  // SG14
+            ['dept' => $deptId, 'div' => $divItId,    'unit' => null,              'name' => 'IT Manager',              'sg_idx' => 12], // SG24
+            // Finance
+            ['dept' => $deptId, 'div' => $divFinId,   'unit' => $unitAccountingId, 'name' => 'Accountant',              'sg_idx' => 4],  // SG12
+            ['dept' => $deptId, 'div' => $divFinId,   'unit' => $unitAccountingId, 'name' => 'Senior Accountant',       'sg_idx' => 7],  // SG15
+            ['dept' => $deptId, 'div' => $divFinId,   'unit' => $unitBudgetId,     'name' => 'Budget Officer',          'sg_idx' => 5],  // SG13
+            ['dept' => $deptId, 'div' => $divFinId,   'unit' => $unitBudgetId,     'name' => 'Budget Analyst',          'sg_idx' => 3],  // SG11
+            ['dept' => $deptId, 'div' => $divFinId,   'unit' => null,              'name' => 'Finance Manager',         'sg_idx' => 11], // SG22
+            // Admin
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitRecordsId,    'name' => 'Records Officer',         'sg_idx' => 2],  // SG10
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitRecordsId,    'name' => 'Administrative Aide',     'sg_idx' => 0],  // SG7
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId,'name' => 'Procurement Officer',     'sg_idx' => 5],  // SG13
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId,'name' => 'Procurement Specialist',  'sg_idx' => 3],  // SG11
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => null,              'name' => 'Admin Division Chief',    'sg_idx' => 9],  // SG18
+            // Legal
+            ['dept' => $deptId, 'div' => $divLegalId, 'unit' => $unitLegalId,      'name' => 'Legal Officer',           'sg_idx' => 7],  // SG15
+            ['dept' => $deptId, 'div' => $divLegalId, 'unit' => $unitLegalId,      'name' => 'Compliance Officer',      'sg_idx' => 6],  // SG14
+            ['dept' => $deptId, 'div' => $divLegalId, 'unit' => null,              'name' => 'Legal Division Chief',    'sg_idx' => 10], // SG20
         ];
 
-        // ── 7. Employee Definitions ────────────────────────────────
-        $employees = [
-            [
-                'basic' => [
-                    'first_name'     => 'Maria',
-                    'last_name'      => 'Santos',
-                    'middle_name'    => 'Cruz',
-                    'name_extension' => null,
-                    'birth_date'     => '1990-03-15',
-                    'sex'            => 1,
-                    'personal_email' => 'maria.santos.personal@gmail.com',
-                    'phone_number'   => '09171234567',
-                    'civil_status'   => 'married',
-                    'place_of_birth' => 'Manila, Philippines',
-                ],
-                'employee' => [
-                    'item_id'                   => $itemIds[0],
-                    'salary_grade_step_id'       => $sgStepIds[0],
-                    'employment_classification'  => 'Regular',
-                    'work_email'                 => 'maria.santos@obx.gov.ph',
-                    'date_applied'               => '2018-01-10',
-                    'date_hired'                 => '2018-02-01',
-                    'work_schedule_start'        => '08:00:00',
-                    'work_schedule_end'          => '17:00:00',
-                    'status'                     => true,
-                ],
-                'address' => [
-                    'street_address' => '123 Rizal Street',
-                    'city'           => 'Quezon City',
-                    'state'          => 'Metro Manila',
-                    'zip_code'       => '1100',
-                ],
-                'education' => [
-                    'level'           => 'College',
-                    'school_name'     => 'University of the Philippines Diliman',
-                    'school_address'  => 'Diliman, Quezon City',
-                    'graduation_date' => '2012-04-15',
-                    'degree'          => 'Bachelor of Science in Psychology',
-                ],
-                'family' => [
-                    'full_name'      => 'Jose Santos',
-                    'contact_number' => '09179876543',
-                    'relationship'   => '2000-01-01', // date field in schema
-                ],
-                'gov_accounts' => [
-                    ['account_type' => 'SSS',     'account_number' => '03-1234567-8'],
-                    ['account_type' => 'PhilHealth','account_number' => '12-345678901-2'],
-                    ['account_type' => 'Pag-IBIG', 'account_number' => '1234-5678-9012'],
-                ],
-                'allowances' => [
-                    ['allowance_name' => 'Transportation Allowance', 'allowance_amount' => 2000.00],
-                    ['allowance_name' => 'Rice Subsidy',             'allowance_amount' => 1500.00],
-                ],
-                'service_records' => [
-                    ['department' => 'Human Resources Division', 'service_title' => 'HR Assistant', 'durationStart' => '2018-02-01', 'durationEnd' => '2020-12-31'],
-                    ['department' => 'Human Resources Division', 'service_title' => 'HR Officer',   'durationStart' => '2021-01-01', 'durationEnd' => null],
-                ],
-                'seminars' => [
-                    ['seminar_training_name' => 'Labor Law and Employee Relations Seminar', 'date_attended' => '2022-06-10', 'venue' => 'Makati City Hall'],
-                ],
-                'eligibility' => [
-                    ['eligibility_name' => 'Career Service Professional', 'year_passed' => '2013-08-01'],
-                ],
-                'leave_info' => [
-                    ['leave_type' => 'Vacation Leave', 'leave_days' => '2024-01-01', 'leave_balance' => '2024-12-31'],
-                    ['leave_type' => 'Sick Leave',     'leave_days' => '2024-01-01', 'leave_balance' => '2024-12-31'],
-                ],
-                'leave_availments' => [
-                    ['leave_type' => 'Vacation Leave', 'leave_start_date' => '2024-04-08', 'leave_end_date' => '2024-04-10', 'status' => 'approved'],
-                ],
-                'payroll' => [
-                    ['initial_amount' => 22316.00, 'deduction_amount' => 2800.00, 'final_amount' => 19516.00, 'date_processed' => '2025-01-31', 'payroll_status' => 'Released'],
-                ],
-                'water_bill' => ['water_bill_number' => 'WB-001-2024', 'account_name' => 'Maria C. Santos', 'address' => '123 Rizal Street, Quezon City'],
-                'uploaded_files' => [
-                    ['file_name' => 'birth_certificate.pdf', 'file_size' => '512KB', 'file_database_location' => 'employees/1/birth_certificate.pdf'],
-                ],
-            ],
-            [
-                'basic' => [
-                    'first_name'     => 'Ramon',
-                    'last_name'      => 'Dela Cruz',
-                    'middle_name'    => 'Bautista',
-                    'name_extension' => 'Jr.',
-                    'birth_date'     => '1985-07-22',
-                    'sex'            => 0,
-                    'personal_email' => 'ramon.delacruz@gmail.com',
-                    'phone_number'   => '09281234567',
-                    'civil_status'   => 'married',
-                    'place_of_birth' => 'Cebu City, Philippines',
-                ],
-                'employee' => [
-                    'item_id'                   => $itemIds[1],
-                    'salary_grade_step_id'       => $sgStepIds[3],
-                    'employment_classification'  => 'Regular',
-                    'work_email'                 => 'ramon.delacruz@obx.gov.ph',
-                    'date_applied'               => '2012-05-01',
-                    'date_hired'                 => '2012-06-01',
-                    'work_schedule_start'        => '08:00:00',
-                    'work_schedule_end'          => '17:00:00',
-                    'status'                     => true,
-                ],
-                'address' => [
-                    'street_address' => '45 Mabini Avenue',
-                    'city'           => 'Pasig City',
-                    'state'          => 'Metro Manila',
-                    'zip_code'       => '1600',
-                ],
-                'education' => [
-                    'level'           => 'College',
-                    'school_name'     => 'De La Salle University',
-                    'school_address'  => 'Taft Avenue, Manila',
-                    'graduation_date' => '2007-03-20',
-                    'degree'          => 'Bachelor of Science in Business Administration',
-                ],
-                'family' => [
-                    'full_name'      => 'Luisa Dela Cruz',
-                    'contact_number' => '09289876543',
-                    'relationship'   => '2000-01-01',
-                ],
-                'gov_accounts' => [
-                    ['account_type' => 'SSS',     'account_number' => '04-9876543-2'],
-                    ['account_type' => 'PhilHealth','account_number' => '13-987654321-0'],
-                    ['account_type' => 'Pag-IBIG', 'account_number' => '9876-5432-1098'],
-                    ['account_type' => 'GSIS',     'account_number' => 'GSIS-0001-2012'],
-                ],
-                'allowances' => [
-                    ['allowance_name' => 'Transportation Allowance', 'allowance_amount' => 2000.00],
-                    ['allowance_name' => 'Rice Subsidy',             'allowance_amount' => 1500.00],
-                    ['allowance_name' => 'Clothing Allowance',       'allowance_amount' => 6000.00],
-                ],
-                'service_records' => [
-                    ['department' => 'Human Resources Division', 'service_title' => 'HR Officer',  'durationStart' => '2012-06-01', 'durationEnd' => '2018-12-31'],
-                    ['department' => 'Human Resources Division', 'service_title' => 'HR Manager',  'durationStart' => '2019-01-01', 'durationEnd' => null],
-                ],
-                'seminars' => [
-                    ['seminar_training_name' => 'Strategic HR Management', 'date_attended' => '2020-09-15', 'venue' => 'PICC, Pasay City'],
-                    ['seminar_training_name' => 'Leadership and Management', 'date_attended' => '2023-03-22', 'venue' => 'Manila Hotel'],
-                ],
-                'eligibility' => [
-                    ['eligibility_name' => 'Career Service Professional', 'year_passed' => '2008-08-01'],
-                    ['eligibility_name' => 'Career Service Executive',    'year_passed' => '2018-11-01'],
-                ],
-                'leave_info' => [
-                    ['leave_type' => 'Vacation Leave', 'leave_days' => '2024-01-01', 'leave_balance' => '2024-12-31'],
-                    ['leave_type' => 'Sick Leave',     'leave_days' => '2024-01-01', 'leave_balance' => '2024-12-31'],
-                ],
-                'leave_availments' => [
-                    ['leave_type' => 'Sick Leave', 'leave_start_date' => '2024-02-20', 'leave_end_date' => '2024-02-21', 'status' => 'approved'],
-                ],
-                'payroll' => [
-                    ['initial_amount' => 48597.00, 'deduction_amount' => 6200.00, 'final_amount' => 42397.00, 'date_processed' => '2025-01-31', 'payroll_status' => 'Released'],
-                ],
-                'water_bill' => ['water_bill_number' => 'WB-002-2024', 'account_name' => 'Ramon B. Dela Cruz Jr.', 'address' => '45 Mabini Avenue, Pasig City'],
-                'uploaded_files' => [
-                    ['file_name' => 'diploma.pdf',            'file_size' => '1.2MB', 'file_database_location' => 'employees/2/diploma.pdf'],
-                    ['file_name' => 'service_record.pdf',     'file_size' => '800KB', 'file_database_location' => 'employees/2/service_record.pdf'],
-                ],
-            ],
-            [
-                'basic' => [
-                    'first_name'     => 'Ana',
-                    'last_name'      => 'Reyes',
-                    'middle_name'    => 'Gomez',
-                    'name_extension' => null,
-                    'birth_date'     => '1995-11-08',
-                    'sex'            => 1,
-                    'personal_email' => 'ana.reyes@gmail.com',
-                    'phone_number'   => '09351234567',
-                    'civil_status'   => 'single',
-                    'place_of_birth' => 'Davao City, Philippines',
-                ],
-                'employee' => [
-                    'item_id'                   => $itemIds[2],
-                    'salary_grade_step_id'       => $sgStepIds[1],
-                    'employment_classification'  => 'Regular',
-                    'work_email'                 => 'ana.reyes@obx.gov.ph',
-                    'date_applied'               => '2020-08-15',
-                    'date_hired'                 => '2020-09-01',
-                    'work_schedule_start'        => '08:00:00',
-                    'work_schedule_end'          => '17:00:00',
-                    'status'                     => true,
-                ],
-                'address' => [
-                    'street_address' => '78 Bonifacio Street',
-                    'city'           => 'Taguig City',
-                    'state'          => 'Metro Manila',
-                    'zip_code'       => '1634',
-                ],
-                'education' => [
-                    'level'           => 'College',
-                    'school_name'     => 'Ateneo de Manila University',
-                    'school_address'  => 'Loyola Heights, Quezon City',
-                    'graduation_date' => '2017-03-25',
-                    'degree'          => 'Bachelor of Science in Computer Science',
-                ],
-                'family' => [
-                    'full_name'      => 'Pedro Reyes',
-                    'contact_number' => '09359876543',
-                    'relationship'   => '2000-01-01',
-                ],
-                'gov_accounts' => [
-                    ['account_type' => 'SSS',     'account_number' => '05-5551234-9'],
-                    ['account_type' => 'PhilHealth','account_number' => '14-555123456-7'],
-                    ['account_type' => 'Pag-IBIG', 'account_number' => '5551-2345-6789'],
-                ],
-                'allowances' => [
-                    ['allowance_name' => 'Transportation Allowance', 'allowance_amount' => 2000.00],
-                    ['allowance_name' => 'Rice Subsidy',             'allowance_amount' => 1500.00],
-                ],
-                'service_records' => [
-                    ['department' => 'Information Technology Division', 'service_title' => 'Junior Developer',   'durationStart' => '2020-09-01', 'durationEnd' => '2022-08-31'],
-                    ['department' => 'Information Technology Division', 'service_title' => 'Software Developer', 'durationStart' => '2022-09-01', 'durationEnd' => null],
-                ],
-                'seminars' => [
-                    ['seminar_training_name' => 'Laravel Advanced Workshop', 'date_attended' => '2023-07-14', 'venue' => 'BGC Tech Hub, Taguig'],
-                    ['seminar_training_name' => 'Cybersecurity Awareness Training', 'date_attended' => '2024-01-20', 'venue' => 'Online (Zoom)'],
-                ],
-                'eligibility' => [
-                    ['eligibility_name' => 'Career Service Sub-professional', 'year_passed' => '2018-04-01'],
-                ],
-                'leave_info' => [
-                    ['leave_type' => 'Vacation Leave', 'leave_days' => '2024-01-01', 'leave_balance' => '2024-12-31'],
-                    ['leave_type' => 'Sick Leave',     'leave_days' => '2024-01-01', 'leave_balance' => '2024-12-31'],
-                ],
-                'leave_availments' => [
-                    ['leave_type' => 'Vacation Leave', 'leave_start_date' => '2024-12-23', 'leave_end_date' => '2024-12-27', 'status' => 'approved'],
-                ],
-                'payroll' => [
-                    ['initial_amount' => 27608.00, 'deduction_amount' => 3500.00, 'final_amount' => 24108.00, 'date_processed' => '2025-01-31', 'payroll_status' => 'Released'],
-                ],
-                'water_bill' => ['water_bill_number' => 'WB-003-2024', 'account_name' => 'Ana G. Reyes', 'address' => '78 Bonifacio Street, Taguig City'],
-                'uploaded_files' => [
-                    ['file_name' => 'tor.pdf', 'file_size' => '950KB', 'file_database_location' => 'employees/3/tor.pdf'],
-                ],
-            ],
-            [
-                'basic' => [
-                    'first_name'     => 'Carlo',
-                    'last_name'      => 'Mendoza',
-                    'middle_name'    => 'Aquino',
-                    'name_extension' => null,
-                    'birth_date'     => '1988-05-30',
-                    'sex'            => 0,
-                    'personal_email' => 'carlo.mendoza@gmail.com',
-                    'phone_number'   => '09461234567',
-                    'civil_status'   => 'single',
-                    'place_of_birth' => 'Iloilo City, Philippines',
-                ],
-                'employee' => [
-                    'item_id'                   => $itemIds[3],
-                    'salary_grade_step_id'       => $sgStepIds[2],
-                    'employment_classification'  => 'Regular',
-                    'work_email'                 => 'carlo.mendoza@obx.gov.ph',
-                    'date_applied'               => '2015-03-01',
-                    'date_hired'                 => '2015-04-01',
-                    'work_schedule_start'        => '08:00:00',
-                    'work_schedule_end'          => '17:00:00',
-                    'status'                     => true,
-                ],
-                'address' => [
-                    'street_address' => '22 Luna Street',
-                    'city'           => 'Mandaluyong City',
-                    'state'          => 'Metro Manila',
-                    'zip_code'       => '1550',
-                ],
-                'education' => [
-                    'level'           => 'College',
-                    'school_name'     => 'Mapúa University',
-                    'school_address'  => 'Muralla Street, Intramuros, Manila',
-                    'graduation_date' => '2010-03-18',
-                    'degree'          => 'Bachelor of Science in Information Technology',
-                ],
-                'family' => [
-                    'full_name'      => 'Gloria Mendoza',
-                    'contact_number' => '09469876543',
-                    'relationship'   => '2000-01-01',
-                ],
-                'gov_accounts' => [
-                    ['account_type' => 'SSS',     'account_number' => '06-4441234-0'],
-                    ['account_type' => 'PhilHealth','account_number' => '15-444123456-3'],
-                    ['account_type' => 'Pag-IBIG', 'account_number' => '4441-2345-6780'],
-                ],
-                'allowances' => [
-                    ['allowance_name' => 'Transportation Allowance', 'allowance_amount' => 2000.00],
-                    ['allowance_name' => 'Rice Subsidy',             'allowance_amount' => 1500.00],
-                    ['allowance_name' => 'Hazard Pay',               'allowance_amount' => 3000.00],
-                ],
-                'service_records' => [
-                    ['department' => 'Information Technology Division', 'service_title' => 'IT Support Specialist', 'durationStart' => '2015-04-01', 'durationEnd' => '2019-12-31'],
-                    ['department' => 'Information Technology Division', 'service_title' => 'Systems Administrator', 'durationStart' => '2020-01-01', 'durationEnd' => null],
-                ],
-                'seminars' => [
-                    ['seminar_training_name' => 'Linux System Administration', 'date_attended' => '2021-11-05', 'venue' => 'Manila'],
-                    ['seminar_training_name' => 'Network Security Fundamentals', 'date_attended' => '2023-09-18', 'venue' => 'Online (MS Teams)'],
-                ],
-                'eligibility' => [
-                    ['eligibility_name' => 'Career Service Professional', 'year_passed' => '2011-08-01'],
-                ],
-                'leave_info' => [
-                    ['leave_type' => 'Vacation Leave', 'leave_days' => '2024-01-01', 'leave_balance' => '2024-12-31'],
-                    ['leave_type' => 'Sick Leave',     'leave_days' => '2024-01-01', 'leave_balance' => '2024-12-31'],
-                ],
-                'leave_availments' => [
-                    ['leave_type' => 'Sick Leave', 'leave_start_date' => '2024-07-15', 'leave_end_date' => '2024-07-16', 'status' => 'approved'],
-                ],
-                'payroll' => [
-                    ['initial_amount' => 36619.00, 'deduction_amount' => 4800.00, 'final_amount' => 31819.00, 'date_processed' => '2025-01-31', 'payroll_status' => 'Released'],
-                ],
-                'water_bill' => ['water_bill_number' => 'WB-004-2024', 'account_name' => 'Carlo A. Mendoza', 'address' => '22 Luna Street, Mandaluyong City'],
-                'uploaded_files' => [
-                    ['file_name' => 'nbi_clearance.pdf', 'file_size' => '300KB', 'file_database_location' => 'employees/4/nbi_clearance.pdf'],
-                    ['file_name' => 'certifications.pdf','file_size' => '1.5MB', 'file_database_location' => 'employees/4/certifications.pdf'],
-                ],
-            ],
-            [
-                'basic' => [
-                    'first_name'     => 'Joanna',
-                    'last_name'      => 'Villanueva',
-                    'middle_name'    => 'Lim',
-                    'name_extension' => null,
-                    'birth_date'     => '1982-09-14',
-                    'sex'            => 1,
-                    'personal_email' => 'joanna.villanueva@gmail.com',
-                    'phone_number'   => '09171112222',
-                    'civil_status'   => 'married',
-                    'place_of_birth' => 'Cagayan de Oro, Philippines',
-                ],
-                'employee' => [
-                    'item_id'                   => $itemIds[4],
-                    'salary_grade_step_id'       => $sgStepIds[4],
-                    'employment_classification'  => 'Regular',
-                    'work_email'                 => 'joanna.villanueva@obx.gov.ph',
-                    'date_applied'               => '2008-10-01',
-                    'date_hired'                 => '2008-11-01',
-                    'work_schedule_start'        => '08:00:00',
-                    'work_schedule_end'          => '17:00:00',
-                    'status'                     => false,
-                ],
-                'address' => [
-                    'street_address' => '9 Aguinaldo Street',
-                    'city'           => 'Marikina City',
-                    'state'          => 'Metro Manila',
-                    'zip_code'       => '1800',
-                ],
-                'education' => [
-                    'level'           => 'Post-Graduate',
-                    'school_name'     => 'University of Santo Tomas',
-                    'school_address'  => 'España Blvd., Sampaloc, Manila',
-                    'graduation_date' => '2006-04-10',
-                    'degree'          => 'Master of Science in Information Systems',
-                ],
-                'family' => [
-                    'full_name'      => 'Eduardo Villanueva',
-                    'contact_number' => '09179998888',
-                    'relationship'   => '2000-01-01',
-                ],
-                'gov_accounts' => [
-                    ['account_type' => 'SSS',     'account_number' => '07-3331234-5'],
-                    ['account_type' => 'PhilHealth','account_number' => '16-333123456-8'],
-                    ['account_type' => 'Pag-IBIG', 'account_number' => '3331-2345-6785'],
-                    ['account_type' => 'GSIS',     'account_number' => 'GSIS-0005-2008'],
-                ],
-                'allowances' => [
-                    ['allowance_name' => 'Transportation Allowance', 'allowance_amount' => 2000.00],
-                    ['allowance_name' => 'Rice Subsidy',             'allowance_amount' => 1500.00],
-                    ['allowance_name' => 'Representation Allowance', 'allowance_amount' => 5000.00],
-                    ['allowance_name' => 'Clothing Allowance',       'allowance_amount' => 6000.00],
-                ],
-                'service_records' => [
-                    ['department' => 'Information Technology Division', 'service_title' => 'Senior Developer',  'durationStart' => '2008-11-01', 'durationEnd' => '2015-12-31'],
-                    ['department' => 'Information Technology Division', 'service_title' => 'IT Division Chief', 'durationStart' => '2016-01-01', 'durationEnd' => '2020-06-30'],
-                    ['department' => 'Information Technology Division', 'service_title' => 'IT Manager',        'durationStart' => '2020-07-01', 'durationEnd' => null],
-                ],
-                'seminars' => [
-                    ['seminar_training_name' => 'Digital Transformation for Government', 'date_attended' => '2022-10-05', 'venue' => 'Sofitel Philippine Plaza, Pasay'],
-                    ['seminar_training_name' => 'Executive Leadership Program',          'date_attended' => '2023-05-17', 'venue' => 'Asian Institute of Management, Makati'],
-                ],
-                'eligibility' => [
-                    ['eligibility_name' => 'Career Service Professional', 'year_passed' => '2005-08-01'],
-                    ['eligibility_name' => 'Information Technology Officer Exam', 'year_passed' => '2010-05-01'],
-                ],
-                'leave_info' => [
-                    ['leave_type' => 'Vacation Leave', 'leave_days' => '2024-01-01', 'leave_balance' => '2024-12-31'],
-                    ['leave_type' => 'Sick Leave',     'leave_days' => '2024-01-01', 'leave_balance' => '2024-12-31'],
-                ],
-                'leave_availments' => [
-                    ['leave_type' => 'Vacation Leave', 'leave_start_date' => '2024-08-12', 'leave_end_date' => '2024-08-16', 'status' => 'approved'],
-                    ['leave_type' => 'Sick Leave',     'leave_start_date' => '2024-11-04', 'leave_end_date' => '2024-11-05', 'status' => 'approved'],
-                ],
-                'payroll' => [
-                    ['initial_amount' => 97744.00, 'deduction_amount' => 13500.00, 'final_amount' => 84244.00, 'date_processed' => '2025-01-31', 'payroll_status' => 'Released'],
-                ],
-                'water_bill' => ['water_bill_number' => 'WB-005-2024', 'account_name' => 'Joanna L. Villanueva', 'address' => '9 Aguinaldo Street, Marikina City'],
-                'uploaded_files' => [
-                    ['file_name' => 'diploma.pdf',        'file_size' => '1.1MB', 'file_database_location' => 'employees/5/diploma.pdf'],
-                    ['file_name' => 'masteral_tor.pdf',   'file_size' => '1.4MB', 'file_database_location' => 'employees/5/masteral_tor.pdf'],
-                    ['file_name' => 'pds_form.pdf',       'file_size' => '600KB', 'file_database_location' => 'employees/5/pds_form.pdf'],
-                ],
-            ],
-        ];
+        $positionIds = [];
+        foreach ($positions as $pos) {
+            $positionIds[] = DB::table('positions')->insertGetId([
+                'department_id' => $pos['dept'],
+                'division_id'   => $pos['div'],
+                'unit_id'       => $pos['unit'],
+                'position_name' => $pos['name'],
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+        }
 
-        // ── 8. Insert each employee and all related records ────────
+        // ── 6. Items — 100 slots distributed across positions ──────
+        // Distribution: spread 100 items across 25 positions (4 each)
+        $itemIds = [];
+        foreach ($positionIds as $idx => $posId) {
+            $posName = $positions[$idx]['name'];
+            for ($slot = 1; $slot <= 4; $slot++) {
+                $itemIds[] = [
+                    'id'  => DB::table('items')->insertGetId([
+                        'position_id' => $posId,
+                        'item_name'   => "{$posName} Item {$slot}",
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
+                    ]),
+                    'pos_idx' => $idx,
+                ];
+            }
+        }
+        // $itemIds now has 100 entries
+
+        // ── 7. Reference data pools ────────────────────────────────
+        $firstNamesMale = [
+            'Ramon','Carlo','Jose','Miguel','Eduardo','Roberto','Fernando','Antonio',
+            'Ricardo','Emmanuel','Rodrigo','Alfredo','Bernard','Leonardo','Danilo',
+            'Renato','Armando','Cesar','Victor','Nelson','Bryan','Kevin','Mark',
+            'Christian','Ronald','Joel','Jerome','Patrick','Dennis','Alvin',
+        ];
+        $firstNamesFemale = [
+            'Maria','Ana','Joanna','Rosa','Maricel','Lourdes','Teresita','Corazon',
+            'Josephine','Erlinda','Gina','Rowena','Charissa','Kristine','Patricia',
+            'Melissa','Diana','Catherine','Angela','Sheila','Vanessa','Aileen',
+            'Mylene','Cheryl','Fe','Elvira','Nora','Cynthia','Susan','Marites',
+        ];
+        $lastNames = [
+            'Santos','Dela Cruz','Reyes','Mendoza','Garcia','Torres','Villanueva',
+            'Bautista','Ramos','Aquino','Fernandez','Flores','Lopez','Diaz','Castro',
+            'Aguilar','Tolentino','Espinosa','Navarro','Palma','Morales','Velasco',
+            'Ibanez','Ocampo','Macapagal','Pangilinan','Mercado','Bonifacio','Luna',
+            'Mabini','Rizal','Bonifacio','Pascual','Lucero','Salazar','Macaraeg',
+        ];
+        $middleNames = [
+            'Cruz','Gomez','Lim','Tan','Ong','Aquino','Rivera','Pascual','Jimenez',
+            'Reyes','Santos','Bautista','Garcia','Torres','Ramos','Fernandez','Flores',
+            'Soriano','Valdez','Manalo','Bartolome','Castillo','Guevara','Zabala',
+        ];
+        $cities = [
+            'Quezon City','Manila','Pasig City','Taguig City','Mandaluyong City',
+            'Marikina City','Pasay City','Makati City','Paranaque City','Caloocan City',
+            'Valenzuela City','Malabon City','Las Pinas City','Muntinlupa City','Pateros',
+        ];
+        $streets = [
+            'Rizal Street','Mabini Avenue','Luna Street','Bonifacio Boulevard',
+            'Aguinaldo Street','Quezon Avenue','Commonwealth Avenue','España Boulevard',
+            'Taft Avenue','EDSA','Ortigas Avenue','Shaw Boulevard','Aurora Boulevard',
+            'C-5 Road','Marcos Highway',
+        ];
+        $zipCodes = ['1100','1200','1300','1400','1500','1550','1600','1634','1700','1800'];
+        $schools = [
+            ['school' => 'University of the Philippines Diliman',   'address' => 'Diliman, Quezon City'],
+            ['school' => 'De La Salle University',                  'address' => 'Taft Avenue, Manila'],
+            ['school' => 'Ateneo de Manila University',             'address' => 'Loyola Heights, Quezon City'],
+            ['school' => 'University of Santo Tomas',               'address' => 'España Blvd., Sampaloc, Manila'],
+            ['school' => 'Mapúa University',                        'address' => 'Muralla Street, Intramuros, Manila'],
+            ['school' => 'Far Eastern University',                  'address' => 'Nicanor Reyes Street, Manila'],
+            ['school' => 'San Beda University',                     'address' => 'Mendiola Street, Manila'],
+            ['school' => 'Polytechnic University of the Philippines','address' => 'Anonas Street, Santa Mesa, Manila'],
+            ['school' => 'Pamantasan ng Lungsod ng Maynila',        'address' => 'Intramuros, Manila'],
+            ['school' => 'Philippine Normal University',            'address' => 'Taft Avenue, Manila'],
+            ['school' => 'Technological Institute of the Philippines','address' => 'Cubao, Quezon City'],
+            ['school' => 'National University Philippines',         'address' => 'M.V. Delos Santos Street, Manila'],
+        ];
+        $degrees = [
+            'Bachelor of Science in Computer Science',
+            'Bachelor of Science in Information Technology',
+            'Bachelor of Science in Business Administration',
+            'Bachelor of Science in Accountancy',
+            'Bachelor of Science in Psychology',
+            'Bachelor of Science in Public Administration',
+            'Bachelor of Laws',
+            'Bachelor of Science in Office Administration',
+            'Bachelor of Science in Electronics Engineering',
+            'Bachelor of Science in Civil Engineering',
+            'Master of Business Administration',
+            'Master of Public Administration',
+            'Master of Science in Information Systems',
+        ];
+        $eduLevels = ['College', 'Post-Graduate', 'College', 'College', 'College', 'Post-Graduate'];
+        $eligibilities = [
+            'Career Service Sub-professional',
+            'Career Service Professional',
+            'Career Service Executive',
+            'Bar Examinations',
+            'Certified Public Accountant',
+            'Information Technology Officer Exam',
+            'Civil Service Eligibility for Teachers',
+        ];
+        $govtSeminars = [
+            ['name' => 'Strategic Planning Workshop',                    'venue' => 'PICC, Pasay City'],
+            ['name' => 'Labor Law and Employee Relations Seminar',       'venue' => 'Makati City Hall'],
+            ['name' => 'Cybersecurity Awareness Training',               'venue' => 'Online (Zoom)'],
+            ['name' => 'Laravel Advanced Workshop',                      'venue' => 'BGC Tech Hub, Taguig'],
+            ['name' => 'Leadership and Management',                      'venue' => 'Manila Hotel'],
+            ['name' => 'Digital Transformation for Government',          'venue' => 'Sofitel Philippine Plaza, Pasay'],
+            ['name' => 'Public Financial Management Seminar',            'venue' => 'COA Headquarters, Quezon City'],
+            ['name' => 'Records and Documents Management',               'venue' => 'NEDA Pasig'],
+            ['name' => 'Project Management Essentials',                  'venue' => 'Online (MS Teams)'],
+            ['name' => 'Anti-Corruption and Ethics in Public Service',   'venue' => 'CSC Regional Office, Manila'],
+            ['name' => 'Gender and Development Awareness Program',       'venue' => 'DSWD Office, Diliman'],
+            ['name' => 'Procurement Law and GPPB Guidelines',            'venue' => 'GPPB-TSO, Pasig City'],
+            ['name' => 'Network Security Fundamentals',                  'venue' => 'Online (MS Teams)'],
+            ['name' => 'Executive Leadership Program',                   'venue' => 'Asian Institute of Management, Makati'],
+            ['name' => 'Budget and Financial Reporting',                 'venue' => 'DBM Conference Hall, Manila'],
+        ];
+        $allowanceTypes = [
+            ['allowance_name' => 'Transportation Allowance', 'allowance_amount' => 2000.00],
+            ['allowance_name' => 'Rice Subsidy',             'allowance_amount' => 1500.00],
+            ['allowance_name' => 'Clothing Allowance',       'allowance_amount' => 6000.00],
+            ['allowance_name' => 'Hazard Pay',               'allowance_amount' => 3000.00],
+            ['allowance_name' => 'Representation Allowance', 'allowance_amount' => 5000.00],
+            ['allowance_name' => 'Subsistence Allowance',    'allowance_amount' => 1800.00],
+            ['allowance_name' => 'Laundry Allowance',        'allowance_amount' =>  600.00],
+        ];
+        $employmentClassifications = ['Regular', 'Regular', 'Regular', 'Job Order', 'Casual'];
+        $civStatuses = ['single', 'married', 'married', 'married', 'single', 'widowed'];
+        $placesBirth = [
+            'Manila, Philippines', 'Cebu City, Philippines', 'Davao City, Philippines',
+            'Quezon City, Philippines', 'Iloilo City, Philippines', 'Cagayan de Oro, Philippines',
+            'Zamboanga City, Philippines', 'Bacolod City, Philippines', 'General Santos City, Philippines',
+            'Baguio City, Philippines', 'Tacloban City, Philippines', 'Butuan City, Philippines',
+        ];
+        $leaveTypes = ['Vacation Leave', 'Sick Leave'];
+
+        // ── 8. Insert 100 employees ────────────────────────────────
         $createdEmployeeIds = [];
+        srand(42); // reproducible randomness
 
-        foreach ($employees as $data) {
-            // employee_basic_info
-            $basicInfoId = DB::table('employee_basic_info')->insertGetId(
-                array_merge($data['basic'], ['created_at' => now(), 'updated_at' => now()])
+        for ($i = 0; $i < 100; $i++) {
+            $isSexFemale = ($i % 3 !== 0); // roughly 2/3 female, 1/3 male
+            $sex         = $isSexFemale ? 1 : 0;
+
+            $firstName  = $isSexFemale
+                ? $firstNamesFemale[$i % count($firstNamesFemale)]
+                : $firstNamesMale[$i % count($firstNamesMale)];
+            $lastName   = $lastNames[$i % count($lastNames)];
+            $middleName = $middleNames[$i % count($middleNames)];
+
+            $birthYear  = 1975 + ($i % 25); // 1975–1999
+            $birthMonth = str_pad(($i % 12) + 1, 2, '0', STR_PAD_LEFT);
+            $birthDay   = str_pad(($i % 28) + 1, 2, '0', STR_PAD_LEFT);
+            $birthDate  = "{$birthYear}-{$birthMonth}-{$birthDay}";
+
+            $hireYear   = min(2023, 2000 + ($i % 24));
+            $hireMonth  = str_pad(($i % 12) + 1, 2, '0', STR_PAD_LEFT);
+            $hiredDate  = "{$hireYear}-{$hireMonth}-01";
+            $appliedDate = date('Y-m-d', strtotime($hiredDate . ' -1 month'));
+
+            $city      = $cities[$i % count($cities)];
+            $street    = $streets[$i % count($streets)];
+            $streetNum = (($i + 1) * 7) % 200 + 1;
+            $zipCode   = $zipCodes[$i % count($zipCodes)];
+
+            $schoolData = $schools[$i % count($schools)];
+            $degree     = $degrees[$i % count($degrees)];
+            $eduLevel   = $eduLevels[$i % count($eduLevels)];
+            $gradYear   = min($hireYear - 1, $birthYear + 20);
+            $gradDate   = "{$gradYear}-03-25";
+
+            $classif = $employmentClassifications[$i % count($employmentClassifications)];
+            $civStat = $civStatuses[$i % count($civStatuses)];
+            $status  = ($i % 10 !== 0); // 10% inactive
+
+            // item slot
+            $itemEntry = $itemIds[$i];
+            $itemId    = $itemEntry['id'];
+            $posIdx    = $itemEntry['pos_idx'];
+            $sgIdx     = $positions[$posIdx]['sg_idx'];
+
+            $workEmail = strtolower(
+                preg_replace('/[^a-z0-9]/', '', $firstName) . '.' .
+                preg_replace('/[^a-z0-9]/', '', $lastName) .
+                ($i > 0 ? $i : '') .
+                '@obx.gov.ph'
             );
 
-            // employees
-            $employeeId = DB::table('employees')->insertGetId(array_merge(
-                $data['employee'],
-                [
-                    'employee_basic_info_id' => $basicInfoId,
-                    'password'               => Hash::make('password'),
-                    'created_at'             => now(),
-                    'updated_at'             => now(),
-                ]
-            ));
+            // Basic info
+            $basicInfoId = DB::table('employee_basic_info')->insertGetId([
+                'first_name'     => $firstName,
+                'last_name'      => $lastName,
+                'middle_name'    => $middleName,
+                'name_extension' => ($i % 15 === 0 && !$isSexFemale) ? 'Jr.' : null,
+                'birth_date'     => $birthDate,
+                'sex'            => $sex,
+                'personal_email' => strtolower("{$firstName}.{$lastName}{$i}@gmail.com"),
+                'phone_number'   => '09' . str_pad((171000000 + $i * 1234567) % 900000000 + 100000000, 9, '0'),
+                'civil_status'   => $civStat,
+                'place_of_birth' => $placesBirth[$i % count($placesBirth)],
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+
+            // Employee
+            $employeeId = DB::table('employees')->insertGetId([
+                'employee_basic_info_id'    => $basicInfoId,
+                'item_id'                   => $itemId,
+                'salary_grade_step_id'      => $sgStepIds[$sgIdx],
+                'employment_classification' => $classif,
+                'work_email'                => $workEmail,
+                'password'                  => Hash::make('password'),
+                'date_applied'              => $appliedDate,
+                'date_hired'                => $hiredDate,
+                'work_schedule_start'       => '08:00:00',
+                'work_schedule_end'         => '17:00:00',
+                'status'                    => $status,
+                'created_at'               => now(),
+                'updated_at'               => now(),
+            ]);
 
             $createdEmployeeIds[] = $employeeId;
 
-            // employee_addresses
-            DB::table('employee_addresses')->insert(
-                array_merge($data['address'], [
-                    'employee_basic_info_id' => $basicInfoId,
-                    'created_at'             => now(),
-                    'updated_at'             => now(),
-                ])
-            );
+            // Address
+            DB::table('employee_addresses')->insert([
+                'employee_basic_info_id' => $basicInfoId,
+                'street_address'         => "{$streetNum} {$street}",
+                'city'                   => $city,
+                'state'                  => 'Metro Manila',
+                'zip_code'               => $zipCode,
+                'created_at'             => now(),
+                'updated_at'             => now(),
+            ]);
 
-            // employee_educations
-            DB::table('employee_educations')->insert(
-                array_merge($data['education'], [
-                    'employee_basic_info_id' => $basicInfoId,
-                    'created_at'             => now(),
-                    'updated_at'             => now(),
-                ])
-            );
+            // Education
+            DB::table('employee_educations')->insert([
+                'employee_basic_info_id' => $basicInfoId,
+                'level'                  => $eduLevel,
+                'school_name'            => $schoolData['school'],
+                'school_address'         => $schoolData['address'],
+                'graduation_date'        => $gradDate,
+                'degree'                 => $degree,
+                'created_at'             => now(),
+                'updated_at'             => now(),
+            ]);
 
-            // family_info
-            DB::table('family_info')->insert(
-                array_merge($data['family'], [
-                    'employee_basic_info_id' => $basicInfoId,
-                    'created_at'             => now(),
-                    'updated_at'             => now(),
-                ])
-            );
+            // Family info (1 member)
+            $spouseFirstName = $isSexFemale
+                ? $firstNamesMale[$i % count($firstNamesMale)]
+                : $firstNamesFemale[$i % count($firstNamesFemale)];
+            DB::table('family_info')->insert([
+                'employee_basic_info_id' => $basicInfoId,
+                'full_name'              => "{$spouseFirstName} {$lastName}",
+                'contact_number'         => '09' . str_pad((281000000 + $i * 7654321) % 900000000 + 100000000, 9, '0'),
+                'relationship'           => '2000-01-01',
+                'created_at'             => now(),
+                'updated_at'             => now(),
+            ]);
 
-            // government_accounts
-            foreach ($data['gov_accounts'] as $govAccount) {
-                DB::table('government_accounts')->insert(
-                    array_merge($govAccount, [
-                        'employee_id' => $employeeId,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ])
-                );
+            // Government accounts
+            $govAccounts = [
+                ['account_type' => 'SSS',       'account_number' => sprintf('%02d-%07d-%d', ($i % 9) + 1, $i * 1234567 % 9999999, $i % 9)],
+                ['account_type' => 'PhilHealth', 'account_number' => sprintf('%02d-%09d-%d', ($i % 9) + 11, $i * 9876543 % 999999999, $i % 9)],
+                ['account_type' => 'Pag-IBIG',  'account_number' => sprintf('%04d-%04d-%04d', ($i * 7) % 9999, ($i * 3) % 9999, ($i * 11) % 9999)],
+            ];
+            if ($classif === 'Regular' && $hireYear < 2015) {
+                $govAccounts[] = ['account_type' => 'GSIS', 'account_number' => sprintf('GSIS-%04d-%d', $i + 1, $hireYear)];
             }
-
-            // employee_allowances
-            foreach ($data['allowances'] as $allowance) {
-                DB::table('employee_allowances')->insert(
-                    array_merge($allowance, [
-                        'employee_id' => $employeeId,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ])
-                );
-            }
-
-            // employee_service_records
-            foreach ($data['service_records'] as $record) {
-                DB::table('employee_service_records')->insert(
-                    array_merge($record, [
-                        'employee_id' => $employeeId,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ])
-                );
-            }
-
-            // employee_seminars_and_trainings
-            foreach ($data['seminars'] as $seminar) {
-                DB::table('employee_seminars_and_trainings')->insert(
-                    array_merge($seminar, [
-                        'employee_id' => $employeeId,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ])
-                );
-            }
-
-            // eligibility_information
-            foreach ($data['eligibility'] as $eligibility) {
-                DB::table('eligibility_information')->insert(
-                    array_merge($eligibility, [
-                        'employee_id' => $employeeId,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ])
-                );
-            }
-
-            // leave_information
-            foreach ($data['leave_info'] as $leave) {
-                DB::table('leave_information')->insert(
-                    array_merge($leave, [
-                        'employee_id' => $employeeId,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ])
-                );
-            }
-
-            // leave_availments
-            foreach ($data['leave_availments'] as $availment) {
-                DB::table('leave_availments')->insert(
-                    array_merge($availment, [
-                        'employee_id' => $employeeId,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ])
-                );
-            }
-
-            // employee_payroll_data
-            foreach ($data['payroll'] as $payroll) {
-                DB::table('employee_payroll_data')->insert(
-                    array_merge($payroll, [
-                        'employee_id' => $employeeId,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ])
-                );
-            }
-
-            // employee_water_bill
-            DB::table('employee_water_bill')->insert(
-                array_merge($data['water_bill'], [
+            foreach ($govAccounts as $acct) {
+                DB::table('government_accounts')->insert(array_merge($acct, [
                     'employee_id' => $employeeId,
                     'created_at'  => now(),
                     'updated_at'  => now(),
-                ])
-            );
+                ]));
+            }
 
-            // employee_uploaded_files
-            foreach ($data['uploaded_files'] as $file) {
-                DB::table('employee_uploaded_files')->insert(
-                    array_merge($file, [
-                        'employee_id' => $employeeId,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ])
-                );
+            // Allowances (everyone gets transportation + rice, some get extras)
+            $empAllowances = [
+                $allowanceTypes[0], // Transportation
+                $allowanceTypes[1], // Rice Subsidy
+            ];
+            if ($i % 4 === 0) $empAllowances[] = $allowanceTypes[2]; // Clothing
+            if ($i % 7 === 0) $empAllowances[] = $allowanceTypes[3]; // Hazard
+            if ($sgIdx >= 9)  $empAllowances[] = $allowanceTypes[4]; // Representation (senior)
+            if ($i % 5 === 0) $empAllowances[] = $allowanceTypes[5]; // Subsistence
+
+            foreach ($empAllowances as $alw) {
+                DB::table('employee_allowances')->insert(array_merge($alw, [
+                    'employee_id' => $employeeId,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]));
+            }
+
+            // Service records (at least 1, sometimes 2)
+            $positionName = $positions[$posIdx]['name'];
+            $divName = match($positions[$posIdx]['div']) {
+                $divHrId    => 'Human Resources Division',
+                $divItId    => 'Information Technology Division',
+                $divFinId   => 'Finance and Budget Division',
+                $divAdminId => 'Administrative Services Division',
+                $divLegalId => 'Legal and Compliance Division',
+                default     => 'Office of Business Excellence',
+            };
+            DB::table('employee_service_records')->insert([
+                'employee_id'   => $employeeId,
+                'department'    => $divName,
+                'service_title' => $positionName,
+                'durationStart' => $hiredDate,
+                'durationEnd'   => null,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+            if ($hireYear <= 2015) {
+                $prevYear = $hireYear;
+                $prevEnd  = ($hireYear + 4) . "-12-31";
+                DB::table('employee_service_records')->insert([
+                    'employee_id'   => $employeeId,
+                    'department'    => $divName,
+                    'service_title' => 'Administrative Aide',
+                    'durationStart' => "{$prevYear}-01-01",
+                    'durationEnd'   => $prevEnd,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
+            }
+
+            // Seminars (1–2 per employee)
+            $seminar1 = $govtSeminars[$i % count($govtSeminars)];
+            $semYear  = min(2024, $hireYear + 2);
+            DB::table('employee_seminars_and_trainings')->insert([
+                'employee_id'          => $employeeId,
+                'seminar_training_name'=> $seminar1['name'],
+                'date_attended'        => "{$semYear}-06-15",
+                'venue'                => $seminar1['venue'],
+                'created_at'           => now(),
+                'updated_at'           => now(),
+            ]);
+            if ($i % 3 === 0) {
+                $seminar2 = $govtSeminars[($i + 5) % count($govtSeminars)];
+                DB::table('employee_seminars_and_trainings')->insert([
+                    'employee_id'          => $employeeId,
+                    'seminar_training_name'=> $seminar2['name'],
+                    'date_attended'        => min(2024, $semYear + 1) . '-11-20',
+                    'venue'                => $seminar2['venue'],
+                    'created_at'           => now(),
+                    'updated_at'           => now(),
+                ]);
+            }
+
+            // Eligibility
+            $elig = $eligibilities[$i % count($eligibilities)];
+            $eligYear = min($hireYear - 1, $birthYear + 22);
+            DB::table('eligibility_information')->insert([
+                'employee_id'      => $employeeId,
+                'eligibility_name' => $elig,
+                'year_passed'      => "{$eligYear}-08-01",
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ]);
+
+            // Leave information
+            foreach ($leaveTypes as $lt) {
+                DB::table('leave_information')->insert([
+                    'employee_id'  => $employeeId,
+                    'leave_type'   => $lt,
+                    'leave_days'   => '2024-01-01',
+                    'leave_balance'=> '2024-12-31',
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
+
+            // Leave availments (most employees have at least one)
+            if ($i % 5 !== 0) {
+                $lvType  = $leaveTypes[$i % 2];
+                $lvMonth = str_pad(($i % 11) + 1, 2, '0', STR_PAD_LEFT);
+                $lvDay   = str_pad(($i % 20) + 1, 2, '0', STR_PAD_LEFT);
+                DB::table('leave_availments')->insert([
+                    'employee_id'      => $employeeId,
+                    'leave_type'       => $lvType,
+                    'leave_start_date' => "2024-{$lvMonth}-{$lvDay}",
+                    'leave_end_date'   => "2024-{$lvMonth}-" . str_pad(((int)$lvDay + 1) % 28 + 1, 2, '0', STR_PAD_LEFT),
+                    'status'           => 'approved',
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
+                ]);
+            }
+
+            // Payroll
+            $baseSalary   = $salaryGradeSteps[$sgIdx]['salary_amount'];
+            $deduction    = round($baseSalary * 0.12, 2);
+            $finalAmount  = round($baseSalary - $deduction, 2);
+            DB::table('employee_payroll_data')->insert([
+                'employee_id'    => $employeeId,
+                'initial_amount' => $baseSalary,
+                'deduction_amount'=> $deduction,
+                'final_amount'   => $finalAmount,
+                'date_processed' => '2025-01-31',
+                'payroll_status' => 'Released',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+
+            // Water bill
+            DB::table('employee_water_bill')->insert([
+                'employee_id'        => $employeeId,
+                'water_bill_number'  => sprintf('WB-%03d-2024', $i + 1),
+                'account_name'       => "{$firstName} {$middleName[0]}. {$lastName}",
+                'address'            => "{$streetNum} {$street}, {$city}",
+                'created_at'         => now(),
+                'updated_at'         => now(),
+            ]);
+
+            // Uploaded files
+            DB::table('employee_uploaded_files')->insert([
+                'employee_id'             => $employeeId,
+                'file_name'               => 'pds_form.pdf',
+                'file_size'               => '450KB',
+                'file_database_location'  => "employees/{$employeeId}/pds_form.pdf",
+                'created_at'              => now(),
+                'updated_at'              => now(),
+            ]);
+            if ($i % 3 === 0) {
+                DB::table('employee_uploaded_files')->insert([
+                    'employee_id'             => $employeeId,
+                    'file_name'               => 'diploma.pdf',
+                    'file_size'               => '1.1MB',
+                    'file_database_location'  => "employees/{$employeeId}/diploma.pdf",
+                    'created_at'              => now(),
+                    'updated_at'              => now(),
+                ]);
             }
         }
 
-        // ── 9. Whereabout slips (requires employees to exist first) ──
-        // Assign reviewer = employee 2 (HR Manager), approver = employee 5 (IT Manager), attester = employee 2
-        [$emp1, $emp2, $emp3, $emp4, $emp5] = $createdEmployeeIds;
-
-        $whereabouts = [
+        // ── 9. Whereabout slips ────────────────────────────────────
+        // Use first 5 created employees as reviewer/approver references
+        $whereaboutSamples = [
             [
-                'employee_id'               => $emp1,
-                'reviewed_and_noted_by_id'  => $emp2,
-                'approved_by_id'            => $emp5,
-                'attested_by_id'            => $emp2,
-                'date_filed'                => '2024-05-10',
-                'purpose_type'              => 1,
-                'purpose_description'       => 'Attend external HR seminar at Makati.',
-                'time_out'                  => '09:00:00',
-                'time_noted'                => '09:05:00',
-                'time_returned'             => '17:30:00',
-                'status'                    => 'approved',
-                'return_status'             => 'returned',
+                'purpose_type'        => 1,
+                'purpose_description' => 'Attend external HR seminar at Makati.',
+                'time_out'            => '09:00:00',
+                'time_noted'          => '09:05:00',
+                'time_returned'       => '17:30:00',
+                'status'              => 'approved',
+                'return_status'       => 'returned',
             ],
             [
-                'employee_id'               => $emp3,
-                'reviewed_and_noted_by_id'  => $emp5,
-                'approved_by_id'            => $emp5,
-                'attested_by_id'            => $emp2,
-                'date_filed'                => '2024-06-20',
-                'purpose_type'              => 0,
-                'purpose_description'       => 'Client site visit for system deployment in BGC.',
-                'time_out'                  => '10:00:00',
-                'time_noted'                => '10:02:00',
-                'time_returned'             => '16:00:00',
-                'status'                    => 'approved',
-                'return_status'             => 'returned',
+                'purpose_type'        => 0,
+                'purpose_description' => 'Client site visit for system deployment in BGC.',
+                'time_out'            => '10:00:00',
+                'time_noted'          => '10:02:00',
+                'time_returned'       => '16:00:00',
+                'status'              => 'approved',
+                'return_status'       => 'returned',
             ],
             [
-                'employee_id'               => $emp4,
-                'reviewed_and_noted_by_id'  => $emp5,
-                'approved_by_id'            => $emp5,
-                'attested_by_id'            => $emp2,
-                'date_filed'                => '2024-09-03',
-                'purpose_type'              => 1,
-                'purpose_description'       => 'Attend network infrastructure planning meeting.',
-                'time_out'                  => '13:00:00',
-                'time_noted'                => '13:03:00',
-                'time_returned'             => '18:00:00',
-                'status'                    => 'pending',
-                'return_status'             => 'still_here',
+                'purpose_type'        => 1,
+                'purpose_description' => 'Attend network infrastructure planning meeting.',
+                'time_out'            => '13:00:00',
+                'time_noted'          => '13:03:00',
+                'time_returned'       => '18:00:00',
+                'status'              => 'pending',
+                'return_status'       => 'still_here',
+            ],
+            [
+                'purpose_type'        => 0,
+                'purpose_description' => 'Budget reconciliation meeting at DBM.',
+                'time_out'            => '08:30:00',
+                'time_noted'          => '08:35:00',
+                'time_returned'       => '15:00:00',
+                'status'              => 'approved',
+                'return_status'       => 'returned',
+            ],
+            [
+                'purpose_type'        => 1,
+                'purpose_description' => 'Procurement inspection at supplier warehouse.',
+                'time_out'            => '07:00:00',
+                'time_noted'          => '07:05:00',
+                'time_returned'       => '12:00:00',
+                'status'              => 'approved',
+                'return_status'       => 'returned',
             ],
         ];
 
-        foreach ($whereabouts as $slip) {
-            DB::table('whereabout_slips')->insert(
-                array_merge($slip, ['created_at' => now(), 'updated_at' => now()])
-            );
+        $reviewerId  = $createdEmployeeIds[1];  // 2nd employee as reviewer
+        $approverId  = $createdEmployeeIds[4];  // 5th employee as approver
+        $attesterIde = $createdEmployeeIds[1];
+
+        // Create whereabouts for first 20 employees
+        for ($i = 0; $i < 20; $i++) {
+            $sample = $whereaboutSamples[$i % count($whereaboutSamples)];
+            $month  = str_pad(($i % 11) + 1, 2, '0', STR_PAD_LEFT);
+            $day    = str_pad(($i % 27) + 1, 2, '0', STR_PAD_LEFT);
+
+            DB::table('whereabout_slips')->insert(array_merge($sample, [
+                'employee_id'              => $createdEmployeeIds[$i],
+                'reviewed_and_noted_by_id' => $reviewerId,
+                'approved_by_id'           => $approverId,
+                'attested_by_id'           => $attesterIde,
+                'date_filed'               => "2024-{$month}-{$day}",
+                'created_at'               => now(),
+                'updated_at'               => now(),
+            ]));
         }
     }
 }
