@@ -18,15 +18,18 @@ import {
 interface DataTablePaginationProps<TData> {
   table: Table<TData>
   rowSelection: RowSelectionState
+  pageIndex: number
+  pageSize: number
 }
 
 export function DataTablePagination<TData>({
   table,
   rowSelection,
+  pageIndex,
+  pageSize,
 }: DataTablePaginationProps<TData>) {
   const selectedCount = Object.values(rowSelection).filter(Boolean).length
   const totalCount = table.getFilteredRowModel().rows.length
-  const { pageIndex, pageSize } = table.getState().pagination
 
   return (
     <div className="flex items-center justify-between px-2">

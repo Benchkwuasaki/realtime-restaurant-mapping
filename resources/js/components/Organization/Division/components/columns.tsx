@@ -5,7 +5,11 @@ import { DataTableColumnHeader } from "@/components/shared/data-table/data-table
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { type Division } from "../data/schema"
-import { DataTableRowActions } from "@/components/shared/data-table/data-table-row-action"
+import {
+    DataTableRowActions,
+    editAction,
+    deleteAction,
+} from "@/components/shared/data-table/data-table-row-action"
 
 interface ColumnOptions {
     onEdit: (division: Division) => void
@@ -103,8 +107,21 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Divis
             cell: ({ row }) => (
                 <DataTableRowActions
                     row={row}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
+                    actions={[
+                        editAction(onEdit),
+                        deleteAction(onDelete, {
+                            getName: (d) => d.division_name,
+                            description: (d) => (
+                                <>
+                                    Are you sure you want to delete{" "}
+                                    <span className="font-medium text-foreground">{d.division_name}</span>?{" "}
+                                    This will also affect any units assigned to this division.
+                                    This action cannot be undone.
+                                </>
+                            ),
+                            confirmLabel: "Delete Division",
+                        }),
+                    ]}
                 />
             ),
             enableHiding: false,

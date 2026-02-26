@@ -1,19 +1,10 @@
-import { Head, router, useForm, usePage } from "@inertiajs/react"
+import { Head, useForm, usePage } from "@inertiajs/react"
 import { Building2 } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { getColumns } from "@/components/Organization/Division/components/columns"
+import { type Department, type Division } from "@/components/Organization/Division/data/schema"
 import { DataTable } from "@/components/shared/data-table/data-table"
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -33,7 +24,6 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
-import { type Department, type Division } from "@/components/Organization/Division/data/schema"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,8 +31,6 @@ interface Props {
     divisions: Division[]
     departments: Department[]
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: "Organization", href: "#" },
@@ -94,8 +82,6 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
     return (
         <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
             <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-lg">
-
-                {/* Header */}
                 <DialogHeader className="px-5 py-4 border-b border-border">
                     <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Building2 className="w-4 h-4 text-primary" />
@@ -103,7 +89,6 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
                     </DialogTitle>
                 </DialogHeader>
 
-                {/* Body */}
                 <form onSubmit={handleSubmit}>
                     <div className="px-5 py-5 space-y-4">
 
@@ -178,15 +163,8 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
                         </div>
                     </div>
 
-                    {/* Footer */}
                     <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleClose}
-                            className="text-xs"
-                        >
+                        <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
                             Cancel
                         </Button>
                         <Button type="submit" size="sm" disabled={processing} className="text-xs">
@@ -199,45 +177,6 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
     )
 }
 
-// ─── Delete Alert Dialog ──────────────────────────────────────────────────────
-
-interface DeleteDialogProps {
-    division: Division | null
-    onClose: () => void
-}
-
-function DeleteAlertDialog({ division, onClose }: DeleteDialogProps) {
-    function handleConfirm() {
-        if (division) {
-            router.delete(route("division.destroy", division.division_id), {
-                onFinish: onClose,
-            })
-        }
-    }
-
-    return (
-        <AlertDialog open={division !== null} onOpenChange={(o) => { if (!o) onClose() }}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Division</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Are you sure you want to delete{" "}
-                        <span className="font-medium text-foreground">{division?.division_name}</span>?
-                        {" "}This will also affect any units assigned to this division.
-                        This action cannot be undone.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction variant="destructive" onClick={handleConfirm}>
-                        Delete Division
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    )
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DivisionIndex({ divisions, departments }: Props) {
@@ -245,7 +184,6 @@ export default function DivisionIndex({ divisions, departments }: Props) {
 
     const [modalOpen, setModalOpen] = useState(false)
     const [editingDivision, setEditingDivision] = useState<Division | null>(null)
-    const [deletingDivision, setDeletingDivision] = useState<Division | null>(null)
 
     function openCreate() {
         setEditingDivision(null)
@@ -262,15 +200,14 @@ export default function DivisionIndex({ divisions, departments }: Props) {
         setEditingDivision(null)
     }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: setDeletingDivision })
+    // Delete is handled inside DataTableRowActions via deleteAction() in columns.tsx
+    const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Divisions" />
 
             <div className="flex h-full flex-1 flex-col gap-6 py-4 px-6">
-
-                {/* Header */}
                 <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -283,35 +220,45 @@ export default function DivisionIndex({ divisions, departments }: Props) {
                     </div>
                 </div>
 
-                {/* Flash */}
                 {props.flash?.success && (
                     <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
                         {props.flash.success}
                     </div>
                 )}
 
-                {/* Table */}
                 <DataTable
                     columns={columns}
                     data={divisions}
-                    departments={departments}
-                    onCreateDivision={openCreate}
+                    getRowId={(row) => String(row.division_id)}
+                    searchPlaceholder="Search divisions..."
+                    filters={[
+                        {
+                            columnId: "department",
+                            title: "Department",
+                            options: departments.map((d) => ({
+                                value: String(d.department_id),
+                                label: d.department_name,
+                            })),
+                        },
+                    ]}
+                    addButton={{
+                        label: "Create Division",
+                        onClick: openCreate,
+                    }}
+                    bulkDelete={{
+                        route: route("division.bulk-destroy"),
+                        entityName: "Division",
+                        getId: (row) => (row as Division).division_id,
+                    }}
                 />
             </div>
 
-            {/* Create / Edit modal */}
             <DivisionModal
                 key={editingDivision?.division_id ?? "create"}
                 open={modalOpen}
                 editingDivision={editingDivision}
                 departments={departments}
                 onClose={closeModal}
-            />
-
-            {/* Delete confirmation */}
-            <DeleteAlertDialog
-                division={deletingDivision}
-                onClose={() => setDeletingDivision(null)}
             />
         </AppLayout>
     )

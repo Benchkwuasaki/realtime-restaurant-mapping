@@ -185,7 +185,12 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
 
-      <DataTablePagination table={table} rowSelection={rowSelection} />
+      <DataTablePagination
+        table={table}
+        rowSelection={rowSelection}
+        pageIndex={pagination.pageIndex}
+        pageSize={pagination.pageSize}
+      />
     </div>
   )
 }
