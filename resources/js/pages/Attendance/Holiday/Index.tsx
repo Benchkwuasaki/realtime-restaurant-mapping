@@ -1,5 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react'
-import { CalendarDays, Pencil, Plus, Repeat, Trash2, ArrowUpDown } from 'lucide-react'
+import { CalendarDays, Check, Pencil, Plus, PlusCircle, Repeat, Trash2, ArrowUpDown, X } from 'lucide-react'
 import { useState } from 'react'
 import { route } from 'ziggy-js'
 import {
@@ -12,6 +12,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -21,12 +22,21 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import AppLayout from '@/layouts/app-layout'
+import { cn } from '@/lib/utils'
 import type { BreadcrumbItem } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -272,7 +282,7 @@ function DeleteAlertDialog({ holiday, onClose }: DeleteDialogProps) {
 
     return (
         <AlertDialog open={holiday !== null} onOpenChange={(o) => { if (!o) onClose() }}>
-            <AlertDialogContent size="sm">
+            <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Delete Holiday</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -282,15 +292,113 @@ function DeleteAlertDialog({ holiday, onClose }: DeleteDialogProps) {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel size="sm" onClick={onClose}>
-                        Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction size="sm" variant="destructive" onClick={handleConfirm}>
+                    <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction variant="destructive" onClick={handleConfirm}>
                         Delete
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+    )
+}
+
+// ─── Type Filter (adapted from data-table-faceted-filter) ─────────────────────
+
+interface TypeFilterProps {
+    selectedTypes: Set<string>
+    onChange: (types: Set<string>) => void
+}
+
+function TypeFilter({ selectedTypes, onChange }: TypeFilterProps) {
+    function handleSelect(type: string) {
+        const updated = new Set(selectedTypes)
+        if (updated.has(type)) {
+            updated.delete(type)
+        } else {
+            updated.add(type)
+        }
+        onChange(updated)
+    }
+
+    function handleClear() {
+        onChange(new Set())
+    }
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 border-dashed text-xs">
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    Type
+                    {selectedTypes.size > 0 && (
+                        <>
+                            <Separator orientation="vertical" className="mx-2 h-4" />
+                            <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+                                {selectedTypes.size}
+                            </Badge>
+                            <div className="hidden gap-1 lg:flex">
+                                {selectedTypes.size > 2 ? (
+                                    <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                                        {selectedTypes.size} selected
+                                    </Badge>
+                                ) : (
+                                    HOLIDAY_TYPES
+                                        .filter((t) => selectedTypes.has(t))
+                                        .map((t) => (
+                                            <Badge
+                                                key={t}
+                                                variant="secondary"
+                                                className="rounded-sm px-1 font-normal"
+                                            >
+                                                {t}
+                                            </Badge>
+                                        ))
+                                )}
+                            </div>
+                        </>
+                    )}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[200px]">
+                {HOLIDAY_TYPES.map((type) => {
+                    const isSelected = selectedTypes.has(type)
+                    return (
+                        <DropdownMenuItem
+                            key={type}
+                            onSelect={(e) => {
+                                e.preventDefault()
+                                handleSelect(type)
+                            }}
+                            className="flex items-center gap-2 text-xs"
+                        >
+                            <div
+                                className={cn(
+                                    'flex size-4 shrink-0 items-center justify-center rounded-[4px] border',
+                                    isSelected
+                                        ? 'bg-primary border-primary text-primary-foreground'
+                                        : 'border-input'
+                                )}
+                            >
+                                {isSelected && <Check className="size-3 stroke-primary-foreground" />}
+                            </div>
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TYPE_DOT[type]}`} />
+                            {type}
+                        </DropdownMenuItem>
+                    )
+                })}
+                {selectedTypes.size > 0 && (
+                    <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            onSelect={handleClear}
+                            className="justify-center text-center text-xs"
+                        >
+                            Clear filters
+                        </DropdownMenuItem>
+                    </>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
     )
 }
 
@@ -311,6 +419,11 @@ function MonthCard({ monthName, year, holidays, onEdit, onDelete }: MonthCardPro
             {/* Card header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                 <h2 className="font-semibold text-foreground text-sm">{monthName} {year}</h2>
+                {holidays.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                        {holidays.length} holiday{holidays.length !== 1 ? 's' : ''}
+                    </span>
+                )}
             </div>
 
             {/* Table */}
@@ -409,12 +522,27 @@ function MonthCard({ monthName, year, holidays, onEdit, onDelete }: MonthCardPro
 export default function HolidayIndex({ holidays, currentYear }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
-    const [modalOpen, setModalOpen]           = useState(false)
-    const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null)
+    const [modalOpen, setModalOpen]             = useState(false)
+    const [editingHoliday, setEditingHoliday]   = useState<Holiday | null>(null)
     const [deletingHoliday, setDeletingHoliday] = useState<Holiday | null>(null)
 
+    // ── Filter state ──────────────────────────────────────────────────────────
+    const [search, setSearch]               = useState('')
+    const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
+
+    const isFiltered = search !== '' || selectedTypes.size > 0
+
+    // Apply filters before grouping into months
+    const filteredHolidays = holidays.filter((h) => {
+        const matchesSearch = search === '' ||
+            h.name.toLowerCase().includes(search.toLowerCase())
+        const matchesType = selectedTypes.size === 0 ||
+            selectedTypes.has(h.type)
+        return matchesSearch && matchesType
+    })
+
     const byMonth: Record<number, Holiday[]> = {}
-    holidays.forEach((h) => {
+    filteredHolidays.forEach((h) => {
         const month = new Date(h.date + 'T00:00:00').getMonth()
         if (!byMonth[month]) byMonth[month] = []
         byMonth[month].push(h)
@@ -435,13 +563,18 @@ export default function HolidayIndex({ holidays, currentYear }: Props) {
         setEditingHoliday(null)
     }
 
+    function resetFilters() {
+        setSearch('')
+        setSelectedTypes(new Set())
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Holiday Management" />
 
             <div className="px-6 py-6 space-y-5">
 
-                {/* Header */}
+                {/* Header — unchanged */}
                 <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -457,14 +590,44 @@ export default function HolidayIndex({ holidays, currentYear }: Props) {
                     </Button>
                 </div>
 
-                {/* Flash */}
+                {/* Flash — unchanged */}
                 {props.flash?.success && (
                     <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
                         {props.flash.success}
                     </div>
                 )}
 
-                {/* 2-column month grid */}
+                {/* ── NEW: Search + Type filter toolbar ── */}
+                <div className="flex items-center gap-2">
+                    <Input
+                        placeholder="Search holidays..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="h-8 w-[180px] lg:w-[250px] text-xs"
+                    />
+                    <TypeFilter
+                        selectedTypes={selectedTypes}
+                        onChange={setSelectedTypes}
+                    />
+                    {isFiltered && (
+                        <>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={resetFilters}
+                                className="h-8 text-xs"
+                            >
+                                Reset
+                                <X className="w-3.5 h-3.5" />
+                            </Button>
+                            <span className="text-xs text-muted-foreground">
+                                {filteredHolidays.length} of {holidays.length} shown
+                            </span>
+                        </>
+                    )}
+                </div>
+
+                {/* 2-column month grid — unchanged */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {MONTHS.map((monthName, monthIdx) => (
                         <MonthCard
@@ -479,14 +642,14 @@ export default function HolidayIndex({ holidays, currentYear }: Props) {
                 </div>
             </div>
 
-            {/* Holiday create/edit modal */}
+            {/* Holiday create/edit modal — unchanged */}
             <HolidayModal
                 open={modalOpen}
                 editingHoliday={editingHoliday}
                 onClose={closeModal}
             />
 
-            {/* Delete confirmation */}
+            {/* Delete confirmation — unchanged */}
             <DeleteAlertDialog
                 holiday={deletingHoliday}
                 onClose={() => setDeletingHoliday(null)}
