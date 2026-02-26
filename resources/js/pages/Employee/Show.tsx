@@ -31,8 +31,8 @@ import { type BreadcrumbItem } from "@/types"
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Department { department_name: string }
-interface Division   { division_name: string }
-interface Unit       { unit_name: string }
+interface Division { division_name: string }
+interface Unit { unit_name: string }
 interface Position {
     position_name: string
     department?: Department
@@ -260,26 +260,26 @@ function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatu
 // ─── Basic Info Edit Dialog ────────────────────────────────────────────────────
 
 function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; open: boolean; onClose: () => void }) {
-    const basic        = employee.basic_info
+    const basic = employee.basic_info
     const firstAddress = (basic?.addresses ?? [])[0]
 
     const [form, setForm] = useState({
-        first_name:      basic?.first_name      ?? "",
-        last_name:       basic?.last_name        ?? "",
-        middle_name:     basic?.middle_name      ?? "",
-        name_extension:  basic?.name_extension   ?? "",
-        birth_date:      toInputDate(basic?.birth_date),
-        sex:             basic?.sex !== undefined ? String(Number(basic.sex)) : "",
-        civil_status:    basic?.civil_status     ?? "",
-        place_of_birth:  basic?.place_of_birth   ?? "",
-        personal_email:  basic?.personal_email   ?? "",
-        phone_number:    basic?.phone_number      ?? "",
-        street_address:  firstAddress?.street_address ?? "",
-        city:            firstAddress?.city           ?? "",
-        state:           firstAddress?.state          ?? "",
-        zip_code:        firstAddress?.zip_code       ?? "",
+        first_name: basic?.first_name ?? "",
+        last_name: basic?.last_name ?? "",
+        middle_name: basic?.middle_name ?? "",
+        name_extension: basic?.name_extension ?? "",
+        birth_date: toInputDate(basic?.birth_date),
+        sex: basic?.sex !== undefined ? String(Number(basic.sex)) : "",
+        civil_status: basic?.civil_status ?? "",
+        place_of_birth: basic?.place_of_birth ?? "",
+        personal_email: basic?.personal_email ?? "",
+        phone_number: basic?.phone_number ?? "",
+        street_address: firstAddress?.street_address ?? "",
+        city: firstAddress?.city ?? "",
+        state: firstAddress?.state ?? "",
+        zip_code: firstAddress?.zip_code ?? "",
     })
-    const set  = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+    const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
     const save = () => router.put(route("employee.update", employee.employee_id), form, { preserveScroll: true, onSuccess: onClose })
 
     return (
@@ -389,12 +389,12 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
     const open = field !== null
 
     const [form, setForm] = useState({
-        item_id:                   employee.item?.item_id?.toString()      ?? "",
-        date_hired:                toInputDate(employee.date_hired),
-        date_applied:              toInputDate(employee.date_applied),
-        employment_classification: employee.employment_classification      ?? "",
-        work_schedule_start:       employee.work_schedule_start            ?? "",
-        work_schedule_end:         employee.work_schedule_end              ?? "",
+        item_id: employee.item?.item_id?.toString() ?? "",
+        date_hired: toInputDate(employee.date_hired),
+        date_applied: toInputDate(employee.date_applied),
+        employment_classification: employee.employment_classification ?? "",
+        work_schedule_start: employee.work_schedule_start ?? "",
+        work_schedule_end: employee.work_schedule_end ?? "",
     })
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
@@ -402,21 +402,21 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 
     const save = () => {
         let data: Record<string, string> = {}
-        if (field === "position")                  data = { item_id: form.item_id }
-        if (field === "date_hired")                data = { date_hired: form.date_hired }
-        if (field === "date_applied")              data = { date_applied: form.date_applied }
+        if (field === "position") data = { item_id: form.item_id }
+        if (field === "date_hired") data = { date_hired: form.date_hired }
+        if (field === "date_applied") data = { date_applied: form.date_applied }
         if (field === "employment_classification") data = { employment_classification: form.employment_classification }
-        if (field === "work_schedule")             data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
+        if (field === "work_schedule") data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
         router.put(route("employee.update", employee.employee_id), data, { preserveScroll: true, onSuccess: onClose })
     }
 
     const titles: Record<NonNullable<EditField>, string> = {
-        position:                  "Edit Position",
-        date_hired:                "Edit Date Hired",
-        unit_division_department:  "Unit / Division / Department",
+        position: "Edit Position",
+        date_hired: "Edit Date Hired",
+        unit_division_department: "Unit / Division / Department",
         employment_classification: "Edit Employment Classification",
-        date_applied:              "Edit Date Applied",
-        work_schedule:             "Edit Work Schedule",
+        date_applied: "Edit Date Applied",
+        work_schedule: "Edit Work Schedule",
     }
 
     return (
@@ -542,21 +542,21 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 // ─── Employment Tab ───────────────────────────────────────────────────────────
 
 function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: Item[] }) {
-    const position   = employee.item?.position
+    const position = employee.item?.position
     const [editField, setEditField] = useState<EditField>(null)
     const toggleStatus = () => router.patch(route("employee.toggleStatus", employee.employee_id), {}, { preserveScroll: true })
 
     return (
         <div className="p-5">
             <div className="grid grid-cols-3 gap-3">
-                <DetailCard title="Position"                value={position?.position_name}                     onEdit={() => setEditField("position")} />
-                <DetailCard title="Date Hired"             value={fmt(employee.date_hired)}                    onEdit={() => setEditField("date_hired")} />
-                <DetailCard title="Status" isStatus        statusValue={employee.status}                       onToggleStatus={toggleStatus} />
-                <DetailCard title="Unit"                   value={position?.unit?.unit_name}                   onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Division"               value={position?.division?.division_name}           onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Department"             value={position?.department?.department_name}       onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Employment Classification" value={employee.employment_classification}       onEdit={() => setEditField("employment_classification")} />
-                <DetailCard title="Date Applied"           value={fmt(employee.date_applied)}                  onEdit={() => setEditField("date_applied")} />
+                <DetailCard title="Position" value={position?.position_name} onEdit={() => setEditField("position")} />
+                <DetailCard title="Date Hired" value={fmt(employee.date_hired)} onEdit={() => setEditField("date_hired")} />
+                <DetailCard title="Status" isStatus statusValue={employee.status} onToggleStatus={toggleStatus} />
+                <DetailCard title="Unit" value={position?.unit?.unit_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Division" value={position?.division?.division_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Department" value={position?.department?.department_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Employment Classification" value={employee.employment_classification} onEdit={() => setEditField("employment_classification")} />
+                <DetailCard title="Date Applied" value={fmt(employee.date_applied)} onEdit={() => setEditField("date_applied")} />
                 <DetailCard
                     title="Work Schedule"
                     value={employee.work_schedule_start && employee.work_schedule_end
@@ -573,7 +573,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
 // ─── Compensation Tab ─────────────────────────────────────────────────────────
 
 function CompensationTab({ employee }: { employee: Employee }) {
-    const sgs        = employee.salary_grade_step
+    const sgs = employee.salary_grade_step
     const allowances = employee.allowances ?? []
     const [salaryEditOpen, setSalaryEditOpen] = useState(false)
 
@@ -635,7 +635,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
 // ─── Leave Information Tab ────────────────────────────────────────────────────
 
 function LeaveInformationTab({ employee }: { employee: Employee }) {
-    const balances   = employee.leave_balances   ?? []
+    const balances = employee.leave_balances ?? []
     const availments = employee.leave_availments ?? []
 
     const [balanceDialog, setBalanceDialog] = useState<{
@@ -646,15 +646,15 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
     const openBalanceDialog = (b?: LeaveBalance) => setBalanceDialog({
         open: true, id: b?.id,
         leave_type: b?.leave_type ?? "",
-        remaining:  b?.remaining?.toString() ?? "",
-        used:       b?.used?.toString()      ?? "",
+        remaining: b?.remaining?.toString() ?? "",
+        used: b?.used?.toString() ?? "",
     })
 
     const saveBalance = () => {
         const data = {
             leave_type: balanceDialog.leave_type,
-            remaining:  parseFloat(balanceDialog.remaining),
-            used:       parseFloat(balanceDialog.used),
+            remaining: parseFloat(balanceDialog.remaining),
+            used: parseFloat(balanceDialog.used),
         }
         if (balanceDialog.id) {
             router.put(
@@ -763,11 +763,10 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-muted-foreground">{fmtShort(a.leave_date_start)} — {fmtShort(a.leave_date_end)}</span>
                                 <span className="text-sm text-foreground font-medium">{a.duration} days</span>
                                 <span className="text-sm text-muted-foreground">{fmtShort(a.date_filed)}</span>
-                                <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${
-                                    a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
-                                    a.status === "Pending"  ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
-                                                              "bg-destructive/10 text-destructive"
-                                }`}>● {a.status}</Badge>
+                                <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
+                                        a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
+                                            "bg-destructive/10 text-destructive"
+                                    }`}>● {a.status}</Badge>
                             </div>
                         ))}
                     </div>
@@ -823,7 +822,7 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
 const STANDARD_GOV_ID_TYPES = ["GSIS", "PhilHealth", "Pag-IBIG", "TIN"]
 
 function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
-    const govAccounts  = employee.government_accounts   ?? []
+    const govAccounts = employee.government_accounts ?? []
     const eligibilities = employee.eligibility_information ?? []
 
     const [visibleIds, setVisibleIds] = useState<Record<string, boolean>>({})
@@ -860,8 +859,8 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
         }
     }
 
-    const accountMap    = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
-    const standardKeys  = STANDARD_GOV_ID_TYPES.map(t => t.toLowerCase())
+    const accountMap = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
+    const standardKeys = STANDARD_GOV_ID_TYPES.map(t => t.toLowerCase())
     const extraAccounts = govAccounts.filter(g => !standardKeys.includes(g.account_type.toLowerCase()))
 
     const [eligDialog, setEligDialog] = useState<{ open: boolean; id?: number; name: string; year: string }>
@@ -870,7 +869,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
     const openEligDialog = (existing?: EligibilityInfo) =>
         setEligDialog({
             open: true,
-            id:   existing?.eligibility_information_id,
+            id: existing?.eligibility_information_id,
             name: existing?.eligibility_name ?? "",
             year: existing?.year_passed?.slice(0, 10) ?? "",
         })
@@ -905,7 +904,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 </div>
                 <div className="divide-y divide-border">
                     {STANDARD_GOV_ID_TYPES.map(type => {
-                        const key     = type.toLowerCase()
+                        const key = type.toLowerCase()
                         const account = accountMap[key]
                         const isVisible = visibleIds[key]
                         return (
@@ -937,7 +936,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         )
                     })}
                     {extraAccounts.map(account => {
-                        const key     = account.account_type.toLowerCase()
+                        const key = account.account_type.toLowerCase()
                         const isVisible = visibleIds[key]
                         return (
                             <div key={account.government_account_id} className="flex items-center gap-4 px-5 py-3">
@@ -1060,11 +1059,11 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
 // ─── Background Information Tab ───────────────────────────────────────────────
 
 function BackgroundInformationTab({ employee }: { employee: Employee }) {
-    const basic        = employee.basic_info
-    const familyMembers = basic?.family_info  ?? []
-    const educations   = basic?.educations    ?? []
-    const seminars     = employee.seminarsAndTrainings ?? []
-    const serviceRecs  = employee.serviceRecords       ?? []
+    const basic = employee.basic_info
+    const familyMembers = basic?.family_info ?? []
+    const educations = basic?.educations ?? []
+    const seminars = employee.seminarsAndTrainings ?? []
+    const serviceRecs = employee.serviceRecords ?? []
 
     // ── Family ────────────────────────────────────────────────────
     const [familyDialog, setFamilyDialog] = useState<{
@@ -1411,10 +1410,10 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
             {/* Delete Confirms */}
             {[
-                { open: deleteFamilyIndex !== null, onClose: () => setDeleteFamilyIndex(null), onConfirm: confirmDeleteFamily,  label: "family member"   },
-                { open: deleteEducIndex   !== null, onClose: () => setDeleteEducIndex(null),   onConfirm: confirmDeleteEduc,    label: "education record" },
-                { open: !!deleteSeminarId,           onClose: () => setDeleteSeminarId(null),  onConfirm: confirmDeleteSeminar, label: "seminar"          },
-                { open: !!deleteServiceId,           onClose: () => setDeleteServiceId(null),  onConfirm: confirmDeleteService, label: "service record"   },
+                { open: deleteFamilyIndex !== null, onClose: () => setDeleteFamilyIndex(null), onConfirm: confirmDeleteFamily, label: "family member" },
+                { open: deleteEducIndex !== null, onClose: () => setDeleteEducIndex(null), onConfirm: confirmDeleteEduc, label: "education record" },
+                { open: !!deleteSeminarId, onClose: () => setDeleteSeminarId(null), onConfirm: confirmDeleteSeminar, label: "seminar" },
+                { open: !!deleteServiceId, onClose: () => setDeleteServiceId(null), onConfirm: confirmDeleteService, label: "service record" },
             ].map(({ open, onClose, onConfirm, label }) => (
                 <AlertDialog key={label} open={open} onOpenChange={o => !o && onClose()}>
                     <AlertDialogContent>
@@ -1437,7 +1436,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
 function DocumentsTab({ employee }: { employee: Employee }) {
     const uploadedFiles = employee.uploadedFiles ?? []
-    const fileInputRef  = React.useRef<HTMLInputElement>(null)
+    const fileInputRef = React.useRef<HTMLInputElement>(null)
     const [deleteFileId, setDeleteFileId] = useState<number | null>(null)
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1458,8 +1457,8 @@ function DocumentsTab({ employee }: { employee: Employee }) {
     }
 
     const formatBytes = (bytes: number) => {
-        if (bytes < 1024)           return bytes + " B"
-        if (bytes < 1024 * 1024)    return (bytes / 1024).toFixed(1) + " KB"
+        if (bytes < 1024) return bytes + " B"
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB"
         return (bytes / (1024 * 1024)).toFixed(1) + " MB"
     }
 
@@ -1535,10 +1534,10 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ShowEmployee({ employee, items }: Props) {
-    const basic        = employee.basic_info
-    const position     = employee.item?.position
+    const basic = employee.basic_info
+    const position = employee.item?.position
     const firstAddress = (basic?.addresses ?? [])[0]
-    const addressStr   = firstAddress
+    const addressStr = firstAddress
         ? [firstAddress.street_address, firstAddress.city, firstAddress.state].filter(Boolean).join(", ")
         : undefined
 
@@ -1550,13 +1549,13 @@ export default function ShowEmployee({ employee, items }: Props) {
     ]
 
     const tabs = [
-        { value: "employment",  label: "Employment Details",        icon: Briefcase      },
-        { value: "compensation",label: "Compensation",              icon: FileText       },
-        { value: "leave",       label: "Leave Information",         icon: Calendar       },
-        { value: "time",        label: "Time Records",              icon: Clock          },
-        { value: "government",  label: "Government Eligibility",    icon: Landmark       },
-        { value: "background",  label: "Background Information",    icon: User           },
-        { value: "documents",   label: "Documents",                 icon: FolderOpen     },
+        { value: "employment", label: "Employment Details", icon: Briefcase },
+        { value: "compensation", label: "Compensation", icon: FileText },
+        { value: "leave", label: "Leave Information", icon: Calendar },
+        { value: "time", label: "Time Records", icon: Clock },
+        { value: "government", label: "Government Eligibility", icon: Landmark },
+        { value: "background", label: "Background Information", icon: User },
+        { value: "documents", label: "Documents", icon: FolderOpen },
     ]
 
     return (
@@ -1595,13 +1594,13 @@ export default function ShowEmployee({ employee, items }: Props) {
 
                     <div className="flex-1 px-4 py-3 overflow-y-auto">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Basic Information</p>
-                        <InfoRow icon={Mail}     label="Email"          value={basic?.personal_email}                                           onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Phone}    label="Contact Number" value={basic?.phone_number}                                             onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Calendar} label="Date of Birth"  value={fmt(basic?.birth_date)}                                         onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={MapPin}   label="Place of Birth" value={basic?.place_of_birth}                                          onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={User}     label="Sex"            value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Heart}    label="Civil Status"   value={cap(basic?.civil_status)}                                       onEdit={() => setBasicEditOpen(true)} />
-                        <InfoRow icon={Home}     label="Address"        value={addressStr}                                                     onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Mail} label="Email" value={basic?.personal_email} />
+                        <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} />
+                        <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} />
+                        <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} />
+                        <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} />
+                        <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} />
+                        <InfoRow icon={Home} label="Address" value={addressStr} />
                     </div>
 
                     <div className="px-4 pb-4 pt-2 border-t border-border">
@@ -1619,7 +1618,7 @@ export default function ShowEmployee({ employee, items }: Props) {
                                     <TabsTrigger
                                         key={value}
                                         value={value}
-                                        className="relative flex items-center gap-1.5 px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap"
+                                        className="relative flex items-center gap-1.5 px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap"
                                     >
                                         <Icon className="w-3.5 h-3.5 shrink-0" />{label}
                                     </TabsTrigger>
@@ -1627,18 +1626,18 @@ export default function ShowEmployee({ employee, items }: Props) {
                             </TabsList>
                         </div>
 
-                        <TabsContent value="employment"  className="flex-1 mt-0 overflow-y-auto"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
+                        <TabsContent value="employment" className="flex-1 mt-0 overflow-y-auto"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
                         <TabsContent value="compensation" className="flex-1 mt-0 overflow-y-auto"><CompensationTab employee={employee} /></TabsContent>
-                        <TabsContent value="leave"       className="flex-1 mt-0 overflow-y-auto"><LeaveInformationTab employee={employee} /></TabsContent>
-                        <TabsContent value="time"        className="flex-1 mt-0 overflow-y-auto">
+                        <TabsContent value="leave" className="flex-1 mt-0 overflow-y-auto"><LeaveInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="time" className="flex-1 mt-0 overflow-y-auto">
                             <div className="flex flex-col items-center justify-center h-64 gap-3">
                                 <Clock className="w-10 h-10 text-muted-foreground/30" />
                                 <p className="text-sm italic text-muted-foreground">Time records coming soon.</p>
                             </div>
                         </TabsContent>
-                        <TabsContent value="government"  className="flex-1 mt-0 overflow-y-auto"><GovernmentEligibilityTab employee={employee} /></TabsContent>
-                        <TabsContent value="background"  className="flex-1 mt-0 overflow-y-auto"><BackgroundInformationTab employee={employee} /></TabsContent>
-                        <TabsContent value="documents"   className="flex-1 mt-0 overflow-y-auto"><DocumentsTab employee={employee} /></TabsContent>
+                        <TabsContent value="government" className="flex-1 mt-0 overflow-y-auto"><GovernmentEligibilityTab employee={employee} /></TabsContent>
+                        <TabsContent value="background" className="flex-1 mt-0 overflow-y-auto"><BackgroundInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="documents" className="flex-1 mt-0 overflow-y-auto"><DocumentsTab employee={employee} /></TabsContent>
                     </Tabs>
                 </div>
             </div>
