@@ -8,12 +8,13 @@ use App\Http\Controllers\BenefitsController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
-
+use PhpParser\Node\Scalar\MagicConst\Dir;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -49,8 +50,6 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::delete('/{employee}/eligibility/{eligibility}', [EmployeeController::class, 'destroyEligibility'])->name('eligibility.destroy');
     });
 
-
-
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
     Route::get('/benefits', [BenefitsController::class, 'index'])->name('benefits.index');
     Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
@@ -64,6 +63,15 @@ Route::prefix('organization/units')->name('unit.')->group(function () {
     Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
     Route::delete('/bulk-destroy', [UnitController::class, 'bulkDestroy'])->name('bulk-destroy');
     Route::delete('/{unit}', [UnitController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('organization/divisions')->name('division.')->group(function () {
+    Route::get('/', [DivisionController::class, 'index'])->name('index');
+    Route::get('/{division}', [DivisionController::class, 'show'])->name('show');
+    Route::post('/', [DivisionController::class, 'store'])->name('store');
+    Route::put('/{division}', [DivisionController::class, 'update'])->name('update');
+    Route::delete('/bulk-destroy', [DivisionController::class, 'bulkDestroy'])->name('bulk-destroy');
+    Route::delete('/{division}', [DivisionController::class, 'destroy'])->name('destroy');
 });
 
 Route::resource('holiday', HolidayController::class)->parameters([
