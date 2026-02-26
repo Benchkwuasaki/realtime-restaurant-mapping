@@ -1,7 +1,8 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ReportsAndAnalyticsController::index
- * @see app/Http/Controllers/ReportsAndAnalyticsController.php:10
+ * @see app/Http/Controllers/ReportsAndAnalyticsController.php:15
  * @route '/reports_and_analytics'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +17,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\ReportsAndAnalyticsController::index
- * @see app/Http/Controllers/ReportsAndAnalyticsController.php:10
+ * @see app/Http/Controllers/ReportsAndAnalyticsController.php:15
  * @route '/reports_and_analytics'
  */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\ReportsAndAnalyticsController::index
- * @see app/Http/Controllers/ReportsAndAnalyticsController.php:10
+ * @see app/Http/Controllers/ReportsAndAnalyticsController.php:15
  * @route '/reports_and_analytics'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\ReportsAndAnalyticsController::index
- * @see app/Http/Controllers/ReportsAndAnalyticsController.php:10
+ * @see app/Http/Controllers/ReportsAndAnalyticsController.php:15
  * @route '/reports_and_analytics'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\ReportsAndAnalyticsController::index
- * @see app/Http/Controllers/ReportsAndAnalyticsController.php:10
+ * @see app/Http/Controllers/ReportsAndAnalyticsController.php:15
  * @route '/reports_and_analytics'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +55,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\ReportsAndAnalyticsController::index
- * @see app/Http/Controllers/ReportsAndAnalyticsController.php:10
+ * @see app/Http/Controllers/ReportsAndAnalyticsController.php:15
  * @route '/reports_and_analytics'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +64,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\ReportsAndAnalyticsController::index
- * @see app/Http/Controllers/ReportsAndAnalyticsController.php:10
+ * @see app/Http/Controllers/ReportsAndAnalyticsController.php:15
  * @route '/reports_and_analytics'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

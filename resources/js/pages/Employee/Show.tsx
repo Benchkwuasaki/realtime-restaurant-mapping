@@ -1,0 +1,1202 @@
+import { useState } from "react"
+import { Head, router } from "@inertiajs/react"
+import { route } from "ziggy-js"
+import {
+    Pencil, Mail, Phone, Calendar, MapPin, User, Heart, Home,
+    Briefcase, Clock, FileText, Landmark, Camera, XCircle,
+    Eye, EyeOff, Plus, Trash2, Save, ChevronUp,
+    Pen,
+} from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Switch } from "@/components/ui/switch"
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog"
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import AppLayout from "@/layouts/app-layout"
+import { type BreadcrumbItem } from "@/types"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Department { department_name: string }
+interface Division { division_name: string }
+interface Unit { unit_name: string }
+interface Position {
+    position_name: string
+    department?: Department
+    division?: Division
+    unit?: Unit
+}
+interface Item { item_id: number; position?: Position }
+interface SalaryGradeStep { salary_grade_step_id: number; salary_grade: number; step: number; monthly_salary: number }
+interface Address { id?: number; street_address?: string; city?: string; state?: string; zip_code?: string }
+interface Education { level?: string; school_name: string; degree?: string; graduation_date?: string }
+interface FamilyMember { full_name: string; relationship?: string; contact_number?: string }
+
+interface BasicInfo {
+    first_name: string; last_name: string; middle_name?: string; name_extension?: string
+    full_name: string; birth_date?: string; sex?: boolean; civil_status?: string
+    place_of_birth?: string; personal_email?: string; phone_number?: string
+    addresses?: Address[]; educations?: Education[]; family_info?: FamilyMember[]
+}
+interface GovernmentAccount { government_account_id: number; account_type: string; account_number: string }
+interface EligibilityInfo { eligibility_information_id: number; eligibility_name: string; year_passed?: string }
+interface Allowance { allowance_type: string; amount: number }
+
+interface LeaveBalance {
+    id: number
+    leave_type: string
+    remaining: number
+    used: number
+}
+interface LeaveAvailment {
+    id: number
+    employee_name: string
+    employee_avatar?: string
+    leave_type: string
+    leave_date_start: string
+    leave_date_end: string
+    duration: number
+    date_filed: string
+    status: "Approved" | "Pending" | "Rejected"
+}
+
+interface Employee {
+    employee_id: number; work_email: string; employment_classification: string
+    date_applied?: string; date_hired?: string
+    work_schedule_start?: string; work_schedule_end?: string; status: boolean
+    basic_info?: BasicInfo; item?: Item; salary_grade_step?: SalaryGradeStep
+    allowances?: Allowance[]; eligibility_information?: EligibilityInfo[]
+    government_accounts?: GovernmentAccount[]
+    leave_balances?: LeaveBalance[]
+    leave_availments?: LeaveAvailment[]
+}
+
+interface Props {
+    employee: Employee
+    items: Item[]
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmt(date?: string) {
+    if (!date) return undefined
+    return new Date(date).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })
+}
+function fmtShort(date?: string) {
+    if (!date) return "—"
+    return new Date(date).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+}
+function cap(str?: string) {
+    if (!str) return undefined
+    return str.charAt(0).toUpperCase() + str.slice(1)
+}
+function toInputDate(date?: string) {
+    if (!date) return ""
+    return date.slice(0, 10)
+}
+
+// ─── InfoRow ──────────────────────────────────────────────────────────────────
+
+function InfoRow({ icon: Icon, label, value, onEdit }: {
+    icon: React.ElementType; label: string; value?: string; onEdit?: () => void
+}) {
+    return (
+        <div className="flex items-start gap-3 py-3 border-b border-border last:border-0 group/row">
+            <div className="mt-0.5 shrink-0 w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+                <Icon className="w-4 h-4 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest leading-none mb-1">{label}</p>
+                <p className="text-sm text-foreground font-medium leading-snug break-words">
+                    {value || <span className="text-muted-foreground/40 font-normal italic text-xs">Not provided</span>}
+                </p>
+            </div>
+            {onEdit && (
+                <Button size={"icon-xs"} onClick={onEdit} variant={"ghost"} >
+                    <Pencil className="w-3 h-3" />
+                </Button>
+            )}
+        </div>
+    )
+}
+
+// ─── DetailCard ───────────────────────────────────────────────────────────────
+
+function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatus, onEdit }: {
+    title: string; value?: string; isStatus?: boolean; statusValue?: boolean
+    onToggleStatus?: () => void; onEdit?: () => void
+}) {
+    return (
+        <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200 group">
+            <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-semibold text-muted-foreground tracking-wide">{title}</span>
+                {isStatus ? (
+                    <Switch checked={statusValue} onCheckedChange={onToggleStatus} className="scale-90" />
+                ) : onEdit ? (
+                    <Button size={'icon-xs'} onClick={onEdit} variant={"ghost"} >
+                        <Pencil className="w-3 h-3" />
+                    </Button>
+                ) : null}
+            </div>
+            <div className="flex items-center gap-2">
+                {isStatus ? (
+                    statusValue ? (
+                        <>
+                            <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                            </div>
+                            <Badge className="text-xs font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5">Active</Badge>
+                        </>
+                    ) : (
+                        <>
+                            <div className="w-5 h-5 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center shrink-0">
+                                <div className="w-2 h-2 rounded-full bg-destructive" />
+                            </div>
+                            <Badge className="text-xs font-semibold bg-destructive/10 text-destructive border-0 rounded-md px-2.5 py-0.5">Inactive</Badge>
+                        </>
+                    )
+                ) : value ? (
+                    <>
+                        <div className="w-5 h-5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                            <div className="w-2 h-2 rounded-full bg-primary" />
+                        </div>
+                        <Badge className="text-xs font-semibold bg-primary text-primary-foreground border-0 rounded-md px-2.5 py-0.5 max-w-full truncate">{value}</Badge>
+                    </>
+                ) : (
+                    <>
+                        <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center shrink-0">
+                            <XCircle className="w-3.5 h-3.5 text-muted-foreground/40" />
+                        </div>
+                        <span className="text-sm text-muted-foreground/50 italic font-normal">Not set</span>
+                    </>
+                )}
+            </div>
+        </div>
+    )
+}
+
+// ─── Basic Info Edit Dialog ────────────────────────────────────────────────────
+
+function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; open: boolean; onClose: () => void }) {
+    const basic = employee.basic_info
+    const firstAddress = (basic?.addresses ?? [])[0]
+
+    const [form, setForm] = useState({
+        first_name: basic?.first_name ?? "",
+        last_name: basic?.last_name ?? "",
+        middle_name: basic?.middle_name ?? "",
+        name_extension: basic?.name_extension ?? "",
+        birth_date: toInputDate(basic?.birth_date),
+        sex: basic?.sex !== undefined ? String(Number(basic.sex)) : "",
+        civil_status: basic?.civil_status ?? "",
+        place_of_birth: basic?.place_of_birth ?? "",
+        personal_email: basic?.personal_email ?? "",
+        phone_number: basic?.phone_number ?? "",
+        street_address: firstAddress?.street_address ?? "",
+        city: firstAddress?.city ?? "",
+        state: firstAddress?.state ?? "",
+        zip_code: firstAddress?.zip_code ?? "",
+    })
+    const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+    const save = () => router.put(route("employee.update", employee.employee_id), form, { preserveScroll: true, onSuccess: onClose })
+
+    return (
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Edit Basic Information</DialogTitle></DialogHeader>
+                <div className="grid grid-cols-2 gap-3 py-2">
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">First Name *</Label><Input value={form.first_name} onChange={e => set("first_name", e.target.value)} /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Last Name *</Label><Input value={form.last_name} onChange={e => set("last_name", e.target.value)} /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Middle Name</Label><Input value={form.middle_name} onChange={e => set("middle_name", e.target.value)} /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Extension</Label><Input value={form.name_extension} onChange={e => set("name_extension", e.target.value)} placeholder="Jr., Sr., III…" /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date of Birth</Label><Input type="date" value={form.birth_date} onChange={e => set("birth_date", e.target.value)} /></div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Sex</Label>
+                        <Select value={form.sex} onValueChange={v => set("sex", v)}>
+                            <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                            <SelectContent><SelectItem value="1">Male</SelectItem><SelectItem value="0">Female</SelectItem></SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Civil Status</Label>
+                        <Select value={form.civil_status} onValueChange={v => set("civil_status", v)}>
+                            <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="single">Single</SelectItem>
+                                <SelectItem value="married">Married</SelectItem>
+                                <SelectItem value="divorced">Divorced</SelectItem>
+                                <SelectItem value="widowed">Widowed</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Place of Birth</Label><Input value={form.place_of_birth} onChange={e => set("place_of_birth", e.target.value)} /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Personal Email</Label><Input type="email" value={form.personal_email} onChange={e => set("personal_email", e.target.value)} /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Phone Number</Label><Input value={form.phone_number} onChange={e => set("phone_number", e.target.value)} /></div>
+                </div>
+                <div className="border-t border-border pt-3 mt-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Address</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2"><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Street Address</Label><Input value={form.street_address} onChange={e => set("street_address", e.target.value)} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">City</Label><Input value={form.city} onChange={e => set("city", e.target.value)} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Province / State</Label><Input value={form.state} onChange={e => set("state", e.target.value)} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Zip Code</Label><Input value={form.zip_code} onChange={e => set("zip_code", e.target.value)} /></div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={save} disabled={!form.first_name || !form.last_name}><Save className="w-3.5 h-3.5 mr-1.5" />Save Changes</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+// ─── Salary Grade Edit Dialog ─────────────────────────────────────────────────
+
+function SalaryEditDialog({ employee, open, onClose }: { employee: Employee; open: boolean; onClose: () => void }) {
+    const sgs = employee.salary_grade_step
+    const [form, setForm] = useState({ salary_grade_step_id: sgs?.salary_grade_step_id?.toString() ?? "" })
+    const save = () => router.put(route("employee.update", employee.employee_id), form, { preserveScroll: true, onSuccess: onClose })
+
+    return (
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+            <DialogContent className="sm:max-w-sm">
+                <DialogHeader><DialogTitle>Edit Salary Classification</DialogTitle></DialogHeader>
+                <div className="py-2 space-y-3">
+                    <div>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Salary Grade Step ID</Label>
+                        <Input
+                            type="number"
+                            value={form.salary_grade_step_id}
+                            onChange={e => setForm({ salary_grade_step_id: e.target.value })}
+                            placeholder="Enter salary grade step ID"
+                        />
+                        {sgs && (
+                            <p className="text-xs text-muted-foreground mt-1.5">
+                                Current: SG-{sgs.salary_grade}, Step {sgs.step} — ₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                            </p>
+                        )}
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={save} disabled={!form.salary_grade_step_id}><Save className="w-3.5 h-3.5 mr-1.5" />Save Changes</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+// ─── Employment Edit Dialog ───────────────────────────────────────────────────
+
+type EditField =
+    | "position"
+    | "date_hired"
+    | "unit_division_department"
+    | "employment_classification"
+    | "date_applied"
+    | "work_schedule"
+    | null
+
+function EmploymentEditDialog({ employee, field, onClose, items }: {
+    employee: Employee
+    field: EditField
+    onClose: () => void
+    items: Item[]
+}) {
+    const open = field !== null
+
+    const [form, setForm] = useState({
+        item_id: employee.item?.item_id?.toString() ?? "",
+        date_hired: toInputDate(employee.date_hired),
+        date_applied: toInputDate(employee.date_applied),
+        employment_classification: employee.employment_classification ?? "",
+        work_schedule_start: employee.work_schedule_start ?? "",
+        work_schedule_end: employee.work_schedule_end ?? "",
+    })
+    const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+    const selectedItem = items.find(i => i.item_id.toString() === form.item_id)
+
+    const save = () => {
+        let data: Record<string, string> = {}
+        if (field === "position") data = { item_id: form.item_id }
+        if (field === "date_hired") data = { date_hired: form.date_hired }
+        if (field === "date_applied") data = { date_applied: form.date_applied }
+        if (field === "employment_classification") data = { employment_classification: form.employment_classification }
+        if (field === "work_schedule") data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
+        router.put(route("employee.update", employee.employee_id), data, { preserveScroll: true, onSuccess: onClose })
+    }
+
+    const titles: Record<NonNullable<EditField>, string> = {
+        position: "Edit Position",
+        date_hired: "Edit Date Hired",
+        unit_division_department: "Unit / Division / Department",
+        employment_classification: "Edit Employment Classification",
+        date_applied: "Edit Date Applied",
+        work_schedule: "Edit Work Schedule",
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+            <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                    <DialogTitle>{field ? titles[field] : ""}</DialogTitle>
+                </DialogHeader>
+
+                <div className="py-2 space-y-3">
+                    {field === "position" && (
+                        <div className="space-y-3">
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position</Label>
+                                <Select value={form.item_id} onValueChange={v => set("item_id", v)}>
+                                    <SelectTrigger><SelectValue placeholder="Select a position…" /></SelectTrigger>
+                                    <SelectContent className="max-h-64">
+                                        {items.map(item => (
+                                            <SelectItem key={item.item_id} value={item.item_id.toString()}>
+                                                {item.position?.position_name ?? `Item #${item.item_id}`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {selectedItem?.position && (
+                                <div className="rounded-lg border border-border divide-y divide-border bg-muted/20">
+                                    {selectedItem.position.department && (
+                                        <div className="flex justify-between px-4 py-2">
+                                            <span className="text-xs text-muted-foreground">Department</span>
+                                            <span className="text-xs font-medium text-foreground">{selectedItem.position.department.department_name}</span>
+                                        </div>
+                                    )}
+                                    {selectedItem.position.division && (
+                                        <div className="flex justify-between px-4 py-2">
+                                            <span className="text-xs text-muted-foreground">Division</span>
+                                            <span className="text-xs font-medium text-foreground">{selectedItem.position.division.division_name}</span>
+                                        </div>
+                                    )}
+                                    {selectedItem.position.unit && (
+                                        <div className="flex justify-between px-4 py-2">
+                                            <span className="text-xs text-muted-foreground">Unit</span>
+                                            <span className="text-xs font-medium text-foreground">{selectedItem.position.unit.unit_name}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {field === "date_hired" && (
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Hired</Label>
+                            <Input type="date" value={form.date_hired} onChange={e => set("date_hired", e.target.value)} autoFocus />
+                        </div>
+                    )}
+
+                    {field === "unit_division_department" && (
+                        <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground">
+                                Unit, Division, and Department are determined by the assigned <strong>Position</strong>. To change them, update the Position.
+                            </p>
+                            <div className="rounded-lg border border-border divide-y divide-border">
+                                <div className="flex justify-between px-4 py-2.5">
+                                    <span className="text-sm text-muted-foreground">Unit</span>
+                                    <span className="text-sm font-medium text-foreground">{employee.item?.position?.unit?.unit_name ?? "—"}</span>
+                                </div>
+                                <div className="flex justify-between px-4 py-2.5">
+                                    <span className="text-sm text-muted-foreground">Division</span>
+                                    <span className="text-sm font-medium text-foreground">{employee.item?.position?.division?.division_name ?? "—"}</span>
+                                </div>
+                                <div className="flex justify-between px-4 py-2.5">
+                                    <span className="text-sm text-muted-foreground">Department</span>
+                                    <span className="text-sm font-medium text-foreground">{employee.item?.position?.department?.department_name ?? "—"}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {field === "employment_classification" && (
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Employment Classification</Label>
+                            <Select value={form.employment_classification} onValueChange={v => set("employment_classification", v)}>
+                                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Regular">Regular</SelectItem>
+                                    <SelectItem value="Job Order">Job Order</SelectItem>
+                                    <SelectItem value="Casual">Casual</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+                    {field === "date_applied" && (
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Applied</Label>
+                            <Input type="date" value={form.date_applied} onChange={e => set("date_applied", e.target.value)} autoFocus />
+                        </div>
+                    )}
+
+                    {field === "work_schedule" && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Start Time</Label>
+                                <Input type="time" value={form.work_schedule_start} onChange={e => set("work_schedule_start", e.target.value)} autoFocus />
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">End Time</Label>
+                                <Input type="time" value={form.work_schedule_end} onChange={e => set("work_schedule_end", e.target.value)} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    {field !== "unit_division_department" && (
+                        <Button onClick={save} disabled={field === "position" && !form.item_id}>
+                            <Save className="w-3.5 h-3.5 mr-1.5" />Save Changes
+                        </Button>
+                    )}
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+// ─── Employment Tab ───────────────────────────────────────────────────────────
+
+function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: Item[] }) {
+    const position = employee.item?.position
+    const [editField, setEditField] = useState<EditField>(null)
+    const toggleStatus = () => router.patch(route("employee.toggleStatus", employee.employee_id), {}, { preserveScroll: true })
+
+    return (
+        <div className="p-5">
+            <div className="grid grid-cols-3 gap-3">
+                <DetailCard title="Position" value={position?.position_name} onEdit={() => setEditField("position")} />
+                <DetailCard title="Date Hired" value={fmt(employee.date_hired)} onEdit={() => setEditField("date_hired")} />
+                <DetailCard title="Status" isStatus statusValue={employee.status} onToggleStatus={toggleStatus} />
+                <DetailCard title="Unit" value={position?.unit?.unit_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Division" value={position?.division?.division_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Department" value={position?.department?.department_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Employment Classification" value={employee.employment_classification} onEdit={() => setEditField("employment_classification")} />
+                <DetailCard title="Date Applied" value={fmt(employee.date_applied)} onEdit={() => setEditField("date_applied")} />
+                <DetailCard
+                    title="Work Schedule"
+                    value={employee.work_schedule_start && employee.work_schedule_end
+                        ? `${employee.work_schedule_start} – ${employee.work_schedule_end}`
+                        : undefined}
+                    onEdit={() => setEditField("work_schedule")}
+                />
+            </div>
+            <EmploymentEditDialog
+                employee={employee}
+                field={editField}
+                onClose={() => setEditField(null)}
+                items={items}
+            />
+        </div>
+    )
+}
+
+// ─── Compensation Tab ─────────────────────────────────────────────────────────
+
+function CompensationTab({ employee }: { employee: Employee }) {
+    const sgs = employee.salary_grade_step
+    const allowances = employee.allowances ?? []
+    const [salaryEditOpen, setSalaryEditOpen] = useState(false)
+
+    return (
+        <div className="p-5 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                        <span className="text-sm font-bold text-foreground">Salary Classification</span>
+                        <Button onClick={() => setSalaryEditOpen(true)} variant="ghost" size="icon-xs" >
+                            <Pen className="w-3 h-3" />
+                        </Button>
+                    </div>
+                    {sgs ? (
+                        <div className="divide-y divide-border">
+                            <div className="flex items-center justify-between px-5 py-3"><span className="text-sm text-muted-foreground">Salary Grade</span><span className="text-sm font-bold text-foreground">SG-{sgs.salary_grade}</span></div>
+                            <div className="flex items-center justify-between px-5 py-3"><span className="text-sm text-muted-foreground">Step Number</span><span className="text-sm font-bold text-foreground">Step {sgs.step}</span></div>
+                            <div className="flex items-center justify-between px-5 py-3"><span className="text-sm text-muted-foreground">Amount</span><span className="text-sm font-bold text-foreground">₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span></div>
+                        </div>
+                    ) : (
+                        <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No salary data.</div>
+                    )}
+                </div>
+
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                        <span className="text-sm font-bold text-foreground">Allowances</span>
+                    </div>
+                    {allowances.length > 0 ? (
+                        <div className="divide-y divide-border">
+                            {allowances.map((a, i) => (
+                                <div key={i} className="flex items-center justify-between px-5 py-3">
+                                    <span className="text-sm text-muted-foreground">{a.allowance_type}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-bold text-foreground">₱{Number(a.amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
+                                        <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2 py-0.5">Present</Badge>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No allowances on file.</div>
+                    )}
+                </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Payroll Data</span>
+                </div>
+                <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No payroll data available.</div>
+            </div>
+
+            <SalaryEditDialog employee={employee} open={salaryEditOpen} onClose={() => setSalaryEditOpen(false)} />
+        </div>
+    )
+}
+
+// ─── Leave Information Tab ────────────────────────────────────────────────────
+
+function LeaveInformationTab({ employee }: { employee: Employee }) {
+    const balances = employee.leave_balances ?? []
+    const availments = employee.leave_availments ?? []
+
+    const [balanceDialog, setBalanceDialog] = useState<{
+        open: boolean; id?: number; leave_type: string; remaining: string; used: string
+    }>({ open: false, leave_type: "", remaining: "", used: "" })
+    const [deleteBalanceId, setDeleteBalanceId] = useState<number | null>(null)
+
+    const openBalanceDialog = (b?: LeaveBalance) => setBalanceDialog({
+        open: true, id: b?.id,
+        leave_type: b?.leave_type ?? "",
+        remaining: b?.remaining?.toString() ?? "",
+        used: b?.used?.toString() ?? "",
+    })
+
+    const saveBalance = () => {
+        const data = {
+            leave_type: balanceDialog.leave_type,
+            remaining: parseFloat(balanceDialog.remaining),
+            used: parseFloat(balanceDialog.used),
+        }
+        if (balanceDialog.id) {
+            router.put(
+                route("employee.leave-balance.update", { employee: employee.employee_id, balance: balanceDialog.id }),
+                data,
+                { preserveScroll: true, onSuccess: () => setBalanceDialog(p => ({ ...p, open: false })) }
+            )
+        } else {
+            router.post(
+                route("employee.leave-balance.store", employee.employee_id),
+                data,
+                { preserveScroll: true, onSuccess: () => setBalanceDialog(p => ({ ...p, open: false })) }
+            )
+        }
+    }
+
+    const confirmDeleteBalance = () => {
+        if (!deleteBalanceId) return
+        router.delete(
+            route("employee.leave-balance.destroy", { employee: employee.employee_id, balance: deleteBalanceId }),
+            { preserveScroll: true, onSuccess: () => setDeleteBalanceId(null) }
+        )
+    }
+
+    return (
+        <div className="p-5 space-y-5">
+            {/* Leave Balances */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Leave Balances</span>
+                    <button onClick={() => openBalanceDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                        <Plus className="w-4 h-4" />
+                    </button>
+                </div>
+                <div className="grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30">
+                    <div className="w-5" />
+                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Type <ChevronUp className="w-3 h-3" /></span>
+                    <span className="text-xs font-semibold text-muted-foreground text-right">Remaining</span>
+                    <span className="text-xs font-semibold text-muted-foreground text-right">Used</span>
+                    <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                </div>
+                {balances.length === 0 ? (
+                    <div className="px-5 py-8 text-center">
+                        <p className="text-sm text-muted-foreground italic mb-3">No leave balances on file.</p>
+                        <Button variant="outline" size="sm" onClick={() => openBalanceDialog()} className="gap-1.5">
+                            <Plus className="w-3.5 h-3.5" /> Add Leave Balance
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {balances.map(b => (
+                            <div key={b.id} className="grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-3 hover:bg-muted/20 transition-colors group/row">
+                                <Checkbox className="w-4 h-4" />
+                                <span className="text-sm text-muted-foreground">{b.leave_type}</span>
+                                <span className="text-sm text-foreground font-medium text-right">{b.remaining}</span>
+                                <span className="text-sm text-foreground font-medium text-right">{b.used}</span>
+                                <div className="flex items-center justify-end gap-1">
+                                    <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs" >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                    </Button>
+                                    <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs" >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Leave Availments */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Leave Availments</span>
+                    <button className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                        <Plus className="w-4 h-4" />
+                    </button>
+                </div>
+                <div className="grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30">
+                    <div className="w-5" />
+                    <div className="w-8" />
+                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Type <ChevronUp className="w-3 h-3" /></span>
+                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Date <ChevronUp className="w-3 h-3" /></span>
+                    <span className="text-xs font-semibold text-muted-foreground">Duration</span>
+                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Date Filed <ChevronUp className="w-3 h-3" /></span>
+                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Status <ChevronUp className="w-3 h-3" /></span>
+                </div>
+                {availments.length === 0 ? (
+                    <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No leave availments on record.</div>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {availments.map(a => (
+                            <div key={a.id} className="grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                <Checkbox className="w-4 h-4" />
+                                <div className="w-8 h-8 rounded-full overflow-hidden bg-muted border border-border shrink-0">
+                                    <img
+                                        src={a.employee_avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(a.employee_name)}&background=5854cc&color=fff&size=32`}
+                                        alt={a.employee_name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm text-foreground font-medium truncate">{a.employee_name}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{a.leave_type}</p>
+                                </div>
+                                <span className="text-sm text-muted-foreground">{fmtShort(a.leave_date_start)} — {fmtShort(a.leave_date_end)}</span>
+                                <span className="text-sm text-foreground font-medium">{a.duration} days</span>
+                                <span className="text-sm text-muted-foreground">{fmtShort(a.date_filed)}</span>
+                                <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
+                                    a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
+                                        "bg-destructive/10 text-destructive"
+                                    }`}>● {a.status}</Badge>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Leave Balance Dialog */}
+            <Dialog open={balanceDialog.open} onOpenChange={open => setBalanceDialog(p => ({ ...p, open }))}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader><DialogTitle>{balanceDialog.id ? "Edit" : "Add"} Leave Balance</DialogTitle></DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Leave Type</Label>
+                            <Select value={balanceDialog.leave_type} onValueChange={v => setBalanceDialog(p => ({ ...p, leave_type: v }))}>
+                                <SelectTrigger><SelectValue placeholder="Select leave type…" /></SelectTrigger>
+                                <SelectContent>
+                                    {["Vacation Leave", "Sick Leave", "Special Leave", "Bereavement Leave", "Maternity/Paternity Leave", "Privilege Leave"].map(t => (
+                                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Remaining</Label><Input type="number" step="0.1" value={balanceDialog.remaining} onChange={e => setBalanceDialog(p => ({ ...p, remaining: e.target.value }))} /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Used</Label><Input type="number" step="0.1" value={balanceDialog.used} onChange={e => setBalanceDialog(p => ({ ...p, used: e.target.value }))} /></div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setBalanceDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveBalance} disabled={!balanceDialog.leave_type}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Balance Confirm */}
+            <AlertDialog open={!!deleteBalanceId} onOpenChange={open => !open && setDeleteBalanceId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Leave Balance</AlertDialogTitle>
+                        <AlertDialogDescription>Are you sure you want to delete this leave balance? This cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteBalance} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
+    )
+}
+
+// ─── Government & Eligibility Tab ─────────────────────────────────────────────
+
+// The 4 standard gov ID types — always shown
+const STANDARD_GOV_ID_TYPES = ["GSIS", "PhilHealth", "Pag-IBIG", "TIN"]
+
+function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
+    const govAccounts = employee.government_accounts ?? []
+    const eligibilities = employee.eligibility_information ?? []
+
+    // ── Visibility toggles ────────────────────────────────────────
+    const [visibleIds, setVisibleIds] = useState<Record<string, boolean>>({})
+    const toggleVisibility = (key: string) => setVisibleIds(prev => ({ ...prev, [key]: !prev[key] }))
+
+    // ── Government ID dialog (edit existing OR add new) ───────────
+    // mode: "standard" = editing a known type, "custom" = adding brand-new type
+    const [govDialog, setGovDialog] = useState<{
+        open: boolean
+        mode: "standard" | "custom"
+        type: string       // for standard: the type name; for custom: user-entered
+        id?: number        // present when editing an existing record
+        value: string      // account_number
+        customTypeName: string  // only used in custom mode step 1
+    }>({ open: false, mode: "standard", type: "", value: "", customTypeName: "" })
+
+    const openEditGovDialog = (type: string, existing: GovernmentAccount) =>
+        setGovDialog({ open: true, mode: "standard", type, id: existing.government_account_id, value: existing.account_number, customTypeName: "" })
+
+    const openAddCustomDialog = () =>
+        setGovDialog({ open: true, mode: "custom", type: "", id: undefined, value: "", customTypeName: "" })
+
+    const saveGovAccount = () => {
+        if (!govDialog.value.trim()) return
+        const accountType = govDialog.mode === "custom" ? govDialog.customTypeName : govDialog.type
+        if (!accountType.trim()) return
+
+        if (govDialog.id) {
+            // Editing existing
+            router.put(
+                route("employee.government-account.update", { employee: employee.employee_id, account: govDialog.id }),
+                { account_number: govDialog.value },
+                { preserveScroll: true, onSuccess: () => setGovDialog(p => ({ ...p, open: false })) }
+            )
+        } else {
+            // Creating new (standard type with no record yet, or custom type)
+            router.post(
+                route("employee.government-account.store", employee.employee_id),
+                { account_type: accountType, account_number: govDialog.value },
+                { preserveScroll: true, onSuccess: () => setGovDialog(p => ({ ...p, open: false })) }
+            )
+        }
+    }
+
+    // Build a lookup map: account_type (lowercased) → account record
+    const accountMap = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
+
+    // Collect "extra" accounts — those not in the 4 standard types
+    const standardKeys = STANDARD_GOV_ID_TYPES.map(t => t.toLowerCase())
+    const extraAccounts = govAccounts.filter(g => !standardKeys.includes(g.account_type.toLowerCase()))
+
+    // ── Eligibility dialog ────────────────────────────────────────
+    const [eligDialog, setEligDialog] = useState<{ open: boolean; id?: number; name: string; year: string }>
+        ({ open: false, name: "", year: "" })
+
+    const openEligDialog = (existing?: EligibilityInfo) =>
+        setEligDialog({
+            open: true,
+            id: existing?.eligibility_information_id,
+            name: existing?.eligibility_name ?? "",
+            year: existing?.year_passed?.slice(0, 10) ?? "",
+        })
+
+    const saveEligibility = () => {
+        if (!eligDialog.name.trim()) return
+        const data = { eligibility_name: eligDialog.name, year_passed: eligDialog.year || null }
+        if (eligDialog.id) {
+            // UPDATE existing record — id is eligibility_information_id
+            router.put(
+                route("employee.eligibility.update", { employee: employee.employee_id, eligibility: eligDialog.id }),
+                data,
+                { preserveScroll: true, onSuccess: () => setEligDialog(p => ({ ...p, open: false })) }
+            )
+        } else {
+            // CREATE new record
+            router.post(
+                route("employee.eligibility.store", employee.employee_id),
+                data,
+                { preserveScroll: true, onSuccess: () => setEligDialog(p => ({ ...p, open: false })) }
+            )
+        }
+    }
+
+    return (
+        <div className="p-5 space-y-5">
+
+            {/* ── Government IDs ───────────────────────────────────── */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Government ID Numbers</span>
+                    {/* + button to add a custom ID type */}
+                    <button
+                        onClick={openAddCustomDialog}
+                        className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                        title="Add government ID"
+                    >
+                        <Plus className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div className="divide-y divide-border">
+                    {/* Standard 4 rows — always rendered */}
+                    {STANDARD_GOV_ID_TYPES.map(type => {
+                        const key = type.toLowerCase()
+                        const account = accountMap[key]
+                        const isVisible = visibleIds[key]
+
+                        return (
+                            <div key={type} className="flex items-center gap-4 px-5 py-3">
+                                <span className="text-sm text-foreground w-28 shrink-0 font-medium">{type}</span>
+                                <span className="flex-1 text-sm text-muted-foreground font-mono tracking-widest">
+                                    {account
+                                        ? (isVisible ? account.account_number : "•".repeat(10))
+                                        : <span className="italic text-muted-foreground/40 font-sans tracking-normal text-xs">Not provided</span>
+                                    }
+                                </span>
+                                {/* Actions — always visible (no hover gate) */}
+                                <div className="flex items-center gap-1">
+                                    {account ? (
+                                        <>
+                                            <button
+                                                onClick={() => toggleVisibility(key)}
+                                                className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                                                title={isVisible ? "Hide" : "Show"}
+                                            >
+                                                {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                            </button>
+                                            <Button
+                                                onClick={() => openEditGovDialog(type, account)}
+                                                variant={"ghost"}
+                                                size={"icon-xs"}
+                                                title="Edit"
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        /* No record yet — show a small + to add this specific standard type */
+                                        <Button
+                                            onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })}
+                                            variant={"ghost"}
+                                            size={"icon-xs"}
+                                            title={`Add ${type}`}
+                                        >
+                                            <Plus className="w-3.5 h-3.5" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })}
+
+                    {/* Extra (custom) rows */}
+                    {extraAccounts.map(account => {
+                        const key = account.account_type.toLowerCase()
+                        const isVisible = visibleIds[key]
+
+                        return (
+                            <div key={account.government_account_id} className="flex items-center gap-4 px-5 py-3">
+                                <span className="text-sm text-foreground w-28 shrink-0 font-medium">{account.account_type}</span>
+                                <span className="flex-1 text-sm text-muted-foreground font-mono tracking-widest">
+                                    {isVisible ? account.account_number : "•".repeat(10)}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => toggleVisibility(key)}
+                                        className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                                        title={isVisible ? "Hide" : "Show"}
+                                    >
+                                        {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <Button
+                                        onClick={() => openEditGovDialog(account.account_type, account)}
+                                        variant="ghost"
+                                        size="icon-xs"
+                                        title="Edit"
+                                    >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+
+            {/* ── Eligibility ──────────────────────────────────────── */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Eligibility and Credentials</span>
+                    <button
+                        onClick={() => openEligDialog()}
+                        className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                    >
+                        <Plus className="w-4 h-4" />
+                    </button>
+                </div>
+                {eligibilities.length === 0 ? (
+                    <div className="px-5 py-8 text-center">
+                        <p className="text-sm text-muted-foreground italic mb-3">No eligibility records on file.</p>
+                        <Button variant="outline" size="sm" onClick={() => openEligDialog()} className="gap-1.5">
+                            <Plus className="w-3.5 h-3.5" />Add Eligibility
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {eligibilities.map(e => (
+                            <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3">
+                                <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
+                                <span className="text-sm text-muted-foreground w-36 text-right shrink-0">
+                                    {e.year_passed ? fmt(e.year_passed) : "—"}
+                                </span>
+                                <Badge className="text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5 shrink-0">
+                                    ✓ Active
+                                </Badge>
+                                {/* Edit only — no delete */}
+                                <Button
+                                    onClick={() => openEligDialog(e)}
+                                    title="Edit"
+                                    variant={"ghost"}
+                                    size={"icon-xs"}
+                                >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ── Government ID Dialog ─────────────────────────────── */}
+            <Dialog open={govDialog.open} onOpenChange={open => setGovDialog(p => ({ ...p, open }))}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {govDialog.id
+                                ? `Edit ${govDialog.type} Number`
+                                : govDialog.mode === "custom"
+                                    ? "Add Government ID"
+                                    : `Add ${govDialog.type} Number`
+                            }
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-2 space-y-3">
+                        {/* Only show the "ID name" field when adding a custom type */}
+                        {govDialog.mode === "custom" && !govDialog.id && (
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">
+                                    ID Type / Name
+                                </Label>
+                                <Input
+                                    value={govDialog.customTypeName}
+                                    onChange={e => setGovDialog(p => ({ ...p, customTypeName: e.target.value }))}
+                                    placeholder="e.g. Postal ID, Voter's ID…"
+                                    autoFocus
+                                />
+                            </div>
+                        )}
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">
+                                Account / ID Number
+                            </Label>
+                            <Input
+                                value={govDialog.value}
+                                onChange={e => setGovDialog(p => ({ ...p, value: e.target.value }))}
+                                placeholder={`Enter ${govDialog.mode === "custom" ? govDialog.customTypeName || "ID" : govDialog.type} number`}
+                                className="font-mono"
+                                autoFocus={govDialog.mode !== "custom"}
+                                onKeyDown={e => e.key === "Enter" && saveGovAccount()}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setGovDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button
+                            onClick={saveGovAccount}
+                            disabled={
+                                !govDialog.value.trim() ||
+                                (govDialog.mode === "custom" && !govDialog.id && !govDialog.customTypeName.trim())
+                            }
+                        >
+                            <Save className="w-3.5 h-3.5 mr-1.5" />Save
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Eligibility Dialog ───────────────────────────────── */}
+            <Dialog open={eligDialog.open} onOpenChange={open => setEligDialog(p => ({ ...p, open }))}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{eligDialog.id ? "Edit" : "Add"} Eligibility</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Eligibility Name</Label>
+                            <Input
+                                value={eligDialog.name}
+                                onChange={e => setEligDialog(p => ({ ...p, name: e.target.value }))}
+                                placeholder="e.g. Career Service Professional"
+                                autoFocus
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Passed</Label>
+                            <Input
+                                type="date"
+                                value={eligDialog.year}
+                                onChange={e => setEligDialog(p => ({ ...p, year: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEligDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveEligibility} disabled={!eligDialog.name.trim()}>
+                            <Save className="w-3.5 h-3.5 mr-1.5" />Save
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function ShowEmployee({ employee, items }: Props) {
+    const basic = employee.basic_info
+    const position = employee.item?.position
+    const firstAddress = (basic?.addresses ?? [])[0]
+    const addressStr = firstAddress
+        ? [firstAddress.street_address, firstAddress.city, firstAddress.state].filter(Boolean).join(", ")
+        : undefined
+
+    const [basicEditOpen, setBasicEditOpen] = useState(false)
+
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: "Employee", href: route("employee.index") },
+        { title: "Employee Profile", href: "#" },
+    ]
+
+    const tabs = [
+        { value: "employment", label: "Employment Details", icon: Briefcase },
+        { value: "compensation", label: "Compensation", icon: FileText },
+        { value: "leave", label: "Leave Information", icon: Calendar },
+        { value: "time", label: "Time Records", icon: Clock },
+        { value: "government", label: "Government & Eligibility", icon: Landmark },
+    ]
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title={`${basic?.full_name ?? "Employee"} — Profile`} />
+            <div className="flex gap-5 p-5 min-h-full bg-background">
+
+                {/* ── Left Panel ── */}
+                <div className="w-72 shrink-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
+                    <div className="relative flex flex-col items-center pt-8 pb-5 px-5 bg-gradient-to-b from-accent/30 to-card border-b border-border">
+                        <div className="absolute top-3 right-3">
+                            <Button size={"icon-xs"} onClick={() => setBasicEditOpen(true)} variant={"ghost"} >
+                                <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                        </div>
+                        <div className="relative">
+                            <div className="w-24 h-24 rounded-full overflow-hidden bg-muted border-4 border-card shadow-lg ring-2 ring-primary/20">
+                                <img
+                                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(basic?.full_name ?? "E")}&background=5854cc&color=fff&size=96`}
+                                    alt={basic?.full_name}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:opacity-90 transition-opacity border-2 border-card">
+                                <Camera className="w-3 h-3" />
+                            </button>
+                        </div>
+                        <div className="mt-4 text-center">
+                            <h1 className="text-base font-bold text-foreground leading-tight">{basic?.full_name ?? "—"}</h1>
+                            <p className="text-xs text-primary font-semibold mt-0.5">{position?.position_name ?? "No Position Assigned"}</p>
+                        </div>
+                        <Badge className={`mt-2.5 text-[10px] font-bold border-0 rounded-full px-3 py-0.5 ${employee.status ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+                            {employee.status ? "● Active" : "● Inactive"}
+                        </Badge>
+                    </div>
+
+                    <div className="flex-1 px-4 py-3 overflow-y-auto">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Basic Information</p>
+                        <InfoRow icon={Mail} label="Email" value={basic?.personal_email} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} onEdit={() => setBasicEditOpen(true)} />
+                        <InfoRow icon={Home} label="Address" value={addressStr} onEdit={() => setBasicEditOpen(true)} />
+                    </div>
+
+                    <div className="px-4 pb-4 pt-2 border-t border-border">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Work Email</p>
+                        <p className="text-xs text-foreground/70 font-medium truncate">{employee.work_email}</p>
+                    </div>
+                </div>
+
+                {/* ── Right Panel ── */}
+                <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col min-w-0">
+                    <Tabs defaultValue="employment" className="flex flex-col flex-1">
+                        <div className="border-b border-border px-4 pt-1 shrink-0">
+                            <TabsList className="h-auto bg-transparent gap-0 p-0 flex-wrap">
+                                {tabs.map(({ value, label, icon: Icon }) => (
+                                    <TabsTrigger
+                                        key={value}
+                                        value={value}
+                                        className="relative flex items-center gap-1.5 px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap"
+                                    >
+                                        <Icon className="w-3.5 h-3.5 shrink-0" />{label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </div>
+                        <TabsContent value="employment" className="flex-1 mt-0 overflow-y-auto"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
+                        <TabsContent value="compensation" className="flex-1 mt-0 overflow-y-auto"><CompensationTab employee={employee} /></TabsContent>
+                        <TabsContent value="leave" className="flex-1 mt-0 overflow-y-auto"><LeaveInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="time" className="flex-1 mt-0 overflow-y-auto">
+                            <div className="flex flex-col items-center justify-center h-64 gap-3">
+                                <Clock className="w-10 h-10 text-muted-foreground/30" />
+                                <p className="text-sm italic text-muted-foreground">Time records coming soon.</p>
+                            </div>
+                        </TabsContent>
+                        <TabsContent value="government" className="flex-1 mt-0 overflow-y-auto"><GovernmentEligibilityTab employee={employee} /></TabsContent>
+                    </Tabs>
+                </div>
+            </div>
+
+            <BasicInfoEditDialog employee={employee} open={basicEditOpen} onClose={() => setBasicEditOpen(false)} />
+        </AppLayout>
+    )
+}
