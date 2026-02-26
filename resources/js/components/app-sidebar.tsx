@@ -88,7 +88,7 @@ const data = {
         },
         {
           title: "Internal Organization",
-          url: "/organization/internal_organization",
+          url: "/organization/internal-organizations",
         }
       ]
     },

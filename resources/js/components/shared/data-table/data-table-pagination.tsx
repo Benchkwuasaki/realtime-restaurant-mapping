@@ -1,4 +1,4 @@
-import { type RowSelectionState, type Table } from "@tanstack/react-table"
+import { type Table } from "@tanstack/react-table"
 import {
   ChevronLeft,
   ChevronRight,
@@ -17,33 +17,40 @@ import {
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>
-  rowSelection: RowSelectionState
+  // These come directly from React state in the parent — never from
+  // table.getState() — so they are always current on every render.
   pageIndex: number
   pageSize: number
+  pageCount: number
+  totalFiltered: number
+  onPageIndexChange: (index: number) => void
+  onPageSizeChange: (size: number) => void
 }
 
 export function DataTablePagination<TData>({
   table,
-  rowSelection,
   pageIndex,
   pageSize,
+  pageCount,
+  totalFiltered,
+  onPageIndexChange,
+  onPageSizeChange,
 }: DataTablePaginationProps<TData>) {
-  const selectedCount = Object.values(rowSelection).filter(Boolean).length
-  const totalCount = table.getFilteredRowModel().rows.length
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length
 
   return (
     <div className="flex items-center justify-between px-2">
       <div className="text-muted-foreground flex-1 text-sm">
-        {selectedCount} of {totalCount} row(s) selected.
+        {selectedCount} of {totalFiltered} row(s) selected.
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8">
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium">Rows per page</p>
           <Select
             value={`${pageSize}`}
-            onValueChange={(value) => table.setPageSize(Number(value))}
+            onValueChange={(value) => onPageSizeChange(Number(value))}
           >
-            <SelectTrigger className="h-8 w-[70px]">
+            <SelectTrigger className="h-8 w-17.5">
               <SelectValue placeholder={pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
@@ -55,16 +62,16 @@ export function DataTablePagination<TData>({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          Page {pageIndex + 1} of {table.getPageCount()}
+        <div className="flex w-25 items-center justify-center text-sm font-medium">
+          Page {pageIndex + 1} of {pageCount}
         </div>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
             size="icon"
             className="hidden size-8 lg:flex"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() => onPageIndexChange(0)}
+            disabled={pageIndex === 0}
           >
             <span className="sr-only">Go to first page</span>
             <ChevronsLeft />
@@ -73,8 +80,8 @@ export function DataTablePagination<TData>({
             variant="outline"
             size="icon"
             className="size-8"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() => onPageIndexChange(pageIndex - 1)}
+            disabled={pageIndex === 0}
           >
             <span className="sr-only">Go to previous page</span>
             <ChevronLeft />
@@ -83,8 +90,8 @@ export function DataTablePagination<TData>({
             variant="outline"
             size="icon"
             className="size-8"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={() => onPageIndexChange(pageIndex + 1)}
+            disabled={pageIndex >= pageCount - 1}
           >
             <span className="sr-only">Go to next page</span>
             <ChevronRight />
@@ -93,8 +100,8 @@ export function DataTablePagination<TData>({
             variant="outline"
             size="icon"
             className="hidden size-8 lg:flex"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
+            onClick={() => onPageIndexChange(pageCount - 1)}
+            disabled={pageIndex >= pageCount - 1}
           >
             <span className="sr-only">Go to last page</span>
             <ChevronsRight />

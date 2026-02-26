@@ -12,6 +12,7 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\InternalOrganizationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -95,6 +96,18 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::put('/{department}', [DepartmentController::class, 'update'])->name('update');
         Route::delete('/{department}', [DepartmentController::class, 'destroy'])->name('destroy');
     });
+    Route::prefix('organization/internal-organizations')->name('internal-organization.')->group(function () {
+        Route::get('/', [InternalOrganizationController::class, 'index'])->name('index');
+        Route::get('/create', [InternalOrganizationController::class, 'create'])->name('create');
+        Route::post('/', [InternalOrganizationController::class, 'store'])->name('store');
+        Route::get('/{internalOrganization}', [InternalOrganizationController::class, 'show'])->name('show');
+        Route::get('/{internalOrganization}/edit', [InternalOrganizationController::class, 'edit'])->name('edit');
+        Route::put('/{internalOrganization}', [InternalOrganizationController::class, 'update'])->name('update');
+        Route::patch('/{internalOrganization}/toggle-status', [InternalOrganizationController::class, 'toggleStatus'])->name('toggle-status');
+        Route::delete('/{internalOrganization}', [InternalOrganizationController::class, 'destroy'])->name('destroy');
+        Route::delete('/bulk-destroy', [InternalOrganizationController::class, 'bulkDestroy'])->name('bulk-destroy');
+    });
+
 });
 
 Route::prefix('organization/divisions')->name('division.')->group(function () {
