@@ -1,9 +1,9 @@
 import { Head } from '@inertiajs/react';
+import { Users, UserCheck, UserX } from "lucide-react";
 import EmployeePage from '@/components/Employeee/page'
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
-import { Users, UserCheck, UserX } from "lucide-react";
 
 const breadcrumbs: BreadcrumbItem[] = [
     {

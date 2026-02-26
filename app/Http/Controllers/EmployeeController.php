@@ -34,7 +34,7 @@ class EmployeeController extends Controller
             'module' => 'employee',
             'description' => 'Viewed Employee Page',
         ]);
-        $tasks = Employee::with([
+        $employees = Employee::with([
             'basicInfo',
             'item.position.department',
             'item.position.division',
@@ -44,7 +44,7 @@ class EmployeeController extends Controller
             ->map(fn(Employee $employee) => $this->formatForTable($employee));
 
         return Inertia::render('Employee/Index', [
-            'tasks' => $tasks,
+            'employee' => $employees,
         ]);
     }
 

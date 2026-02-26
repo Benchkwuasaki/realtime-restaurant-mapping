@@ -3,7 +3,7 @@ import { usePage } from "@inertiajs/react"
 import { columns } from "@/components/Employeee/components/columns"
 import { DataTable } from "./components/data-table"
 
-interface Task {
+interface Employee {
   id: string
   name: string
   position: string
@@ -16,15 +16,15 @@ interface Task {
 }
 
 interface Props extends PageProps {
-  tasks: Task[]
+  employee: Employee[]
 }
 
 export default function EmployeePage() {
-  const { tasks } = usePage<Props>().props
+  const { employee } = usePage<Props>().props
 
   return (
     <div className="flex h-full flex-1 flex-col gap-8 py-4">
-      <DataTable data={tasks} columns={columns} />
+      <DataTable data={employee} columns={columns} />
     </div>
   )
 }

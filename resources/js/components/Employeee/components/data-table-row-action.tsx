@@ -5,7 +5,6 @@ import { type Row } from "@tanstack/react-table"
 import { Trash2 } from "lucide-react"
 import React from "react"
 
-import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,14 +15,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { taskSchema } from "../data/schema"
+import { Button } from "@/components/ui/button"
+import { employeeSchema } from "../data/schema"
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>
 }
 
 export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TData>) {
-  const task = taskSchema.parse(row.original)
+  const task = employeeSchema.parse(row.original)
   const [open, setOpen] = React.useState(false)
 
   const handleDelete = () => {
