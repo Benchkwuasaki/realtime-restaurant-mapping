@@ -24,7 +24,9 @@ class EmployeeController extends Controller
     /**
      * Display the employee list page.
      */
-    public function __construct(protected ActivityLogService $activityLogService) {}
+    public function __construct(protected ActivityLogService $activityLogService)
+    {
+    }
 
     public function index()
     {
@@ -34,7 +36,7 @@ class EmployeeController extends Controller
             'module' => 'employee',
             'description' => 'Viewed Employee Page',
         ]);
-        $tasks = Employee::with([
+        $employees = Employee::with([
             'basicInfo',
             'item.position.department',
             'item.position.division',
@@ -44,7 +46,10 @@ class EmployeeController extends Controller
             ->map(fn(Employee $employee) => $this->formatForTable($employee));
 
         return Inertia::render('Employee/Index', [
-            'tasks' => $tasks,
+            'employee' => $employees,
+            'totalEmployees' => $employees->count(),
+            'activeEmployees' => $employees->where('status', true)->count(),
+            'inactiveEmployees' => $employees->where('status', false)->count(),
         ]);
     }
 
