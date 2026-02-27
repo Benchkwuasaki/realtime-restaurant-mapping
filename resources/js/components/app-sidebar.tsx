@@ -83,10 +83,6 @@ const data = {
           url: "/organization/positions",
         },
         {
-          title: "Signatories",
-          url: "/organization/signatories",
-        },
-        {
           title: "Internal Organization",
           url: "/organization/internal-organizations",
         }
