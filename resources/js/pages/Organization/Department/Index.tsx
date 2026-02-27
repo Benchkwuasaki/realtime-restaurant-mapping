@@ -1,17 +1,21 @@
 import { Head, useForm, usePage } from "@inertiajs/react"
-import { Building2 } from "lucide-react"
+import { Building2, GitBranch, LampDesk } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { getColumns } from "@/components/Organization/Department/components/columns"
-import { type Department } from "@/components/Organization/Department/data/schema"
+import {
+    type Department,
+    type DepartmentDivision,
+} from "@/components/Organization/Department/data/schema"
 import { DataTable } from "@/components/shared/data-table/data-table"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -36,6 +40,57 @@ function FieldError({ message }: { message?: string }) {
     return <p className="text-xs text-destructive mt-1">{message}</p>
 }
 
+// ─── Divisions Dialog ─────────────────────────────────────────────────────────
+
+interface DivisionsDialogProps {
+    open: boolean
+    department: Department | null
+    onClose: () => void
+}
+
+function DivisionsDialog({ open, department, onClose }: DivisionsDialogProps) {
+    const divisions: DepartmentDivision[] = department?.divisions ?? []
+
+    return (
+        <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-lg">
+                <DialogHeader className="px-5 py-4 border-b border-border">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <LampDesk className="w-4 h-4 text-primary" />
+                        <span>{department?.department_name}</span>
+                        <Badge variant="secondary" className="text-xs font-normal">
+                            {divisions.length} division{divisions.length !== 1 ? "s" : ""}
+                        </Badge>
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="px-5 py-4 min-h-[180px] max-h-[400px] overflow-y-auto">
+                    {divisions.length === 0 ? (
+                        <div className="flex h-32 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
+                            <GitBranch className="w-8 h-8 opacity-30" />
+                            <span>No divisions under this department.</span>
+                        </div>
+                    ) : (
+                        <ul className="divide-y divide-border">
+                            {divisions.map((div) => (
+                                <li
+                                    key={div.division_id}
+                                    className="flex items-center gap-3 py-2.5"
+                                >
+                                    <LampDesk className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-sm text-foreground">
+                                        {div.division_name}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 // ─── Department Modal ─────────────────────────────────────────────────────────
 
 interface DepartmentModalProps {
@@ -48,8 +103,8 @@ function DepartmentModal({ open, editingDepartment, onClose }: DepartmentModalPr
     const isEdit = editingDepartment !== null
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        department_name: editingDepartment?.department_name ?? "",
-        department_acronym: editingDepartment?.department_acronym ?? "",
+        department_name:        editingDepartment?.department_name        ?? "",
+        department_acronym:     editingDepartment?.department_acronym     ?? "",
         department_description: editingDepartment?.department_description ?? "",
     })
 
@@ -79,7 +134,6 @@ function DepartmentModal({ open, editingDepartment, onClose }: DepartmentModalPr
 
                 <form onSubmit={handleSubmit}>
                     <div className="px-5 py-5 space-y-4">
-                        {/* Department Name + Acronym */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label htmlFor="department_name" className="block text-xs font-medium text-foreground mb-1.5">
@@ -110,7 +164,6 @@ function DepartmentModal({ open, editingDepartment, onClose }: DepartmentModalPr
                             </div>
                         </div>
 
-                        {/* Description */}
                         <div>
                             <label htmlFor="department_description" className="block text-xs font-medium text-foreground mb-1.5">
                                 Description
@@ -146,8 +199,13 @@ function DepartmentModal({ open, editingDepartment, onClose }: DepartmentModalPr
 export default function DepartmentIndex({ departments }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
+    // ── Department modal state ──
     const [modalOpen, setModalOpen] = useState(false)
     const [editingDepartment, setEditingDepartment] = useState<Department | null>(null)
+
+    // ── Divisions dialog state ──
+    const [divisionsDialogOpen, setDivisionsDialogOpen] = useState(false)
+    const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null)
 
     function openCreate() {
         setEditingDepartment(null)
@@ -164,7 +222,16 @@ export default function DepartmentIndex({ departments }: Props) {
         setEditingDepartment(null)
     }
 
-    // Delete is handled inside DataTableRowActions via deleteAction() in columns.tsx
+    function openDivisions(department: Department) {
+        setSelectedDepartment(department)
+        setDivisionsDialogOpen(true)
+    }
+
+    function closeDivisions() {
+        setDivisionsDialogOpen(false)
+        setSelectedDepartment(null)
+    }
+
     const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
 
     return (
@@ -194,6 +261,7 @@ export default function DepartmentIndex({ departments }: Props) {
                     columns={columns}
                     data={departments}
                     getRowId={(row) => String(row.department_id)}
+                    onRowClick={(row) => openDivisions(row.original)}
                     searchPlaceholder="Search departments..."
                     searchColumnId="department_name"
                     addButton={{
@@ -208,11 +276,19 @@ export default function DepartmentIndex({ departments }: Props) {
                 />
             </div>
 
+            {/* ── Department Create/Edit Modal ── */}
             <DepartmentModal
                 key={editingDepartment?.department_id ?? "create"}
                 open={modalOpen}
                 editingDepartment={editingDepartment}
                 onClose={closeModal}
+            />
+
+            {/* ── Divisions Dialog ── */}
+            <DivisionsDialog
+                open={divisionsDialogOpen}
+                department={selectedDepartment}
+                onClose={closeDivisions}
             />
         </AppLayout>
     )

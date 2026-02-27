@@ -1,5 +1,5 @@
-import { Head, router, useForm, usePage } from "@inertiajs/react"
-import { Briefcase } from "lucide-react"
+import { Head, useForm, usePage } from "@inertiajs/react"
+import { Briefcase, Users } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { getColumns } from "@/components/Organization/Position/components/columns"
@@ -7,16 +7,18 @@ import {
     type Department,
     type Division,
     type Position,
+    type PositionEmployee,
     type Unit,
 } from "@/components/Organization/Position/data/schema"
 import { DataTable } from "@/components/shared/data-table/data-table"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
@@ -47,7 +49,77 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 function FieldError({ message }: { message?: string }) {
     if (!message) return null
-    return <p className="text-xs text-destructive mt-1">{message}</p>
+    return <p className="mt-1 text-xs text-destructive">{message}</p>
+}
+
+// ─── Employees Dialog ─────────────────────────────────────────────────────────
+
+interface EmployeesDialogProps {
+    open: boolean
+    position: Position | null
+    onClose: () => void
+}
+
+function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
+    const employees: PositionEmployee[] = position?.employees ?? []
+
+    return (
+        <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-lg">
+                <DialogHeader className="px-5 py-4 border-b border-border">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Users className="w-4 h-4 text-primary" />
+                        <span>{position?.position_name}</span>
+                        <Badge variant="secondary" className="text-xs font-normal">
+                            {employees.length} / {position?.total_slots ?? "?"} slots filled
+                        </Badge>
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="px-5 py-4 min-h-[180px] max-h-[400px] overflow-y-auto">
+                    {employees.length === 0 ? (
+                        <div className="flex h-32 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
+                            <Users className="w-8 h-8 opacity-30" />
+                            <span>No employees assigned to this position.</span>
+                        </div>
+                    ) : (
+                        <ul className="divide-y divide-border">
+                            {employees.map((emp) => (
+                                <li
+                                    key={emp.id}
+                                    className="flex items-center justify-between gap-3 py-2.5"
+                                >
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-medium text-foreground">
+                                            {emp.first_name} {emp.last_name}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {emp.email ?? "No email set"}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground/60">
+                                            {emp.item_name}
+                                        </span>
+                                    </div>
+                                    <Badge
+                                        variant={emp.is_active ? "default" : "secondary"}
+                                        className="shrink-0 text-xs"
+                                    >
+                                        {emp.is_active ? "Active" : "Inactive"}
+                                    </Badge>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                <DialogFooter className="border-t border-border bg-muted/30 px-5 py-3">
+                    <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
+                        Close
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
 }
 
 // ─── Position Modal ───────────────────────────────────────────────────────────
@@ -86,6 +158,10 @@ function PositionModal({
         (u) => !data.division_id || u.division_id === Number(data.division_id)
     )
 
+    // ── Empty-state flags (only show after a parent selection is made) ──
+    const noDivisions = !!data.department_id && filteredDivisions.length === 0
+    const noUnits = !!data.division_id && filteredUnits.length === 0
+
     function handleClose() {
         reset()
         onClose()
@@ -113,10 +189,11 @@ function PositionModal({
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit}>
-                    <div className="px-5 py-5 space-y-4">
+                    <div className="space-y-4 px-5 py-5">
+
                         {/* Position Name */}
                         <div>
-                            <label htmlFor="position_name" className="block text-xs font-medium text-foreground mb-1.5">
+                            <label htmlFor="position_name" className="mb-1.5 block text-xs font-medium text-foreground">
                                 Position Name <span className="text-destructive">*</span>
                             </label>
                             <Input
@@ -131,7 +208,7 @@ function PositionModal({
 
                         {/* Department */}
                         <div>
-                            <label htmlFor="department_id" className="block text-xs font-medium text-foreground mb-1.5">
+                            <label htmlFor="department_id" className="mb-1.5 block text-xs font-medium text-foreground">
                                 Department <span className="text-destructive">*</span>
                             </label>
                             <Select
@@ -158,7 +235,7 @@ function PositionModal({
 
                         {/* Division */}
                         <div>
-                            <label htmlFor="division_id" className="block text-xs font-medium text-foreground mb-1.5">
+                            <label htmlFor="division_id" className="mb-1.5 block text-xs font-medium text-foreground">
                                 Division <span className="text-destructive">*</span>
                             </label>
                             <Select
@@ -167,10 +244,16 @@ function PositionModal({
                                     setData("division_id", v)
                                     setData("unit_id", "")
                                 }}
-                                disabled={!data.department_id}
+                                disabled={!data.department_id || noDivisions}
                             >
                                 <SelectTrigger id="division_id" className="text-sm">
-                                    <SelectValue placeholder="Select division" />
+                                    <SelectValue placeholder={
+                                        !data.department_id
+                                            ? "Select a department first"
+                                            : noDivisions
+                                                ? "No divisions available"
+                                                : "Select division"
+                                    } />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {filteredDivisions.map((d) => (
@@ -180,21 +263,39 @@ function PositionModal({
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {noDivisions && (
+                                <p className="mt-1.5 text-xs text-destructive">
+                                    This department has no divisions yet.{" "}
+
+                                    <a href="/organization/divisions"
+                                        target="_blank"
+                                        className="underline underline-offset-2 hover:text-foreground"
+                                    >
+                                        Add one here.
+                                    </a>
+                                </p>
+                            )}
                             <FieldError message={errors.division_id} />
                         </div>
 
                         {/* Unit */}
                         <div>
-                            <label htmlFor="unit_id" className="block text-xs font-medium text-foreground mb-1.5">
+                            <label htmlFor="unit_id" className="mb-1.5 block text-xs font-medium text-foreground">
                                 Unit <span className="text-muted-foreground">(optional)</span>
                             </label>
                             <Select
                                 value={data.unit_id}
                                 onValueChange={(v) => setData("unit_id", v === "none" ? "" : v)}
-                                disabled={!data.division_id}
+                                disabled={!data.division_id || noUnits}
                             >
                                 <SelectTrigger id="unit_id" className="text-sm">
-                                    <SelectValue placeholder="Select unit" />
+                                    <SelectValue placeholder={
+                                        !data.division_id
+                                            ? "Select a division first"
+                                            : noUnits
+                                                ? "No units available"
+                                                : "Select unit (optional)"
+                                    } />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none">None</SelectItem>
@@ -205,12 +306,24 @@ function PositionModal({
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {noUnits && (
+                                <p className="mt-1.5 text-xs text-destructive">
+                                    This division has no units yet.{" "}
+
+                                    <a href="/organization/units"
+                                        target="_blank"
+                                        className="underline underline-offset-2 hover:text-foreground"
+                                    >
+                                        Add one here.
+                                    </a>
+                                </p>
+                            )}
                             <FieldError message={errors.unit_id} />
                         </div>
 
                         {/* Item Slots */}
                         <div>
-                            <label htmlFor="item_slots" className="block text-xs font-medium text-foreground mb-1.5">
+                            <label htmlFor="item_slots" className="mb-1.5 block text-xs font-medium text-foreground">
                                 Item Slots <span className="text-destructive">*</span>
                             </label>
                             <Input
@@ -223,28 +336,35 @@ function PositionModal({
                                 className="text-sm"
                             />
                             {isEdit && occupiedSlots > 0 && (
-                                <p className="text-xs text-muted-foreground mt-1">
+                                <p className="mt-1 text-xs text-muted-foreground">
                                     Minimum {occupiedSlots} slot{occupiedSlots !== 1 ? "s" : ""} required ({occupiedSlots} currently occupied).
                                 </p>
                             )}
-                            <p className="text-xs text-muted-foreground/70 mt-1">
-                                Items will be auto-named: <span className="font-mono">{data.position_name || "Position"} Item 1</span>, <span className="font-mono">Item 2</span>…
+                            <p className="mt-1 text-xs text-muted-foreground/70">
+                                Items will be auto-named:{" "}
+                                <span className="font-mono">{data.position_name || "Position"} Item 1</span>,{" "}
+                                <span className="font-mono">Item 2</span>…
                             </p>
                             <FieldError message={errors.item_slots} />
                         </div>
                     </div>
 
-                    <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30">
+                    <DialogFooter className="border-t border-border bg-muted/30 px-5 py-4">
                         <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
                             Cancel
                         </Button>
-                        <Button type="submit" size="sm" disabled={processing} className="text-xs">
+                        <Button
+                            type="submit"
+                            size="sm"
+                            disabled={processing || noDivisions}
+                            className="text-xs"
+                        >
                             {processing ? "Saving…" : isEdit ? "Update Position" : "Create Position"}
                         </Button>
                     </DialogFooter>
                 </form>
-            </DialogContent>
-        </Dialog>
+            </DialogContent >
+        </Dialog >
     )
 }
 
@@ -253,8 +373,13 @@ function PositionModal({
 export default function PositionIndex({ positions, departments, divisions, units }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
+    // ── Position modal state ──
     const [modalOpen, setModalOpen] = useState(false)
     const [editingPosition, setEditingPosition] = useState<Position | null>(null)
+
+    // ── Employees dialog state ──
+    const [employeesDialogOpen, setEmployeesDialogOpen] = useState(false)
+    const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
 
     function openCreate() {
         setEditingPosition(null)
@@ -271,6 +396,7 @@ export default function PositionIndex({ positions, departments, divisions, units
         setEditingPosition(null)
     }
 
+<<<<<<< HEAD
     function handleDelete(position: Position) {
         router.delete(route("position.destroy", position.position_id))
     }
@@ -278,26 +404,40 @@ export default function PositionIndex({ positions, departments, divisions, units
     // Delete is now handled inside DataTableRowActions via deleteAction()
     // — no separate DeleteAlertDialog state needed here
     const columns = getColumns({ onEdit: openEdit, onDelete: handleDelete })
+=======
+    function openEmployees(position: Position) {
+        setSelectedPosition(position)
+        setEmployeesDialogOpen(true)
+    }
+
+    function closeEmployees() {
+        setEmployeesDialogOpen(false)
+        setSelectedPosition(null)
+    }
+
+    const columns = getColumns({ onEdit: openEdit, onDelete: () => { } })
+>>>>>>> b28d13a4c3292723e73de21ca02163445066ece3
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Positions" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 py-4 px-6">
+            <div className="flex h-full flex-1 flex-col gap-6 px-6 py-4">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground">
                             <Briefcase className="w-5 h-5 text-primary" />
                             Positions
                         </h1>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {positions.length} position{positions.length !== 1 ? "s" : ""} across {departments.length} department{departments.length !== 1 ? "s" : ""}
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            {positions.length} position{positions.length !== 1 ? "s" : ""} across{" "}
+                            {departments.length} department{departments.length !== 1 ? "s" : ""}
                         </p>
                     </div>
                 </div>
 
                 {props.flash?.success && (
-                    <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
+                    <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300">
                         {props.flash.success}
                     </div>
                 )}
@@ -306,6 +446,7 @@ export default function PositionIndex({ positions, departments, divisions, units
                     columns={columns}
                     data={positions}
                     getRowId={(row) => String(row.position_id)}
+                    onRowClick={(row) => openEmployees(row.original)}
                     searchColumnId="position_name"
                     searchPlaceholder="Search positions..."
                     filters={[
@@ -346,6 +487,7 @@ export default function PositionIndex({ positions, departments, divisions, units
                 />
             </div>
 
+            {/* ── Position Create/Edit Modal ── */}
             <PositionModal
                 key={editingPosition?.position_id ?? "create"}
                 open={modalOpen}
@@ -354,6 +496,13 @@ export default function PositionIndex({ positions, departments, divisions, units
                 divisions={divisions}
                 units={units}
                 onClose={closeModal}
+            />
+
+            {/* ── Employees Dialog ── */}
+            <EmployeesDialog
+                open={employeesDialogOpen}
+                position={selectedPosition}
+                onClose={closeEmployees}
             />
         </AppLayout>
     )

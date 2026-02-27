@@ -1,16 +1,17 @@
-import { Head, useForm, usePage } from "@inertiajs/react"
+import { Head, router, useForm, usePage } from "@inertiajs/react"
 import { Building2 } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { getColumns } from "@/components/Organization/Unit/components/columns"
 import { DataTable } from "@/components/shared/data-table/data-table"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
@@ -23,7 +24,11 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
-import { type Division, type Unit } from "@/components/Organization/Unit/data/schema"
+import {
+    type Division,
+    type Unit,
+    type UnitPosition,
+} from "@/components/Organization/Unit/data/schema"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,7 +39,7 @@ interface Props {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: "Organization", href: "#" },
-    { title: "Units", href: "/unit" },
+    { title: "Units", href: "/organization/units" },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -42,6 +47,57 @@ const breadcrumbs: BreadcrumbItem[] = [
 function FieldError({ message }: { message?: string }) {
     if (!message) return null
     return <p className="text-xs text-destructive mt-1">{message}</p>
+}
+
+// ─── Positions Dialog ─────────────────────────────────────────────────────────
+
+interface PositionsDialogProps {
+    open: boolean
+    unit: Unit | null
+    onClose: () => void
+}
+
+function PositionsDialog({ open, unit, onClose }: PositionsDialogProps) {
+    const positions: UnitPosition[] = unit?.positions ?? []
+
+    return (
+        <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-lg">
+                <DialogHeader className="px-5 py-4 border-b border-border">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Puzzle className="w-4 h-4 text-primary" />
+                        <span>{unit?.unit_name}</span>
+                        <Badge variant="secondary" className="text-xs font-normal">
+                            {positions.length} position{positions.length !== 1 ? "s" : ""}
+                        </Badge>
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="px-5 py-4 min-h-[180px] max-h-[400px] overflow-y-auto">
+                    {positions.length === 0 ? (
+                        <div className="flex h-32 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
+                            <Puzzle  className="w-8 h-8 opacity-30" />
+                            <span>No positions under this unit.</span>
+                        </div>
+                    ) : (
+                        <ul className="divide-y divide-border">
+                            {positions.map((pos) => (
+                                <li
+                                    key={pos.position_id}
+                                    className="flex items-center gap-3 py-2.5"
+                                >
+                                    <Puzzle className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                                    <span className="text-sm text-foreground">
+                                        {pos.position_name}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
 }
 
 // ─── Unit Modal ───────────────────────────────────────────────────────────────
@@ -57,10 +113,10 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
     const isEdit = editingUnit !== null
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        unit_name: editingUnit?.unit_name ?? "",
-        unit_acronym: editingUnit?.unit_acronym ?? "",
+        unit_name:        editingUnit?.unit_name        ?? "",
+        unit_acronym:     editingUnit?.unit_acronym     ?? "",
         unit_description: editingUnit?.unit_description ?? "",
-        division_id: editingUnit?.division_id ? String(editingUnit.division_id) : "",
+        division_id:      editingUnit?.division_id ? String(editingUnit.division_id) : "",
     })
 
     function handleClose() {
@@ -89,7 +145,6 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
 
                 <form onSubmit={handleSubmit}>
                     <div className="px-5 py-5 space-y-4">
-
                         {/* Division */}
                         <div>
                             <label htmlFor="division_id" className="block text-xs font-medium text-foreground mb-1.5">
@@ -123,7 +178,7 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
                                     id="unit_name"
                                     value={data.unit_name}
                                     onChange={(e) => setData("unit_name", e.target.value)}
-                                    placeholder="e.g. Information Technology"
+                                    placeholder="e.g. Budget Unit"
                                     className="text-sm"
                                 />
                                 <FieldError message={errors.unit_name} />
@@ -136,7 +191,7 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
                                     id="unit_acronym"
                                     value={data.unit_acronym}
                                     onChange={(e) => setData("unit_acronym", e.target.value.toUpperCase())}
-                                    placeholder="e.g. IT"
+                                    placeholder="e.g. BU"
                                     className="text-sm font-mono"
                                     maxLength={10}
                                 />
@@ -180,8 +235,13 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
 export default function UnitIndex({ units, divisions }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
+    // ── Unit modal state ──
     const [modalOpen, setModalOpen] = useState(false)
     const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
+
+    // ── Positions dialog state ──
+    const [positionsDialogOpen, setPositionsDialogOpen] = useState(false)
+    const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
 
     function openCreate() {
         setEditingUnit(null)
@@ -197,6 +257,9 @@ export default function UnitIndex({ units, divisions }: Props) {
         setModalOpen(false)
         setEditingUnit(null)
     }
+
+    // Delete is handled inside DataTableRowActions via deleteAction() in columns.tsx
+    const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -225,6 +288,7 @@ export default function UnitIndex({ units, divisions }: Props) {
                     columns={getColumns({ onEdit: openEdit })}
                     data={units}
                     getRowId={(row) => String(row.unit_id)}
+                    onRowClick={(row) => openPositions(row.original)}
                     searchColumnId="unit_name"
                     searchPlaceholder="Search units..."
                     addButton={{
@@ -239,12 +303,20 @@ export default function UnitIndex({ units, divisions }: Props) {
                 />
             </div>
 
+            {/* ── Unit Create/Edit Modal ── */}
             <UnitModal
                 key={editingUnit?.unit_id ?? "create"}
                 open={modalOpen}
                 editingUnit={editingUnit}
                 divisions={divisions}
                 onClose={closeModal}
+            />
+
+            {/* ── Positions Dialog ── */}
+            <PositionsDialog
+                open={positionsDialogOpen}
+                unit={selectedUnit}
+                onClose={closePositions}
             />
         </AppLayout>
     )

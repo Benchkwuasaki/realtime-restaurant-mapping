@@ -4,6 +4,7 @@ import { router } from "@inertiajs/react"
 import { type ColumnDef } from "@tanstack/react-table"
 import { route } from "ziggy-js"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
+import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { type Unit } from "../data/schema"
 import {

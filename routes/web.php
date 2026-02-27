@@ -133,6 +133,10 @@ Route::prefix('organization/positions')->name('position.')->group(function () {
     Route::delete('/{position}', [PositionController::class, 'destroy'])->name('destroy');
 });
 
+// routes/web.php
+Route::get('organization/position/{position}/employees', [PositionController::class, 'employees'])
+    ->name('position.employees');
+
 Route::resource('holiday', HolidayController::class)->parameters([
     'holiday' => 'holiday:holiday_id',
 ]);
