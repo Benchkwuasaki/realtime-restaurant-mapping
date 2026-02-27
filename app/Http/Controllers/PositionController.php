@@ -40,6 +40,17 @@ class PositionController extends Controller
                 ] : null,
                 'total_slots' => $position->items->count(),
                 'occupied_slots' => $position->items->filter(fn($i) => $i->employee !== null)->count(),
+                'employees' => $position->items
+                    ->filter(fn($item) => $item->employee !== null)
+                    ->map(fn($item) => [
+                        'id' => $item->employee->employee_id,
+                        'first_name' => $item->employee->basicInfo->first_name,
+                        'last_name' => $item->employee->basicInfo->last_name,
+                        'email' => $item->employee->work_email,
+                        'is_active' => $item->employee->status,
+                        'item_name' => $item->item_name,
+                    ])
+                    ->values(),
             ]);
 
         $departments = Department::orderBy('department_name')->get(['department_id', 'department_name']);
@@ -125,14 +136,12 @@ class PositionController extends Controller
         $newCount = $validated['item_slots'];
 
         if ($newCount > $currentCount) {
-            // Add new slots
             for ($i = $currentCount + 1; $i <= $newCount; $i++) {
                 $position->items()->create([
                     'item_name' => $validated['position_name'] . ' Item ' . $i,
                 ]);
             }
         } elseif ($newCount < $currentCount) {
-            // Only remove unoccupied slots from the end
             $position->items()
                 ->orderByDesc('item_id')
                 ->get()
@@ -141,7 +150,6 @@ class PositionController extends Controller
                 ->each(fn($item) => $item->delete());
         }
 
-        // Rename all items to reflect possible position name change
         $position->items()->orderBy('item_id')->get()->each(function ($item, $index) use ($validated) {
             $item->update(['item_name' => $validated['position_name'] . ' Item ' . ($index + 1)]);
         });
@@ -149,7 +157,7 @@ class PositionController extends Controller
         return redirect()->route('position.index')
             ->with('success', 'Position updated successfully.');
     }
-    
+
     public function destroy(Position $position): RedirectResponse
     {
         $position->delete();

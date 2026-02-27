@@ -22,20 +22,33 @@ export const itemSchema = z.object({
     item_name: z.string(),
 })
 
-export const positionSchema = z.object({
-    position_id: z.number(),
-    position_name: z.string(),
-    department_id: z.number(),
-    division_id: z.number(),
-    unit_id: z.number().nullable().optional(),
-    department: departmentSchema,
-    division: divisionSchema.nullable().optional(),
-    unit: unitSchema.nullable().optional(),
-    total_slots: z.number(),
-    occupied_slots: z.number(),
+// ← new
+export const positionEmployeeSchema = z.object({
+    id:         z.number(),
+    first_name: z.string(),
+    last_name:  z.string(),
+    email:      z.string(),
+    is_active:  z.boolean(),
+    item_name:  z.string(),
 })
 
-export type Department = z.infer<typeof departmentSchema>
-export type Division   = z.infer<typeof divisionSchema>
-export type Unit       = z.infer<typeof unitSchema>
-export type Position   = z.infer<typeof positionSchema>
+export const positionSchema = z.object({
+    position_id:    z.number(),
+    position_name:  z.string(),
+    department_id:  z.number(),
+    division_id:    z.number(),
+    unit_id:        z.number().nullable().optional(),
+    department:     departmentSchema,
+    division:       divisionSchema.nullable().optional(),
+    unit:           unitSchema.nullable().optional(),
+    total_slots:    z.number(),
+    occupied_slots: z.number(),
+    employees:      z.array(positionEmployeeSchema), // ← new
+})
+
+export type Department       = z.infer<typeof departmentSchema>
+export type Division         = z.infer<typeof divisionSchema>
+export type Unit             = z.infer<typeof unitSchema>
+export type Item             = z.infer<typeof itemSchema>
+export type PositionEmployee = z.infer<typeof positionEmployeeSchema> // ← new
+export type Position         = z.infer<typeof positionSchema>
