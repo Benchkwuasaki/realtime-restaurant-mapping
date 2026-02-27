@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('internal_organizations', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->id('internal_organization_id');
             $table->string('code')->unique();
             $table->string('name');
             $table->enum('type', ['Union', 'Cooperative', 'Association']);

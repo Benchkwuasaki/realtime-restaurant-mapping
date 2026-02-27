@@ -2,14 +2,6 @@ import { Head, useForm, usePage } from "@inertiajs/react"
 import { Briefcase, Users } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
-import { getColumns } from "@/pages/Organization/Position/components/columns"
-import {
-    type Department,
-    type Division,
-    type Position,
-    type PositionEmployee,
-    type Unit,
-} from "@/pages/Organization/Position/data/schema"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,6 +21,14 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import AppLayout from "@/layouts/app-layout"
+import { getColumns } from "@/pages/Organization/Position/components/columns"
+import {
+    type Department,
+    type Division,
+    type Position,
+    type PositionEmployee,
+    type Unit,
+} from "@/pages/Organization/Position/data/schema"
 import type { BreadcrumbItem } from "@/types"
 
 // ─── Types ────────────────────────────────────────────────────────────────────

@@ -225,9 +225,9 @@ export default function Index({
         <DataTable
           data={organizations}
           columns={columns}
-          getRowId={(row) => String(row.id)}
+          getRowId={(row) => String(row.internal_organization_id)}
           onRowClick={(row) =>
-            router.get(route("internal-organization.show", row.original.id))
+            router.get(route("internal-organization.show", row.original.internal_organization_id))
           }
           defaultPageSize={10}
           searchColumnId="name"

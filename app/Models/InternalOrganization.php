@@ -9,8 +9,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InternalOrganization extends Model
 {
-    use HasUuids, SoftDeletes;
 
+    protected $table = 'internal_organizations';
+    protected $primaryKey = 'internal_organization_id';
     protected $fillable = [
         'code',
         'name',
@@ -22,7 +23,7 @@ class InternalOrganization extends Model
 
     protected $casts = [
         'payroll_deduction_linked' => 'boolean',
-        'status'                   => 'boolean',
+        'status' => 'boolean',
     ];
 
     // ── Relationships ──────────────────────────────────────────────────────────
@@ -31,11 +32,16 @@ class InternalOrganization extends Model
     {
         return $this->belongsToMany(
             Employee::class,
-            'employee_internal_organization', // pivot table
-            'internal_organization_id',       // FK for this model on pivot
-            'employee_id',                    // FK for Employee on pivot
-            'id',                             // local key on this model (UUID)
-            'employee_id'                     // local key on Employee model
+            'employee_internal_organization',
+            'internal_organization_id',
+            'employee_id',
+            'internal_organization_id',
+            'employee_id'
         )->withTimestamps();
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'internal_organization_id';
     }
 }

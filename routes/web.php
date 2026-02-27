@@ -50,6 +50,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::post('/{employee}/eligibility', [EmployeeController::class, 'storeEligibility'])->name('eligibility.store');
         Route::put('/{employee}/eligibility/{eligibility}', [EmployeeController::class, 'updateEligibility'])->name('eligibility.update');
         Route::delete('/{employee}/eligibility/{eligibility}', [EmployeeController::class, 'destroyEligibility'])->name('eligibility.destroy');
+
         // Family
         Route::post('/{employee}/family', [EmployeeController::class, 'storeFamily'])->name('family.store');
         Route::put('/{employee}/family/{index}', [EmployeeController::class, 'updateFamily'])->name('family.update');
@@ -69,7 +70,6 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::post('/{employee}/service-record', [EmployeeController::class, 'storeServiceRecord'])->name('service-record.store');
         Route::put('/{employee}/service-record/{record}', [EmployeeController::class, 'updateServiceRecord'])->name('service-record.update');
         Route::delete('/{employee}/service-record/{record}', [EmployeeController::class, 'destroyServiceRecord'])->name('service-record.destroy');
-
     });
 
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
@@ -79,10 +79,10 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
     Route::prefix('organization/units')->name('unit.')->group(function () {
         Route::get('/', [UnitController::class, 'index'])->name('index');
-        Route::get('/{unit}', [UnitController::class, 'show'])->name('show');
         Route::post('/', [UnitController::class, 'store'])->name('store');
-        Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
         Route::delete('/bulk-destroy', [UnitController::class, 'bulkDestroy'])->name('bulk-destroy');
+        Route::get('/{unit}', [UnitController::class, 'show'])->name('show');
+        Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
         Route::delete('/{unit}', [UnitController::class, 'destroy'])->name('destroy');
     });
 
@@ -96,50 +96,44 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::put('/{department}', [DepartmentController::class, 'update'])->name('update');
         Route::delete('/{department}', [DepartmentController::class, 'destroy'])->name('destroy');
     });
+
     Route::prefix('organization/internal-organizations')->name('internal-organization.')->group(function () {
         Route::get('/', [InternalOrganizationController::class, 'index'])->name('index');
         Route::get('/create', [InternalOrganizationController::class, 'create'])->name('create');
         Route::post('/', [InternalOrganizationController::class, 'store'])->name('store');
+        Route::delete('/bulk-destroy', [InternalOrganizationController::class, 'bulkDestroy'])->name('bulk-destroy');
         Route::get('/{internalOrganization}', [InternalOrganizationController::class, 'show'])->name('show');
         Route::get('/{internalOrganization}/edit', [InternalOrganizationController::class, 'edit'])->name('edit');
         Route::put('/{internalOrganization}', [InternalOrganizationController::class, 'update'])->name('update');
         Route::patch('/{internalOrganization}/toggle-status', [InternalOrganizationController::class, 'toggleStatus'])->name('toggle-status');
         Route::delete('/{internalOrganization}', [InternalOrganizationController::class, 'destroy'])->name('destroy');
-        Route::delete('/bulk-destroy', [InternalOrganizationController::class, 'bulkDestroy'])->name('bulk-destroy');
-        Route::post('/{internalOrganization}/members', [InternalOrganizationController::class, 'storeMembers'])
-            ->name('members.store');
+        Route::post('/{internalOrganization}/members', [InternalOrganizationController::class, 'storeMembers'])->name('members.store');
     });
-
-
-
-
 });
 
 Route::prefix('organization/divisions')->name('division.')->group(function () {
     Route::get('/', [DivisionController::class, 'index'])->name('index');
-    Route::get('/{division}', [DivisionController::class, 'show'])->name('show');
     Route::post('/', [DivisionController::class, 'store'])->name('store');
-    Route::put('/{division}', [DivisionController::class, 'update'])->name('update');
     Route::delete('/bulk-destroy', [DivisionController::class, 'bulkDestroy'])->name('bulk-destroy');
+    Route::get('/{division}', [DivisionController::class, 'show'])->name('show');
+    Route::put('/{division}', [DivisionController::class, 'update'])->name('update');
     Route::delete('/{division}', [DivisionController::class, 'destroy'])->name('destroy');
 });
 
 Route::prefix('organization/positions')->name('position.')->group(function () {
     Route::get('/', [PositionController::class, 'index'])->name('index');
-    Route::get('/{position}', [PositionController::class, 'show'])->name('show');
     Route::post('/', [PositionController::class, 'store'])->name('store');
-    Route::put('/{position}', [PositionController::class, 'update'])->name('update');
     Route::delete('/bulk-destroy', [PositionController::class, 'bulkDestroy'])->name('bulk-destroy');
+    Route::get('/{position}', [PositionController::class, 'show'])->name('show');
+    Route::put('/{position}', [PositionController::class, 'update'])->name('update');
     Route::delete('/{position}', [PositionController::class, 'destroy'])->name('destroy');
 });
 
-// routes/web.php
 Route::get('organization/position/{position}/employees', [PositionController::class, 'employees'])
     ->name('position.employees');
 
 Route::resource('holiday', HolidayController::class)->parameters([
     'holiday' => 'holiday:holiday_id',
 ]);
-
 
 require __DIR__ . '/settings.php';

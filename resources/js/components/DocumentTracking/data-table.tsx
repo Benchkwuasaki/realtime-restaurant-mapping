@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-table"
 import type { ColumnDef, ColumnFiltersState, SortingState, VisibilityState } from "@tanstack/react-table"
 import { Search, ListFilter } from "lucide-react"
-import React from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenuContent,
@@ -42,7 +42,7 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [rowSelection, setRowSelection] = React.useState({})
+  const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
 
@@ -51,6 +51,7 @@ export function DataTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns,
+    enableRowSelection: true,
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onRowSelectionChange: (updater) => {
@@ -64,6 +65,7 @@ export function DataTable<TData, TValue>({
     },
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
+
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
@@ -165,8 +167,6 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-
-      <DataTablePagination table={table} />
       <DataTablePagination table={table} />
     </div>
   )
