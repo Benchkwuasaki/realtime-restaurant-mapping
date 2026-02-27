@@ -1,6 +1,4 @@
 <?php
-
-use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PayrollController;
@@ -17,6 +15,8 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\WhereaboutSlipController;
+use App\Http\Controllers\EmploymentClassificationController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -26,7 +26,18 @@ Route::get('/', function () {
 
 Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/attendance', [AttendanceController::class, 'index'])->middleware(['auth', 'verified'])->name('attendance.index');
+
+    // Attendance Routes
+    Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
+        Route::get('/',                         [WhereaboutSlipController::class, 'index'])->name('index');
+        Route::post('/',                        [WhereaboutSlipController::class, 'store'])->name('store');
+        Route::put('/{whereaboutSlip}',         [WhereaboutSlipController::class, 'update'])->name('update');
+        Route::put('/{whereaboutSlip}/return',  [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
+        Route::delete('/{whereaboutSlip}',      [WhereaboutSlipController::class, 'destroy'])->name('destroy');
+        Route::delete('/',                      [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    });
+
+
     Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->middleware(['auth', 'verified'])->name('document_tracking.index');
 
     // Employee Routes
@@ -40,6 +51,12 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::put('/{employee}', [EmployeeController::class, 'update'])->name('update');
         Route::patch('/{employee}/toggle', [EmployeeController::class, 'toggleStatus'])->name('toggleStatus');
         Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
+
+        Route::prefix('employment-classifications')->name('employment-classification.')->group(function () {
+            Route::post('/', [EmploymentClassificationController::class, 'store'])->name('store');
+            Route::put('/{employmentClassification}', [EmploymentClassificationController::class, 'update'])->name('update');
+            Route::delete('/{employmentClassification}', [EmploymentClassificationController::class, 'destroy'])->name('destroy');
+        });
 
         // Government Accounts
         Route::post('/{employee}/government-account', [EmployeeController::class, 'storeGovernmentAccount'])->name('government-account.store');

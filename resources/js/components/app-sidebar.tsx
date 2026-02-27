@@ -99,7 +99,7 @@ const data = {
       items: [
         {
           title: "Whereabout Slip",
-          url: "/organization/whereabout_slip",
+          url: route('whereabout-slip.index'),
         },
         {
           title: "Holiday Management",

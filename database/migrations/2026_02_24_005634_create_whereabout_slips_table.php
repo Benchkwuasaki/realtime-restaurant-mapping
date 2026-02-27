@@ -18,13 +18,13 @@ return new class extends Migration
             $table->foreignId('approved_by_id')->constrained('employees', 'employee_id')->onDelete('cascade');
             $table->foreignId('attested_by_id')->constrained('employees', 'employee_id')->onDelete('cascade');
             $table->date('date_filed');
-            $table->boolean('purpose_type');
+            $table->enum('purpose_type', ['official', 'personal']);
             $table->string('purpose_description');
             $table->time('time_out');
-            $table->time('time_noted');
-            $table->time('time_returned');
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->enum('return_status', ['still_here', 'not_returned', 'returned'])->default('still_here');
+            $table->time('time_returned')->nullable();
+            $table->time('time_noted')->nullable();
+            $table->enum('status', ['pending', 'done'])->default('pending');
+            $table->enum('return_status', ['not_returned', 'returned'])->default('not_returned');
             $table->timestamps();
         });
     }

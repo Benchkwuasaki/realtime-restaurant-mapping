@@ -5,7 +5,7 @@ import {
     Eye, EyeOff, Plus, Trash2, Save, ChevronUp,
     Pen, Upload, Download, FolderOpen,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import React from "react"
 import { route } from "ziggy-js"
 import {
@@ -39,7 +39,11 @@ interface Position {
     division?: Division
     unit?: Unit
 }
-interface Item { item_id: number; position?: Position }
+interface Item {
+    item_id: number
+    is_occupied: boolean       // ← NEW: true if another employee holds this slot
+    position?: Position
+}
 interface SalaryGradeStep {
     salary_grade_step_id: number
     salary_grade: number
@@ -158,6 +162,17 @@ interface Props {
     items: Item[]
 }
 
+// ─── Position group (derived from items list) ─────────────────────────────────
+
+interface PositionGroup {
+    positionName: string
+    position: Position | undefined
+    items: Item[]
+    totalSlots: number
+    availableSlots: number
+    isFull: boolean
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(date?: string) {
@@ -175,6 +190,38 @@ function cap(str?: string) {
 function toInputDate(date?: string) {
     if (!date) return ""
     return date.slice(0, 10)
+}
+
+/** Build position groups from the flat items array. */
+function buildPositionGroups(items: Item[]): PositionGroup[] {
+    const map = new Map<string, PositionGroup>()
+
+    for (const item of items) {
+        const key = item.position?.position_name ?? `__item_${item.item_id}`
+        if (!map.has(key)) {
+            map.set(key, {
+                positionName: item.position?.position_name ?? `Item #${item.item_id}`,
+                position: item.position,
+                items: [],
+                totalSlots: 0,
+                availableSlots: 0,
+                isFull: false,
+            })
+        }
+        const grp = map.get(key)!
+        grp.items.push(item)
+        grp.totalSlots++
+        if (!item.is_occupied) grp.availableSlots++
+    }
+
+    // Compute isFull after all items are grouped
+    for (const grp of map.values()) {
+        grp.isFull = grp.availableSlots === 0
+    }
+
+    return Array.from(map.values()).sort((a, b) =>
+        a.positionName.localeCompare(b.positionName)
+    )
 }
 
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
@@ -388,18 +435,63 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 }) {
     const open = field !== null
 
+    // ── Build position groups once ────────────────────────────────────────────
+    const positionGroups = useMemo(() => buildPositionGroups(items), [items])
+
+    // ── Derive the currently-selected position name from the employee's item ──
+    const currentItemId = employee.item?.item_id?.toString() ?? ""
+    const currentPositionName = useMemo(() => {
+        return items.find(i => i.item_id.toString() === currentItemId)?.position?.position_name ?? ""
+    }, [items, currentItemId])
+
+    // ── Form state ────────────────────────────────────────────────────────────
     const [form, setForm] = useState({
-        item_id: employee.item?.item_id?.toString() ?? "",
+        // We store the resolved item_id internally for submission
+        item_id: currentItemId,
+        // We track which position group is "selected" in the UI
+        selected_position_name: currentPositionName,
         date_hired: toInputDate(employee.date_hired),
         date_applied: toInputDate(employee.date_applied),
         employment_classification: employee.employment_classification ?? "",
         work_schedule_start: employee.work_schedule_start ?? "",
         work_schedule_end: employee.work_schedule_end ?? "",
     })
+
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
-    const selectedItem = items.find(i => i.item_id.toString() === form.item_id)
+    /**
+     * When the user picks a position from the dropdown:
+     * 1. If the employee's current item belongs to this group → keep their item_id
+     *    (they're reassigning to the same position, no slot change needed)
+     * 2. Otherwise → pick the first available (non-occupied) slot
+     */
+    const handlePositionSelect = (positionName: string) => {
+        const grp = positionGroups.find(g => g.positionName === positionName)
+        if (!grp) return
 
+        // Does the current employee already hold a slot in this group?
+        const ownSlot = grp.items.find(i => i.item_id.toString() === currentItemId)
+        if (ownSlot) {
+            setForm(p => ({ ...p, selected_position_name: positionName, item_id: ownSlot.item_id.toString() }))
+            return
+        }
+
+        // Otherwise assign first available slot
+        const firstAvailable = grp.items.find(i => !i.is_occupied)
+        setForm(p => ({
+            ...p,
+            selected_position_name: positionName,
+            item_id: firstAvailable ? firstAvailable.item_id.toString() : "",
+        }))
+    }
+
+    // Derive the selected group for the info panel below the select
+    const selectedGroup = useMemo(() =>
+        positionGroups.find(g => g.positionName === form.selected_position_name),
+        [positionGroups, form.selected_position_name]
+    )
+
+    // ── Save ──────────────────────────────────────────────────────────────────
     const save = () => {
         let data: Record<string, string> = {}
         if (field === "position") data = { item_id: form.item_id }
@@ -419,6 +511,9 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         work_schedule: "Edit Work Schedule",
     }
 
+    // Can only save if a valid (non-full, or own) item is resolved
+    const positionSaveDisabled = !form.item_id
+
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-sm">
@@ -427,45 +522,117 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                 </DialogHeader>
 
                 <div className="py-2 space-y-3">
+
+                    {/* ── POSITION FIELD ─────────────────────────────────────── */}
                     {field === "position" && (
                         <div className="space-y-3">
                             <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position</Label>
-                                <Select value={form.item_id} onValueChange={v => set("item_id", v)}>
-                                    <SelectTrigger><SelectValue placeholder="Select a position…" /></SelectTrigger>
-                                    <SelectContent className="max-h-64">
-                                        {items.map(item => (
-                                            <SelectItem key={item.item_id} value={item.item_id.toString()}>
-                                                {item.position?.position_name ?? `Item #${item.item_id}`}
-                                            </SelectItem>
-                                        ))}
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">
+                                    Position
+                                </Label>
+
+                                <Select
+                                    value={form.selected_position_name}
+                                    onValueChange={handlePositionSelect}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a position…" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-72">
+                                        {positionGroups.map(grp => {
+                                            /**
+                                             * A group is disabled when ALL slots are occupied
+                                             * AND the current employee is not one of the occupants.
+                                             * (If they're already in this group, they can stay there.)
+                                             */
+                                            const employeeIsInGroup = grp.items.some(
+                                                i => i.item_id.toString() === currentItemId
+                                            )
+                                            const isDisabled = grp.isFull && !employeeIsInGroup
+
+                                            return (
+                                                <SelectItem
+                                                    key={grp.positionName}
+                                                    value={grp.positionName}
+                                                    disabled={isDisabled}
+                                                    className="py-2.5"
+                                                >
+                                                    <div className="flex items-center justify-between gap-3 w-full">
+                                                        {/* Position name */}
+                                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>
+                                                            {grp.positionName}
+                                                        </span>
+
+                                                        {/* Slot badge */}
+                                                        {grp.totalSlots > 1 && (
+                                                            isDisabled ? (
+                                                                <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">
+                                                                    Full
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2 py-0.5 shrink-0">
+                                                                    {grp.availableSlots}/{grp.totalSlots} open
+                                                                </Badge>
+                                                            )
+                                                        )}
+
+                                                        {/* Single-slot full indicator */}
+                                                        {grp.totalSlots === 1 && isDisabled && (
+                                                            <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">
+                                                                Full
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </SelectItem>
+                                            )
+                                        })}
                                     </SelectContent>
                                 </Select>
+
+                                {/* Helper text showing available slots for selected position */}
+                                {selectedGroup && selectedGroup.totalSlots > 1 && (
+                                    <p className="text-xs text-muted-foreground mt-1.5">
+                                        {selectedGroup.availableSlots === 0
+                                            ? "All slots are currently occupied."
+                                            : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slot${selectedGroup.totalSlots > 1 ? "s" : ""} available — a slot will be auto-assigned.`
+                                        }
+                                    </p>
+                                )}
                             </div>
-                            {selectedItem?.position && (
+
+                            {/* Info panel: department / division / unit */}
+                            {selectedGroup?.position && (
                                 <div className="rounded-lg border border-border divide-y divide-border bg-muted/20">
-                                    {selectedItem.position.department && (
+                                    {selectedGroup.position.department && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Department</span>
-                                            <span className="text-xs font-medium text-foreground">{selectedItem.position.department.department_name}</span>
+                                            <span className="text-xs font-medium text-foreground">
+                                                {selectedGroup.position.department.department_name}
+                                            </span>
                                         </div>
                                     )}
-                                    {selectedItem.position.division && (
+                                    {selectedGroup.position.division && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Division</span>
-                                            <span className="text-xs font-medium text-foreground">{selectedItem.position.division.division_name}</span>
+                                            <span className="text-xs font-medium text-foreground">
+                                                {selectedGroup.position.division.division_name}
+                                            </span>
                                         </div>
                                     )}
-                                    {selectedItem.position.unit && (
+                                    {selectedGroup.position.unit && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Unit</span>
-                                            <span className="text-xs font-medium text-foreground">{selectedItem.position.unit.unit_name}</span>
+                                            <span className="text-xs font-medium text-foreground">
+                                                {selectedGroup.position.unit.unit_name}
+                                            </span>
                                         </div>
                                     )}
                                 </div>
                             )}
                         </div>
                     )}
+
+                    {/* ── OTHER FIELDS (unchanged) ───────────────────────────── */}
                     {field === "date_hired" && (
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Hired</Label>
@@ -529,7 +696,7 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
                     {field !== "unit_division_department" && (
-                        <Button onClick={save} disabled={field === "position" && !form.item_id}>
+                        <Button onClick={save} disabled={field === "position" && positionSaveDisabled}>
                             <Save className="w-3.5 h-3.5 mr-1.5" />Save Changes
                         </Button>
                     )}
