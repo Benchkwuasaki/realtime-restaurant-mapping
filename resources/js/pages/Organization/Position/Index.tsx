@@ -271,9 +271,13 @@ export default function PositionIndex({ positions, departments, divisions, units
         setEditingPosition(null)
     }
 
+    function handleDelete(position: Position) {
+        router.delete(route("position.destroy", position.position_id))
+    }
+
     // Delete is now handled inside DataTableRowActions via deleteAction()
     // — no separate DeleteAlertDialog state needed here
-    const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
+    const columns = getColumns({ onEdit: openEdit, onDelete: handleDelete })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

@@ -1,4 +1,4 @@
-import { Head, router, useForm, usePage } from "@inertiajs/react"
+import { Head, useForm, usePage } from "@inertiajs/react"
 import { Building2 } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
@@ -198,9 +198,6 @@ export default function UnitIndex({ units, divisions }: Props) {
         setEditingUnit(null)
     }
 
-    // Delete is handled inside DataTableRowActions via deleteAction() in columns.tsx
-    const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Units" />
@@ -225,7 +222,7 @@ export default function UnitIndex({ units, divisions }: Props) {
                 )}
 
                 <DataTable
-                    columns={columns}
+                    columns={getColumns({ onEdit: openEdit })}
                     data={units}
                     getRowId={(row) => String(row.unit_id)}
                     searchColumnId="unit_name"

@@ -104,7 +104,8 @@ export function DataTableRowActions<TData>({
                 <AlertDialogAction
                   variant="destructive"
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     action.onClick(original)
                     setConfirmIndex(null)
                   }}

@@ -1,6 +1,8 @@
 "use client"
 
+import { router } from "@inertiajs/react"
 import { type ColumnDef } from "@tanstack/react-table"
+import { route } from "ziggy-js"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Checkbox } from "@/components/ui/checkbox"
 import { type Unit } from "../data/schema"
@@ -9,13 +11,13 @@ import {
     editAction,
     deleteAction,
 } from "@/components/shared/data-table/data-table-row-action"
+import { Badge } from "@/components/ui/badge"
 
 interface ColumnOptions {
     onEdit: (unit: Unit) => void
-    onDelete: (unit: Unit) => void
 }
 
-export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>[] {
+export function getColumns({ onEdit }: ColumnOptions): ColumnDef<Unit>[] {
     return [
         {
             id: "select",
@@ -59,7 +61,9 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-[80px] font-mono text-sm">{row.getValue("unit_acronym")}</div>
+                <Badge variant="default" className="font-mono text-xs">
+                    {row.getValue("unit_acronym")}
+                </Badge>
             ),
             enableSorting: true,
             enableHiding: true,
@@ -98,7 +102,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
                     row={row}
                     actions={[
                         editAction(onEdit),
-                        deleteAction(onDelete, {
+                        deleteAction((unit) => router.delete(route("unit.destroy", unit.unit_id)), {
                             getName: (u) => u.unit_name,
                             description: (u) => (
                                 <>
