@@ -51,6 +51,7 @@ const data = {
       icon: LayoutDashboard,
       isActive: true,
     },
+    // TODO: implement user management, admin, super admin
     {
       title: "Employee",
       url: route("employee.index"),
