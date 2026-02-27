@@ -56,13 +56,32 @@ class EmployeeController extends Controller
     public function create()
     {
         return Inertia::render('Employee/CreateEmployee', [
-            'items' => Item::with('position.department')->get(),
-            'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')
-                ->orderBy('step')
-                ->get(),
+            'items' => Item::with([
+                'position.department',
+                'position.division',
+                'position.unit',
+                'employee',
+            ])
+                ->get()
+                ->map(fn(Item $item) => [
+                    'item_id' => $item->item_id,
+                    'is_occupied' => $item->employee !== null,  // no exclusion needed for new employee
+                    'position' => $item->position ? [
+                        'position_name' => $item->position->position_name,
+                        'department' => $item->position->department
+                            ? ['department_name' => $item->position->department->department_name]
+                            : null,
+                        'division' => $item->position->division
+                            ? ['division_name' => $item->position->division->division_name]
+                            : null,
+                        'unit' => $item->position->unit
+                            ? ['unit_name' => $item->position->unit->unit_name]
+                            : null,
+                    ] : null,
+                ]),
+            'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),
         ]);
     }
-
     public function store(Request $request)
     {
         $request->validate([
@@ -212,13 +231,43 @@ class EmployeeController extends Controller
             'uploadedFiles',
         ]);
 
+        $currentItemId = $employee->item?->item_id;
+
         return Inertia::render('Employee/Show', [
             'employee' => $employee,
             'items' => Item::with([
                 'position.department',
                 'position.division',
                 'position.unit',
-            ])->get(),
+                'employee',          // ← needed to know whether each slot is taken
+            ])
+                ->get()
+                ->map(fn(Item $item) => [
+                    'item_id' => $item->item_id,
+
+                    /**
+                     * is_occupied = this slot has an employee AND
+                     * that employee is NOT the one currently being viewed.
+                     *
+                     * This ensures the employee's own slot never appears
+                     * "Full" to themselves in the dropdown.
+                     */
+                    'is_occupied' => $item->employee !== null
+                        && $item->employee->employee_id !== $employee->employee_id,
+
+                    'position' => $item->position ? [
+                        'position_name' => $item->position->position_name,
+                        'department' => $item->position->department
+                            ? ['department_name' => $item->position->department->department_name]
+                            : null,
+                        'division' => $item->position->division
+                            ? ['division_name' => $item->position->division->division_name]
+                            : null,
+                        'unit' => $item->position->unit
+                            ? ['unit_name' => $item->position->unit->unit_name]
+                            : null,
+                    ] : null,
+                ]),
         ]);
     }
 

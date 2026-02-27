@@ -3,9 +3,10 @@ import {
     BadgeCheck, BriefcaseBusiness, User, MapPin, Users, Landmark, GraduationCap, Award, Plus, Trash2
 } from "lucide-react"
 
-import { type FormEventHandler, useState } from "react"
+import { type FormEventHandler, useState, useMemo } from "react"
 import { route } from "ziggy-js"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -16,14 +17,15 @@ import { Stepper } from "@/components/ui/stepper"
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
 export interface Position {
-    position_id: number
     position_name: string
     department?: { department_name: string }
+    division?: { division_name: string }
+    unit?: { unit_name: string }
 }
 
 export interface Item {
     item_id: number
-    item_name: string
+    is_occupied: boolean       // ← true if another employee holds this slot
     position?: Position
 }
 
@@ -46,6 +48,47 @@ interface FamilyRow { full_name: string; contact_number: string; relationship: s
 interface GovernmentRow { account_type: string; account_number: string }
 interface EducationRow { level: string; school_name: string; school_address: string; graduation_date: string; degree: string }
 interface EligibilityRow { eligibility_name: string; year_passed: string }
+
+// ─── Position group (mirrored from ShowEmployee) ──────────────────────────────
+
+interface PositionGroup {
+    positionName: string
+    position: Position | undefined
+    items: Item[]
+    totalSlots: number
+    availableSlots: number
+    isFull: boolean
+}
+
+function buildPositionGroups(items: Item[]): PositionGroup[] {
+    const map = new Map<string, PositionGroup>()
+
+    for (const item of items) {
+        const key = item.position?.position_name ?? `__item_${item.item_id}`
+        if (!map.has(key)) {
+            map.set(key, {
+                positionName: item.position?.position_name ?? `Item #${item.item_id}`,
+                position: item.position,
+                items: [],
+                totalSlots: 0,
+                availableSlots: 0,
+                isFull: false,
+            })
+        }
+        const grp = map.get(key)!
+        grp.items.push(item)
+        grp.totalSlots++
+        if (!item.is_occupied) grp.availableSlots++
+    }
+
+    for (const grp of map.values()) {
+        grp.isFull = grp.availableSlots === 0
+    }
+
+    return Array.from(map.values()).sort((a, b) =>
+        a.positionName.localeCompare(b.positionName)
+    )
+}
 
 // ─── Steps ───────────────────────────────────────────────────────────────────
 
@@ -70,7 +113,7 @@ const REQUIRED: Record<number, { field: string; label: string }[]> = {
         { field: "phone_number", label: "Phone Number" },
     ],
     1: [
-        { field: "item_id", label: "Item" },
+        { field: "item_id", label: "Position" },
         { field: "salary_grade_step_id", label: "Salary Grade & Step" },
         { field: "employment_classification", label: "Employment Classification" },
         { field: "work_email", label: "Work Email" },
@@ -219,29 +262,144 @@ function PersonalStep({ data, setData, err }: {
     )
 }
 
+// ─── EmploymentStep (updated with position availability) ──────────────────────
+
 function EmploymentStep({ data, setData, err, items, salaryGradeSteps }: {
-    data: { item_id: string; salary_grade_step_id: string; employment_classification: string; work_email: string; password: string; date_applied: string; date_hired: string; work_schedule_start: string; work_schedule_end: string; status: string; salary_grade: string; step: string }
+    data: {
+        item_id: string
+        selected_position_name: string
+        salary_grade_step_id: string
+        employment_classification: string
+        work_email: string
+        password: string
+        date_applied: string
+        date_hired: string
+        work_schedule_start: string
+        work_schedule_end: string
+        status: string
+        salary_grade: string
+        step: string
+    }
     setData: SetDataFn; err: ErrFn; items: Item[]; salaryGradeSteps: SalaryGradeStep[]
 }) {
+    // Build position groups from the items list
+    const positionGroups = useMemo(() => buildPositionGroups(items), [items])
+
+    // Derive the currently-selected group for the info panel
+    const selectedGroup = useMemo(() =>
+        positionGroups.find(g => g.positionName === data.selected_position_name),
+        [positionGroups, data.selected_position_name]
+    )
+
+    /**
+     * When a position is selected:
+     * - If isFull → do nothing (item is disabled in the dropdown)
+     * - Otherwise → auto-assign the first available (non-occupied) slot
+     */
+    const handlePositionSelect = (positionName: string) => {
+        const grp = positionGroups.find(g => g.positionName === positionName)
+        if (!grp) return
+
+        const firstAvailable = grp.items.find(i => !i.is_occupied)
+        setData("selected_position_name", positionName)
+        setData("item_id", firstAvailable ? firstAvailable.item_id.toString() : "")
+    }
+
     return (
         <div className="grid grid-cols-3 gap-5">
-            <div className="space-y-2 col-span-1">
-                <FieldLabel htmlFor="item_id">Item <Req /></FieldLabel>
-                <Select value={data.item_id} onValueChange={(v) => setData("item_id", v)}>
-                    <SelectTrigger id="item_id"><SelectValue placeholder="Select plantilla item / position" /></SelectTrigger>
-                    <SelectContent>
-                        {items.length === 0 && <SelectItem value="_empty" disabled>No items available</SelectItem>}
-                        {items.map((item) => (
-                            <SelectItem key={item.item_id} value={String(item.item_id)}>
-                                {item.item_name}
-                                {item.position && ` — ${item.position.position_name}`}
-                                {item.position?.department && ` (${item.position.department.department_name})`}
-                            </SelectItem>
-                        ))}
+
+            {/* ── Position picker (spans 2 cols to give room for the info panel) */}
+            <div className="space-y-2 col-span-2">
+                <FieldLabel htmlFor="position">Position <Req /></FieldLabel>
+                <Select value={data.selected_position_name} onValueChange={handlePositionSelect}>
+                    <SelectTrigger id="position">
+                        <SelectValue placeholder="Select a position…" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                        {positionGroups.map(grp => {
+                            const isDisabled = grp.isFull
+
+                            return (
+                                <SelectItem
+                                    key={grp.positionName}
+                                    value={grp.positionName}
+                                    disabled={isDisabled}
+                                    className="py-2.5"
+                                >
+                                    <div className="flex items-center justify-between gap-3 w-full">
+                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>
+                                            {grp.positionName}
+                                        </span>
+
+                                        {/* Multi-slot badge */}
+                                        {grp.totalSlots > 1 && (
+                                            isDisabled ? (
+                                                <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">
+                                                    Full
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2 py-0.5 shrink-0">
+                                                    {grp.availableSlots}/{grp.totalSlots} open
+                                                </Badge>
+                                            )
+                                        )}
+
+                                        {/* Single-slot full indicator */}
+                                        {grp.totalSlots === 1 && isDisabled && (
+                                            <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">
+                                                Full
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </SelectItem>
+                            )
+                        })}
                     </SelectContent>
                 </Select>
+
+                {/* Slot availability helper text */}
+                {selectedGroup && selectedGroup.totalSlots > 1 && (
+                    <p className="text-xs text-muted-foreground">
+                        {selectedGroup.availableSlots === 0
+                            ? "All slots are currently occupied."
+                            : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slot${selectedGroup.totalSlots > 1 ? "s" : ""} available — a slot will be auto-assigned.`
+                        }
+                    </p>
+                )}
+
                 <FieldError message={err("item_id")} />
+
+                {/* Department / Division / Unit info panel */}
+                {selectedGroup?.position && (
+                    <div className="rounded-lg border border-border divide-y divide-border bg-muted/20 mt-1">
+                        {selectedGroup.position.department && (
+                            <div className="flex justify-between px-4 py-2">
+                                <span className="text-xs text-muted-foreground">Department</span>
+                                <span className="text-xs font-medium text-foreground">
+                                    {selectedGroup.position.department.department_name}
+                                </span>
+                            </div>
+                        )}
+                        {selectedGroup.position.division && (
+                            <div className="flex justify-between px-4 py-2">
+                                <span className="text-xs text-muted-foreground">Division</span>
+                                <span className="text-xs font-medium text-foreground">
+                                    {selectedGroup.position.division.division_name}
+                                </span>
+                            </div>
+                        )}
+                        {selectedGroup.position.unit && (
+                            <div className="flex justify-between px-4 py-2">
+                                <span className="text-xs text-muted-foreground">Unit</span>
+                                <span className="text-xs font-medium text-foreground">
+                                    {selectedGroup.position.unit.unit_name}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
+
             <div className="space-y-2">
                 <FieldLabel htmlFor="employment_classification">Employment Classification <Req /></FieldLabel>
                 <Select value={data.employment_classification} onValueChange={(v) => setData("employment_classification", v)}>
@@ -254,6 +412,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps }: {
                 </Select>
                 <FieldError message={err("employment_classification")} />
             </div>
+
             <div className="space-y-2">
                 <FieldLabel htmlFor="salary_grade">Salary Grade <Req /></FieldLabel>
                 <Select value={data.salary_grade} onValueChange={(v) => { setData("salary_grade", v); setData("salary_grade_step_id", "") }}>
@@ -267,6 +426,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps }: {
                 </Select>
                 <FieldError message={err("salary_grade")} />
             </div>
+
             <div className="space-y-2">
                 <FieldLabel htmlFor="salary_grade_step_id">Step <Req /></FieldLabel>
                 <Select value={data.salary_grade_step_id} onValueChange={(v) => setData("salary_grade_step_id", v)} disabled={!data.salary_grade}>
@@ -281,6 +441,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps }: {
                 </Select>
                 <FieldError message={err("salary_grade_step_id")} />
             </div>
+
             <div className="space-y-2">
                 <FieldLabel htmlFor="status">Status <Req /></FieldLabel>
                 <Select value={data.status} onValueChange={(v) => setData("status", v)}>
@@ -292,31 +453,37 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps }: {
                 </Select>
                 <FieldError message={err("status")} />
             </div>
+
             <div className="space-y-2">
                 <FieldLabel htmlFor="work_email">Work Email <Req /></FieldLabel>
                 <Input id="work_email" type="email" value={data.work_email} onChange={(e) => setData("work_email", e.target.value)} placeholder="johndoe@agency.gov.ph" />
                 <FieldError message={err("work_email")} />
             </div>
+
             <div className="space-y-2">
                 <FieldLabel htmlFor="password">Password <Req /></FieldLabel>
                 <Input id="password" type="password" value={data.password} onChange={(e) => setData("password", e.target.value)} placeholder="Min. 8 characters" />
                 <FieldError message={err("password")} />
             </div>
+
             <div className="space-y-2">
                 <FieldLabel htmlFor="date_applied">Date Applied <Req /></FieldLabel>
                 <Input id="date_applied" type="date" value={data.date_applied} onChange={(e) => setData("date_applied", e.target.value)} />
                 <FieldError message={err("date_applied")} />
             </div>
+
             <div className="space-y-2">
                 <FieldLabel htmlFor="date_hired">Date Hired <Req /></FieldLabel>
                 <Input id="date_hired" type="date" value={data.date_hired} onChange={(e) => setData("date_hired", e.target.value)} />
                 <FieldError message={err("date_hired")} />
             </div>
+
             <div className="space-y-2">
                 <FieldLabel htmlFor="work_schedule_start">Schedule Start <Req /></FieldLabel>
                 <Input id="work_schedule_start" type="time" value={data.work_schedule_start} onChange={(e) => setData("work_schedule_start", e.target.value)} />
                 <FieldError message={err("work_schedule_start")} />
             </div>
+
             <div className="space-y-2">
                 <FieldLabel htmlFor="work_schedule_end">Schedule End <Req /></FieldLabel>
                 <Input id="work_schedule_end" type="time" value={data.work_schedule_end} onChange={(e) => setData("work_schedule_end", e.target.value)} />
@@ -505,12 +672,31 @@ function EligibilityStep({ rows, setRows }: { rows: EligibilityRow[]; setRows: (
 }
 
 function ReviewStep({ data, items, salaryGradeSteps, addresses, family, government, education, eligibility }: {
-    data: { first_name: string; last_name: string; middle_name: string; name_extension: string; birth_date: string; sex: string; civil_status: string; place_of_birth: string; personal_email: string; phone_number: string; item_id: string; salary_grade_step_id: string; employment_classification: string; work_email: string; date_applied: string; date_hired: string; work_schedule_start: string; work_schedule_end: string; status: string }
+    data: {
+        first_name: string; last_name: string; middle_name: string; name_extension: string
+        birth_date: string; sex: string; civil_status: string; place_of_birth: string
+        personal_email: string; phone_number: string; item_id: string
+        selected_position_name: string; salary_grade_step_id: string
+        employment_classification: string; work_email: string
+        date_applied: string; date_hired: string
+        work_schedule_start: string; work_schedule_end: string; status: string
+    }
     items: Item[]; salaryGradeSteps: SalaryGradeStep[]
-    addresses: AddressRow[]; family: FamilyRow[]; government: GovernmentRow[]; education: EducationRow[]; eligibility: EligibilityRow[]
+    addresses: AddressRow[]; family: FamilyRow[]; government: GovernmentRow[]
+    education: EducationRow[]; eligibility: EligibilityRow[]
 }) {
-    const selectedItem = items.find((i) => String(i.item_id) === data.item_id)
     const selectedSGS = salaryGradeSteps.find((s) => String(s.salary_grade_step_id) === data.salary_grade_step_id)
+
+    // Resolve the actual item to display the slot number if multi-slot
+    const selectedItem = items.find(i => i.item_id.toString() === data.item_id)
+    const positionGroups = useMemo(() => buildPositionGroups(items), [items])
+    const selectedGroup = positionGroups.find(g => g.positionName === data.selected_position_name)
+
+    const positionDisplay = data.selected_position_name
+        ? selectedGroup && selectedGroup.totalSlots > 1
+            ? `${data.selected_position_name} (auto-assigned slot)`
+            : data.selected_position_name
+        : undefined
 
     return (
         <div className="space-y-0.5">
@@ -529,7 +715,16 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
             <ReviewRow label="Phone Number" value={data.phone_number} />
 
             <SectionHeading>Employment Details</SectionHeading>
-            <ReviewRow label="Plantilla Item" value={selectedItem ? `${selectedItem.item_name}${selectedItem.position ? ` — ${selectedItem.position.position_name}` : ""}` : data.item_id || undefined} />
+            <ReviewRow label="Position" value={positionDisplay} />
+            {selectedGroup?.position?.department && (
+                <ReviewRow label="Department" value={selectedGroup.position.department.department_name} />
+            )}
+            {selectedGroup?.position?.division && (
+                <ReviewRow label="Division" value={selectedGroup.position.division.division_name} />
+            )}
+            {selectedGroup?.position?.unit && (
+                <ReviewRow label="Unit" value={selectedGroup.position.unit.unit_name} />
+            )}
             <ReviewRow label="Employment Classification" value={data.employment_classification || undefined} />
             <ReviewRow label="Salary Grade & Step" value={selectedSGS ? `SG ${selectedSGS.salary_grade} — Step ${selectedSGS.step} (₱${Number(selectedSGS.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })})` : data.salary_grade_step_id || undefined} />
             <ReviewRow label="Status" value={data.status === "1" ? "Active" : data.status === "0" ? "Inactive" : undefined} />
@@ -585,13 +780,14 @@ export default function CreateEmployeeForm({ items, salaryGradeSteps }: CreateEm
         first_name: "", last_name: "", middle_name: "", name_extension: "",
         birth_date: "", sex: "", personal_email: "", phone_number: "",
         civil_status: "", place_of_birth: "",
-        item_id: "", salary_grade_step_id: "", employment_classification: "",
+        // item_id is what gets submitted; selected_position_name drives the UI only
+        item_id: "",
+        selected_position_name: "",
+        salary_grade_step_id: "", employment_classification: "",
         work_email: "", password: "", date_applied: "", date_hired: "",
         work_schedule_start: "", work_schedule_end: "", status: "",
         salary_grade: "", step: "",
     })
-
-
 
     function validateStep(step: number): boolean {
         const rules = REQUIRED[step] ?? []
@@ -625,18 +821,21 @@ export default function CreateEmployeeForm({ items, salaryGradeSteps }: CreateEm
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault()
-        transform((formData) => ({
-            ...formData,
-            addresses,
-            family_info: family,
-            government_accounts: government,
-            education,
-            eligibility_information: eligibility,
-        }))
+        transform((formData) => {
+            // Strip the UI-only field before sending to the server
+            const { selected_position_name, salary_grade, step, ...rest } = formData as typeof formData & { selected_position_name: string; salary_grade: string; step: string }
+            return {
+                ...rest,
+                addresses,
+                family_info: family,
+                government_accounts: government,
+                education,
+                eligibility_information: eligibility,
+            }
+        })
         post(route("employee.store"), {
             onError: (errors) => {
                 console.error("Validation errors:", errors)
-                // optionally jump back to the first step with errors
             },
         })
     }
