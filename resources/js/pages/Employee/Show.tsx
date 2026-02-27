@@ -1209,7 +1209,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         {govDialog.mode === "custom" && !govDialog.id && (
                             <div>
                                 <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">ID Type / Name</Label>
-                                <Input value={govDialog.customTypeName} onChange={e => setGovDialog(p => ({ ...p, customTypeName: e.target.value }))} placeholder="e.g. Postal ID, Voter's ID…" autoFocus />
+                                <Input value={govDialog.customTypeName} onChange={e => setGovDialog(p => ({ ...p, customTypeName: e.target.value }))} placeholder="e.g. GSIS, Voter's ID…" autoFocus />
                             </div>
                         )}
                         <div>
