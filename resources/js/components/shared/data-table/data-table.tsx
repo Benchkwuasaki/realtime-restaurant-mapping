@@ -186,6 +186,7 @@ export function DataTable<TData, TValue>({
 
             <DataTablePagination
                 table={table}
+                rowSelection={rowSelection} // ← added
                 pageIndex={pagination.pageIndex}
                 pageSize={pagination.pageSize}
                 pageCount={pageCount}
