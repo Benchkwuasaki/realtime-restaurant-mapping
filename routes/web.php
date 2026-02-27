@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\EmploymentClassificationController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -40,6 +41,12 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::put('/{employee}', [EmployeeController::class, 'update'])->name('update');
         Route::patch('/{employee}/toggle', [EmployeeController::class, 'toggleStatus'])->name('toggleStatus');
         Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
+
+        Route::prefix('employment-classifications')->name('employment-classification.')->group(function () {
+            Route::post('/', [EmploymentClassificationController::class, 'store'])->name('store');
+            Route::put('/{employmentClassification}', [EmploymentClassificationController::class, 'update'])->name('update');
+            Route::delete('/{employmentClassification}', [EmploymentClassificationController::class, 'destroy'])->name('destroy');
+        });
 
         // Government Accounts
         Route::post('/{employee}/government-account', [EmployeeController::class, 'storeGovernmentAccount'])->name('government-account.store');
