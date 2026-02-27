@@ -1,6 +1,8 @@
 "use client"
 
+import { router } from "@inertiajs/react"
 import { type ColumnDef } from "@tanstack/react-table"
+import { route } from "ziggy-js"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -13,10 +15,9 @@ import {
 
 interface ColumnOptions {
     onEdit: (division: Division) => void
-    onDelete: (division: Division) => void
 }
 
-export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Division>[] {
+export function getColumns({ onEdit }: ColumnOptions): ColumnDef<Division>[] {
     return [
         {
             id: "select",
@@ -109,7 +110,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Divis
                     row={row}
                     actions={[
                         editAction(onEdit),
-                        deleteAction(onDelete, {
+                        deleteAction((division) => router.delete(route("division.destroy", division.division_id)), {
                             getName: (d) => d.division_name,
                             description: (d) => (
                                 <>

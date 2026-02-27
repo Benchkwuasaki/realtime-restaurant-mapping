@@ -2,14 +2,14 @@ import { Head, useForm, usePage } from "@inertiajs/react"
 import { Briefcase, Users } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
-import { getColumns } from "@/components/Organization/Position/components/columns"
+import { getColumns } from "@/pages/Organization/Position/components/columns"
 import {
     type Department,
     type Division,
     type Position,
     type PositionEmployee,
     type Unit,
-} from "@/components/Organization/Position/data/schema"
+} from "@/pages/Organization/Position/data/schema"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -158,7 +158,6 @@ function PositionModal({
         (u) => !data.division_id || u.division_id === Number(data.division_id)
     )
 
-    // ── Empty-state flags (only show after a parent selection is made) ──
     const noDivisions = !!data.department_id && filteredDivisions.length === 0
     const noUnits = !!data.division_id && filteredUnits.length === 0
 
@@ -266,7 +265,6 @@ function PositionModal({
                             {noDivisions && (
                                 <p className="mt-1.5 text-xs text-destructive">
                                     This department has no divisions yet.{" "}
-
                                     <a href="/organization/divisions"
                                         target="_blank"
                                         className="underline underline-offset-2 hover:text-foreground"
@@ -309,7 +307,6 @@ function PositionModal({
                             {noUnits && (
                                 <p className="mt-1.5 text-xs text-destructive">
                                     This division has no units yet.{" "}
-
                                     <a href="/organization/units"
                                         target="_blank"
                                         className="underline underline-offset-2 hover:text-foreground"
@@ -363,8 +360,8 @@ function PositionModal({
                         </Button>
                     </DialogFooter>
                 </form>
-            </DialogContent >
-        </Dialog >
+            </DialogContent>
+        </Dialog>
     )
 }
 
@@ -396,15 +393,6 @@ export default function PositionIndex({ positions, departments, divisions, units
         setEditingPosition(null)
     }
 
-<<<<<<< HEAD
-    function handleDelete(position: Position) {
-        router.delete(route("position.destroy", position.position_id))
-    }
-
-    // Delete is now handled inside DataTableRowActions via deleteAction()
-    // — no separate DeleteAlertDialog state needed here
-    const columns = getColumns({ onEdit: openEdit, onDelete: handleDelete })
-=======
     function openEmployees(position: Position) {
         setSelectedPosition(position)
         setEmployeesDialogOpen(true)
@@ -414,9 +402,6 @@ export default function PositionIndex({ positions, departments, divisions, units
         setEmployeesDialogOpen(false)
         setSelectedPosition(null)
     }
-
-    const columns = getColumns({ onEdit: openEdit, onDelete: () => { } })
->>>>>>> b28d13a4c3292723e73de21ca02163445066ece3
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -443,7 +428,7 @@ export default function PositionIndex({ positions, departments, divisions, units
                 )}
 
                 <DataTable
-                    columns={columns}
+                    columns={getColumns({ onEdit: openEdit })}
                     data={positions}
                     getRowId={(row) => String(row.position_id)}
                     onRowClick={(row) => openEmployees(row.original)}
