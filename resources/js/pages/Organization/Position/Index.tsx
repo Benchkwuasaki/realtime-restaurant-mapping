@@ -94,7 +94,7 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
                                             {emp.first_name} {emp.last_name}
                                         </span>
                                         <span className="text-xs text-muted-foreground">
-                                            {emp.email}
+                                            {emp.email ?? "No email set"}
                                         </span>
                                         <span className="text-xs text-muted-foreground/60">
                                             {emp.item_name}
@@ -111,6 +111,12 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
                         </ul>
                     )}
                 </div>
+
+                <DialogFooter className="border-t border-border bg-muted/30 px-5 py-3">
+                    <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
+                        Close
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     )
@@ -140,9 +146,9 @@ function PositionModal({
     const { data, setData, post, put, processing, errors, reset } = useForm({
         position_name: editingPosition?.position_name ?? "",
         department_id: editingPosition?.department_id ? String(editingPosition.department_id) : "",
-        division_id:   editingPosition?.division_id   ? String(editingPosition.division_id)   : "",
-        unit_id:       editingPosition?.unit_id       ? String(editingPosition.unit_id)       : "",
-        item_slots:    editingPosition?.total_slots   ? String(editingPosition.total_slots)   : "1",
+        division_id: editingPosition?.division_id ? String(editingPosition.division_id) : "",
+        unit_id: editingPosition?.unit_id ? String(editingPosition.unit_id) : "",
+        item_slots: editingPosition?.total_slots ? String(editingPosition.total_slots) : "1",
     })
 
     const filteredDivisions = divisions.filter(
@@ -151,6 +157,10 @@ function PositionModal({
     const filteredUnits = units.filter(
         (u) => !data.division_id || u.division_id === Number(data.division_id)
     )
+
+    // ── Empty-state flags (only show after a parent selection is made) ──
+    const noDivisions = !!data.department_id && filteredDivisions.length === 0
+    const noUnits = !!data.division_id && filteredUnits.length === 0
 
     function handleClose() {
         reset()
@@ -180,6 +190,7 @@ function PositionModal({
 
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-4 px-5 py-5">
+
                         {/* Position Name */}
                         <div>
                             <label htmlFor="position_name" className="mb-1.5 block text-xs font-medium text-foreground">
@@ -233,10 +244,16 @@ function PositionModal({
                                     setData("division_id", v)
                                     setData("unit_id", "")
                                 }}
-                                disabled={!data.department_id}
+                                disabled={!data.department_id || noDivisions}
                             >
                                 <SelectTrigger id="division_id" className="text-sm">
-                                    <SelectValue placeholder="Select division" />
+                                    <SelectValue placeholder={
+                                        !data.department_id
+                                            ? "Select a department first"
+                                            : noDivisions
+                                                ? "No divisions available"
+                                                : "Select division"
+                                    } />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {filteredDivisions.map((d) => (
@@ -246,6 +263,18 @@ function PositionModal({
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {noDivisions && (
+                                <p className="mt-1.5 text-xs text-destructive">
+                                    This department has no divisions yet.{" "}
+
+                                    <a href="/organization/divisions"
+                                        target="_blank"
+                                        className="underline underline-offset-2 hover:text-foreground"
+                                    >
+                                        Add one here.
+                                    </a>
+                                </p>
+                            )}
                             <FieldError message={errors.division_id} />
                         </div>
 
@@ -257,10 +286,16 @@ function PositionModal({
                             <Select
                                 value={data.unit_id}
                                 onValueChange={(v) => setData("unit_id", v === "none" ? "" : v)}
-                                disabled={!data.division_id}
+                                disabled={!data.division_id || noUnits}
                             >
                                 <SelectTrigger id="unit_id" className="text-sm">
-                                    <SelectValue placeholder="Select unit" />
+                                    <SelectValue placeholder={
+                                        !data.division_id
+                                            ? "Select a division first"
+                                            : noUnits
+                                                ? "No units available"
+                                                : "Select unit (optional)"
+                                    } />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none">None</SelectItem>
@@ -271,6 +306,18 @@ function PositionModal({
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {noUnits && (
+                                <p className="mt-1.5 text-xs text-destructive">
+                                    This division has no units yet.{" "}
+
+                                    <a href="/organization/units"
+                                        target="_blank"
+                                        className="underline underline-offset-2 hover:text-foreground"
+                                    >
+                                        Add one here.
+                                    </a>
+                                </p>
+                            )}
                             <FieldError message={errors.unit_id} />
                         </div>
 
@@ -306,13 +353,18 @@ function PositionModal({
                         <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
                             Cancel
                         </Button>
-                        <Button type="submit" size="sm" disabled={processing} className="text-xs">
+                        <Button
+                            type="submit"
+                            size="sm"
+                            disabled={processing || noDivisions}
+                            className="text-xs"
+                        >
                             {processing ? "Saving…" : isEdit ? "Update Position" : "Create Position"}
                         </Button>
                     </DialogFooter>
                 </form>
-            </DialogContent>
-        </Dialog>
+            </DialogContent >
+        </Dialog >
     )
 }
 
@@ -354,7 +406,7 @@ export default function PositionIndex({ positions, departments, divisions, units
         setSelectedPosition(null)
     }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
+    const columns = getColumns({ onEdit: openEdit, onDelete: () => { } })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
