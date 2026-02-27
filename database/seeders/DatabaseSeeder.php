@@ -654,73 +654,73 @@ class DatabaseSeeder extends Seeder
 
         // ── 9. Whereabout slips ────────────────────────────────────
         // Use first 5 created employees as reviewer/approver references
-        $whereaboutSamples = [
-            [
-                'purpose_type'        => 1,
-                'purpose_description' => 'Attend external HR seminar at Makati.',
-                'time_out'            => '09:00:00',
-                'time_noted'          => '09:05:00',
-                'time_returned'       => '17:30:00',
-                'status'              => 'approved',
-                'return_status'       => 'returned',
-            ],
-            [
-                'purpose_type'        => 0,
-                'purpose_description' => 'Client site visit for system deployment in BGC.',
-                'time_out'            => '10:00:00',
-                'time_noted'          => '10:02:00',
-                'time_returned'       => '16:00:00',
-                'status'              => 'approved',
-                'return_status'       => 'returned',
-            ],
-            [
-                'purpose_type'        => 1,
-                'purpose_description' => 'Attend network infrastructure planning meeting.',
-                'time_out'            => '13:00:00',
-                'time_noted'          => '13:03:00',
-                'time_returned'       => '18:00:00',
-                'status'              => 'pending',
-                'return_status'       => 'still_here',
-            ],
-            [
-                'purpose_type'        => 0,
-                'purpose_description' => 'Budget reconciliation meeting at DBM.',
-                'time_out'            => '08:30:00',
-                'time_noted'          => '08:35:00',
-                'time_returned'       => '15:00:00',
-                'status'              => 'approved',
-                'return_status'       => 'returned',
-            ],
-            [
-                'purpose_type'        => 1,
-                'purpose_description' => 'Procurement inspection at supplier warehouse.',
-                'time_out'            => '07:00:00',
-                'time_noted'          => '07:05:00',
-                'time_returned'       => '12:00:00',
-                'status'              => 'approved',
-                'return_status'       => 'returned',
-            ],
-        ];
+        // $whereaboutSamples = [
+        //     [
+        //         'purpose_type'        => 1,
+        //         'purpose_description' => 'Attend external HR seminar at Makati.',
+        //         'time_out'            => '09:00:00',
+        //         'time_noted'          => '09:05:00',
+        //         'time_returned'       => '17:30:00',
+        //         'status'              => 'approved',
+        //         'return_status'       => 'returned',
+        //     ],
+        //     [
+        //         'purpose_type'        => 0,
+        //         'purpose_description' => 'Client site visit for system deployment in BGC.',
+        //         'time_out'            => '10:00:00',
+        //         'time_noted'          => '10:02:00',
+        //         'time_returned'       => '16:00:00',
+        //         'status'              => 'approved',
+        //         'return_status'       => 'returned',
+        //     ],
+        //     [
+        //         'purpose_type'        => 1,
+        //         'purpose_description' => 'Attend network infrastructure planning meeting.',
+        //         'time_out'            => '13:00:00',
+        //         'time_noted'          => '13:03:00',
+        //         'time_returned'       => '18:00:00',
+        //         'status'              => 'pending',
+        //         'return_status'       => 'still_here',
+        //     ],
+        //     [
+        //         'purpose_type'        => 0,
+        //         'purpose_description' => 'Budget reconciliation meeting at DBM.',
+        //         'time_out'            => '08:30:00',
+        //         'time_noted'          => '08:35:00',
+        //         'time_returned'       => '15:00:00',
+        //         'status'              => 'approved',
+        //         'return_status'       => 'returned',
+        //     ],
+        //     [
+        //         'purpose_type'        => 1,
+        //         'purpose_description' => 'Procurement inspection at supplier warehouse.',
+        //         'time_out'            => '07:00:00',
+        //         'time_noted'          => '07:05:00',
+        //         'time_returned'       => '12:00:00',
+        //         'status'              => 'approved',
+        //         'return_status'       => 'returned',
+        //     ],
+        // ];
 
-        $reviewerId  = $createdEmployeeIds[1];  // 2nd employee as reviewer
-        $approverId  = $createdEmployeeIds[4];  // 5th employee as approver
-        $attesterIde = $createdEmployeeIds[1];
+        // $reviewerId  = $createdEmployeeIds[1];  // 2nd employee as reviewer
+        // $approverId  = $createdEmployeeIds[4];  // 5th employee as approver
+        // $attesterIde = $createdEmployeeIds[1];
 
-        // Create whereabouts for first 20 employees
-        for ($i = 0; $i < 20; $i++) {
-            $sample = $whereaboutSamples[$i % count($whereaboutSamples)];
-            $month  = str_pad(($i % 11) + 1, 2, '0', STR_PAD_LEFT);
-            $day    = str_pad(($i % 27) + 1, 2, '0', STR_PAD_LEFT);
+        // // Create whereabouts for first 20 employees
+        // for ($i = 0; $i < 20; $i++) {
+        //     $sample = $whereaboutSamples[$i % count($whereaboutSamples)];
+        //     $month  = str_pad(($i % 11) + 1, 2, '0', STR_PAD_LEFT);
+        //     $day    = str_pad(($i % 27) + 1, 2, '0', STR_PAD_LEFT);
 
-            DB::table('whereabout_slips')->insert(array_merge($sample, [
-                'employee_id'              => $createdEmployeeIds[$i],
-                'reviewed_and_noted_by_id' => $reviewerId,
-                'approved_by_id'           => $approverId,
-                'attested_by_id'           => $attesterIde,
-                'date_filed'               => "2024-{$month}-{$day}",
-                'created_at'               => now(),
-                'updated_at'               => now(),
-            ]));
-        }
+        //     DB::table('whereabout_slips')->insert(array_merge($sample, [
+        //         'employee_id'              => $createdEmployeeIds[$i],
+        //         'reviewed_and_noted_by_id' => $reviewerId,
+        //         'approved_by_id'           => $approverId,
+        //         'attested_by_id'           => $attesterIde,
+        //         'date_filed'               => "2024-{$month}-{$day}",
+        //         'created_at'               => now(),
+        //         'updated_at'               => now(),
+        //     ]));
+        // }
     }
 }

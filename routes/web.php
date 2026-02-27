@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\WhereaboutSlipController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -26,7 +27,18 @@ Route::get('/', function () {
 
 Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/attendance', [AttendanceController::class, 'index'])->middleware(['auth', 'verified'])->name('attendance.index');
+
+    // Attendance Routes
+    Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
+        Route::get('/',                         [WhereaboutSlipController::class, 'index'])->name('index');
+        Route::post('/',                        [WhereaboutSlipController::class, 'store'])->name('store');
+        Route::put('/{whereaboutSlip}',         [WhereaboutSlipController::class, 'update'])->name('update');
+        Route::put('/{whereaboutSlip}/return',  [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
+        Route::delete('/{whereaboutSlip}',      [WhereaboutSlipController::class, 'destroy'])->name('destroy');
+        Route::delete('/',                      [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    });
+
+
     Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->middleware(['auth', 'verified'])->name('document_tracking.index');
 
     // Employee Routes
@@ -69,7 +81,6 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::post('/{employee}/service-record', [EmployeeController::class, 'storeServiceRecord'])->name('service-record.store');
         Route::put('/{employee}/service-record/{record}', [EmployeeController::class, 'updateServiceRecord'])->name('service-record.update');
         Route::delete('/{employee}/service-record/{record}', [EmployeeController::class, 'destroyServiceRecord'])->name('service-record.destroy');
-
     });
 
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
@@ -107,7 +118,6 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::delete('/{internalOrganization}', [InternalOrganizationController::class, 'destroy'])->name('destroy');
         Route::delete('/bulk-destroy', [InternalOrganizationController::class, 'bulkDestroy'])->name('bulk-destroy');
     });
-
 });
 
 Route::prefix('organization/divisions')->name('division.')->group(function () {
