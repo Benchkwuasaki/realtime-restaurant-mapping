@@ -9,7 +9,7 @@ export const employeeSchema = z.object({
   department: z.string(),
   contactNumber: z.string(),
   email: z.string(),
-  status: z.boolean(), // true = Active, false = Inactive
+  status: z.boolean(), 
 })
 
 export type Employee = z.infer<typeof employeeSchema>

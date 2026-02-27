@@ -1,4 +1,4 @@
-import { type Table } from "@tanstack/react-table"
+import { type RowSelectionState, type Table } from "@tanstack/react-table"
 import {
   ChevronLeft,
   ChevronRight,
@@ -23,6 +23,7 @@ interface DataTablePaginationProps<TData> {
   pageSize: number
   pageCount: number
   totalFiltered: number
+  rowSelection: RowSelectionState // ← added
   onPageIndexChange: (index: number) => void
   onPageSizeChange: (size: number) => void
 }
@@ -33,10 +34,12 @@ export function DataTablePagination<TData>({
   pageSize,
   pageCount,
   totalFiltered,
+  rowSelection, // ← added
   onPageIndexChange,
   onPageSizeChange,
 }: DataTablePaginationProps<TData>) {
-  const selectedCount = table.getFilteredSelectedRowModel().rows.length
+  // Count keys in rowSelection — this is always accurate regardless of pagination
+  const selectedCount = Object.keys(rowSelection).length
 
   return (
     <div className="flex items-center justify-between px-2">

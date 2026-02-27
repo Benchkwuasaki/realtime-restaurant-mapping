@@ -29,7 +29,7 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<Unit>[] {
                     }
                     onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
                     aria-label="Select all"
-                    className="translate-y-0.5"
+                    className="translate-y-0.5 w-5 h-5"
                 />
             ),
             cell: ({ row }) => (
