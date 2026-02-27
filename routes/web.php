@@ -1,4 +1,5 @@
 <?php
+
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PayrollController;
@@ -17,6 +18,7 @@ use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
+use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -39,6 +41,11 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
 
     Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->middleware(['auth', 'verified'])->name('document_tracking.index');
+
+    // User Routes
+    Route::prefix('users')->name('user.')->middleware('role:super_admin')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('index');
+    });
 
     // Employee Routes
     Route::prefix('employee')->name('employee.')->group(function () {

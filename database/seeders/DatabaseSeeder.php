@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
         // TODO: refactor to separate seeder files
 
         $this->call([
+            RoleSeeder::class,
             UserSeeder::class,
         ]);
 

@@ -22,6 +22,7 @@ import {
   Wallet,
   Logs,
   Pencil,
+  UserCog
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -52,6 +53,11 @@ const data = {
       isActive: true,
     },
     // TODO: implement user management, admin, super admin
+    {
+      title: "Users",
+      url: route("user.index"),
+      icon: UserCog,
+    },
     {
       title: "Employee",
       url: route("employee.index"),
