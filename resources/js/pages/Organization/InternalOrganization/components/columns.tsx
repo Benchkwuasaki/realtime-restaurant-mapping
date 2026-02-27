@@ -1,7 +1,7 @@
 "use client"
 
-import { router } from "@inertiajs/react"
 import { type ColumnDef } from "@tanstack/react-table"
+import { router } from "@inertiajs/react"
 import { route } from "ziggy-js"
 
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
@@ -14,8 +14,15 @@ import {
   editAction,
 } from "@/components/shared/data-table/data-table-row-action"
 
+// ─── Column Options ────────────────────────────────────────────────────────────
 
-export const columns: ColumnDef<InternalOrganization>[] = [
+interface ColumnOptions {
+  onEdit: (org: InternalOrganization) => void
+}
+
+// ─── Columns ───────────────────────────────────────────────────────────────────
+
+export const columns = ({ onEdit }: ColumnOptions): ColumnDef<InternalOrganization>[] => [
   // ── Select ──────────────────────────────────────────────────────────────────
   {
     id: "select",
@@ -146,8 +153,8 @@ export const columns: ColumnDef<InternalOrganization>[] = [
       <DataTableRowActions
         row={row}
         actions={[
-          editAction((org) => router.get(route("internal-organization.edit", org.id))),
-          deleteAction((org) => router.delete(route("internal-organization.destroy", org.id)), {
+          editAction((org) => onEdit(org)),
+          deleteAction((org) => router.delete(route("internal-organization.destroy", org.internal_organization_id)), {
             getName: (org) => org.name,
             description: (org) => (
               <>
