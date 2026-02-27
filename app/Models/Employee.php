@@ -41,9 +41,9 @@ class Employee extends Model
     protected $hidden = ['password'];
 
     protected $casts = [
-        'date_applied'  => 'date',
-        'date_hired'    => 'date',
-        'status'        => 'boolean',
+        'date_applied' => 'date',
+        'date_hired' => 'date',
+        'status' => 'boolean',
     ];
 
     // ── Relationships ──────────────────────────────────────────────────────────
@@ -105,15 +105,16 @@ class Employee extends Model
 
     // ── Internal Organizations ─────────────────────────────────────────────────
 
+    // In App\Models\Employee.php
     public function internalOrganizations(): BelongsToMany
     {
         return $this->belongsToMany(
             InternalOrganization::class,
-            'employee_internal_organization', // pivot table
-            'employee_id',                    // FK for this model on pivot
-            'internal_organization_id',       // FK for InternalOrganization on pivot
-            'employee_id',                    // local key on Employee
-            'id'                              // local key on InternalOrganization (UUID)
+            'employee_internal_organization',
+            'employee_id',
+            'internal_organization_id',
+            'employee_id',
+            'internal_organization_id'
         )->withTimestamps();
     }
 }
