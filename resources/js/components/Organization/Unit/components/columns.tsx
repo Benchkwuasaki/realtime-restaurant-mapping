@@ -2,6 +2,7 @@
 
 import { type ColumnDef } from "@tanstack/react-table"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
+import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { type Unit } from "../data/schema"
 import {
@@ -59,7 +60,9 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Unit>
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-[80px] font-mono text-sm">{row.getValue("unit_acronym")}</div>
+                <Badge variant="default" className="font-mono text-xs">
+                    {row.getValue("unit_acronym")}
+                </Badge>
             ),
             enableSorting: true,
             enableHiding: true,

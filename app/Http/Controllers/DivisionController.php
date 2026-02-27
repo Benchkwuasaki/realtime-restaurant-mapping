@@ -13,26 +13,32 @@ class DivisionController extends Controller
 {
     public function index(): Response
     {
-        $divisions = Division::with('department')
+        $divisions = Division::with(['department', 'units'])
             ->orderBy('division_name')
             ->get()
-            ->map(fn (Division $division) => [
-                'division_id'          => $division->division_id,
-                'division_name'        => $division->division_name,
-                'division_acronym'     => $division->division_acronym,
+            ->map(fn(Division $division) => [
+                'division_id' => $division->division_id,
+                'division_name' => $division->division_name,
+                'division_acronym' => $division->division_acronym,
                 'division_description' => $division->division_description,
-                'department_id'        => $division->department_id,
-                'department'           => [
-                    'department_id'   => $division->department->department_id,
+                'department_id' => $division->department_id,
+                'department' => [
+                    'department_id' => $division->department->department_id,
                     'department_name' => $division->department->department_name,
                 ],
+                'units' => $division->units              
+                    ->map(fn($u) => [
+                        'unit_id' => $u->unit_id,
+                        'unit_name' => $u->unit_name,
+                    ])
+                    ->values(),
             ]);
 
         $departments = Department::orderBy('department_name')
             ->get(['department_id', 'department_name']);
 
         return Inertia::render('Organization/Division/Index', [
-            'divisions'   => $divisions,
+            'divisions' => $divisions,
             'departments' => $departments,
         ]);
     }
@@ -43,17 +49,17 @@ class DivisionController extends Controller
 
         return Inertia::render('Organization/Division/Show', [
             'division' => [
-                'division_id'          => $division->division_id,
-                'division_name'        => $division->division_name,
-                'division_acronym'     => $division->division_acronym,
+                'division_id' => $division->division_id,
+                'division_name' => $division->division_name,
+                'division_acronym' => $division->division_acronym,
                 'division_description' => $division->division_description,
-                'department_id'        => $division->department_id,
-                'department'           => [
-                    'department_id'   => $division->department->department_id,
+                'department_id' => $division->department_id,
+                'department' => [
+                    'department_id' => $division->department->department_id,
                     'department_name' => $division->department->department_name,
                 ],
-                'units' => $division->units->map(fn ($u) => [
-                    'unit_id'   => $u->unit_id,
+                'units' => $division->units->map(fn($u) => [
+                    'unit_id' => $u->unit_id,
                     'unit_name' => $u->unit_name,
                 ]),
             ],
@@ -63,9 +69,9 @@ class DivisionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'department_id'        => ['required', 'integer', 'exists:departments,department_id'],
-            'division_name'        => ['required', 'string', 'max:255'],
-            'division_acronym'     => ['required', 'string', 'max:10'],
+            'department_id' => ['required', 'integer', 'exists:departments,department_id'],
+            'division_name' => ['required', 'string', 'max:255'],
+            'division_acronym' => ['required', 'string', 'max:10'],
             'division_description' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -78,9 +84,9 @@ class DivisionController extends Controller
     public function update(Request $request, Division $division): RedirectResponse
     {
         $validated = $request->validate([
-            'department_id'        => ['required', 'integer', 'exists:departments,department_id'],
-            'division_name'        => ['required', 'string', 'max:255'],
-            'division_acronym'     => ['required', 'string', 'max:10'],
+            'department_id' => ['required', 'integer', 'exists:departments,department_id'],
+            'division_name' => ['required', 'string', 'max:255'],
+            'division_acronym' => ['required', 'string', 'max:10'],
             'division_description' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -101,7 +107,7 @@ class DivisionController extends Controller
     public function bulkDestroy(Request $request): RedirectResponse
     {
         $request->validate([
-            'ids'   => ['required', 'array'],
+            'ids' => ['required', 'array'],
             'ids.*' => ['integer', 'exists:divisions,division_id'],
         ]);
 

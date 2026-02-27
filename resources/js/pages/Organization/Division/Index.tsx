@@ -1,16 +1,17 @@
 import { Head, useForm, usePage } from "@inertiajs/react"
-import { Building2 } from "lucide-react"
+import { BrickWall, Building2, Layers } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { getColumns } from "@/components/Organization/Division/components/columns"
 import { DataTable } from "@/components/shared/data-table/data-table"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
@@ -23,7 +24,11 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
-import { type Department, type Division } from "@/components/Organization/Division/data/schema"
+import {
+    type Department,
+    type Division,
+    type DivisionUnit,
+} from "@/components/Organization/Division/data/schema"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +49,57 @@ function FieldError({ message }: { message?: string }) {
     return <p className="text-xs text-destructive mt-1">{message}</p>
 }
 
+// ─── Units Dialog ─────────────────────────────────────────────────────────────
+
+interface UnitsDialogProps {
+    open: boolean
+    division: Division | null
+    onClose: () => void
+}
+
+function UnitsDialog({ open, division, onClose }: UnitsDialogProps) {
+    const units: DivisionUnit[] = division?.units ?? []
+
+    return (
+        <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-lg">
+                <DialogHeader className="px-5 py-4 border-b border-border">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <BrickWall className="w-4 h-4 text-primary" />
+                        <span>{division?.division_name}</span>
+                        <Badge variant="secondary" className="text-xs font-normal">
+                            {units.length} unit{units.length !== 1 ? "s" : ""}
+                        </Badge>
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="px-5 py-4 min-h-[180px] max-h-[400px] overflow-y-auto">
+                    {units.length === 0 ? (
+                        <div className="flex h-32 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
+                            <BrickWall className="w-8 h-8 opacity-30" />
+                            <span>No units under this division.</span>
+                        </div>
+                    ) : (
+                        <ul className="divide-y divide-border">
+                            {units.map((unit) => (
+                                <li
+                                    key={unit.unit_id}
+                                    className="flex items-center gap-3 py-2.5"
+                                >
+                                    <Layers className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                                    <span className="text-sm text-foreground">
+                                        {unit.unit_name}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 // ─── Division Modal ───────────────────────────────────────────────────────────
 
 interface DivisionModalProps {
@@ -57,10 +113,10 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
     const isEdit = editingDivision !== null
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        division_name: editingDivision?.division_name ?? "",
-        division_acronym: editingDivision?.division_acronym ?? "",
+        division_name:        editingDivision?.division_name        ?? "",
+        division_acronym:     editingDivision?.division_acronym     ?? "",
         division_description: editingDivision?.division_description ?? "",
-        department_id: editingDivision?.department_id
+        department_id:        editingDivision?.department_id
             ? String(editingDivision.department_id)
             : "",
     })
@@ -91,7 +147,6 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
 
                 <form onSubmit={handleSubmit}>
                     <div className="px-5 py-5 space-y-4">
-
                         {/* Department */}
                         <div>
                             <label htmlFor="department_id" className="block text-xs font-medium text-foreground mb-1.5">
@@ -182,8 +237,13 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
 export default function DivisionIndex({ divisions, departments }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
+    // ── Division modal state ──
     const [modalOpen, setModalOpen] = useState(false)
     const [editingDivision, setEditingDivision] = useState<Division | null>(null)
+
+    // ── Units dialog state ──
+    const [unitsDialogOpen, setUnitsDialogOpen] = useState(false)
+    const [selectedDivision, setSelectedDivision] = useState<Division | null>(null)
 
     function openCreate() {
         setEditingDivision(null)
@@ -200,7 +260,16 @@ export default function DivisionIndex({ divisions, departments }: Props) {
         setEditingDivision(null)
     }
 
-    // Delete is handled inside DataTableRowActions via deleteAction() in columns.tsx
+    function openUnits(division: Division) {
+        setSelectedDivision(division)
+        setUnitsDialogOpen(true)
+    }
+
+    function closeUnits() {
+        setUnitsDialogOpen(false)
+        setSelectedDivision(null)
+    }
+
     const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
 
     return (
@@ -230,6 +299,7 @@ export default function DivisionIndex({ divisions, departments }: Props) {
                     columns={columns}
                     data={divisions}
                     getRowId={(row) => String(row.division_id)}
+                    onRowClick={(row) => openUnits(row.original)}
                     searchColumnId="division_name"
                     searchPlaceholder="Search divisions..."
                     filters={[
@@ -254,12 +324,20 @@ export default function DivisionIndex({ divisions, departments }: Props) {
                 />
             </div>
 
+            {/* ── Division Create/Edit Modal ── */}
             <DivisionModal
                 key={editingDivision?.division_id ?? "create"}
                 open={modalOpen}
                 editingDivision={editingDivision}
                 departments={departments}
                 onClose={closeModal}
+            />
+
+            {/* ── Units Dialog ── */}
+            <UnitsDialog
+                open={unitsDialogOpen}
+                division={selectedDivision}
+                onClose={closeUnits}
             />
         </AppLayout>
     )
