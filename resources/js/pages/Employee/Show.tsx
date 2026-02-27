@@ -156,10 +156,18 @@ interface Employee {
     uploadedFiles?: UploadedFile[]
     seminarsAndTrainings?: SeminarTraining[]
     serviceRecords?: ServiceRecord[]
+    internal_organizations?: InternalOrganization[]
 }
 interface Props {
     employee: Employee
     items: Item[]
+}
+
+interface InternalOrganization {
+    internal_organization_id: number
+    name: string
+    type: string
+    code: string
 }
 
 // ─── Position group (derived from items list) ─────────────────────────────────
@@ -711,10 +719,11 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: Item[] }) {
     const position = employee.item?.position
     const [editField, setEditField] = useState<EditField>(null)
+    const orgs = employee.internal_organizations ?? []
     const toggleStatus = () => router.patch(route("employee.toggleStatus", employee.employee_id), {}, { preserveScroll: true })
 
     return (
-        <div className="p-5">
+        <div className="p-5 space-y-4">
             <div className="grid grid-cols-3 gap-3">
                 <DetailCard title="Position" value={position?.position_name} onEdit={() => setEditField("position")} />
                 <DetailCard title="Date Hired" value={fmt(employee.date_hired)} onEdit={() => setEditField("date_hired")} />
@@ -732,6 +741,33 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                     onEdit={() => setEditField("work_schedule")}
                 />
             </div>
+
+            {/* ── Internal Organizations ── */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Internal Organizations</span>
+                </div>
+                {orgs.length === 0 ? (
+                    <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">
+                        Not a member of any internal organization.
+                    </div>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {orgs.map(org => (
+                            <div key={org.internal_organization_id} className="flex items-center gap-4 px-5 py-3">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground">{org.name}</p>
+                                    <p className="text-xs text-muted-foreground">{org.code}</p>
+                                </div>
+                                <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2.5 py-0.5 shrink-0">
+                                    {org.type}
+                                </Badge>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             <EmploymentEditDialog employee={employee} field={editField} onClose={() => setEditField(null)} items={items} />
         </div>
     )
@@ -1173,7 +1209,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         {govDialog.mode === "custom" && !govDialog.id && (
                             <div>
                                 <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">ID Type / Name</Label>
-                                <Input value={govDialog.customTypeName} onChange={e => setGovDialog(p => ({ ...p, customTypeName: e.target.value }))} placeholder="e.g. Postal ID, Voter's ID…" autoFocus />
+                                <Input value={govDialog.customTypeName} onChange={e => setGovDialog(p => ({ ...p, customTypeName: e.target.value }))} placeholder="e.g. GSIS, Voter's ID…" autoFocus />
                             </div>
                         )}
                         <div>

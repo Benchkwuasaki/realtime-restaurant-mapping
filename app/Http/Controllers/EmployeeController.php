@@ -219,6 +219,7 @@ class EmployeeController extends Controller
             'eligibilityInformation',
             'governmentAccounts',
             'uploadedFiles',
+            'internalOrganizations',
         ]);
 
         $currentItemId = $employee->item?->item_id;
