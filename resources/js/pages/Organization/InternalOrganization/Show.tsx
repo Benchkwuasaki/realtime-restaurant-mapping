@@ -595,11 +595,7 @@ export default function Show({ organization, availableEmployees }: Props) {
                         defaultPageSize={10}
                         searchColumnId="name"
                         searchPlaceholder="Search members..."
-                        bulkDelete={{
-                            route: route("unit.bulk-destroy"),
-                            entityName: "Unit",
-                            getId: (row) => (row as Unit).unit_id,
-                        }}
+                        
                     />
                 </main>
             </div>
