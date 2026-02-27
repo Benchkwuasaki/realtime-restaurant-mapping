@@ -1,8 +1,8 @@
 import { Head, useForm, usePage } from "@inertiajs/react"
-import { Briefcase, Building2, Puzzle } from "lucide-react"
+import { Building2, Puzzle } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
-import { getColumns } from "@/components/Organization/Unit/components/columns"
+import { getColumns } from "@/pages/Organization/Unit/components/columns"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,7 +28,7 @@ import {
     type Division,
     type Unit,
     type UnitPosition,
-} from "@/components/Organization/Unit/data/schema"
+} from "@/pages/Organization/Unit/data/schema"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,7 +76,7 @@ function PositionsDialog({ open, unit, onClose }: PositionsDialogProps) {
                 <div className="px-5 py-4 min-h-[180px] max-h-[400px] overflow-y-auto">
                     {positions.length === 0 ? (
                         <div className="flex h-32 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
-                            <Puzzle  className="w-8 h-8 opacity-30" />
+                            <Puzzle className="w-8 h-8 opacity-30" />
                             <span>No positions under this unit.</span>
                         </div>
                     ) : (
@@ -268,8 +268,6 @@ export default function UnitIndex({ units, divisions }: Props) {
         setSelectedUnit(null)
     }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Units" />
@@ -294,7 +292,7 @@ export default function UnitIndex({ units, divisions }: Props) {
                 )}
 
                 <DataTable
-                    columns={columns}
+                    columns={getColumns({ onEdit: openEdit })}
                     data={units}
                     getRowId={(row) => String(row.unit_id)}
                     onRowClick={(row) => openPositions(row.original)}

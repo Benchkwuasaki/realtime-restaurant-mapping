@@ -1,22 +1,23 @@
 "use client"
 
+import { router } from "@inertiajs/react"
 import { type ColumnDef } from "@tanstack/react-table"
+import { route } from "ziggy-js"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { type Department } from "../data/schema"
 import {
     DataTableRowActions,
     editAction,
     deleteAction,
 } from "@/components/shared/data-table/data-table-row-action"
+import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
+import { type Department } from "../data/schema"
 
 interface ColumnOptions {
     onEdit: (department: Department) => void
-    onDelete: (department: Department) => void
 }
 
-export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Department>[] {
+export function getColumns({ onEdit }: ColumnOptions): ColumnDef<Department>[] {
     return [
         {
             id: "select",
@@ -93,7 +94,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Depar
                     row={row}
                     actions={[
                         editAction(onEdit),
-                        deleteAction(onDelete, {
+                        deleteAction((department) => router.delete(route("department.destroy", department.department_id)), {
                             getName: (d) => d.department_name,
                             description: (d) => (
                                 <>

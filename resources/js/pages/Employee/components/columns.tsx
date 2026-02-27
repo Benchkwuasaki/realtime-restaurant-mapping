@@ -5,15 +5,15 @@ import { type ColumnDef } from "@tanstack/react-table"
 import React from "react"
 import { route } from "ziggy-js"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
+import {
+  DataTableRowActions,
+  deleteAction,
+} from "@/components/shared/data-table/data-table-row-action"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 
 import { type Employee } from "../data/schema"
-import {
-  DataTableRowActions,
-  deleteAction,
-} from "@/components/shared/data-table/data-table-row-action"
 
 // function StatusToggle({ id, currentStatus }: { id: string; currentStatus: boolean }) {
 

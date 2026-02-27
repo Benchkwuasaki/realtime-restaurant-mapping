@@ -2,7 +2,6 @@
 
 import { router } from "@inertiajs/react"
 import { type ColumnDef } from "@tanstack/react-table"
-import React from "react"
 import { route } from "ziggy-js"
 
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
@@ -147,13 +146,18 @@ export const columns: ColumnDef<InternalOrganization>[] = [
       <DataTableRowActions
         row={row}
         actions={[
-          // Edit
-          editAction((org) =>
-            router.get(route("internal-organization.edit", org.id))
-          ),
+          editAction((org) => router.get(route("internal-organization.edit", org.id))),
           deleteAction((org) => router.delete(route("internal-organization.destroy", org.id)), {
             getName: (org) => org.name,
-          }),  
+            description: (org) => (
+              <>
+                Are you sure you want to delete{" "}
+                <span className="font-medium text-foreground">{org.name}</span>?{" "}
+                This action cannot be undone.
+              </>
+            ),
+            confirmLabel: "Delete Organization",
+          }),
         ]}
       />
     ),

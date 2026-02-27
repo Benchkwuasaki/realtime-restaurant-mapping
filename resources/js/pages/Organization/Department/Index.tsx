@@ -2,11 +2,6 @@ import { Head, useForm, usePage } from "@inertiajs/react"
 import { Building2, GitBranch, LampDesk } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
-import { getColumns } from "@/components/Organization/Department/components/columns"
-import {
-    type Department,
-    type DepartmentDivision,
-} from "@/components/Organization/Department/data/schema"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -20,6 +15,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import AppLayout from "@/layouts/app-layout"
+import { getColumns } from "@/pages/Organization/Department/components/columns"
+import {
+    type Department,
+    type DepartmentDivision,
+} from "@/pages/Organization/Department/data/schema"
 import type { BreadcrumbItem } from "@/types"
 
 // ─── Types ────────────────────────────────────────────────────────────────────

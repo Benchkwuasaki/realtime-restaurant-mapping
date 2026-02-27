@@ -1,6 +1,8 @@
 "use client"
 
+import { router } from "@inertiajs/react"
 import { type ColumnDef } from "@tanstack/react-table"
+import { route } from "ziggy-js"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Checkbox } from "@/components/ui/checkbox"
 import { type Position } from "../data/schema"
@@ -12,10 +14,9 @@ import {
 
 interface ColumnOptions {
     onEdit: (position: Position) => void
-    onDelete: (position: Position) => void
 }
 
-export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Position>[] {
+export function getColumns({ onEdit }: ColumnOptions): ColumnDef<Position>[] {
     return [
         {
             id: "select",
@@ -131,9 +132,8 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Posit
                     row={row}
                     actions={[
                         editAction(onEdit),
-                        deleteAction(onDelete, {
+                        deleteAction((position) => router.delete(route("position.destroy", position.position_id)), {
                             getName: (p) => p.position_name,
-                            // Override dialog — position deletion has a special warning
                             description: (p) => (
                                 <>
                                     Are you sure you want to delete{" "}
