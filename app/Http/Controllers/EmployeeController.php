@@ -56,13 +56,22 @@ class EmployeeController extends Controller
     public function create()
     {
         return Inertia::render('Employee/CreateEmployee', [
-            'items' => Item::with('position.department')->get(),
-            'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')
-                ->orderBy('step')
-                ->get(),
+            'items' => Item::with(['position.department', 'position.division', 'position.unit', 'employee'])
+                ->get()
+                ->map(fn(Item $item) => [
+                    'item_id' => $item->item_id,
+                    'is_occupied' => $item->employee !== null,
+                    'position' => $item->position ? [
+                        'position_name' => $item->position->position_name,
+                        'department' => $item->position->department ? ['department_name' => $item->position->department->department_name] : null,
+                        'division' => $item->position->division ? ['division_name' => $item->position->division->division_name] : null,
+                        'unit' => $item->position->unit ? ['unit_name' => $item->position->unit->unit_name] : null,
+                    ] : null,
+                ]),
+            'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),
+            'employmentClassifications' => \App\Models\EmploymentClassification::orderBy('name')->get(['id', 'name', 'description']),
         ]);
     }
-
     public function store(Request $request)
     {
         $request->validate([
@@ -78,7 +87,7 @@ class EmployeeController extends Controller
             'phone_number' => ['required', 'string', 'max:20'],
             'item_id' => ['required', 'exists:items,item_id'],
             'salary_grade_step_id' => ['required', 'exists:salary_grade_steps,salary_grade_step_id'],
-            'employment_classification' => ['required', 'string'],
+            'employment_classification' => ['required', 'string', 'exists:employment_classifications,name'],
             'work_email' => ['required', 'email', 'unique:employees,work_email'],
             'password' => ['required', 'string', 'min:8'],
             'date_applied' => ['required', 'date'],
@@ -212,13 +221,43 @@ class EmployeeController extends Controller
             'uploadedFiles',
         ]);
 
+        $currentItemId = $employee->item?->item_id;
+
         return Inertia::render('Employee/Show', [
             'employee' => $employee,
             'items' => Item::with([
                 'position.department',
                 'position.division',
                 'position.unit',
-            ])->get(),
+                'employee',          // ← needed to know whether each slot is taken
+            ])
+                ->get()
+                ->map(fn(Item $item) => [
+                    'item_id' => $item->item_id,
+
+                    /**
+                     * is_occupied = this slot has an employee AND
+                     * that employee is NOT the one currently being viewed.
+                     *
+                     * This ensures the employee's own slot never appears
+                     * "Full" to themselves in the dropdown.
+                     */
+                    'is_occupied' => $item->employee !== null
+                        && $item->employee->employee_id !== $employee->employee_id,
+
+                    'position' => $item->position ? [
+                        'position_name' => $item->position->position_name,
+                        'department' => $item->position->department
+                            ? ['department_name' => $item->position->department->department_name]
+                            : null,
+                        'division' => $item->position->division
+                            ? ['division_name' => $item->position->division->division_name]
+                            : null,
+                        'unit' => $item->position->unit
+                            ? ['unit_name' => $item->position->unit->unit_name]
+                            : null,
+                    ] : null,
+                ]),
         ]);
     }
 
@@ -246,7 +285,7 @@ class EmployeeController extends Controller
             'place_of_birth' => 'nullable|string|max:255',
             'item_id' => 'sometimes|required|exists:items,item_id',
             'salary_grade_step_id' => 'sometimes|required|exists:salary_grade_steps,salary_grade_step_id',
-            'employment_classification' => 'sometimes|required|in:Regular,Job Order,Casual',
+            'employment_classification' => 'sometimes|required|string|exists:employment_classifications,name',
             'work_email' => 'sometimes|required|email|unique:employees,work_email,' . $employee->employee_id . ',employee_id',
             'password' => 'nullable|string|min:8',
             'date_applied' => 'sometimes|required|date',

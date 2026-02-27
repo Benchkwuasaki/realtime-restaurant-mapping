@@ -1,4 +1,4 @@
-import CreateEmployeeForm, { type CreateEmployeeProps } from '@/components/Employeee/create_employee'
+import CreateEmployeeForm, { type CreateEmployeeProps } from '@/pages/Employee/create_employee'
 import AppLayout from '@/layouts/app-layout'
 import type { BreadcrumbItem } from '@/types'
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\InternalOrganization;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -47,14 +48,58 @@ class InternalOrganizationController extends Controller
             ->with('success', 'Organization created successfully.');
     }
 
+    public function storeMembers(Request $request, InternalOrganization $internalOrganization)
+    {
+        $request->validate([
+            'employee_ids' => 'required|array|min:1',
+            'employee_ids.*' => 'exists:employees,employee_id',
+        ]);
+
+        // syncWithoutDetaching prevents removing existing members
+        $internalOrganization->members()->syncWithoutDetaching($request->employee_ids);
+
+        return back()->with('success', 'Members added successfully.');
+    }
+
     // ── Show ───────────────────────────────────────────────────────────────────
 
     public function show(InternalOrganization $internalOrganization): Response
     {
+        $internalOrganization->load([
+            'members.basicInfo',
+            'members.item.position.department',
+        ]);
+
+        $members = $internalOrganization->members->map(fn(Employee $employee) => [
+            'id' => (string) $employee->employee_id,
+            'name' => optional($employee->basicInfo)->full_name ?? null,
+            'position' => optional(optional($employee->item)->position)->position_name ?? null,
+            'department' => optional(optional(optional($employee->item)->position)->department)->department_name ?? null,
+            'status' => $employee->status,
+        ]);
+
+        // Employees NOT yet in this organization (for the Add Member modal)
+        $memberIds = $internalOrganization->members->pluck('employee_id');
+
+        $availableEmployees = Employee::with(['basicInfo', 'item.position.department'])
+            ->whereNotIn('employee_id', $memberIds)
+            ->get()
+            ->map(fn(Employee $employee) => [
+                'id' => (string) $employee->employee_id,
+                'name' => optional($employee->basicInfo)->full_name ?? null,
+                'position' => optional(optional($employee->item)->position)->position_name ?? null,
+                'department' => optional(optional(optional($employee->item)->position)->department)->department_name ?? null,
+            ]);
+
         return Inertia::render('Organization/InternalOrganization/Show', [
-            'organization' => $internalOrganization,
+            'organization' => array_merge($internalOrganization->toArray(), [
+                'members' => $members,
+            ]),
+            'availableEmployees' => $availableEmployees,
         ]);
     }
+
+
 
     // ── Edit / Update ──────────────────────────────────────────────────────────
 

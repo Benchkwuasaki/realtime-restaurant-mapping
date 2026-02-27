@@ -1,6 +1,6 @@
 import type { PageProps } from "@inertiajs/core"
 import { usePage } from "@inertiajs/react"
-import { columns } from "@/components/Employeee/components/columns"
+import { columns } from "@/pages/Employee/components/columns"
 import { DataTable } from "@/components/shared/data-table/data-table"
 
 interface Task {

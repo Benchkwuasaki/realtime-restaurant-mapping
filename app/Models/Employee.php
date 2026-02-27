@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\EmployeeAllowance;
@@ -45,9 +46,8 @@ class Employee extends Model
         'status'        => 'boolean',
     ];
 
-    // ── Relationships ──────────────────────────────────────────────
+    // ── Relationships ──────────────────────────────────────────────────────────
 
-    
     public function basicInfo(): BelongsTo
     {
         return $this->belongsTo(EmployeeBasicInfo::class, 'employee_basic_info_id', 'employee_basic_info_id');
@@ -101,5 +101,19 @@ class Employee extends Model
     public function governmentAccounts(): HasMany
     {
         return $this->hasMany(GovernmentAccount::class, 'employee_id', 'employee_id');
+    }
+
+    // ── Internal Organizations ─────────────────────────────────────────────────
+
+    public function internalOrganizations(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            InternalOrganization::class,
+            'employee_internal_organization', // pivot table
+            'employee_id',                    // FK for this model on pivot
+            'internal_organization_id',       // FK for InternalOrganization on pivot
+            'employee_id',                    // local key on Employee
+            'id'                              // local key on InternalOrganization (UUID)
+        )->withTimestamps();
     }
 }

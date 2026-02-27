@@ -1,11 +1,11 @@
 import { Head, router } from '@inertiajs/react';
 import { Users, UserCheck, UserX } from 'lucide-react';
 import { route } from 'ziggy-js';
-import { columns } from '@/components/Employeee/components/columns';
-import { type Employee } from '@/components/Employeee/data/schema';
 import { DataTable } from '@/components/shared/data-table/data-table';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { columns } from '@/pages/Employee/components/columns';
+import { type Employee } from '@/pages/Employee/data/schema';
 import type { BreadcrumbItem } from '@/types';
 
 interface Props {

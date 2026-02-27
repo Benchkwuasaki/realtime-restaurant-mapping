@@ -1,10 +1,12 @@
 "use client"
 
+import { router } from "@inertiajs/react"
 import { type ColumnDef } from "@tanstack/react-table"
+import { route } from "ziggy-js"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { type Division } from "../data/schema"
+import { type Unit } from "../data/schema"
 import {
     DataTableRowActions,
     editAction,
@@ -12,11 +14,10 @@ import {
 } from "@/components/shared/data-table/data-table-row-action"
 
 interface ColumnOptions {
-    onEdit: (division: Division) => void
-    onDelete: (division: Division) => void
+    onEdit: (unit: Unit) => void
 }
 
-export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Division>[] {
+export function getColumns({ onEdit }: ColumnOptions): ColumnDef<Unit>[] {
     return [
         {
             id: "select",
@@ -44,61 +45,53 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Divis
             enableHiding: false,
         },
         {
-            accessorKey: "division_name",
+            accessorKey: "unit_name",
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Division Name" />
+                <DataTableColumnHeader column={column} title="Unit Name" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-40 font-medium text-foreground">
-                    {row.getValue("division_name")}
-                </div>
+                <div className="min-w-[160px] font-medium">{row.getValue("unit_name")}</div>
             ),
             enableSorting: true,
             enableHiding: true,
         },
         {
-            accessorKey: "division_acronym",
+            accessorKey: "unit_acronym",
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
                 <Badge variant="default" className="font-mono text-xs">
-                    {row.getValue("division_acronym")}
+                    {row.getValue("unit_acronym")}
                 </Badge>
             ),
             enableSorting: true,
             enableHiding: true,
         },
         {
-            accessorKey: "division_description",
+            accessorKey: "division",
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Description" />
+                <DataTableColumnHeader column={column} title="Division" />
             ),
-            cell: ({ row }) => {
-                const desc: string | null = row.getValue("division_description")
-                return (
-                    <div className="min-w-50 max-w-[320px] text-sm text-muted-foreground truncate">
-                        {desc ?? <span className="italic text-muted-foreground/50">No description</span>}
-                    </div>
-                )
-            },
-            enableSorting: false,
+            cell: ({ row }) => (
+                <div className="min-w-[140px]">
+                    {row.original.division?.division_name ?? "—"}
+                </div>
+            ),
+            enableSorting: true,
             enableHiding: true,
         },
         {
-            id: "department",
-            accessorFn: (row) => row.department?.department_name ?? "",
+            accessorKey: "unit_description",
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Department" />
+                <DataTableColumnHeader column={column} title="Description" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-35 text-sm text-muted-foreground">
-                    {row.original.department?.department_name ?? "—"}
+                <div className="min-w-[200px] text-sm text-muted-foreground truncate max-w-[300px]">
+                    {row.getValue("unit_description") || "—"}
                 </div>
             ),
-            filterFn: (row, _id, value: string[]) =>
-                value.includes(String(row.original.department_id)),
-            enableSorting: true,
+            enableSorting: false,
             enableHiding: true,
         },
         {
@@ -109,17 +102,17 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Divis
                     row={row}
                     actions={[
                         editAction(onEdit),
-                        deleteAction(onDelete, {
-                            getName: (d) => d.division_name,
-                            description: (d) => (
+                        deleteAction((unit) => router.delete(route("unit.destroy", unit.unit_id)), {
+                            getName: (u) => u.unit_name,
+                            description: (u) => (
                                 <>
                                     Are you sure you want to delete{" "}
-                                    <span className="font-medium text-foreground">{d.division_name}</span>?{" "}
-                                    This will also affect any units assigned to this division.
+                                    <span className="font-medium text-foreground">{u.unit_name}</span>?{" "}
+                                    This will also affect any positions assigned to this unit.
                                     This action cannot be undone.
                                 </>
                             ),
-                            confirmLabel: "Delete Division",
+                            confirmLabel: "Delete Unit",
                         }),
                     ]}
                 />

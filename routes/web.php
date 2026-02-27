@@ -1,6 +1,4 @@
 <?php
-
-use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PayrollController;
@@ -18,6 +16,7 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
+use App\Http\Controllers\EmploymentClassificationController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -52,6 +51,12 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::put('/{employee}', [EmployeeController::class, 'update'])->name('update');
         Route::patch('/{employee}/toggle', [EmployeeController::class, 'toggleStatus'])->name('toggleStatus');
         Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
+
+        Route::prefix('employment-classifications')->name('employment-classification.')->group(function () {
+            Route::post('/', [EmploymentClassificationController::class, 'store'])->name('store');
+            Route::put('/{employmentClassification}', [EmploymentClassificationController::class, 'update'])->name('update');
+            Route::delete('/{employmentClassification}', [EmploymentClassificationController::class, 'destroy'])->name('destroy');
+        });
 
         // Government Accounts
         Route::post('/{employee}/government-account', [EmployeeController::class, 'storeGovernmentAccount'])->name('government-account.store');
@@ -117,6 +122,8 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::patch('/{internalOrganization}/toggle-status', [InternalOrganizationController::class, 'toggleStatus'])->name('toggle-status');
         Route::delete('/{internalOrganization}', [InternalOrganizationController::class, 'destroy'])->name('destroy');
         Route::delete('/bulk-destroy', [InternalOrganizationController::class, 'bulkDestroy'])->name('bulk-destroy');
+        Route::post('/{internalOrganization}/members', [InternalOrganizationController::class, 'storeMembers'])
+            ->name('members.store');
     });
 });
 

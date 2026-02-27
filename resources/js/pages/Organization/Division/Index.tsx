@@ -2,7 +2,7 @@ import { Head, useForm, usePage } from "@inertiajs/react"
 import { BrickWall, Building2, Layers } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
-import { getColumns } from "@/components/Organization/Division/components/columns"
+import { getColumns } from "@/pages/Organization/Division/components/columns"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,7 +28,7 @@ import {
     type Department,
     type Division,
     type DivisionUnit,
-} from "@/components/Organization/Division/data/schema"
+} from "@/pages/Organization/Division/data/schema"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
