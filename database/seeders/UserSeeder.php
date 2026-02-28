@@ -15,7 +15,7 @@ class UserSeeder extends Seeder
     {
         // super admin
         $superAdmin = User::create([
-            'name' => 'Super Admin',
+            'name' => 'SuperAdmin User',
             'email' => 'superadmin@gmail.com',
             'email_verified_at' => now(),
             'password' => bcrypt('password'),
@@ -29,15 +29,16 @@ class UserSeeder extends Seeder
             'password' => bcrypt('password'),
         ]);
 
-        $addmin2 = User::create([
-            'name' => 'Klein Allen',
-            'email' => 'allenklein04@gmail.com',
+        // ogm
+        $ogm = User::create([
+            'name' => 'Ogm User',
+            'email' => 'ogm@gmail.com',
             'email_verified_at' => now(),
-            'password' => bcrypt('shira081419'),
+            'password' => bcrypt('password'),
         ]);
 
         $superAdmin->assignRole('super_admin');
-        $admin1->assignRole('admin');
-        $addmin2->assignRole('admin');
+        $admin1->assignRole('hr_admin');
+        $ogm->assignRole('ogm');
     }
 }

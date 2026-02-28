@@ -6,6 +6,7 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\BenefitsController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\ActivityLogsController;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
@@ -43,8 +44,13 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->middleware(['auth', 'verified'])->name('document_tracking.index');
 
     // User Routes
-    Route::prefix('users')->name('user.')->middleware('role:super_admin')->group(function () {
+    Route::prefix('users')->name('user.')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('index');
+    });
+
+    // Announcement Routes
+    Route::prefix('announcement')->name('announcement.')->middleware('role:ogm')->group(function () {
+        Route::get('/', [AnnouncementController::class, 'index'])->name('index');
     });
 
     // Employee Routes
