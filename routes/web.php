@@ -95,7 +95,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
 
     // Organizational Chart
-    Route::get('/organization/chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
+    Route::get('/organization/organizational_chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
 
     Route::prefix('organization/units')->name('unit.')->group(function () {
         Route::get('/', [UnitController::class, 'index'])->name('index');

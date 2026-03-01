@@ -63,19 +63,23 @@ class OrganizationalChartController extends Controller
                             return [
                                 'id' => $position->position_id,
                                 'name' => $position->position_name,
-                                'employees' => $position->items->map(function ($item) {
-                                    $employee = $item->employee;
-                                    $basicInfo = $employee->basicInfo;
-                                    return [
-                                        'id' => $employee->employee_id,
-                                        'firstName' => $basicInfo->first_name ?? null,
-                                        'lastName' => $basicInfo->last_name ?? null,
-                                        'middleName' => $basicInfo->middle_name ?? null,
-                                        'email' => $employee->work_email,
-                                        'dateHired' => $employee->date_hired,
-                                        'profilePicture' => $employee->profile_picture,
-                                    ];
-                                })->values(),
+                                'employees' => $position->items
+                                    ->filter(function ($item) {
+                                        return $item->employee && $item->employee->basicInfo;
+                                    })
+                                    ->map(function ($item) {
+                                        $employee = $item->employee;
+                                        $basicInfo = $employee->basicInfo;
+                                        return [
+                                            'id' => $employee->employee_id,
+                                            'firstName' => $basicInfo->first_name ?? null,
+                                            'lastName' => $basicInfo->last_name ?? null,
+                                            'middleName' => $basicInfo->middle_name ?? null,
+                                            'email' => $employee->work_email,
+                                            'dateHired' => $employee->date_hired,
+                                            'profilePicture' => $employee->profile_picture,
+                                        ];
+                                    })->values(),
                             ];
                         })->values(),
                     ];
@@ -84,19 +88,23 @@ class OrganizationalChartController extends Controller
                     return [
                         'id' => $position->position_id,
                         'name' => $position->position_name,
-                        'employees' => $position->items->map(function ($item) {
-                            $employee = $item->employee;
-                            $basicInfo = $employee->basicInfo;
-                            return [
-                                'id' => $employee->employee_id,
-                                'firstName' => $basicInfo->first_name ?? null,
-                                'lastName' => $basicInfo->last_name ?? null,
-                                'middleName' => $basicInfo->middle_name ?? null,
-                                'email' => $employee->work_email,
-                                'dateHired' => $employee->date_hired,
-                                'profilePicture' => $employee->profile_picture,
-                            ];
-                        })->values(),
+                        'employees' => $position->items
+                            ->filter(function ($item) {
+                                return $item->employee && $item->employee->basicInfo;
+                            })
+                            ->map(function ($item) {
+                                $employee = $item->employee;
+                                $basicInfo = $employee->basicInfo;
+                                return [
+                                    'id' => $employee->employee_id,
+                                    'firstName' => $basicInfo->first_name ?? null,
+                                    'lastName' => $basicInfo->last_name ?? null,
+                                    'middleName' => $basicInfo->middle_name ?? null,
+                                    'email' => $employee->work_email,
+                                    'dateHired' => $employee->date_hired,
+                                    'profilePicture' => $employee->profile_picture,
+                                ];
+                            })->values(),
                     ];
                 })->values(),
             ];
