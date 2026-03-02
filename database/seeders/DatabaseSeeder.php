@@ -10,7 +10,10 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // TODO: refactor to separate seeder files
+
         $this->call([
+            // Roleseeder::class,
             UserSeeder::class,
         ]);
 
@@ -39,7 +42,8 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        // ── 2. Department ──────────────────────────────────────────
+        // ── 2. Departments ─────────────────────────────────────────
+        // Department #1 (existing)
         $deptId = DB::table('departments')->insertGetId([
             'department_name'        => 'Office of Business Excellence',
             'department_acronym'     => 'OBE',
@@ -48,7 +52,26 @@ class DatabaseSeeder extends Seeder
             'updated_at'             => now(),
         ]);
 
+        // Department #2 (NEW)
+        $deptOpsId = DB::table('departments')->insertGetId([
+            'department_name'        => 'Operations and Services Department',
+            'department_acronym'     => 'OSD',
+            'department_description' => 'Oversees daily operations, facilities, and customer-facing services.',
+            'created_at'             => now(),
+            'updated_at'             => now(),
+        ]);
+
+        // Department #3 (NEW)
+        $deptGovId = DB::table('departments')->insertGetId([
+            'department_name'        => 'Governance and Public Affairs Department',
+            'department_acronym'     => 'GPAD',
+            'department_description' => 'Manages governance initiatives, public information, and stakeholder relations.',
+            'created_at'             => now(),
+            'updated_at'             => now(),
+        ]);
+
         // ── 3. Divisions ───────────────────────────────────────────
+        // Dept #1 divisions (existing)
         $divHrId = DB::table('divisions')->insertGetId([
             'department_id'        => $deptId,
             'division_name'        => 'Human Resources Division',
@@ -94,7 +117,55 @@ class DatabaseSeeder extends Seeder
             'updated_at'           => now(),
         ]);
 
+        // Dept #2 divisions (NEW) — 3 divisions
+        $divOpsFieldId = DB::table('divisions')->insertGetId([
+            'department_id'        => $deptOpsId,
+            'division_name'        => 'Field Operations Division',
+            'division_acronym'     => 'FOD',
+            'division_description' => 'Coordinates field activities and service delivery operations.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
+        ]);
+
+        $divFacilitiesId = DB::table('divisions')->insertGetId([
+            'department_id'        => $deptOpsId,
+            'division_name'        => 'Facilities Management Division',
+            'division_acronym'     => 'FMD',
+            'division_description' => 'Manages facilities, assets, and building maintenance.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
+        ]);
+
+        $divCustomerId = DB::table('divisions')->insertGetId([
+            'department_id'        => $deptOpsId,
+            'division_name'        => 'Customer Support Division',
+            'division_acronym'     => 'CSD',
+            'division_description' => 'Handles client support, service desk, and feedback resolution.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
+        ]);
+
+        // Dept #3 divisions (NEW) — 2 divisions
+        $divPolicyId = DB::table('divisions')->insertGetId([
+            'department_id'        => $deptGovId,
+            'division_name'        => 'Policy and Standards Division',
+            'division_acronym'     => 'PSD',
+            'division_description' => 'Develops policies, standards, and governance frameworks.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
+        ]);
+
+        $divPublicAffairsId = DB::table('divisions')->insertGetId([
+            'department_id'        => $deptGovId,
+            'division_name'        => 'Public Affairs Division',
+            'division_acronym'     => 'PAD',
+            'division_description' => 'Leads public information, communications, and stakeholder engagement.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
+        ]);
+
         // ── 4. Units ───────────────────────────────────────────────
+        // Dept #1 units (existing)
         $unitRecruitId = DB::table('units')->insertGetId([
             'division_id'      => $divHrId,
             'unit_name'        => 'Recruitment Unit',
@@ -176,6 +247,121 @@ class DatabaseSeeder extends Seeder
             'updated_at'       => now(),
         ]);
 
+        // Dept #2 units (NEW) — each division 2–3 units
+        // Field Operations Division (3 units)
+        $unitDispatchId = DB::table('units')->insertGetId([
+            'division_id'      => $divOpsFieldId,
+            'unit_name'        => 'Dispatch and Coordination Unit',
+            'unit_acronym'     => 'DCU',
+            'unit_description' => 'Coordinates schedules, dispatch, and field assignments.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitServiceDeliveryId = DB::table('units')->insertGetId([
+            'division_id'      => $divOpsFieldId,
+            'unit_name'        => 'Service Delivery Unit',
+            'unit_acronym'     => 'SDU2',
+            'unit_description' => 'Ensures delivery of services to end-users and stakeholders.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitQualityOpsId = DB::table('units')->insertGetId([
+            'division_id'      => $divOpsFieldId,
+            'unit_name'        => 'Operations Quality Unit',
+            'unit_acronym'     => 'OQU',
+            'unit_description' => 'Monitors operational KPIs and compliance to procedures.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        // Facilities Management Division (2 units)
+        $unitMaintenanceId = DB::table('units')->insertGetId([
+            'division_id'      => $divFacilitiesId,
+            'unit_name'        => 'Maintenance Unit',
+            'unit_acronym'     => 'MU',
+            'unit_description' => 'Handles repairs, upkeep, and preventive maintenance.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitAssetId = DB::table('units')->insertGetId([
+            'division_id'      => $divFacilitiesId,
+            'unit_name'        => 'Asset and Inventory Unit',
+            'unit_acronym'     => 'AIU',
+            'unit_description' => 'Manages fixed assets, supplies, and inventory records.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        // Customer Support Division (2 units)
+        $unitHelpdeskId = DB::table('units')->insertGetId([
+            'division_id'      => $divCustomerId,
+            'unit_name'        => 'Helpdesk Unit',
+            'unit_acronym'     => 'HDU',
+            'unit_description' => 'Handles tickets, inquiries, and first-level support.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitFeedbackId = DB::table('units')->insertGetId([
+            'division_id'      => $divCustomerId,
+            'unit_name'        => 'Feedback and Resolution Unit',
+            'unit_acronym'     => 'FRU',
+            'unit_description' => 'Manages feedback processing, escalation, and resolution.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        // Dept #3 units (NEW) — each division 2–3 units
+        // Policy and Standards Division (3 units)
+        $unitPolicyDevId = DB::table('units')->insertGetId([
+            'division_id'      => $divPolicyId,
+            'unit_name'        => 'Policy Development Unit',
+            'unit_acronym'     => 'PDU',
+            'unit_description' => 'Drafts policies, circulars, and internal guidelines.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitComplianceAuditId = DB::table('units')->insertGetId([
+            'division_id'      => $divPolicyId,
+            'unit_name'        => 'Compliance and Audit Unit',
+            'unit_acronym'     => 'CAU',
+            'unit_description' => 'Performs compliance checks and internal audits.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitStandardsId = DB::table('units')->insertGetId([
+            'division_id'      => $divPolicyId,
+            'unit_name'        => 'Standards and Documentation Unit',
+            'unit_acronym'     => 'SDU3',
+            'unit_description' => 'Maintains standards library, templates, and documentation.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        // Public Affairs Division (2 units)
+        $unitCommsId = DB::table('units')->insertGetId([
+            'division_id'      => $divPublicAffairsId,
+            'unit_name'        => 'Communications Unit',
+            'unit_acronym'     => 'CU',
+            'unit_description' => 'Handles announcements, press releases, and internal comms.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $unitStakeholderId = DB::table('units')->insertGetId([
+            'division_id'      => $divPublicAffairsId,
+            'unit_name'        => 'Stakeholder Relations Unit',
+            'unit_acronym'     => 'SRU',
+            'unit_description' => 'Manages external coordination and stakeholder engagement.',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
         // ── 5. Positions ───────────────────────────────────────────
         $positions = [
             // HR
@@ -201,8 +387,8 @@ class DatabaseSeeder extends Seeder
             // Admin
             ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitRecordsId,    'name' => 'Records Officer',         'sg_idx' => 2],  // SG10
             ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitRecordsId,    'name' => 'Administrative Aide',     'sg_idx' => 0],  // SG7
-            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId,'name' => 'Procurement Officer',     'sg_idx' => 5],  // SG13
-            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId,'name' => 'Procurement Specialist',  'sg_idx' => 3],  // SG11
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId, 'name' => 'Procurement Officer',     'sg_idx' => 5],  // SG13
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId, 'name' => 'Procurement Specialist',  'sg_idx' => 3],  // SG11
             ['dept' => $deptId, 'div' => $divAdminId, 'unit' => null,              'name' => 'Admin Division Chief',    'sg_idx' => 9],  // SG18
             // Legal
             ['dept' => $deptId, 'div' => $divLegalId, 'unit' => $unitLegalId,      'name' => 'Legal Officer',           'sg_idx' => 7],  // SG15
@@ -243,54 +429,181 @@ class DatabaseSeeder extends Seeder
 
         // ── 7. Reference data pools ────────────────────────────────
         $firstNamesMale = [
-            'Ramon','Carlo','Jose','Miguel','Eduardo','Roberto','Fernando','Antonio',
-            'Ricardo','Emmanuel','Rodrigo','Alfredo','Bernard','Leonardo','Danilo',
-            'Renato','Armando','Cesar','Victor','Nelson','Bryan','Kevin','Mark',
-            'Christian','Ronald','Joel','Jerome','Patrick','Dennis','Alvin',
+            'Ramon',
+            'Carlo',
+            'Jose',
+            'Miguel',
+            'Eduardo',
+            'Roberto',
+            'Fernando',
+            'Antonio',
+            'Ricardo',
+            'Emmanuel',
+            'Rodrigo',
+            'Alfredo',
+            'Bernard',
+            'Leonardo',
+            'Danilo',
+            'Renato',
+            'Armando',
+            'Cesar',
+            'Victor',
+            'Nelson',
+            'Bryan',
+            'Kevin',
+            'Mark',
+            'Christian',
+            'Ronald',
+            'Joel',
+            'Jerome',
+            'Patrick',
+            'Dennis',
+            'Alvin',
         ];
         $firstNamesFemale = [
-            'Maria','Ana','Joanna','Rosa','Maricel','Lourdes','Teresita','Corazon',
-            'Josephine','Erlinda','Gina','Rowena','Charissa','Kristine','Patricia',
-            'Melissa','Diana','Catherine','Angela','Sheila','Vanessa','Aileen',
-            'Mylene','Cheryl','Fe','Elvira','Nora','Cynthia','Susan','Marites',
+            'Maria',
+            'Ana',
+            'Joanna',
+            'Rosa',
+            'Maricel',
+            'Lourdes',
+            'Teresita',
+            'Corazon',
+            'Josephine',
+            'Erlinda',
+            'Gina',
+            'Rowena',
+            'Charissa',
+            'Kristine',
+            'Patricia',
+            'Melissa',
+            'Diana',
+            'Catherine',
+            'Angela',
+            'Sheila',
+            'Vanessa',
+            'Aileen',
+            'Mylene',
+            'Cheryl',
+            'Fe',
+            'Elvira',
+            'Nora',
+            'Cynthia',
+            'Susan',
+            'Marites',
         ];
         $lastNames = [
-            'Santos','Dela Cruz','Reyes','Mendoza','Garcia','Torres','Villanueva',
-            'Bautista','Ramos','Aquino','Fernandez','Flores','Lopez','Diaz','Castro',
-            'Aguilar','Tolentino','Espinosa','Navarro','Palma','Morales','Velasco',
-            'Ibanez','Ocampo','Macapagal','Pangilinan','Mercado','Bonifacio','Luna',
-            'Mabini','Rizal','Bonifacio','Pascual','Lucero','Salazar','Macaraeg',
+            'Santos',
+            'Dela Cruz',
+            'Reyes',
+            'Mendoza',
+            'Garcia',
+            'Torres',
+            'Villanueva',
+            'Bautista',
+            'Ramos',
+            'Aquino',
+            'Fernandez',
+            'Flores',
+            'Lopez',
+            'Diaz',
+            'Castro',
+            'Aguilar',
+            'Tolentino',
+            'Espinosa',
+            'Navarro',
+            'Palma',
+            'Morales',
+            'Velasco',
+            'Ibanez',
+            'Ocampo',
+            'Macapagal',
+            'Pangilinan',
+            'Mercado',
+            'Bonifacio',
+            'Luna',
+            'Mabini',
+            'Rizal',
+            'Bonifacio',
+            'Pascual',
+            'Lucero',
+            'Salazar',
+            'Macaraeg',
         ];
         $middleNames = [
-            'Cruz','Gomez','Lim','Tan','Ong','Aquino','Rivera','Pascual','Jimenez',
-            'Reyes','Santos','Bautista','Garcia','Torres','Ramos','Fernandez','Flores',
-            'Soriano','Valdez','Manalo','Bartolome','Castillo','Guevara','Zabala',
+            'Cruz',
+            'Gomez',
+            'Lim',
+            'Tan',
+            'Ong',
+            'Aquino',
+            'Rivera',
+            'Pascual',
+            'Jimenez',
+            'Reyes',
+            'Santos',
+            'Bautista',
+            'Garcia',
+            'Torres',
+            'Ramos',
+            'Fernandez',
+            'Flores',
+            'Soriano',
+            'Valdez',
+            'Manalo',
+            'Bartolome',
+            'Castillo',
+            'Guevara',
+            'Zabala',
         ];
         $cities = [
-            'Quezon City','Manila','Pasig City','Taguig City','Mandaluyong City',
-            'Marikina City','Pasay City','Makati City','Paranaque City','Caloocan City',
-            'Valenzuela City','Malabon City','Las Pinas City','Muntinlupa City','Pateros',
+            'Quezon City',
+            'Manila',
+            'Pasig City',
+            'Taguig City',
+            'Mandaluyong City',
+            'Marikina City',
+            'Pasay City',
+            'Makati City',
+            'Paranaque City',
+            'Caloocan City',
+            'Valenzuela City',
+            'Malabon City',
+            'Las Pinas City',
+            'Muntinlupa City',
+            'Pateros',
         ];
         $streets = [
-            'Rizal Street','Mabini Avenue','Luna Street','Bonifacio Boulevard',
-            'Aguinaldo Street','Quezon Avenue','Commonwealth Avenue','España Boulevard',
-            'Taft Avenue','EDSA','Ortigas Avenue','Shaw Boulevard','Aurora Boulevard',
-            'C-5 Road','Marcos Highway',
+            'Rizal Street',
+            'Mabini Avenue',
+            'Luna Street',
+            'Bonifacio Boulevard',
+            'Aguinaldo Street',
+            'Quezon Avenue',
+            'Commonwealth Avenue',
+            'España Boulevard',
+            'Taft Avenue',
+            'EDSA',
+            'Ortigas Avenue',
+            'Shaw Boulevard',
+            'Aurora Boulevard',
+            'C-5 Road',
+            'Marcos Highway',
         ];
-        $zipCodes = ['1100','1200','1300','1400','1500','1550','1600','1634','1700','1800'];
+        $zipCodes = ['1100', '1200', '1300', '1400', '1500', '1550', '1600', '1634', '1700', '1800'];
         $schools = [
-            ['school' => 'University of the Philippines Diliman',   'address' => 'Diliman, Quezon City'],
-            ['school' => 'De La Salle University',                  'address' => 'Taft Avenue, Manila'],
-            ['school' => 'Ateneo de Manila University',             'address' => 'Loyola Heights, Quezon City'],
-            ['school' => 'University of Santo Tomas',               'address' => 'España Blvd., Sampaloc, Manila'],
-            ['school' => 'Mapúa University',                        'address' => 'Muralla Street, Intramuros, Manila'],
-            ['school' => 'Far Eastern University',                  'address' => 'Nicanor Reyes Street, Manila'],
-            ['school' => 'San Beda University',                     'address' => 'Mendiola Street, Manila'],
-            ['school' => 'Polytechnic University of the Philippines','address' => 'Anonas Street, Santa Mesa, Manila'],
-            ['school' => 'Pamantasan ng Lungsod ng Maynila',        'address' => 'Intramuros, Manila'],
-            ['school' => 'Philippine Normal University',            'address' => 'Taft Avenue, Manila'],
-            ['school' => 'Technological Institute of the Philippines','address' => 'Cubao, Quezon City'],
-            ['school' => 'National University Philippines',         'address' => 'M.V. Delos Santos Street, Manila'],
+            ['school' => 'University of the Philippines Diliman',     'address' => 'Diliman, Quezon City'],
+            ['school' => 'De La Salle University',                    'address' => 'Taft Avenue, Manila'],
+            ['school' => 'Ateneo de Manila University',               'address' => 'Loyola Heights, Quezon City'],
+            ['school' => 'University of Santo Tomas',                 'address' => 'España Blvd., Sampaloc, Manila'],
+            ['school' => 'Mapúa University',                          'address' => 'Muralla Street, Intramuros, Manila'],
+            ['school' => 'Far Eastern University',                    'address' => 'Nicanor Reyes Street, Manila'],
+            ['school' => 'San Beda University',                       'address' => 'Mendiola Street, Manila'],
+            ['school' => 'Polytechnic University of the Philippines', 'address' => 'Anonas Street, Santa Mesa, Manila'],
+            ['school' => 'Pamantasan ng Lungsod ng Maynila',          'address' => 'Intramuros, Manila'],
+            ['school' => 'Philippine Normal University',              'address' => 'Taft Avenue, Manila'],
+            ['school' => 'Technological Institute of the Philippines', 'address' => 'Cubao, Quezon City'],
+            ['school' => 'National University Philippines',           'address' => 'M.V. Delos Santos Street, Manila'],
         ];
         $degrees = [
             'Bachelor of Science in Computer Science',
@@ -318,21 +631,21 @@ class DatabaseSeeder extends Seeder
             'Civil Service Eligibility for Teachers',
         ];
         $govtSeminars = [
-            ['name' => 'Strategic Planning Workshop',                    'venue' => 'PICC, Pasay City'],
-            ['name' => 'Labor Law and Employee Relations Seminar',       'venue' => 'Makati City Hall'],
-            ['name' => 'Cybersecurity Awareness Training',               'venue' => 'Online (Zoom)'],
-            ['name' => 'Laravel Advanced Workshop',                      'venue' => 'BGC Tech Hub, Taguig'],
-            ['name' => 'Leadership and Management',                      'venue' => 'Manila Hotel'],
-            ['name' => 'Digital Transformation for Government',          'venue' => 'Sofitel Philippine Plaza, Pasay'],
-            ['name' => 'Public Financial Management Seminar',            'venue' => 'COA Headquarters, Quezon City'],
-            ['name' => 'Records and Documents Management',               'venue' => 'NEDA Pasig'],
-            ['name' => 'Project Management Essentials',                  'venue' => 'Online (MS Teams)'],
-            ['name' => 'Anti-Corruption and Ethics in Public Service',   'venue' => 'CSC Regional Office, Manila'],
-            ['name' => 'Gender and Development Awareness Program',       'venue' => 'DSWD Office, Diliman'],
-            ['name' => 'Procurement Law and GPPB Guidelines',            'venue' => 'GPPB-TSO, Pasig City'],
-            ['name' => 'Network Security Fundamentals',                  'venue' => 'Online (MS Teams)'],
-            ['name' => 'Executive Leadership Program',                   'venue' => 'Asian Institute of Management, Makati'],
-            ['name' => 'Budget and Financial Reporting',                 'venue' => 'DBM Conference Hall, Manila'],
+            ['name' => 'Strategic Planning Workshop',                  'venue' => 'PICC, Pasay City'],
+            ['name' => 'Labor Law and Employee Relations Seminar',     'venue' => 'Makati City Hall'],
+            ['name' => 'Cybersecurity Awareness Training',             'venue' => 'Online (Zoom)'],
+            ['name' => 'Laravel Advanced Workshop',                    'venue' => 'BGC Tech Hub, Taguig'],
+            ['name' => 'Leadership and Management',                    'venue' => 'Manila Hotel'],
+            ['name' => 'Digital Transformation for Government',        'venue' => 'Sofitel Philippine Plaza, Pasay'],
+            ['name' => 'Public Financial Management Seminar',          'venue' => 'COA Headquarters, Quezon City'],
+            ['name' => 'Records and Documents Management',             'venue' => 'NEDA Pasig'],
+            ['name' => 'Project Management Essentials',                'venue' => 'Online (MS Teams)'],
+            ['name' => 'Anti-Corruption and Ethics in Public Service', 'venue' => 'CSC Regional Office, Manila'],
+            ['name' => 'Gender and Development Awareness Program',     'venue' => 'DSWD Office, Diliman'],
+            ['name' => 'Procurement Law and GPPB Guidelines',          'venue' => 'GPPB-TSO, Pasig City'],
+            ['name' => 'Network Security Fundamentals',                'venue' => 'Online (MS Teams)'],
+            ['name' => 'Executive Leadership Program',                 'venue' => 'Asian Institute of Management, Makati'],
+            ['name' => 'Budget and Financial Reporting',               'venue' => 'DBM Conference Hall, Manila'],
         ];
         $allowanceTypes = [
             ['allowance_name' => 'Transportation Allowance', 'allowance_amount' => 2000.00],
@@ -346,10 +659,18 @@ class DatabaseSeeder extends Seeder
         $employmentClassifications = ['Regular', 'Regular', 'Regular', 'Job Order', 'Casual'];
         $civStatuses = ['single', 'married', 'married', 'married', 'single', 'widowed'];
         $placesBirth = [
-            'Manila, Philippines', 'Cebu City, Philippines', 'Davao City, Philippines',
-            'Quezon City, Philippines', 'Iloilo City, Philippines', 'Cagayan de Oro, Philippines',
-            'Zamboanga City, Philippines', 'Bacolod City, Philippines', 'General Santos City, Philippines',
-            'Baguio City, Philippines', 'Tacloban City, Philippines', 'Butuan City, Philippines',
+            'Manila, Philippines',
+            'Cebu City, Philippines',
+            'Davao City, Philippines',
+            'Quezon City, Philippines',
+            'Iloilo City, Philippines',
+            'Cagayan de Oro, Philippines',
+            'Zamboanga City, Philippines',
+            'Bacolod City, Philippines',
+            'General Santos City, Philippines',
+            'Baguio City, Philippines',
+            'Tacloban City, Philippines',
+            'Butuan City, Philippines',
         ];
         $leaveTypes = ['Vacation Leave', 'Sick Leave'];
 
@@ -400,9 +721,9 @@ class DatabaseSeeder extends Seeder
 
             $workEmail = strtolower(
                 preg_replace('/[^a-z0-9]/', '', $firstName) . '.' .
-                preg_replace('/[^a-z0-9]/', '', $lastName) .
-                ($i > 0 ? $i : '') .
-                '@obx.gov.ph'
+                    preg_replace('/[^a-z0-9]/', '', $lastName) .
+                    ($i > 0 ? $i : '') .
+                    '@obx.gov.ph'
             );
 
             // Basic info
@@ -434,8 +755,8 @@ class DatabaseSeeder extends Seeder
                 'work_schedule_start'       => '08:00:00',
                 'work_schedule_end'         => '17:00:00',
                 'status'                    => $status,
-                'created_at'               => now(),
-                'updated_at'               => now(),
+                'created_at'                => now(),
+                'updated_at'                => now(),
             ]);
 
             $createdEmployeeIds[] = $employeeId;
@@ -513,7 +834,7 @@ class DatabaseSeeder extends Seeder
 
             // Service records (at least 1, sometimes 2)
             $positionName = $positions[$posIdx]['name'];
-            $divName = match($positions[$posIdx]['div']) {
+            $divName = match ($positions[$posIdx]['div']) {
                 $divHrId    => 'Human Resources Division',
                 $divItId    => 'Information Technology Division',
                 $divFinId   => 'Finance and Budget Division',
@@ -548,22 +869,22 @@ class DatabaseSeeder extends Seeder
             $seminar1 = $govtSeminars[$i % count($govtSeminars)];
             $semYear  = min(2024, $hireYear + 2);
             DB::table('employee_seminars_and_trainings')->insert([
-                'employee_id'          => $employeeId,
-                'seminar_training_name'=> $seminar1['name'],
-                'date_attended'        => "{$semYear}-06-15",
-                'venue'                => $seminar1['venue'],
-                'created_at'           => now(),
-                'updated_at'           => now(),
+                'employee_id'            => $employeeId,
+                'seminar_training_name'  => $seminar1['name'],
+                'date_attended'          => "{$semYear}-06-15",
+                'venue'                  => $seminar1['venue'],
+                'created_at'             => now(),
+                'updated_at'             => now(),
             ]);
             if ($i % 3 === 0) {
                 $seminar2 = $govtSeminars[($i + 5) % count($govtSeminars)];
                 DB::table('employee_seminars_and_trainings')->insert([
-                    'employee_id'          => $employeeId,
-                    'seminar_training_name'=> $seminar2['name'],
-                    'date_attended'        => min(2024, $semYear + 1) . '-11-20',
-                    'venue'                => $seminar2['venue'],
-                    'created_at'           => now(),
-                    'updated_at'           => now(),
+                    'employee_id'            => $employeeId,
+                    'seminar_training_name'  => $seminar2['name'],
+                    'date_attended'          => min(2024, $semYear + 1) . '-11-20',
+                    'venue'                  => $seminar2['venue'],
+                    'created_at'             => now(),
+                    'updated_at'             => now(),
                 ]);
             }
 
@@ -581,12 +902,12 @@ class DatabaseSeeder extends Seeder
             // Leave information
             foreach ($leaveTypes as $lt) {
                 DB::table('leave_information')->insert([
-                    'employee_id'  => $employeeId,
-                    'leave_type'   => $lt,
-                    'leave_days'   => '2024-01-01',
-                    'leave_balance'=> '2024-12-31',
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
+                    'employee_id'    => $employeeId,
+                    'leave_type'     => $lt,
+                    'leave_days'     => '2024-01-01',
+                    'leave_balance'  => '2024-12-31',
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
                 ]);
             }
 
@@ -611,14 +932,14 @@ class DatabaseSeeder extends Seeder
             $deduction    = round($baseSalary * 0.12, 2);
             $finalAmount  = round($baseSalary - $deduction, 2);
             DB::table('employee_payroll_data')->insert([
-                'employee_id'    => $employeeId,
-                'initial_amount' => $baseSalary,
-                'deduction_amount'=> $deduction,
-                'final_amount'   => $finalAmount,
-                'date_processed' => '2025-01-31',
-                'payroll_status' => 'Released',
-                'created_at'     => now(),
-                'updated_at'     => now(),
+                'employee_id'        => $employeeId,
+                'initial_amount'     => $baseSalary,
+                'deduction_amount'   => $deduction,
+                'final_amount'       => $finalAmount,
+                'date_processed'     => '2025-01-31',
+                'payroll_status'     => 'Released',
+                'created_at'         => now(),
+                'updated_at'         => now(),
             ]);
 
             // Water bill
@@ -633,94 +954,23 @@ class DatabaseSeeder extends Seeder
 
             // Uploaded files
             DB::table('employee_uploaded_files')->insert([
-                'employee_id'             => $employeeId,
-                'file_name'               => 'pds_form.pdf',
-                'file_size'               => '450KB',
-                'file_database_location'  => "employees/{$employeeId}/pds_form.pdf",
-                'created_at'              => now(),
-                'updated_at'              => now(),
+                'employee_id'            => $employeeId,
+                'file_name'              => 'pds_form.pdf',
+                'file_size'              => '450KB',
+                'file_database_location' => "employees/{$employeeId}/pds_form.pdf",
+                'created_at'             => now(),
+                'updated_at'             => now(),
             ]);
             if ($i % 3 === 0) {
                 DB::table('employee_uploaded_files')->insert([
-                    'employee_id'             => $employeeId,
-                    'file_name'               => 'diploma.pdf',
-                    'file_size'               => '1.1MB',
-                    'file_database_location'  => "employees/{$employeeId}/diploma.pdf",
-                    'created_at'              => now(),
-                    'updated_at'              => now(),
+                    'employee_id'            => $employeeId,
+                    'file_name'              => 'diploma.pdf',
+                    'file_size'              => '1.1MB',
+                    'file_database_location' => "employees/{$employeeId}/diploma.pdf",
+                    'created_at'             => now(),
+                    'updated_at'             => now(),
                 ]);
             }
         }
-
-        // ── 9. Whereabout slips ────────────────────────────────────
-        // Use first 5 created employees as reviewer/approver references
-        // $whereaboutSamples = [
-        //     [
-        //         'purpose_type'        => 1,
-        //         'purpose_description' => 'Attend external HR seminar at Makati.',
-        //         'time_out'            => '09:00:00',
-        //         'time_noted'          => '09:05:00',
-        //         'time_returned'       => '17:30:00',
-        //         'status'              => 'approved',
-        //         'return_status'       => 'returned',
-        //     ],
-        //     [
-        //         'purpose_type'        => 0,
-        //         'purpose_description' => 'Client site visit for system deployment in BGC.',
-        //         'time_out'            => '10:00:00',
-        //         'time_noted'          => '10:02:00',
-        //         'time_returned'       => '16:00:00',
-        //         'status'              => 'approved',
-        //         'return_status'       => 'returned',
-        //     ],
-        //     [
-        //         'purpose_type'        => 1,
-        //         'purpose_description' => 'Attend network infrastructure planning meeting.',
-        //         'time_out'            => '13:00:00',
-        //         'time_noted'          => '13:03:00',
-        //         'time_returned'       => '18:00:00',
-        //         'status'              => 'pending',
-        //         'return_status'       => 'still_here',
-        //     ],
-        //     [
-        //         'purpose_type'        => 0,
-        //         'purpose_description' => 'Budget reconciliation meeting at DBM.',
-        //         'time_out'            => '08:30:00',
-        //         'time_noted'          => '08:35:00',
-        //         'time_returned'       => '15:00:00',
-        //         'status'              => 'approved',
-        //         'return_status'       => 'returned',
-        //     ],
-        //     [
-        //         'purpose_type'        => 1,
-        //         'purpose_description' => 'Procurement inspection at supplier warehouse.',
-        //         'time_out'            => '07:00:00',
-        //         'time_noted'          => '07:05:00',
-        //         'time_returned'       => '12:00:00',
-        //         'status'              => 'approved',
-        //         'return_status'       => 'returned',
-        //     ],
-        // ];
-
-        // $reviewerId  = $createdEmployeeIds[1];  // 2nd employee as reviewer
-        // $approverId  = $createdEmployeeIds[4];  // 5th employee as approver
-        // $attesterIde = $createdEmployeeIds[1];
-
-        // // Create whereabouts for first 20 employees
-        // for ($i = 0; $i < 20; $i++) {
-        //     $sample = $whereaboutSamples[$i % count($whereaboutSamples)];
-        //     $month  = str_pad(($i % 11) + 1, 2, '0', STR_PAD_LEFT);
-        //     $day    = str_pad(($i % 27) + 1, 2, '0', STR_PAD_LEFT);
-
-        //     DB::table('whereabout_slips')->insert(array_merge($sample, [
-        //         'employee_id'              => $createdEmployeeIds[$i],
-        //         'reviewed_and_noted_by_id' => $reviewerId,
-        //         'approved_by_id'           => $approverId,
-        //         'attested_by_id'           => $attesterIde,
-        //         'date_filed'               => "2024-{$month}-{$day}",
-        //         'created_at'               => now(),
-        //         'updated_at'               => now(),
-        //     ]));
-        // }
     }
 }
