@@ -1,10 +1,12 @@
 import { Head, useForm, usePage } from "@inertiajs/react"
-import { Building2, Puzzle } from "lucide-react"
+import { Building2, Puzzle, LayoutGrid } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { DataTable } from "@/components/shared/data-table/data-table"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle, CardAction, CardContent, CardDescription } from "@/components/ui/card"
 import {
     Dialog,
     DialogContent,
@@ -35,12 +37,43 @@ import type { BreadcrumbItem } from "@/types"
 interface Props {
     units: Unit[]
     divisions: Division[]
+    totalUnits: number
+    totalDivisions: number
+    totalPositions: number
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: "Organization", href: "#" },
     { title: "Units", href: "/organization/units" },
 ]
+
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+
+interface StatCardProps {
+    title: string
+    value: number
+    description?: string
+    icon: React.ReactNode
+}
+
+function StatCard({ title, value, description, icon }: StatCardProps) {
+    return (
+        <Card className="flex flex-col gap-2">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                <div className="bg-muted text-muted-foreground rounded-lg">
+                    {icon}
+                </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-1">
+                <p className="text-2xl sm:text-3xl font-bold">{value}</p>
+                {description && (
+                    <CardDescription className="text-xs sm:text-sm">{description}</CardDescription>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -113,10 +146,10 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
     const isEdit = editingUnit !== null
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        unit_name:        editingUnit?.unit_name        ?? "",
-        unit_acronym:     editingUnit?.unit_acronym     ?? "",
+        unit_name: editingUnit?.unit_name ?? "",
+        unit_acronym: editingUnit?.unit_acronym ?? "",
         unit_description: editingUnit?.unit_description ?? "",
-        division_id:      editingUnit?.division_id ? String(editingUnit.division_id) : "",
+        division_id: editingUnit?.division_id ? String(editingUnit.division_id) : "",
     })
 
     function handleClose() {
@@ -232,7 +265,7 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function UnitIndex({ units, divisions }: Props) {
+export default function UnitIndex({ units, divisions, totalUnits, totalDivisions, totalPositions }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
     // ── Unit modal state ──
@@ -273,15 +306,12 @@ export default function UnitIndex({ units, divisions }: Props) {
             <Head title="Units" />
 
             <div className="flex h-full flex-1 flex-col gap-6 py-4 px-6">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                            <Building2 className="w-5 h-5 text-primary" />
-                            Units
-                        </h1>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {units.length} unit{units.length !== 1 ? "s" : ""} across {divisions.length} division{divisions.length !== 1 ? "s" : ""}
-                        </p>
+                <div className="w-full max-w-300 h-fit">
+                    {/* ── Stat Cards ── */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <StatCard title="Total Units" value={totalUnits} description="All registered units" icon={<Building2 className="size-4" />} />
+                        <StatCard title="Total Divisions" value={totalDivisions} description="Divisions with units" icon={<LayoutGrid className="size-4" />} />
+                        <StatCard title="Total Positions" value={totalPositions} description="Positions across all units" icon={<Puzzle className="size-4" />} />
                     </div>
                 </div>
 

@@ -1,9 +1,12 @@
 import { Head, router, useForm } from "@inertiajs/react"
+import { Building2, CheckCircle2, XCircle } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { route } from "ziggy-js"
 
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle, CardAction, CardContent, CardDescription } from "@/components/ui/card"
+
 import {
   Dialog,
   DialogContent,
@@ -43,6 +46,32 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface AddOrganizationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+interface StatCardProps {
+  title: string
+  value: number
+  description?: string
+  icon: React.ReactNode
+}
+
+function StatCard({ title, value, description, icon }: StatCardProps) {
+  return (
+    <Card className="flex flex-col gap-2">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <div className="bg-muted text-muted-foreground rounded-lg">
+          {icon}
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-1">
+        <p className="text-2xl sm:text-3xl font-bold">{value}</p>
+        {description && (
+          <CardDescription className="text-xs sm:text-sm">{description}</CardDescription>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 function AddOrganizationDialog({ open, onOpenChange }: AddOrganizationDialogProps) {
@@ -401,6 +430,27 @@ export default function Index({
       <Head title="Internal Organizations" />
 
       <div className="flex h-full flex-1 flex-col gap-8 p-8">
+
+        <div className="max-w-300 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard
+            title="Total Organizations"
+            value={totalOrganizations}
+            description="All registered organizations"
+            icon={<Building2 className="size-4 text-destructive" />}
+          />
+          <StatCard
+            title="Active"
+            value={activeOrganizations}
+            description="Currently active organizations"
+            icon={<CheckCircle2 className="size-4 text-green-500" />}
+          />
+          <StatCard
+            title="Inactive"
+            value={inactiveOrganizations}
+            description="Currently inactive organizations"
+            icon={<XCircle className="size-4 text-destructive" />}
+          />
+        </div>
         {/* ── Table ────────────────────────────────────────────────────────── */}
         <DataTable
           data={organizations}
