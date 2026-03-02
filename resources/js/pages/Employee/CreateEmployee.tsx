@@ -29,6 +29,10 @@ import type { BreadcrumbItem } from "@/types"
 
 export interface Position {
     position_name: string
+    position_type: "Regular" | "Casual" | "Job Order"
+    department_id?: number | null
+    division_id?: number | null
+    unit_id?: number | null
     department?: { department_name: string }
     division?: { division_name: string }
     unit?: { unit_name: string }
@@ -70,7 +74,9 @@ interface EligibilityRow{ [key: string]: string; eligibility_name: string; year_
 // ─── Position group ───────────────────────────────────────────────────────────
 
 interface PositionGroup {
+    groupKey: string          // composite key: name::deptId::divId::unitId
     positionName: string
+    displayLabel: string      // e.g. "Job Order — Dept A / Div B"
     position: Position | undefined
     items: Item[]
     totalSlots: number
@@ -81,11 +87,28 @@ interface PositionGroup {
 function buildPositionGroups(items: Item[]): PositionGroup[] {
     const map = new Map<string, PositionGroup>()
     for (const item of items) {
-        const key = item.position?.position_name ?? `__item_${item.item_id}`
+        const pos = item.position
+        // Composite key — same position name in different org levels = different group
+        const key = pos
+            ? [pos.position_name, pos.department_id ?? "null", pos.division_id ?? "null", pos.unit_id ?? "null"].join("::")
+            : `__item_${item.item_id}`
+
         if (!map.has(key)) {
+            // Build a human-readable label showing org context
+            const parts: string[] = []
+            if (pos?.department?.department_name) parts.push(pos.department.department_name)
+            if (pos?.division?.division_name)     parts.push(pos.division.division_name)
+            if (pos?.unit?.unit_name)             parts.push(pos.unit.unit_name)
+            const orgLabel  = parts.join(" / ")
+            const displayLabel = orgLabel
+                ? `${pos?.position_name ?? `Item #${item.item_id}`} — ${orgLabel}`
+                : (pos?.position_name ?? `Item #${item.item_id}`)
+
             map.set(key, {
-                positionName: item.position?.position_name ?? `Item #${item.item_id}`,
-                position: item.position,
+                groupKey: key,
+                positionName: pos?.position_name ?? `Item #${item.item_id}`,
+                displayLabel,
+                position: pos,
                 items: [],
                 totalSlots: 0,
                 availableSlots: 0,
@@ -98,15 +121,16 @@ function buildPositionGroups(items: Item[]): PositionGroup[] {
         if (!item.is_occupied) grp.availableSlots++
     }
     for (const grp of map.values()) grp.isFull = grp.availableSlots === 0
-    return Array.from(map.values()).sort((a, b) => a.positionName.localeCompare(b.positionName))
+    return Array.from(map.values()).sort((a, b) => a.displayLabel.localeCompare(b.displayLabel))
 }
 
-// ─── Job Order helpers ────────────────────────────────────────────────────────
+// ─── Position type helpers ────────────────────────────────────────────────────
 
-const JOB_ORDER_LABEL = "Job Order"
+// Uses position_type from DB — clean, no name-based detection
+const JOB_ORDER_CLASSIFICATION = "Job Order"
 
 function isJobOrderPosition(grp: PositionGroup): boolean {
-    return grp.positionName.toLowerCase().includes("job order")
+    return grp.position?.position_type === "Job Order"
 }
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
@@ -512,41 +536,66 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
         setManageOpen(false)
     }
 
+    // ── Build all position groups once ────────────────────────────────────────
     const allPositionGroups = useMemo(() => buildPositionGroups(items), [items])
 
+    // ── Filter by position_type based on selected classification ──────────────
+    // 'Job Order' classification → show only position_type = 'Job Order'
+    // Any other classification  → show only position_type = 'Regular' or 'Casual'
     const positionGroups = useMemo(() => {
         if (!data.employment_classification) return []
-        const isJO = data.employment_classification === JOB_ORDER_LABEL
+
+        const isJOClassification = data.employment_classification === JOB_ORDER_CLASSIFICATION
+
         return allPositionGroups.filter(grp =>
-            isJO ? isJobOrderPosition(grp) : !isJobOrderPosition(grp)
+            isJOClassification
+                ? isJobOrderPosition(grp)           // Job Order classification → JO positions only
+                : !isJobOrderPosition(grp)           // All others → Regular/Casual positions only
         )
     }, [allPositionGroups, data.employment_classification])
 
     const selectedGroup = useMemo(
-        () => positionGroups.find(g => g.positionName === data.selected_position_name),
+        () => positionGroups.find(g => g.groupKey === data.selected_position_name),
         [positionGroups, data.selected_position_name]
     )
 
     const handleClassificationSelect = (value: string) => {
         setData("employment_classification", value)
+        // Clear position selection when classification changes
+        // since the available positions list will change completely
         setData("selected_position_name", "")
         setData("item_id", "")
     }
 
-    const handlePositionSelect = (positionName: string) => {
-        const grp = positionGroups.find(g => g.positionName === positionName)
+    const handlePositionSelect = (groupKey: string) => {
+        const grp = positionGroups.find(g => g.groupKey === groupKey)
         if (!grp) return
         const firstAvailable = grp.items.find(i => !i.is_occupied)
-        setData("selected_position_name", positionName)
+        setData("selected_position_name", groupKey)
         setData("item_id", firstAvailable ? firstAvailable.item_id.toString() : "")
     }
 
     const positionDisabled = !data.employment_classification
 
+    // ── Hint text shown below the position dropdown ────────────────────────────
+    const positionHint = useMemo(() => {
+        if (!data.employment_classification) return null
+        const isJO = data.employment_classification === JOB_ORDER_CLASSIFICATION
+        if (positionGroups.length === 0) {
+            return isJO
+                ? "No Job Order positions available. Create one under Organization → Job Order Positions."
+                : "No Regular/Casual positions available."
+        }
+        return isJO
+            ? "Showing Job Order positions only."
+            : "Showing Regular and Casual positions only."
+    }, [data.employment_classification, positionGroups])
+
     return (
         <>
             <div className="grid grid-cols-3 gap-5">
 
+                {/* Employment Classification */}
                 <div className="space-y-2">
                     <FieldLabel htmlFor="employment_classification">Employment Classification <Req /></FieldLabel>
                     <div className="flex gap-2">
@@ -574,6 +623,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     <FieldError message={err("employment_classification")} />
                 </div>
 
+                {/* Position — filtered by classification */}
                 <div className="space-y-2 col-span-2">
                     <FieldLabel htmlFor="position">Position <Req /></FieldLabel>
                     <Select
@@ -582,18 +632,26 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                         disabled={positionDisabled}
                     >
                         <SelectTrigger id="position">
-                            <SelectValue placeholder={positionDisabled ? "Select a classification first…" : "Select a position…"} />
+                            <SelectValue placeholder={
+                                positionDisabled
+                                    ? "Select a classification first…"
+                                    : positionGroups.length === 0
+                                        ? "No positions available for this classification"
+                                        : "Select a position…"
+                            } />
                         </SelectTrigger>
                         <SelectContent className="max-h-72">
                             {!positionDisabled && positionGroups.length === 0 && (
-                                <SelectItem value="_none" disabled>No positions available for this classification</SelectItem>
+                                <SelectItem value="_none" disabled>
+                                    No positions available for this classification
+                                </SelectItem>
                             )}
                             {positionGroups.map(grp => {
                                 const isDisabled = grp.isFull
                                 return (
-                                    <SelectItem key={grp.positionName} value={grp.positionName} disabled={isDisabled} className="py-2.5">
+                                    <SelectItem key={grp.groupKey} value={grp.groupKey} disabled={isDisabled} className="py-2.5">
                                         <div className="flex items-center justify-between gap-3 w-full">
-                                            <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.positionName}</span>
+                                            <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.displayLabel}</span>
                                             {grp.totalSlots > 1 && (
                                                 isDisabled
                                                     ? <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">Full</Badge>
@@ -608,6 +666,12 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                             })}
                         </SelectContent>
                     </Select>
+
+                    {/* Hint text — tells user which type of positions are shown */}
+                    {positionHint && (
+                        <p className="text-xs text-muted-foreground">{positionHint}</p>
+                    )}
+
                     {selectedGroup && selectedGroup.totalSlots > 1 && (
                         <p className="text-xs text-muted-foreground">
                             {selectedGroup.availableSlots === 0
@@ -616,6 +680,8 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                         </p>
                     )}
                     <FieldError message={err("item_id")} />
+
+                    {/* Org context card */}
                     {selectedGroup?.position && (
                         <div className="rounded-lg border border-border divide-y divide-border bg-muted/20 mt-1">
                             {selectedGroup.position.department && (
@@ -640,6 +706,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     )}
                 </div>
 
+                {/* Salary Grade */}
                 <div className="space-y-2">
                     <FieldLabel htmlFor="salary_grade">Salary Grade <Req /></FieldLabel>
                     <Select value={data.salary_grade} onValueChange={v => { setData("salary_grade", v); setData("salary_grade_step_id", "") }}>
@@ -654,6 +721,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     <FieldError message={err("salary_grade")} />
                 </div>
 
+                {/* Step */}
                 <div className="space-y-2">
                     <FieldLabel htmlFor="salary_grade_step_id">Step <Req /></FieldLabel>
                     <Select value={data.salary_grade_step_id} onValueChange={v => setData("salary_grade_step_id", v)} disabled={!data.salary_grade}>
@@ -674,6 +742,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     <FieldError message={err("salary_grade_step_id")} />
                 </div>
 
+                {/* Status */}
                 <div className="space-y-2">
                     <FieldLabel htmlFor="status">Status <Req /></FieldLabel>
                     <Select value={data.status} onValueChange={v => setData("status", v)}>
@@ -686,36 +755,42 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     <FieldError message={err("status")} />
                 </div>
 
+                {/* Work Email */}
                 <div className="space-y-2">
                     <FieldLabel htmlFor="work_email">Work Email <Req /></FieldLabel>
                     <Input id="work_email" type="email" value={data.work_email} onChange={e => setData("work_email", e.target.value)} placeholder="johndoe@agency.gov.ph" />
                     <FieldError message={err("work_email")} />
                 </div>
 
+                {/* Password */}
                 <div className="space-y-2">
                     <FieldLabel htmlFor="password">Password <Req /></FieldLabel>
                     <Input id="password" type="password" value={data.password} onChange={e => setData("password", e.target.value)} placeholder="Min. 8 characters" />
                     <FieldError message={err("password")} />
                 </div>
 
+                {/* Date Applied */}
                 <div className="space-y-2">
                     <FieldLabel htmlFor="date_applied">Date Applied <Req /></FieldLabel>
                     <Input id="date_applied" type="date" value={data.date_applied} onChange={e => setData("date_applied", e.target.value)} />
                     <FieldError message={err("date_applied")} />
                 </div>
 
+                {/* Date Hired */}
                 <div className="space-y-2">
                     <FieldLabel htmlFor="date_hired">Date Hired <Req /></FieldLabel>
                     <Input id="date_hired" type="date" value={data.date_hired} onChange={e => setData("date_hired", e.target.value)} />
                     <FieldError message={err("date_hired")} />
                 </div>
 
+                {/* Schedule Start */}
                 <div className="space-y-2">
                     <FieldLabel htmlFor="work_schedule_start">Schedule Start <Req /></FieldLabel>
                     <Input id="work_schedule_start" type="time" value={data.work_schedule_start} onChange={e => setData("work_schedule_start", e.target.value)} />
                     <FieldError message={err("work_schedule_start")} />
                 </div>
 
+                {/* Schedule End */}
                 <div className="space-y-2">
                     <FieldLabel htmlFor="work_schedule_end">Schedule End <Req /></FieldLabel>
                     <Input id="work_schedule_end" type="time" value={data.work_schedule_end} onChange={e => setData("work_schedule_end", e.target.value)} />
@@ -734,7 +809,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
     )
 }
 
-// ─── Remaining steps ──────────────────────────────────────────────────────────
+// ─── Remaining steps (unchanged) ──────────────────────────────────────────────
 
 const RELATIONSHIPS            = ["Spouse", "Parent", "Sibling", "Child", "Guardian", "Emergency Contact"]
 const GOVERNMENT_ACCOUNT_TYPES = ["SSS", "PhilHealth", "GSIS", "TIN", "Pag-IBIG", "Other"]
@@ -748,12 +823,7 @@ function AddressStep({ rows, setRows, err }: { rows: AddressRow[]; setRows: (r: 
     }
     return (
         <CollectionSection title="Add one or more addresses for this employee." onAdd={add} addLabel="Add Address">
-            {rows.length === 0 && (
-                <>
-                    <EmptyState label="No addresses added yet." />
-                    <FieldError message={err("addresses")} />
-                </>
-            )}
+            {rows.length === 0 && (<><EmptyState label="No addresses added yet." /><FieldError message={err("addresses")} /></>)}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-2 gap-4 pr-6">
@@ -792,12 +862,7 @@ function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: Fa
     }
     return (
         <CollectionSection title="Add family members or emergency contacts." onAdd={add} addLabel="Add Family Member">
-            {rows.length === 0 && (
-                <>
-                    <EmptyState label="No family members added yet." />
-                    <FieldError message={err("family")} />
-                </>
-            )}
+            {rows.length === 0 && (<><EmptyState label="No family members added yet." /><FieldError message={err("family")} /></>)}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-3 gap-4 pr-6">
@@ -835,12 +900,7 @@ function GovernmentStep({ rows, setRows, err }: { rows: GovernmentRow[]; setRows
     }
     return (
         <CollectionSection title="Add government ID numbers (SSS, PhilHealth, GSIS, TIN, Pag-IBIG, etc.)." onAdd={add} addLabel="Add Account">
-            {rows.length === 0 && (
-                <>
-                    <EmptyState label="No government accounts added yet." />
-                    <FieldError message={err("government")} />
-                </>
-            )}
+            {rows.length === 0 && (<><EmptyState label="No government accounts added yet." /><FieldError message={err("government")} /></>)}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-2 gap-4 pr-6">
@@ -866,13 +926,7 @@ function GovernmentStep({ rows, setRows, err }: { rows: GovernmentRow[]; setRows
     )
 }
 
-// ─── EducationStep — now accepts err for per-row field validation ──────────────
-
-function EducationStep({ rows, setRows, err }: {
-    rows: EducationRow[]
-    setRows: (r: EducationRow[]) => void
-    err: ErrFn
-}) {
+function EducationStep({ rows, setRows, err }: { rows: EducationRow[]; setRows: (r: EducationRow[]) => void; err: ErrFn }) {
     const add    = () => setRows([...rows, { level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof EducationRow, value: string) => {
@@ -880,12 +934,7 @@ function EducationStep({ rows, setRows, err }: {
     }
     return (
         <CollectionSection title="Add educational attainment records." onAdd={add} addLabel="Add Education Record">
-            {rows.length === 0 && (
-                <>
-                    <EmptyState label="No education records added yet." />
-                    <FieldError message={err("education")} />
-                </>
-            )}
+            {rows.length === 0 && (<><EmptyState label="No education records added yet." /><FieldError message={err("education")} /></>)}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-3 gap-4 pr-6">
@@ -901,12 +950,7 @@ function EducationStep({ rows, setRows, err }: {
                         </div>
                         <div className="space-y-1.5">
                             <FieldLabel>School Name <Req /></FieldLabel>
-                            <Input
-                                value={row.school_name}
-                                onChange={e => update(i, "school_name", e.target.value)}
-                                placeholder="University of the Philippines"
-                                className={err(`education.${i}.school_name`) ? "border-destructive focus-visible:ring-destructive" : ""}
-                            />
+                            <Input value={row.school_name} onChange={e => update(i, "school_name", e.target.value)} placeholder="University of the Philippines" className={err(`education.${i}.school_name`) ? "border-destructive focus-visible:ring-destructive" : ""} />
                             <FieldError message={err(`education.${i}.school_name`)} />
                         </div>
                         <div className="space-y-1.5">
@@ -936,12 +980,7 @@ function EligibilityStep({ rows, setRows, err }: { rows: EligibilityRow[]; setRo
     }
     return (
         <CollectionSection title="Add civil service eligibilities or professional licenses." onAdd={add} addLabel="Add Eligibility">
-            {rows.length === 0 && (
-                <>
-                    <EmptyState label="No eligibility records added yet." />
-                    <FieldError message={err("eligibility")} />
-                </>
-            )}
+            {rows.length === 0 && (<><EmptyState label="No eligibility records added yet." /><FieldError message={err("eligibility")} /></>)}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-2 gap-4 pr-6">
@@ -980,12 +1019,12 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
 }) {
     const selectedSGS    = salaryGradeSteps.find(s => String(s.salary_grade_step_id) === data.salary_grade_step_id)
     const positionGroups = useMemo(() => buildPositionGroups(items), [items])
-    const selectedGroup  = positionGroups.find(g => g.positionName === data.selected_position_name)
+    const selectedGroup  = positionGroups.find(g => g.groupKey === data.selected_position_name)
 
-    const positionDisplay = data.selected_position_name
-        ? (selectedGroup && selectedGroup.totalSlots > 1
-            ? `${data.selected_position_name} (auto-assigned slot)`
-            : data.selected_position_name)
+    const positionDisplay = selectedGroup
+        ? (selectedGroup.totalSlots > 1
+            ? `${selectedGroup.displayLabel} (auto-assigned slot)`
+            : selectedGroup.displayLabel)
         : undefined
 
     return (
@@ -1007,11 +1046,11 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
             <ReviewRow label="Phone Number"   value={data.phone_number} />
 
             <SectionHeading>Employment Details</SectionHeading>
-            <ReviewRow label="Position" value={positionDisplay} />
+            <ReviewRow label="Position"                   value={positionDisplay} />
             {selectedGroup?.position?.department && <ReviewRow label="Department" value={selectedGroup.position.department.department_name} />}
             {selectedGroup?.position?.division   && <ReviewRow label="Division"   value={selectedGroup.position.division.division_name} />}
             {selectedGroup?.position?.unit       && <ReviewRow label="Unit"       value={selectedGroup.position.unit.unit_name} />}
-            <ReviewRow label="Employment Classification" value={data.employment_classification || undefined} />
+            <ReviewRow label="Employment Classification"  value={data.employment_classification || undefined} />
             <ReviewRow
                 label="Salary Grade & Step"
                 value={selectedSGS
@@ -1092,22 +1131,17 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
         const rules = REQUIRED[step] ?? []
         const newErrors: Record<string, string> = {}
 
-        // ── Standard required-field checks ──
         for (const { field, label } of rules) {
             const value = (data as Record<string, string>)[field]
             if (!value || value.trim() === "") newErrors[field] = `${label} is required.`
         }
 
-        // ── Password minimum length ──
         if (step === 1 && data.password && data.password.length < 8) {
             newErrors["password"] = "Password must be at least 8 characters."
         }
 
-        // ── Address ──
         if (step === 2) {
-            if (addresses.length === 0) {
-                newErrors["addresses"] = "At least one address is required."
-            }
+            if (addresses.length === 0) newErrors["addresses"] = "At least one address is required."
             addresses.forEach((row, i) => {
                 if (!row.street_address.trim()) newErrors[`addresses.${i}.street_address`] = "Street Address is required."
                 if (!row.city.trim())           newErrors[`addresses.${i}.city`]           = "City is required."
@@ -1116,44 +1150,32 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             })
         }
 
-        // ── Family ──
         if (step === 3) {
-            if (family.length === 0) {
-                newErrors["family"] = "At least one family member or emergency contact is required."
-            }
+            if (family.length === 0) newErrors["family"] = "At least one family member or emergency contact is required."
             family.forEach((row, i) => {
                 if (!row.full_name.trim())    newErrors[`family.${i}.full_name`]    = "Full Name is required."
                 if (!row.relationship.trim()) newErrors[`family.${i}.relationship`] = "Relationship is required."
             })
         }
 
-        // ── Government Accounts ──
         if (step === 4) {
-            if (government.length === 0) {
-                newErrors["government"] = "At least one government account is required."
-            }
+            if (government.length === 0) newErrors["government"] = "At least one government account is required."
             government.forEach((row, i) => {
                 if (!row.account_type.trim())   newErrors[`government.${i}.account_type`]   = "Account Type is required."
                 if (!row.account_number.trim()) newErrors[`government.${i}.account_number`] = "ID Number is required."
             })
         }
 
-        // ── Education ──
         if (step === 5) {
-            if (education.length === 0) {
-                newErrors["education"] = "At least one education record is required."
-            }
+            if (education.length === 0) newErrors["education"] = "At least one education record is required."
             education.forEach((row, i) => {
                 if (!row.school_name.trim()) newErrors[`education.${i}.school_name`] = "School Name is required."
                 if (!row.level.trim())       newErrors[`education.${i}.level`]       = "Level is required."
             })
         }
 
-        // ── Eligibility ──
         if (step === 6) {
-            if (eligibility.length === 0) {
-                newErrors["eligibility"] = "At least one eligibility record is required."
-            }
+            if (eligibility.length === 0) newErrors["eligibility"] = "At least one eligibility record is required."
             eligibility.forEach((row, i) => {
                 if (!row.eligibility_name.trim()) newErrors[`eligibility.${i}.eligibility_name`] = "Eligibility Name is required."
                 if (!row.year_passed.trim())      newErrors[`eligibility.${i}.year_passed`]      = "Date Passed is required."
@@ -1170,9 +1192,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             setStepErrors({})
             setCurrentStep(s => Math.min(s + 1, steps.length - 1))
         } else {
-            toast.error("Please fill up required fields.", {
-                duration: 4000,
-            })
+            toast.error("Please fill up required fields.", { duration: 4000 })
         }
     }
 
@@ -1187,7 +1207,6 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault()
-
         router.post(
             route("employee.store"),
             {
@@ -1240,16 +1259,10 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
                                 employmentClassifications={employmentClassifications}
                             />
                         )}
-                        {currentStep === 2 && <AddressStep     rows={addresses}   setRows={setAddresses} err={err} />}
-                        {currentStep === 3 && <FamilyStep      rows={family}      setRows={setFamily} err={err} />}
-                        {currentStep === 4 && <GovernmentStep  rows={government}  setRows={setGovernment} err={err} />}
-                        {currentStep === 5 && (
-                            <EducationStep
-                                rows={education}
-                                setRows={setEducation}
-                                err={err}
-                            />
-                        )}
+                        {currentStep === 2 && <AddressStep     rows={addresses}   setRows={setAddresses}   err={err} />}
+                        {currentStep === 3 && <FamilyStep      rows={family}      setRows={setFamily}      err={err} />}
+                        {currentStep === 4 && <GovernmentStep  rows={government}  setRows={setGovernment}  err={err} />}
+                        {currentStep === 5 && <EducationStep   rows={education}   setRows={setEducation}   err={err} />}
                         {currentStep === 6 && <EligibilityStep rows={eligibility} setRows={setEligibility} err={err} />}
                         {currentStep === 7 && (
                             <ReviewStep
