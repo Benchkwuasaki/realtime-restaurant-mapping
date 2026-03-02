@@ -14,15 +14,11 @@ interface EmployeeData extends Employee {
     positionName?: string;
 }
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: "Organization", href: "#" },
-    { title: "Organisational Chart", href: "/organization/organizational_chart" },
-];
-
 const DivisionCard: React.FC<{
     division: Division;
     onUnitClick: (unit: Unit) => void;
-}> = ({ division, onUnitClick }) => {
+    isDarkMode: boolean;
+}> = ({ division, onUnitClick, isDarkMode }) => {
     const divisionHead = division.positions?.[0]?.employees?.[0];
     const headFullName = divisionHead
         ? [divisionHead.firstName, divisionHead.middleName, divisionHead.lastName]
@@ -46,11 +42,11 @@ const DivisionCard: React.FC<{
             </div>
 
             {/* Division Info Card */}
-            <div className="bg-blue-50 px-6 py-4 rounded-lg border-t-4 border-blue-300 text-center min-w-max max-w-xs">
-                <h3 className="text-lg font-bold text-blue-600">{division.name}</h3>
-                <p className="text-sm text-gray-600 mt-1">{headFullName}</p>
+            <div className="bg-blue-50 dark:bg-gray-800 px-6 py-4 rounded-lg border-t-4 border-blue-300 text-center min-w-max max-w-xs">
+                <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400">{division.name}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{headFullName}</p>
                 {division.units && division.units.length > 0 && (
-                    <p className="text-xs font-semibold text-blue-600 mt-2">
+                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mt-2">
                         {division.units.length} Unit{division.units.length !== 1 ? 's' : ''}
                     </p>
                 )}
@@ -61,7 +57,7 @@ const DivisionCard: React.FC<{
                 <div className="mt-6">
                     {/* Connector line from division to units */}
                     <div className="flex justify-center mb-4">
-                        <div className="w-0.5 h-6 bg-gray-400"></div>
+                        <div className="w-0.5 h-6 bg-gray-400 dark:bg-gray-600"></div>
                     </div>
 
                     {/* Horizontal line connecting units */}
@@ -77,7 +73,7 @@ const DivisionCard: React.FC<{
                                     y1="6"
                                     x2="100%"
                                     y2="6"
-                                    stroke="#d1d5db"
+                                    stroke={isDarkMode ? '#4b5563' : '#d1d5db'}
                                     strokeWidth="2"
                                 />
                             </svg>
@@ -92,7 +88,7 @@ const DivisionCard: React.FC<{
                                     onClick={() => onUnitClick(unit)}
                                 >
                                     {/* Vertical connector from horizontal line */}
-                                    <div className="w-0.5 h-6 bg-gray-400 mb-2"></div>
+                                    <div className="w-0.5 h-6 bg-gray-400 dark:bg-gray-600 mb-2"></div>
 
                                     {/* Unit Card - Styled like a division card */}
                                     <div className="group">
@@ -102,9 +98,9 @@ const DivisionCard: React.FC<{
                                         </div>
 
                                         {/* Unit Info Card */}
-                                        <div className="bg-indigo-50 px-4 py-3 rounded-lg border-t-4 border-indigo-300 text-center min-w-max group-hover:bg-indigo-100 transition-colors">
-                                            <h4 className="text-sm font-bold text-indigo-600">{unit.name}</h4>
-                                            <p className="text-xs text-gray-600 mt-1">
+                                        <div className="bg-indigo-50 dark:bg-gray-800 px-4 py-3 rounded-lg border-t-4 border-indigo-300 text-center min-w-max group-hover:bg-indigo-100 dark:group-hover:bg-gray-700 transition-colors">
+                                            <h4 className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{unit.name}</h4>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                                                 {unit.positions?.reduce((sum, pos) => sum + (pos.employees?.length || 0), 0) || 0} Employees
                                             </p>
                                         </div>
@@ -122,6 +118,27 @@ const DivisionCard: React.FC<{
 export default function DepartmentDetail({ department }: Props) {
     const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
     const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(false);
+
+    React.useEffect(() => {
+        const checkDarkMode = () => {
+            setIsDarkMode(document.documentElement.classList.contains('dark'));
+        };
+        checkDarkMode();
+        
+        const observer = new MutationObserver(checkDarkMode);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        
+        return () => observer.disconnect();
+    }, []);
+
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: "Organization", href: "#" },
+        { title: "Organisational Chart", href: "/organization/organizational_chart" },
+        { title: department.name, href: "#" },
+    ];
+
+    const svgStrokeColor = isDarkMode ? '#4b5563' : '#d1d5db';
 
     const handleUnitClick = (unit: Unit) => {
         setSelectedUnit(unit);
@@ -156,12 +173,12 @@ export default function DepartmentDetail({ department }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${department.name} - Organizational Chart`} />
 
-            <div className="w-full py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 min-h-screen">
+            <div className="w-full py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
                 {/* Back Button */}
-                <div className="mb-8 flex justify-center">
+                <div className="mb-8 flex justify-start">
                     <Link
                         href="/organization/organizational_chart"
-                        className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 font-medium transition-colors rounded-lg"
                     >
                         <ChevronLeft size={20} />
                         Back to Chart
@@ -188,11 +205,11 @@ export default function DepartmentDetail({ department }: Props) {
                         </div>
 
                         {/* Department Info Card */}
-                        <div className="bg-purple-50 px-8 py-6 rounded-lg border-t-4 border-purple-300 text-center min-w-max max-w-sm">
-                            <h1 className="text-2xl font-bold text-purple-600">{department.name}</h1>
-                            <p className="text-gray-600 mt-2">{headFullName}</p>
+                        <div className="bg-purple-50 dark:bg-gray-800 px-8 py-6 rounded-lg border-t-4 border-purple-300 text-center min-w-max max-w-sm">
+                            <h1 className="text-2xl font-bold text-purple-600 dark:text-purple-400">{department.name}</h1>
+                            <p className="text-gray-600 dark:text-gray-400 mt-2">{headFullName}</p>
                             {department.divisions && (
-                                <p className="text-sm font-semibold text-purple-600 mt-3">
+                                <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mt-3">
                                     {department.divisions.length} Division{department.divisions.length !== 1 ? 's' : ''}
                                 </p>
                             )}
@@ -203,7 +220,7 @@ export default function DepartmentDetail({ department }: Props) {
                     {department.divisions && department.divisions.length > 0 && (
                         <div className="flex flex-col items-center w-full">
                             {/* Vertical line from department */}
-                            <div className="w-1 h-12 bg-gray-400"></div>
+                            <div className="w-1 h-12 bg-gray-400 dark:bg-gray-600"></div>
 
                             {/* Horizontal line connecting all divisions */}
                             <div className="flex justify-center items-start relative w-full px-8">
@@ -218,7 +235,7 @@ export default function DepartmentDetail({ department }: Props) {
                                             y1="6"
                                             x2="100%"
                                             y2="6"
-                                            stroke="#d1d5db"
+                                            stroke={isDarkMode ? '#4b5563' : '#d1d5db'}
                                             strokeWidth="2"
                                         />
                                     </svg>
@@ -232,13 +249,13 @@ export default function DepartmentDetail({ department }: Props) {
                                             className="flex flex-col items-center relative"
                                         >
                                             {/* Vertical connector from horizontal line to division */}
-                                            <div className="w-1 h-6 bg-gray-400 mb-4 absolute -top-6"></div>
-
+                            <div className="w-1 h-6 bg-gray-400 dark:bg-gray-600 mb-4 absolute -top-6"></div>
                                             {/* Division Card */}
                                             <div className="pt-2">
                                                 <DivisionCard
                                                     division={division}
                                                     onUnitClick={handleUnitClick}
+                                                    isDarkMode={isDarkMode}
                                                 />
                                             </div>
                                         </div>
