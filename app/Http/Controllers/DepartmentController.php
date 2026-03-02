@@ -14,10 +14,25 @@ class DepartmentController extends Controller
 {
     public function __construct(
         protected ActivityLogService $activityLogService
-    ) {}
+    ) {
+    }
 
     public function index()
     {
+        $departments = Department::with('divisions')->get();
+
+        $mappedDepartments = $departments->map(fn(Department $department) => [
+            'department_id' => $department->department_id,
+            'department_name' => $department->department_name,
+            'department_acronym' => $department->department_acronym,
+            'department_description' => $department->department_description,
+            'divisions' => $department->divisions
+                ->map(fn($division) => [
+                    'division_id' => $division->division_id,
+                    'division_name' => $division->division_name,
+                ])
+                ->values(),
+        ]);
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'organization',
@@ -25,20 +40,9 @@ class DepartmentController extends Controller
         ]);
 
         return Inertia::render('Organization/Department/Index', [
-            'departments' => Department::with('divisions')
-                ->get()
-                ->map(fn(Department $department) => [
-                    'department_id' => $department->department_id,
-                    'department_name' => $department->department_name,
-                    'department_acronym' => $department->department_acronym,
-                    'department_description' => $department->department_description,
-                    'divisions' => $department->divisions
-                        ->map(fn($division) => [
-                            'division_id' => $division->division_id,
-                            'division_name' => $division->division_name,
-                        ])
-                        ->values(),
-                ]),
+            'departments' => $mappedDepartments,
+            'totalDepartments' => $departments->count(),
+            'totalDivisions' => $departments->sum(fn($d) => $d->divisions->count()),
         ]);
     }
 

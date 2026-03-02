@@ -26,7 +26,7 @@ class DivisionController extends Controller
                     'department_id' => $division->department->department_id,
                     'department_name' => $division->department->department_name,
                 ],
-                'units' => $division->units              
+                'units' => $division->units
                     ->map(fn($u) => [
                         'unit_id' => $u->unit_id,
                         'unit_name' => $u->unit_name,
@@ -40,6 +40,9 @@ class DivisionController extends Controller
         return Inertia::render('Organization/Division/Index', [
             'divisions' => $divisions,
             'departments' => $departments,
+            'totalDivisions' => $divisions->count(),
+            'totalDepartments' => $departments->count(),
+            'totalUnits' => $divisions->sum(fn($d) => count($d['units'])),
         ]);
     }
 

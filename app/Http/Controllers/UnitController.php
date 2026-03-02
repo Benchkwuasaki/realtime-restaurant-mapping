@@ -40,8 +40,11 @@ class UnitController extends Controller
         return Inertia::render('Organization/Unit/Index', [
             'units' => $units,
             'divisions' => $divisions,
+            'totalUnits' => $units->count(),
+            'totalDivisions' => $divisions->count(),
+            'totalPositions' => $units->sum(fn($u) => count($u['positions'])),
         ]);
-    }   
+    }
 
     public function show(Unit $unit): Response
     {

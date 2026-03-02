@@ -1,8 +1,9 @@
 import { Head, useForm, usePage } from "@inertiajs/react"
-import { Building2, GitBranch, LampDesk } from "lucide-react"
+import { Building2, GitBranch, LampDesk, LayoutGrid } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { DataTable } from "@/components/shared/data-table/data-table"
+import { StatCard } from "@/components/shared/stat-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,12 +27,15 @@ import type { BreadcrumbItem } from "@/types"
 
 interface Props {
     departments: Department[]
+    totalDepartments: number
+    totalDivisions: number
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: "Organization", href: "#" },
     { title: "Departments", href: "/organization/departments" },
 ]
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -103,8 +107,8 @@ function DepartmentModal({ open, editingDepartment, onClose }: DepartmentModalPr
     const isEdit = editingDepartment !== null
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        department_name:        editingDepartment?.department_name        ?? "",
-        department_acronym:     editingDepartment?.department_acronym     ?? "",
+        department_name: editingDepartment?.department_name ?? "",
+        department_acronym: editingDepartment?.department_acronym ?? "",
         department_description: editingDepartment?.department_description ?? "",
     })
 
@@ -196,7 +200,7 @@ function DepartmentModal({ open, editingDepartment, onClose }: DepartmentModalPr
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function DepartmentIndex({ departments }: Props) {
+export default function DepartmentIndex({ departments, totalDepartments, totalDivisions }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
     // ── Department modal state ──
@@ -232,24 +236,31 @@ export default function DepartmentIndex({ departments }: Props) {
         setSelectedDepartment(null)
     }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
+    const columns = getColumns({ onEdit: openEdit, onDelete: () => { } })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Departments" />
 
             <div className="flex h-full flex-1 flex-col gap-6 py-4 px-6">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                            <Building2 className="w-5 h-5 text-primary" />
-                            Departments
-                        </h1>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {departments.length} department{departments.length !== 1 ? "s" : ""}
-                        </p>
+                <div className="max-w-200 w-full h-fit">
+                    {/* ── Stat Cards ── */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <StatCard
+                            title="Total Departments"
+                            value={totalDepartments}
+                            description="All registered departments"
+                            icon={<Building2 className="size-4" />}
+                        />
+                        <StatCard
+                            title="Total Divisions"
+                            value={totalDivisions}
+                            description="Divisions across all departments"
+                            icon={<LayoutGrid className="size-4" />}
+                        />
                     </div>
                 </div>
+
 
                 {props.flash?.success && (
                     <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
