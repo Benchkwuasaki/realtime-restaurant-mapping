@@ -96,6 +96,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
     // Organizational Chart
     Route::get('/organization/organizational_chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
+    Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
 
     Route::prefix('organization/units')->name('unit.')->group(function () {
         Route::get('/', [UnitController::class, 'index'])->name('index');

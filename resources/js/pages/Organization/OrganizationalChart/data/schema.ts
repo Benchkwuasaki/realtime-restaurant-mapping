@@ -8,15 +8,18 @@ export interface Employee {
     profilePicture: string;
 }
 
+export interface Unit {
+    id: number;
+    name: string;
+    acronym?: string;
+    description?: string;
+    positions?: Position[];
+}
+
 export interface Position {
     id: number;
     name: string;
     employees: Employee[];
-}
-
-export interface Unit {
-    id: number;
-    name: string;
 }
 
 export interface Division {

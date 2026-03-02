@@ -95,10 +95,10 @@ export const DepartmentTree: React.FC<DepartmentTreeProps> = ({ department }) =>
                 <div className="mt-12">
                     <HierarchyLevel
                         departments={department.divisions.slice(0, 3).map((div) => ({
-                            department_id: div.id,
-                            department_name: div.name,
-                            department_acronym: div.acronym,
-                            department_description: div.description,
+                            id: div.id,
+                            name: div.name,
+                            acronym: div.acronym,
+                            description: div.description,
                             divisions: [],
                             topPositions: div.positions || [],
                         }))}
