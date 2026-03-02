@@ -3,7 +3,6 @@
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PayrollController;
-use App\Http\Controllers\BenefitsController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AnnouncementController;
@@ -13,13 +12,13 @@ use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\InternalOrganizationController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
-use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -27,9 +26,7 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::group(['middleware' => ['auth', 'verified']], function () {
-    // TODO: ayha ra add middleware kung ma approve and finalized ang routes
-
+Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard Routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -41,6 +38,8 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
         Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
         Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    });
+
     // User Routes
     Route::prefix('users')->name('user.')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('index');
@@ -129,7 +128,6 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::post('/{internalOrganization}/members', [InternalOrganizationController::class, 'storeMembers'])->name('members.store');
     });
 
-
     Route::prefix('organization/divisions')->name('division.')->group(function () {
         Route::get('/', [DivisionController::class, 'index'])->name('index');
         Route::get('/{division}', [DivisionController::class, 'show'])->name('show');
@@ -148,7 +146,6 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::delete('/{position}', [PositionController::class, 'destroy'])->name('destroy');
     });
 
-    // routes/web.php
     Route::get('organization/position/{position}/employees', [PositionController::class, 'employees'])
         ->name('position.employees');
 
@@ -156,50 +153,27 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         'holiday' => 'holiday:holiday_id',
     ]);
 
-
-
-
-
-
-
     Route::prefix('leave')->name('leave.')->group(function () {
         Route::get('/leave-settings', function () {
             return Inertia::render('Leave/LeaveSettings/LeaveSettingsTabNav');
         })->name('leave-settings');
     });
 
+    // Payroll routes
+    Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
 
+    Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
 
-// Attendance Routes
-Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
-    Route::get('/',                         [WhereaboutSlipController::class, 'index'])->name('index');
-    Route::post('/',                        [WhereaboutSlipController::class, 'store'])->name('store');
-    Route::put('/{whereaboutSlip}',         [WhereaboutSlipController::class, 'update'])->name('update');
-    Route::put('/{whereaboutSlip}/return',  [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
-    Route::delete('/{whereaboutSlip}',      [WhereaboutSlipController::class, 'destroy'])->name('destroy');
-    Route::delete('/',                      [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    // Reports and Analytics routes
+    Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
+
+    // Announcement Routes
+    Route::prefix('announcement')->name('announcement.')->group(function () {
+        Route::get('/', [AnnouncementController::class, 'index'])->name('index');
+    });
+
+    // Activity Logs Routes
+    Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
+
+    require __DIR__ . '/settings.php';
 });
-
-
-
-// Payroll routes
-Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
-
-Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
-
-// Reports and Analytics routes
-Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
-
-// Announcement Routes
-Route::prefix('announcement')->name('announcement.')->group(function () {
-    Route::get('/', [AnnouncementController::class, 'index'])->name('index');
-});
-
-// Activity Logs Routes
-
-Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
-
-
-
-
-require __DIR__ . '/settings.php';
