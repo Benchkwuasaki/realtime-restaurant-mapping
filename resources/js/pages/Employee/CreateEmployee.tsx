@@ -21,6 +21,7 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { toast, Toaster } from "sonner"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
 
@@ -60,11 +61,11 @@ export interface CreateEmployeeProps {
 
 // ─── Collection row types ─────────────────────────────────────────────────────
 
-interface AddressRow { street_address: string; city: string; state: string; zip_code: string }
-interface FamilyRow { full_name: string; contact_number: string; relationship: string }
-interface GovernmentRow { account_type: string; account_number: string }
-interface EducationRow { level: string; school_name: string; school_address: string; graduation_date: string; degree: string }
-interface EligibilityRow { eligibility_name: string; year_passed: string }
+interface AddressRow    { [key: string]: string; street_address: string; city: string; state: string; zip_code: string }
+interface FamilyRow     { [key: string]: string; full_name: string; contact_number: string; relationship: string }
+interface GovernmentRow { [key: string]: string; account_type: string; account_number: string }
+interface EducationRow  { [key: string]: string; level: string; school_name: string; school_address: string; graduation_date: string; degree: string }
+interface EligibilityRow{ [key: string]: string; eligibility_name: string; year_passed: string }
 
 // ─── Position group ───────────────────────────────────────────────────────────
 
@@ -98,6 +99,14 @@ function buildPositionGroups(items: Item[]): PositionGroup[] {
     }
     for (const grp of map.values()) grp.isFull = grp.availableSlots === 0
     return Array.from(map.values()).sort((a, b) => a.positionName.localeCompare(b.positionName))
+}
+
+// ─── Job Order helpers ────────────────────────────────────────────────────────
+
+const JOB_ORDER_LABEL = "Job Order"
+
+function isJobOrderPosition(grp: PositionGroup): boolean {
+    return grp.positionName.toLowerCase().includes("job order")
 }
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
@@ -503,11 +512,26 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
         setManageOpen(false)
     }
 
-    const positionGroups = useMemo(() => buildPositionGroups(items), [items])
-    const selectedGroup  = useMemo(
+    const allPositionGroups = useMemo(() => buildPositionGroups(items), [items])
+
+    const positionGroups = useMemo(() => {
+        if (!data.employment_classification) return []
+        const isJO = data.employment_classification === JOB_ORDER_LABEL
+        return allPositionGroups.filter(grp =>
+            isJO ? isJobOrderPosition(grp) : !isJobOrderPosition(grp)
+        )
+    }, [allPositionGroups, data.employment_classification])
+
+    const selectedGroup = useMemo(
         () => positionGroups.find(g => g.positionName === data.selected_position_name),
         [positionGroups, data.selected_position_name]
     )
+
+    const handleClassificationSelect = (value: string) => {
+        setData("employment_classification", value)
+        setData("selected_position_name", "")
+        setData("item_id", "")
+    }
 
     const handlePositionSelect = (positionName: string) => {
         const grp = positionGroups.find(g => g.positionName === positionName)
@@ -517,14 +541,53 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
         setData("item_id", firstAvailable ? firstAvailable.item_id.toString() : "")
     }
 
+    const positionDisabled = !data.employment_classification
+
     return (
         <>
             <div className="grid grid-cols-3 gap-5">
+
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="employment_classification">Employment Classification <Req /></FieldLabel>
+                    <div className="flex gap-2">
+                        <Select value={data.employment_classification} onValueChange={handleClassificationSelect}>
+                            <SelectTrigger id="employment_classification" className="flex-1">
+                                <SelectValue placeholder="Select classification" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {employmentClassifications.map(c => (
+                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setManageOpen(true)}
+                            title="Manage classifications"
+                            className="shrink-0"
+                        >
+                            <List className="w-4 h-4" />
+                        </Button>
+                    </div>
+                    <FieldError message={err("employment_classification")} />
+                </div>
+
                 <div className="space-y-2 col-span-2">
                     <FieldLabel htmlFor="position">Position <Req /></FieldLabel>
-                    <Select value={data.selected_position_name} onValueChange={handlePositionSelect}>
-                        <SelectTrigger id="position"><SelectValue placeholder="Select a position…" /></SelectTrigger>
+                    <Select
+                        value={data.selected_position_name}
+                        onValueChange={handlePositionSelect}
+                        disabled={positionDisabled}
+                    >
+                        <SelectTrigger id="position">
+                            <SelectValue placeholder={positionDisabled ? "Select a classification first…" : "Select a position…"} />
+                        </SelectTrigger>
                         <SelectContent className="max-h-72">
+                            {!positionDisabled && positionGroups.length === 0 && (
+                                <SelectItem value="_none" disabled>No positions available for this classification</SelectItem>
+                            )}
                             {positionGroups.map(grp => {
                                 const isDisabled = grp.isFull
                                 return (
@@ -575,26 +638,6 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                             )}
                         </div>
                     )}
-                </div>
-
-                <div className="space-y-2">
-                    <FieldLabel htmlFor="employment_classification">Employment Classification <Req /></FieldLabel>
-                    <div className="flex gap-2">
-                        <Select value={data.employment_classification} onValueChange={v => setData("employment_classification", v)}>
-                            <SelectTrigger id="employment_classification" className="flex-1">
-                                <SelectValue placeholder="Select classification" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {employmentClassifications.map(c => (
-                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button type="button" variant="outline" size="icon" onClick={() => setManageOpen(true)} title="Manage classifications" className="shrink-0">
-                            <List className="w-4 h-4" />
-                        </Button>
-                    </div>
-                    <FieldError message={err("employment_classification")} />
                 </div>
 
                 <div className="space-y-2">
@@ -678,6 +721,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     <Input id="work_schedule_end" type="time" value={data.work_schedule_end} onChange={e => setData("work_schedule_end", e.target.value)} />
                     <FieldError message={err("work_schedule_end")} />
                 </div>
+
             </div>
 
             <ManageClassificationsDialog
@@ -692,11 +736,11 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
 
 // ─── Remaining steps ──────────────────────────────────────────────────────────
 
-const RELATIONSHIPS            = ["Spouse", "Parent", "Sibling", "Child", "Guardian", "Emergency Contact", "Other"]
+const RELATIONSHIPS            = ["Spouse", "Parent", "Sibling", "Child", "Guardian", "Emergency Contact"]
 const GOVERNMENT_ACCOUNT_TYPES = ["SSS", "PhilHealth", "GSIS", "TIN", "Pag-IBIG", "Other"]
 const EDUCATION_LEVELS         = ["Elementary", "Secondary", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Post-Doctorate", "Other"]
 
-function AddressStep({ rows, setRows }: { rows: AddressRow[]; setRows: (r: AddressRow[]) => void }) {
+function AddressStep({ rows, setRows, err }: { rows: AddressRow[]; setRows: (r: AddressRow[]) => void; err: ErrFn }) {
     const add    = () => setRows([...rows, { street_address: "", city: "", state: "", zip_code: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof AddressRow, value: string) => {
@@ -704,25 +748,34 @@ function AddressStep({ rows, setRows }: { rows: AddressRow[]; setRows: (r: Addre
     }
     return (
         <CollectionSection title="Add one or more addresses for this employee." onAdd={add} addLabel="Add Address">
-            {rows.length === 0 && <EmptyState label="No addresses added yet." />}
+            {rows.length === 0 && (
+                <>
+                    <EmptyState label="No addresses added yet." />
+                    <FieldError message={err("addresses")} />
+                </>
+            )}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-2 gap-4 pr-6">
                         <div className="col-span-2 space-y-1.5">
-                            <FieldLabel>Street Address</FieldLabel>
-                            <Input value={row.street_address} onChange={e => update(i, "street_address", e.target.value)} placeholder="123 Rizal Street" />
+                            <FieldLabel>Street Address <Req /></FieldLabel>
+                            <Input value={row.street_address} onChange={e => update(i, "street_address", e.target.value)} placeholder="123 Rizal Street" className={err(`addresses.${i}.street_address`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`addresses.${i}.street_address`)} />
                         </div>
                         <div className="space-y-1.5">
-                            <FieldLabel>City</FieldLabel>
-                            <Input value={row.city} onChange={e => update(i, "city", e.target.value)} placeholder="Manila" />
+                            <FieldLabel>City <Req /></FieldLabel>
+                            <Input value={row.city} onChange={e => update(i, "city", e.target.value)} placeholder="Manila" className={err(`addresses.${i}.city`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`addresses.${i}.city`)} />
                         </div>
                         <div className="space-y-1.5">
-                            <FieldLabel>Province / State</FieldLabel>
-                            <Input value={row.state} onChange={e => update(i, "state", e.target.value)} placeholder="Metro Manila" />
+                            <FieldLabel>Province / State <Req /></FieldLabel>
+                            <Input value={row.state} onChange={e => update(i, "state", e.target.value)} placeholder="Metro Manila" className={err(`addresses.${i}.state`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`addresses.${i}.state`)} />
                         </div>
                         <div className="space-y-1.5">
-                            <FieldLabel>ZIP Code</FieldLabel>
-                            <Input value={row.zip_code} onChange={e => update(i, "zip_code", e.target.value)} placeholder="1000" />
+                            <FieldLabel>ZIP Code <Req /></FieldLabel>
+                            <Input value={row.zip_code} onChange={e => update(i, "zip_code", e.target.value)} placeholder="1000" className={err(`addresses.${i}.zip_code`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`addresses.${i}.zip_code`)} />
                         </div>
                     </div>
                 </RowCard>
@@ -731,7 +784,7 @@ function AddressStep({ rows, setRows }: { rows: AddressRow[]; setRows: (r: Addre
     )
 }
 
-function FamilyStep({ rows, setRows }: { rows: FamilyRow[]; setRows: (r: FamilyRow[]) => void }) {
+function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: FamilyRow[]) => void; err: ErrFn }) {
     const add    = () => setRows([...rows, { full_name: "", contact_number: "", relationship: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof FamilyRow, value: string) => {
@@ -739,26 +792,33 @@ function FamilyStep({ rows, setRows }: { rows: FamilyRow[]; setRows: (r: FamilyR
     }
     return (
         <CollectionSection title="Add family members or emergency contacts." onAdd={add} addLabel="Add Family Member">
-            {rows.length === 0 && <EmptyState label="No family members added yet." />}
+            {rows.length === 0 && (
+                <>
+                    <EmptyState label="No family members added yet." />
+                    <FieldError message={err("family")} />
+                </>
+            )}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-3 gap-4 pr-6">
                         <div className="space-y-1.5">
-                            <FieldLabel>Full Name</FieldLabel>
-                            <Input value={row.full_name} onChange={e => update(i, "full_name", e.target.value)} placeholder="Maria Santos" />
+                            <FieldLabel>Full Name <Req /></FieldLabel>
+                            <Input value={row.full_name} onChange={e => update(i, "full_name", e.target.value)} placeholder="Maria Santos" className={err(`family.${i}.full_name`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`family.${i}.full_name`)} />
                         </div>
                         <div className="space-y-1.5">
                             <FieldLabel>Contact Number</FieldLabel>
                             <Input value={row.contact_number} onChange={e => update(i, "contact_number", e.target.value)} placeholder="09XXXXXXXXXX" />
                         </div>
                         <div className="space-y-1.5">
-                            <FieldLabel>Relationship</FieldLabel>
+                            <FieldLabel>Relationship <Req /></FieldLabel>
                             <Select value={row.relationship} onValueChange={v => update(i, "relationship", v)}>
-                                <SelectTrigger><SelectValue placeholder="Select relationship" /></SelectTrigger>
+                                <SelectTrigger className={err(`family.${i}.relationship`) ? "border-destructive" : ""}><SelectValue placeholder="Select relationship" /></SelectTrigger>
                                 <SelectContent>
                                     {RELATIONSHIPS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                                 </SelectContent>
                             </Select>
+                            <FieldError message={err(`family.${i}.relationship`)} />
                         </div>
                     </div>
                 </RowCard>
@@ -767,30 +827,37 @@ function FamilyStep({ rows, setRows }: { rows: FamilyRow[]; setRows: (r: FamilyR
     )
 }
 
-function GovernmentStep({ rows, setRows }: { rows: GovernmentRow[]; setRows: (r: GovernmentRow[]) => void }) {
+function GovernmentStep({ rows, setRows, err }: { rows: GovernmentRow[]; setRows: (r: GovernmentRow[]) => void; err: ErrFn }) {
     const add    = () => setRows([...rows, { account_type: "", account_number: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof GovernmentRow, value: string) => {
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
     }
     return (
-        <CollectionSection title="Add government account numbers (SSS, PhilHealth, GSIS, TIN, Pag-IBIG, etc.)." onAdd={add} addLabel="Add Account">
-            {rows.length === 0 && <EmptyState label="No government accounts added yet." />}
+        <CollectionSection title="Add government ID numbers (SSS, PhilHealth, GSIS, TIN, Pag-IBIG, etc.)." onAdd={add} addLabel="Add Account">
+            {rows.length === 0 && (
+                <>
+                    <EmptyState label="No government accounts added yet." />
+                    <FieldError message={err("government")} />
+                </>
+            )}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-2 gap-4 pr-6">
                         <div className="space-y-1.5">
-                            <FieldLabel>Account Type</FieldLabel>
+                            <FieldLabel>Account Type <Req /></FieldLabel>
                             <Select value={row.account_type} onValueChange={v => update(i, "account_type", v)}>
-                                <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                                <SelectTrigger className={err(`government.${i}.account_type`) ? "border-destructive" : ""}><SelectValue placeholder="Select type" /></SelectTrigger>
                                 <SelectContent>
                                     {GOVERNMENT_ACCOUNT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
                             </Select>
+                            <FieldError message={err(`government.${i}.account_type`)} />
                         </div>
                         <div className="space-y-1.5">
-                            <FieldLabel>Account Number</FieldLabel>
-                            <Input value={row.account_number} onChange={e => update(i, "account_number", e.target.value)} placeholder="XXXX-XXXX-XXXX" />
+                            <FieldLabel>ID Number <Req /></FieldLabel>
+                            <Input value={row.account_number} onChange={e => update(i, "account_number", e.target.value)} placeholder="XXXX-XXXX-XXXX" className={err(`government.${i}.account_number`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`government.${i}.account_number`)} />
                         </div>
                     </div>
                 </RowCard>
@@ -799,7 +866,13 @@ function GovernmentStep({ rows, setRows }: { rows: GovernmentRow[]; setRows: (r:
     )
 }
 
-function EducationStep({ rows, setRows }: { rows: EducationRow[]; setRows: (r: EducationRow[]) => void }) {
+// ─── EducationStep — now accepts err for per-row field validation ──────────────
+
+function EducationStep({ rows, setRows, err }: {
+    rows: EducationRow[]
+    setRows: (r: EducationRow[]) => void
+    err: ErrFn
+}) {
     const add    = () => setRows([...rows, { level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof EducationRow, value: string) => {
@@ -807,22 +880,34 @@ function EducationStep({ rows, setRows }: { rows: EducationRow[]; setRows: (r: E
     }
     return (
         <CollectionSection title="Add educational attainment records." onAdd={add} addLabel="Add Education Record">
-            {rows.length === 0 && <EmptyState label="No education records added yet." />}
+            {rows.length === 0 && (
+                <>
+                    <EmptyState label="No education records added yet." />
+                    <FieldError message={err("education")} />
+                </>
+            )}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-3 gap-4 pr-6">
                         <div className="space-y-1.5">
-                            <FieldLabel>Level</FieldLabel>
+                            <FieldLabel>Level <Req /></FieldLabel>
                             <Select value={row.level} onValueChange={v => update(i, "level", v)}>
-                                <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
+                                <SelectTrigger className={err(`education.${i}.level`) ? "border-destructive" : ""}><SelectValue placeholder="Select level" /></SelectTrigger>
                                 <SelectContent>
                                     {EDUCATION_LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                                 </SelectContent>
                             </Select>
+                            <FieldError message={err(`education.${i}.level`)} />
                         </div>
                         <div className="space-y-1.5">
-                            <FieldLabel>School Name</FieldLabel>
-                            <Input value={row.school_name} onChange={e => update(i, "school_name", e.target.value)} placeholder="University of the Philippines" />
+                            <FieldLabel>School Name <Req /></FieldLabel>
+                            <Input
+                                value={row.school_name}
+                                onChange={e => update(i, "school_name", e.target.value)}
+                                placeholder="University of the Philippines"
+                                className={err(`education.${i}.school_name`) ? "border-destructive focus-visible:ring-destructive" : ""}
+                            />
+                            <FieldError message={err(`education.${i}.school_name`)} />
                         </div>
                         <div className="space-y-1.5">
                             <FieldLabel>School Address</FieldLabel>
@@ -843,7 +928,7 @@ function EducationStep({ rows, setRows }: { rows: EducationRow[]; setRows: (r: E
     )
 }
 
-function EligibilityStep({ rows, setRows }: { rows: EligibilityRow[]; setRows: (r: EligibilityRow[]) => void }) {
+function EligibilityStep({ rows, setRows, err }: { rows: EligibilityRow[]; setRows: (r: EligibilityRow[]) => void; err: ErrFn }) {
     const add    = () => setRows([...rows, { eligibility_name: "", year_passed: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof EligibilityRow, value: string) => {
@@ -851,17 +936,24 @@ function EligibilityStep({ rows, setRows }: { rows: EligibilityRow[]; setRows: (
     }
     return (
         <CollectionSection title="Add civil service eligibilities or professional licenses." onAdd={add} addLabel="Add Eligibility">
-            {rows.length === 0 && <EmptyState label="No eligibility records added yet." />}
+            {rows.length === 0 && (
+                <>
+                    <EmptyState label="No eligibility records added yet." />
+                    <FieldError message={err("eligibility")} />
+                </>
+            )}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-2 gap-4 pr-6">
                         <div className="space-y-1.5">
-                            <FieldLabel>Eligibility Name</FieldLabel>
-                            <Input value={row.eligibility_name} onChange={e => update(i, "eligibility_name", e.target.value)} placeholder="Career Service Professional" />
+                            <FieldLabel>Eligibility Name <Req /></FieldLabel>
+                            <Input value={row.eligibility_name} onChange={e => update(i, "eligibility_name", e.target.value)} placeholder="Career Service Professional" className={err(`eligibility.${i}.eligibility_name`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`eligibility.${i}.eligibility_name`)} />
                         </div>
                         <div className="space-y-1.5">
-                            <FieldLabel>Date Passed</FieldLabel>
-                            <Input type="date" value={row.year_passed} onChange={e => update(i, "year_passed", e.target.value)} />
+                            <FieldLabel>Date Passed <Req /></FieldLabel>
+                            <Input type="date" value={row.year_passed} onChange={e => update(i, "year_passed", e.target.value)} className={err(`eligibility.${i}.year_passed`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`eligibility.${i}.year_passed`)} />
                         </div>
                     </div>
                 </RowCard>
@@ -972,17 +1064,18 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function CreateEmployee({ items, salaryGradeSteps, employmentClassifications }: CreateEmployeeProps) {
     const [currentStep, setCurrentStep] = useState(0)
     const [stepErrors,  setStepErrors]  = useState<Record<string, string>>({})
+    const [processing,  setProcessing]  = useState(false)
 
-    const [addresses,   setAddresses]   = useState<AddressRow[]>([])
-    const [family,      setFamily]      = useState<FamilyRow[]>([])
-    const [government,  setGovernment]  = useState<GovernmentRow[]>([])
-    const [education,   setEducation]   = useState<EducationRow[]>([])
-    const [eligibility, setEligibility] = useState<EligibilityRow[]>([])
+    const [addresses,   setAddresses]   = useState<AddressRow[]>([{ street_address: "", city: "", state: "", zip_code: "" }])
+    const [family,      setFamily]      = useState<FamilyRow[]>([{ full_name: "", contact_number: "", relationship: "" }])
+    const [government,  setGovernment]  = useState<GovernmentRow[]>([{ account_type: "", account_number: "" }])
+    const [education,   setEducation]   = useState<EducationRow[]>([{ level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
+    const [eligibility, setEligibility] = useState<EligibilityRow[]>([{ eligibility_name: "", year_passed: "" }])
 
     const CurrentIcon = steps[currentStep].icon
     const isLastStep  = currentStep === steps.length - 1
 
-    const { data, setData, transform, post, processing, errors } = useForm({
+    const { data, setData, errors, setError, clearErrors } = useForm({
         first_name: "", last_name: "", middle_name: "", name_extension: "",
         birth_date: "", sex: "", personal_email: "", phone_number: "",
         civil_status: "", place_of_birth: "",
@@ -995,24 +1088,91 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
         salary_grade: "", step: "",
     })
 
-    function validateStep(step: number): boolean {
+    function validateStep(step: number): Record<string, string> {
         const rules = REQUIRED[step] ?? []
         const newErrors: Record<string, string> = {}
+
+        // ── Standard required-field checks ──
         for (const { field, label } of rules) {
             const value = (data as Record<string, string>)[field]
             if (!value || value.trim() === "") newErrors[field] = `${label} is required.`
         }
+
+        // ── Password minimum length ──
         if (step === 1 && data.password && data.password.length < 8) {
             newErrors["password"] = "Password must be at least 8 characters."
         }
+
+        // ── Address ──
+        if (step === 2) {
+            if (addresses.length === 0) {
+                newErrors["addresses"] = "At least one address is required."
+            }
+            addresses.forEach((row, i) => {
+                if (!row.street_address.trim()) newErrors[`addresses.${i}.street_address`] = "Street Address is required."
+                if (!row.city.trim())           newErrors[`addresses.${i}.city`]           = "City is required."
+                if (!row.state.trim())          newErrors[`addresses.${i}.state`]          = "Province / State is required."
+                if (!row.zip_code.trim())       newErrors[`addresses.${i}.zip_code`]       = "ZIP Code is required."
+            })
+        }
+
+        // ── Family ──
+        if (step === 3) {
+            if (family.length === 0) {
+                newErrors["family"] = "At least one family member or emergency contact is required."
+            }
+            family.forEach((row, i) => {
+                if (!row.full_name.trim())    newErrors[`family.${i}.full_name`]    = "Full Name is required."
+                if (!row.relationship.trim()) newErrors[`family.${i}.relationship`] = "Relationship is required."
+            })
+        }
+
+        // ── Government Accounts ──
+        if (step === 4) {
+            if (government.length === 0) {
+                newErrors["government"] = "At least one government account is required."
+            }
+            government.forEach((row, i) => {
+                if (!row.account_type.trim())   newErrors[`government.${i}.account_type`]   = "Account Type is required."
+                if (!row.account_number.trim()) newErrors[`government.${i}.account_number`] = "ID Number is required."
+            })
+        }
+
+        // ── Education ──
+        if (step === 5) {
+            if (education.length === 0) {
+                newErrors["education"] = "At least one education record is required."
+            }
+            education.forEach((row, i) => {
+                if (!row.school_name.trim()) newErrors[`education.${i}.school_name`] = "School Name is required."
+                if (!row.level.trim())       newErrors[`education.${i}.level`]       = "Level is required."
+            })
+        }
+
+        // ── Eligibility ──
+        if (step === 6) {
+            if (eligibility.length === 0) {
+                newErrors["eligibility"] = "At least one eligibility record is required."
+            }
+            eligibility.forEach((row, i) => {
+                if (!row.eligibility_name.trim()) newErrors[`eligibility.${i}.eligibility_name`] = "Eligibility Name is required."
+                if (!row.year_passed.trim())      newErrors[`eligibility.${i}.year_passed`]      = "Date Passed is required."
+            })
+        }
+
         setStepErrors(newErrors)
-        return Object.keys(newErrors).length === 0
+        return newErrors
     }
 
     function handleNext() {
-        if (validateStep(currentStep)) {
+        const errs = validateStep(currentStep)
+        if (Object.keys(errs).length === 0) {
             setStepErrors({})
             setCurrentStep(s => Math.min(s + 1, steps.length - 1))
+        } else {
+            toast.error("Please fill up required fields.", {
+                duration: 4000,
+            })
         }
     }
 
@@ -1027,17 +1187,33 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault()
-        transform((formData) => ({
-            ...formData,
-            addresses,
-            family_info: family,
-            government_accounts: government,
-            education,
-            eligibility_information: eligibility,
-        }))
-        post(route("employee.store"), {
-            onError: (errs) => console.error("Validation errors:", errs),
-        })
+
+        router.post(
+            route("employee.store"),
+            {
+                ...data,
+                addresses,
+                family_info:             family,
+                government_accounts:     government,
+                education,
+                eligibility_information: eligibility,
+            },
+            {
+                onStart:  () => setProcessing(true),
+                onFinish: () => setProcessing(false),
+                onError:  (errs) => {
+                    const errMap = errs as Record<string, string>
+                    setStepErrors(errMap)
+                    const messages = Object.values(errMap)
+                    if (messages.length > 0) {
+                        toast.error("Please fix the following errors", {
+                            description: messages.join("\n"),
+                            duration: 8000,
+                        })
+                    }
+                },
+            },
+        )
     }
 
     return (
@@ -1045,7 +1221,8 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             <Head title="Create Employee" />
             <div className="px-10 pt-5">
                 <Stepper steps={steps} currentStep={currentStep} onStepChange={setCurrentStep} />
-                <form onSubmit={submit}>
+
+                <form onSubmit={e => e.preventDefault()}>
                     <div className="mt-8 p-6 border rounded-md">
                         <h2 className="flex items-center gap-2 text-lg font-semibold mb-6">
                             <CurrentIcon className="w-5 h-5" />
@@ -1063,11 +1240,17 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
                                 employmentClassifications={employmentClassifications}
                             />
                         )}
-                        {currentStep === 2 && <AddressStep     rows={addresses}   setRows={setAddresses} />}
-                        {currentStep === 3 && <FamilyStep      rows={family}      setRows={setFamily} />}
-                        {currentStep === 4 && <GovernmentStep  rows={government}  setRows={setGovernment} />}
-                        {currentStep === 5 && <EducationStep   rows={education}   setRows={setEducation} />}
-                        {currentStep === 6 && <EligibilityStep rows={eligibility} setRows={setEligibility} />}
+                        {currentStep === 2 && <AddressStep     rows={addresses}   setRows={setAddresses} err={err} />}
+                        {currentStep === 3 && <FamilyStep      rows={family}      setRows={setFamily} err={err} />}
+                        {currentStep === 4 && <GovernmentStep  rows={government}  setRows={setGovernment} err={err} />}
+                        {currentStep === 5 && (
+                            <EducationStep
+                                rows={education}
+                                setRows={setEducation}
+                                err={err}
+                            />
+                        )}
+                        {currentStep === 6 && <EligibilityStep rows={eligibility} setRows={setEligibility} err={err} />}
                         {currentStep === 7 && (
                             <ReviewStep
                                 data={data}
@@ -1086,7 +1269,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
                                 Previous
                             </Button>
                             {isLastStep ? (
-                                <Button type="submit" disabled={processing}>
+                                <Button type="button" onClick={submit} disabled={processing}>
                                     {processing ? "Submitting…" : "Submit Employee"}
                                 </Button>
                             ) : (
