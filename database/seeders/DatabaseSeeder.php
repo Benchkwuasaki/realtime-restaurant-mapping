@@ -10,7 +10,10 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // TODO: refactor to separate seeder files
+
         $this->call([
+            RoleSeeder::class,
             UserSeeder::class,
         ]);
 
@@ -201,8 +204,8 @@ class DatabaseSeeder extends Seeder
             // Admin
             ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitRecordsId,    'name' => 'Records Officer',         'sg_idx' => 2],  // SG10
             ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitRecordsId,    'name' => 'Administrative Aide',     'sg_idx' => 0],  // SG7
-            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId,'name' => 'Procurement Officer',     'sg_idx' => 5],  // SG13
-            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId,'name' => 'Procurement Specialist',  'sg_idx' => 3],  // SG11
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId, 'name' => 'Procurement Officer',     'sg_idx' => 5],  // SG13
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId, 'name' => 'Procurement Specialist',  'sg_idx' => 3],  // SG11
             ['dept' => $deptId, 'div' => $divAdminId, 'unit' => null,              'name' => 'Admin Division Chief',    'sg_idx' => 9],  // SG18
             // Legal
             ['dept' => $deptId, 'div' => $divLegalId, 'unit' => $unitLegalId,      'name' => 'Legal Officer',           'sg_idx' => 7],  // SG15
@@ -243,41 +246,168 @@ class DatabaseSeeder extends Seeder
 
         // ── 7. Reference data pools ────────────────────────────────
         $firstNamesMale = [
-            'Ramon','Carlo','Jose','Miguel','Eduardo','Roberto','Fernando','Antonio',
-            'Ricardo','Emmanuel','Rodrigo','Alfredo','Bernard','Leonardo','Danilo',
-            'Renato','Armando','Cesar','Victor','Nelson','Bryan','Kevin','Mark',
-            'Christian','Ronald','Joel','Jerome','Patrick','Dennis','Alvin',
+            'Ramon',
+            'Carlo',
+            'Jose',
+            'Miguel',
+            'Eduardo',
+            'Roberto',
+            'Fernando',
+            'Antonio',
+            'Ricardo',
+            'Emmanuel',
+            'Rodrigo',
+            'Alfredo',
+            'Bernard',
+            'Leonardo',
+            'Danilo',
+            'Renato',
+            'Armando',
+            'Cesar',
+            'Victor',
+            'Nelson',
+            'Bryan',
+            'Kevin',
+            'Mark',
+            'Christian',
+            'Ronald',
+            'Joel',
+            'Jerome',
+            'Patrick',
+            'Dennis',
+            'Alvin',
         ];
         $firstNamesFemale = [
-            'Maria','Ana','Joanna','Rosa','Maricel','Lourdes','Teresita','Corazon',
-            'Josephine','Erlinda','Gina','Rowena','Charissa','Kristine','Patricia',
-            'Melissa','Diana','Catherine','Angela','Sheila','Vanessa','Aileen',
-            'Mylene','Cheryl','Fe','Elvira','Nora','Cynthia','Susan','Marites',
+            'Maria',
+            'Ana',
+            'Joanna',
+            'Rosa',
+            'Maricel',
+            'Lourdes',
+            'Teresita',
+            'Corazon',
+            'Josephine',
+            'Erlinda',
+            'Gina',
+            'Rowena',
+            'Charissa',
+            'Kristine',
+            'Patricia',
+            'Melissa',
+            'Diana',
+            'Catherine',
+            'Angela',
+            'Sheila',
+            'Vanessa',
+            'Aileen',
+            'Mylene',
+            'Cheryl',
+            'Fe',
+            'Elvira',
+            'Nora',
+            'Cynthia',
+            'Susan',
+            'Marites',
         ];
         $lastNames = [
-            'Santos','Dela Cruz','Reyes','Mendoza','Garcia','Torres','Villanueva',
-            'Bautista','Ramos','Aquino','Fernandez','Flores','Lopez','Diaz','Castro',
-            'Aguilar','Tolentino','Espinosa','Navarro','Palma','Morales','Velasco',
-            'Ibanez','Ocampo','Macapagal','Pangilinan','Mercado','Bonifacio','Luna',
-            'Mabini','Rizal','Bonifacio','Pascual','Lucero','Salazar','Macaraeg',
+            'Santos',
+            'Dela Cruz',
+            'Reyes',
+            'Mendoza',
+            'Garcia',
+            'Torres',
+            'Villanueva',
+            'Bautista',
+            'Ramos',
+            'Aquino',
+            'Fernandez',
+            'Flores',
+            'Lopez',
+            'Diaz',
+            'Castro',
+            'Aguilar',
+            'Tolentino',
+            'Espinosa',
+            'Navarro',
+            'Palma',
+            'Morales',
+            'Velasco',
+            'Ibanez',
+            'Ocampo',
+            'Macapagal',
+            'Pangilinan',
+            'Mercado',
+            'Bonifacio',
+            'Luna',
+            'Mabini',
+            'Rizal',
+            'Bonifacio',
+            'Pascual',
+            'Lucero',
+            'Salazar',
+            'Macaraeg',
         ];
         $middleNames = [
-            'Cruz','Gomez','Lim','Tan','Ong','Aquino','Rivera','Pascual','Jimenez',
-            'Reyes','Santos','Bautista','Garcia','Torres','Ramos','Fernandez','Flores',
-            'Soriano','Valdez','Manalo','Bartolome','Castillo','Guevara','Zabala',
+            'Cruz',
+            'Gomez',
+            'Lim',
+            'Tan',
+            'Ong',
+            'Aquino',
+            'Rivera',
+            'Pascual',
+            'Jimenez',
+            'Reyes',
+            'Santos',
+            'Bautista',
+            'Garcia',
+            'Torres',
+            'Ramos',
+            'Fernandez',
+            'Flores',
+            'Soriano',
+            'Valdez',
+            'Manalo',
+            'Bartolome',
+            'Castillo',
+            'Guevara',
+            'Zabala',
         ];
         $cities = [
-            'Quezon City','Manila','Pasig City','Taguig City','Mandaluyong City',
-            'Marikina City','Pasay City','Makati City','Paranaque City','Caloocan City',
-            'Valenzuela City','Malabon City','Las Pinas City','Muntinlupa City','Pateros',
+            'Quezon City',
+            'Manila',
+            'Pasig City',
+            'Taguig City',
+            'Mandaluyong City',
+            'Marikina City',
+            'Pasay City',
+            'Makati City',
+            'Paranaque City',
+            'Caloocan City',
+            'Valenzuela City',
+            'Malabon City',
+            'Las Pinas City',
+            'Muntinlupa City',
+            'Pateros',
         ];
         $streets = [
-            'Rizal Street','Mabini Avenue','Luna Street','Bonifacio Boulevard',
-            'Aguinaldo Street','Quezon Avenue','Commonwealth Avenue','España Boulevard',
-            'Taft Avenue','EDSA','Ortigas Avenue','Shaw Boulevard','Aurora Boulevard',
-            'C-5 Road','Marcos Highway',
+            'Rizal Street',
+            'Mabini Avenue',
+            'Luna Street',
+            'Bonifacio Boulevard',
+            'Aguinaldo Street',
+            'Quezon Avenue',
+            'Commonwealth Avenue',
+            'España Boulevard',
+            'Taft Avenue',
+            'EDSA',
+            'Ortigas Avenue',
+            'Shaw Boulevard',
+            'Aurora Boulevard',
+            'C-5 Road',
+            'Marcos Highway',
         ];
-        $zipCodes = ['1100','1200','1300','1400','1500','1550','1600','1634','1700','1800'];
+        $zipCodes = ['1100', '1200', '1300', '1400', '1500', '1550', '1600', '1634', '1700', '1800'];
         $schools = [
             ['school' => 'University of the Philippines Diliman',   'address' => 'Diliman, Quezon City'],
             ['school' => 'De La Salle University',                  'address' => 'Taft Avenue, Manila'],
@@ -286,10 +416,10 @@ class DatabaseSeeder extends Seeder
             ['school' => 'Mapúa University',                        'address' => 'Muralla Street, Intramuros, Manila'],
             ['school' => 'Far Eastern University',                  'address' => 'Nicanor Reyes Street, Manila'],
             ['school' => 'San Beda University',                     'address' => 'Mendiola Street, Manila'],
-            ['school' => 'Polytechnic University of the Philippines','address' => 'Anonas Street, Santa Mesa, Manila'],
+            ['school' => 'Polytechnic University of the Philippines', 'address' => 'Anonas Street, Santa Mesa, Manila'],
             ['school' => 'Pamantasan ng Lungsod ng Maynila',        'address' => 'Intramuros, Manila'],
             ['school' => 'Philippine Normal University',            'address' => 'Taft Avenue, Manila'],
-            ['school' => 'Technological Institute of the Philippines','address' => 'Cubao, Quezon City'],
+            ['school' => 'Technological Institute of the Philippines', 'address' => 'Cubao, Quezon City'],
             ['school' => 'National University Philippines',         'address' => 'M.V. Delos Santos Street, Manila'],
         ];
         $degrees = [
@@ -346,10 +476,18 @@ class DatabaseSeeder extends Seeder
         $employmentClassifications = ['Regular', 'Regular', 'Regular', 'Job Order', 'Casual'];
         $civStatuses = ['single', 'married', 'married', 'married', 'single', 'widowed'];
         $placesBirth = [
-            'Manila, Philippines', 'Cebu City, Philippines', 'Davao City, Philippines',
-            'Quezon City, Philippines', 'Iloilo City, Philippines', 'Cagayan de Oro, Philippines',
-            'Zamboanga City, Philippines', 'Bacolod City, Philippines', 'General Santos City, Philippines',
-            'Baguio City, Philippines', 'Tacloban City, Philippines', 'Butuan City, Philippines',
+            'Manila, Philippines',
+            'Cebu City, Philippines',
+            'Davao City, Philippines',
+            'Quezon City, Philippines',
+            'Iloilo City, Philippines',
+            'Cagayan de Oro, Philippines',
+            'Zamboanga City, Philippines',
+            'Bacolod City, Philippines',
+            'General Santos City, Philippines',
+            'Baguio City, Philippines',
+            'Tacloban City, Philippines',
+            'Butuan City, Philippines',
         ];
         $leaveTypes = ['Vacation Leave', 'Sick Leave'];
 
@@ -400,9 +538,9 @@ class DatabaseSeeder extends Seeder
 
             $workEmail = strtolower(
                 preg_replace('/[^a-z0-9]/', '', $firstName) . '.' .
-                preg_replace('/[^a-z0-9]/', '', $lastName) .
-                ($i > 0 ? $i : '') .
-                '@obx.gov.ph'
+                    preg_replace('/[^a-z0-9]/', '', $lastName) .
+                    ($i > 0 ? $i : '') .
+                    '@obx.gov.ph'
             );
 
             // Basic info
@@ -513,7 +651,7 @@ class DatabaseSeeder extends Seeder
 
             // Service records (at least 1, sometimes 2)
             $positionName = $positions[$posIdx]['name'];
-            $divName = match($positions[$posIdx]['div']) {
+            $divName = match ($positions[$posIdx]['div']) {
                 $divHrId    => 'Human Resources Division',
                 $divItId    => 'Information Technology Division',
                 $divFinId   => 'Finance and Budget Division',
@@ -549,7 +687,7 @@ class DatabaseSeeder extends Seeder
             $semYear  = min(2024, $hireYear + 2);
             DB::table('employee_seminars_and_trainings')->insert([
                 'employee_id'          => $employeeId,
-                'seminar_training_name'=> $seminar1['name'],
+                'seminar_training_name' => $seminar1['name'],
                 'date_attended'        => "{$semYear}-06-15",
                 'venue'                => $seminar1['venue'],
                 'created_at'           => now(),
@@ -559,7 +697,7 @@ class DatabaseSeeder extends Seeder
                 $seminar2 = $govtSeminars[($i + 5) % count($govtSeminars)];
                 DB::table('employee_seminars_and_trainings')->insert([
                     'employee_id'          => $employeeId,
-                    'seminar_training_name'=> $seminar2['name'],
+                    'seminar_training_name' => $seminar2['name'],
                     'date_attended'        => min(2024, $semYear + 1) . '-11-20',
                     'venue'                => $seminar2['venue'],
                     'created_at'           => now(),
@@ -584,7 +722,7 @@ class DatabaseSeeder extends Seeder
                     'employee_id'  => $employeeId,
                     'leave_type'   => $lt,
                     'leave_days'   => '2024-01-01',
-                    'leave_balance'=> '2024-12-31',
+                    'leave_balance' => '2024-12-31',
                     'created_at'   => now(),
                     'updated_at'   => now(),
                 ]);
@@ -613,7 +751,7 @@ class DatabaseSeeder extends Seeder
             DB::table('employee_payroll_data')->insert([
                 'employee_id'    => $employeeId,
                 'initial_amount' => $baseSalary,
-                'deduction_amount'=> $deduction,
+                'deduction_amount' => $deduction,
                 'final_amount'   => $finalAmount,
                 'date_processed' => '2025-01-31',
                 'payroll_status' => 'Released',

@@ -7,17 +7,20 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
-class ReportsAndAnalyticsController extends Controller
+class UserController extends Controller
 {
-    public function __construct(protected ActivityLogService $activityLogService) {}
+    public function __construct(
+        protected ActivityLogService $activityLogService
+    ) {}
 
     public function index()
     {
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
-            'module' => 'general',
-            'description' => 'Viewed Reports and Analytics Page',
+            'module' => 'user',
+            'description' => 'Viewed User Management Page',
         ]);
-        return Inertia::render('ReportsAndAnalytics/Index');
+
+        return Inertia::render("User/Index");
     }
 }
