@@ -145,10 +145,11 @@ function PositionModal({
     const { data, setData, post, put, processing, errors, reset } = useForm({
         position_name: editingPosition?.position_name ?? "",
         department_id: editingPosition?.department_id ? String(editingPosition.department_id) : "",
-        division_id:   editingPosition?.division_id   ? String(editingPosition.division_id)   : "",
-        unit_id:       editingPosition?.unit_id       ? String(editingPosition.unit_id)       : "",
-        item_slots:    editingPosition?.total_slots   ? String(editingPosition.total_slots)   : "1",
+        division_id: editingPosition?.division_id ? String(editingPosition.division_id) : "",
+        unit_id: editingPosition?.unit_id ? String(editingPosition.unit_id) : "",
+        item_slots: editingPosition?.total_slots ? String(editingPosition.total_slots) : "1",
     })
+    
 
     const filteredDivisions = divisions.filter(
         (d) => !data.department_id || d.department_id === Number(data.department_id)
@@ -158,7 +159,9 @@ function PositionModal({
     )
 
     const noDivisions = !!data.department_id && filteredDivisions.length === 0
-    const noUnits     = !!data.division_id   && filteredUnits.length === 0
+    const noUnits = !!data.division_id && filteredUnits.length === 0
+
+    
 
     function handleClose() {
         reset()
@@ -234,12 +237,12 @@ function PositionModal({
                         {/* Division */}
                         <div>
                             <label htmlFor="division_id" className="mb-1.5 block text-xs font-medium text-foreground">
-                                Division <span className="text-destructive">*</span>
+                                Division <span className="text-muted-foreground">(optional)</span>
                             </label>
                             <Select
                                 value={data.division_id}
                                 onValueChange={(v) => {
-                                    setData("division_id", v)
+                                    setData("division_id", v == "none" ? "" : v)
                                     setData("unit_id", "")
                                 }}
                                 disabled={!data.department_id || noDivisions}
@@ -254,6 +257,7 @@ function PositionModal({
                                     } />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="none">None</SelectItem>
                                     {filteredDivisions.map((d) => (
                                         <SelectItem key={d.division_id} value={String(d.division_id)}>
                                             {d.division_name}
@@ -262,7 +266,7 @@ function PositionModal({
                                 </SelectContent>
                             </Select>
                             {noDivisions && (
-                                <p className="mt-1.5 text-xs text-destructive">
+                                <p className="mt-1.5 text-xs text-muted-foreground">  
                                     This department has no divisions yet.{" "}
                                     <a href="/organization/divisions" target="_blank"
                                         className="underline underline-offset-2 hover:text-foreground">
@@ -270,7 +274,6 @@ function PositionModal({
                                     </a>
                                 </p>
                             )}
-                            <FieldError message={errors.division_id} />
                         </div>
 
                         {/* Unit */}
@@ -348,7 +351,7 @@ function PositionModal({
                         <Button
                             type="submit"
                             size="sm"
-                            disabled={processing || noDivisions}
+                            disabled={processing}
                             className="text-xs"
                         >
                             {processing ? "Saving…" : isEdit ? "Update Position" : "Create Position"}
@@ -432,8 +435,8 @@ export default function PositionIndex({ positions, departments, divisions, units
                             columnId: "position_type",
                             title: "Type",
                             options: [
-                                { value: "Regular",   label: "Regular"   },
-                                { value: "Casual",    label: "Casual"    },
+                                { value: "Regular", label: "Regular" },
+                                { value: "Casual", label: "Casual" },
                                 { value: "Job Order", label: "Job Order" },
                             ],
                         },

@@ -105,7 +105,7 @@ class PositionController extends Controller
         $validated = $request->validate([
             'position_name' => ['required', 'string', 'max:255'],
             'department_id' => ['required', 'integer', 'exists:departments,department_id'],
-            'division_id'   => ['required', 'integer', 'exists:divisions,division_id'],
+            'division_id'   => ['nullable', 'integer', 'exists:divisions,division_id'],
             'unit_id'       => ['nullable', 'integer', 'exists:units,unit_id'],
             'item_slots'    => ['required', 'integer', 'min:1', 'max:100'],
         ]);
@@ -128,7 +128,7 @@ class PositionController extends Controller
         $validated = $request->validate([
             'position_name' => ['required', 'string', 'max:255'],
             'department_id' => ['required', 'integer', 'exists:departments,department_id'],
-            'division_id'   => ['required', 'integer', 'exists:divisions,division_id'],
+            'division_id'   => ['nullable', 'integer', 'exists:divisions,division_id'],
             'unit_id'       => ['nullable', 'integer', 'exists:units,unit_id'],
             'item_slots'    => ['required', 'integer', 'min:1', 'max:100'],
         ]);

@@ -16,6 +16,9 @@ return new class extends Migration
             $table->foreignId('employee_basic_info_id')->constrained('employee_basic_info', 'employee_basic_info_id')->onDelete('cascade');
             $table->string('full_name');
             $table->string('contact_number');
+            $table->boolean('sex')->default(true);
+            $table->date('date_of_birth');
+            $table->string('place_of_birth');
             $table->date('relationship');
             $table->timestamps();
         });
