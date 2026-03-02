@@ -1,36 +1,28 @@
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent } from '@/components/ui/card';
-import { DepartmentNode } from './components/chart-nodes';
+import { OrgChartHierarchy } from './components/org-chart-hierarchy';
 import type { Department } from './data/schema';
+import type { BreadcrumbItem } from '@/types';
 
 interface Props {
     organizationalChart: Department[];
 }
 
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: "Organization", href: "#" },
+    { title: "Organisational Chart", href: "/organization/organizational_chart" },
+];
+
 export default function OrganizationalChart({ organizationalChart }: Props) {
     return (
-        <AppLayout>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Organizational Chart" />
 
-            <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        Organizational Chart
-                    </h1>
-                    <p className="text-gray-600 mt-2">
-                        View your organization's structure, divisions, and team members
-                    </p>
-                </div>
-
-                <div className="space-y-6">
+            <div className="max-w-full mx-auto py-6 px-4 sm:px-6 lg:px-8 bg-gray-50 min-h-screen">
+                <div className="space-y-8">
                     {organizationalChart && organizationalChart.length > 0 ? (
-                        organizationalChart.map((department) => (
-                            <DepartmentNode
-                                key={department.id}
-                                department={department}
-                            />
-                        ))
+                        <OrgChartHierarchy departments={organizationalChart} />
                     ) : (
                         <Card>
                             <CardContent className="pt-6">
