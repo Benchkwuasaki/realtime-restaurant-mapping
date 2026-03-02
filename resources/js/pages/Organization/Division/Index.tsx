@@ -1,9 +1,9 @@
 import { Head, useForm, usePage } from "@inertiajs/react"
-import { BrickWall, Building2, Layers } from "lucide-react"
+import { BrickWall, Building2, Layers, LayoutGrid } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
-import { getColumns } from "@/pages/Organization/Division/components/columns"
 import { DataTable } from "@/components/shared/data-table/data-table"
+import { StatCard } from "@/components/shared/stat-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -23,18 +23,22 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import AppLayout from "@/layouts/app-layout"
-import type { BreadcrumbItem } from "@/types"
+import { getColumns } from "@/pages/Organization/Division/components/columns"
 import {
     type Department,
     type Division,
     type DivisionUnit,
 } from "@/pages/Organization/Division/data/schema"
+import type { BreadcrumbItem } from "@/types"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
     divisions: Division[]
     departments: Department[]
+    totalDivisions: number
+    totalUnits: number
+    totalDepartments: number
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -48,6 +52,8 @@ function FieldError({ message }: { message?: string }) {
     if (!message) return null
     return <p className="text-xs text-destructive mt-1">{message}</p>
 }
+
+
 
 // ─── Units Dialog ─────────────────────────────────────────────────────────────
 
@@ -113,10 +119,10 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
     const isEdit = editingDivision !== null
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        division_name:        editingDivision?.division_name        ?? "",
-        division_acronym:     editingDivision?.division_acronym     ?? "",
+        division_name: editingDivision?.division_name ?? "",
+        division_acronym: editingDivision?.division_acronym ?? "",
         division_description: editingDivision?.division_description ?? "",
-        department_id:        editingDivision?.department_id
+        department_id: editingDivision?.department_id
             ? String(editingDivision.department_id)
             : "",
     })
@@ -234,7 +240,7 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function DivisionIndex({ divisions, departments }: Props) {
+export default function DivisionIndex({ divisions, departments, totalDivisions, totalUnits, totalDepartments }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
     // ── Division modal state ──
@@ -270,22 +276,34 @@ export default function DivisionIndex({ divisions, departments }: Props) {
         setSelectedDivision(null)
     }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: () => {} })
+    const columns = getColumns({ onEdit: openEdit, onDelete: () => { } })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Divisions" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 py-4 px-6">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                            <Building2 className="w-5 h-5 text-primary" />
-                            Divisions
-                        </h1>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {divisions.length} division{divisions.length !== 1 ? "s" : ""} across {departments.length} department{departments.length !== 1 ? "s" : ""}
-                        </p>
+            <div className="flex h-full flex-1 flex-col gap-6 py-4 px-4">
+                <div className="w-full max-w-300">
+                    {/* ── Stat Cards ── */}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <StatCard
+                            title="Total Divisions"
+                            value={totalDivisions}
+                            description="All registered divisions"
+                            icon={<Building2 className="size-4" />}
+                        />
+                        <StatCard
+                            title="Total Departments"
+                            value={totalDepartments}
+                            description="Departments with divisions"
+                            icon={<LayoutGrid className="size-4" />}
+                        />
+                        <StatCard
+                            title="Total Units"
+                            value={totalUnits}
+                            description="Units across all divisions"
+                            icon={<Layers className="size-4" />}
+                        />
                     </div>
                 </div>
 
