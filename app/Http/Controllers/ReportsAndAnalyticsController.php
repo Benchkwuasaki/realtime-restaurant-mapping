@@ -16,7 +16,7 @@ class ReportsAndAnalyticsController extends Controller
     {
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
-            'module' => 'reports_and_analytics',
+            'module' => 'general',
             'description' => 'Viewed Reports and Analytics Page',
         ]);
         return Inertia::render('ReportsAndAnalytics/Index');

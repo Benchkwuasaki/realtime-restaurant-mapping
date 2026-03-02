@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('activity_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->enum('module', ['general', 'attendance', 'document_tracking', 'user', 'employee', 'payroll', 'benefits', 'reports_and_analytics'])->default('general');
+            $table->enum('module', ['general', 'attendance', 'document_tracking', 'user', 'employee', 'payroll', 'benefits', 'organization', 'leave',])->default('general');
             $table->string('description');
             $table->string('device');
             $table->string('platform');

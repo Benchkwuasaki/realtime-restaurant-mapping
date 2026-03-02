@@ -56,7 +56,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Dashboard",
         url: route("dashboard"),
         icon: LayoutDashboard,
-        isActive: true,
+        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
       },
       // TODO: implement user management, admin, super admin
       {
@@ -69,36 +69,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Employee",
         url: route("employee.index"),
         icon: User,
+        show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
       },
       {
         title: "Organization",
         url: null,
         icon: Building2,
+        show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
         items: [
           // TODO: Update the URLs for the organization sub-menu items
           {
-            title: "Organisational Chart",
+            title: "Organizational Chart",
             url: "/organization/organizational_chart",
           },
           {
             title: "Departments",
-            url: "/organization/departments",
+            url: route("department.index"),
           },
           {
             title: "Divisions",
-            url: "/organization/divisions",
+            url: route("division.index"),
           },
           {
             title: "Units",
-            url: "/organization/units",
+            url: route("unit.index"),
           },
           {
             title: "Positions",
-            url: "/organization/positions",
+            url: route("position.index"),
           },
           {
             title: "Internal Organization",
-            url: "/organization/internal-organizations",
+            url: route("internal-organization.index"),
           }
         ]
       },
@@ -106,6 +108,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Attendance",
         url: null,
         icon: FileCheck2,
+        show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
         items: [
           {
             title: "Whereabout Slip",
@@ -121,11 +124,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
         ]
       },
-
       {
         title: "Leave",
         url: "/leave",
         icon: Calendar,
+        show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
         items: [
           {
             title: "Leave Calendar",
@@ -161,6 +164,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Payroll",
         url: null,
         icon: Wallet,
+        show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
         items: [
           {
             title: "Payroll Processing",
@@ -196,17 +200,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Document Tracking",
         url: route("document_tracking.index"),
         icon: File,
+        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("org") || hasRole("inventory"),
       },
       {
         title: "Activity Logs",
         url: route("activity_logs.index"),
         icon: Logs,
+        show: true, // Visible to all roless
       },
       {
         title: "Announcements",
         url: route("announcement.index"),
         icon: Bell,
-        show: hasRole('ogm'),
+        show: true,
       },
     ],
     // navSecondary: [

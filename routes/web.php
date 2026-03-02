@@ -41,7 +41,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     });
 
 
-    Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->middleware(['auth', 'verified'])->name('document_tracking.index');
+    Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
 
     // User Routes
     Route::prefix('users')->name('user.')->group(function () {
@@ -49,7 +49,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     });
 
     // Announcement Routes
-    Route::prefix('announcement')->name('announcement.')->middleware('role:ogm')->group(function () {
+    Route::prefix('announcement')->name('announcement.')->group(function () {
         Route::get('/', [AnnouncementController::class, 'index'])->name('index');
     });
 

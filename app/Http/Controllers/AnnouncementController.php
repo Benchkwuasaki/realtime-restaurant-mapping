@@ -16,7 +16,7 @@ class AnnouncementController extends Controller
     {
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
-            'module' => 'announcement',
+            'module' => 'general',
             'description' => 'Visited Announcement Page',
         ]);
 

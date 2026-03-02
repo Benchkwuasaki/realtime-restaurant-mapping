@@ -37,8 +37,36 @@ class UserSeeder extends Seeder
             'password' => bcrypt('password'),
         ]);
 
+        // ogm
+        $org = User::create([
+            'name' => 'Org User',
+            'email' => 'org@gmail.com',
+            'email_verified_at' => now(),
+            'password' => bcrypt('password'),
+        ]);
+
+        // inventory
+        $inventory = User::create([
+            'name' => 'Inventory User',
+            'email' => 'inventory@gmail.com',
+            'email_verified_at' => now(),
+            'password' => bcrypt('password'),
+        ]);
+
+        // employee
+        $employee = User::create([
+            'name' => 'Employee User',
+            'email' => 'employee@gmail.com',
+            'email_verified_at' => now(),
+            'password' => bcrypt('password'),
+        ]);
+
+
         $superAdmin->assignRole('super_admin');
         $admin1->assignRole('hr_admin');
         $ogm->assignRole('ogm');
+        $org->assignRole('org');
+        $inventory->assignRole('inventory');
+        $employee->assignRole('employee');
     }
 }

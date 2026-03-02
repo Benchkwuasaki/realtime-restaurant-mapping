@@ -3,15 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Models\Department;
+use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 
 class DepartmentController extends Controller
 {
+    public function __construct(
+        protected ActivityLogService $activityLogService
+    ) {}
+
     public function index()
     {
+        $this->activityLogService->createLog([
+            'user_id' => Auth::id(),
+            'module' => 'organization',
+            'description' => 'Viewed Department Management Page',
+        ]);
+
         return Inertia::render('Organization/Department/Index', [
             'departments' => Department::with('divisions')
                 ->get()
