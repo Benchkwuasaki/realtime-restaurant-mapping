@@ -16,6 +16,13 @@ class FamilyInfo extends Model
         'full_name',
         'contact_number',
         'relationship',
+        'employee_basic_info_id',
+        'full_name',
+        'relationship',
+        'contact_number',
+        'sex',
+        'date_of_birth',
+        'place_of_birth',
     ];
 
     public function basicInfo(): BelongsTo

@@ -41,7 +41,7 @@ interface Position {
 }
 interface Item {
     item_id: number
-    is_occupied: boolean       // ← NEW: true if another employee holds this slot
+    is_occupied: boolean
     position?: Position
 }
 interface SalaryGradeStep {
@@ -68,6 +68,9 @@ interface FamilyMember {
     full_name: string
     relationship?: string
     contact_number?: string
+    sex?: boolean
+    date_of_birth?: string
+    place_of_birth?: string
 }
 interface BasicInfo {
     first_name: string
@@ -136,6 +139,12 @@ interface ServiceRecord {
     year_start?: string
     year_end?: string
 }
+interface InternalOrganization {
+    internal_organization_id: number
+    name: string
+    type: string
+    code: string
+}
 interface Employee {
     employee_id: number
     work_email: string
@@ -163,14 +172,7 @@ interface Props {
     items: Item[]
 }
 
-interface InternalOrganization {
-    internal_organization_id: number
-    name: string
-    type: string
-    code: string
-}
-
-// ─── Position group (derived from items list) ─────────────────────────────────
+// ─── Position group ───────────────────────────────────────────────────────────
 
 interface PositionGroup {
     positionName: string
@@ -179,6 +181,29 @@ interface PositionGroup {
     totalSlots: number
     availableSlots: number
     isFull: boolean
+}
+
+function buildPositionGroups(items: Item[]): PositionGroup[] {
+    const map = new Map<string, PositionGroup>()
+    for (const item of items) {
+        const key = item.position?.position_name ?? `__item_${item.item_id}`
+        if (!map.has(key)) {
+            map.set(key, {
+                positionName: item.position?.position_name ?? `Item #${item.item_id}`,
+                position: item.position,
+                items: [],
+                totalSlots: 0,
+                availableSlots: 0,
+                isFull: false,
+            })
+        }
+        const grp = map.get(key)!
+        grp.items.push(item)
+        grp.totalSlots++
+        if (!item.is_occupied) grp.availableSlots++
+    }
+    for (const grp of map.values()) grp.isFull = grp.availableSlots === 0
+    return Array.from(map.values()).sort((a, b) => a.positionName.localeCompare(b.positionName))
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -198,38 +223,6 @@ function cap(str?: string) {
 function toInputDate(date?: string) {
     if (!date) return ""
     return date.slice(0, 10)
-}
-
-/** Build position groups from the flat items array. */
-function buildPositionGroups(items: Item[]): PositionGroup[] {
-    const map = new Map<string, PositionGroup>()
-
-    for (const item of items) {
-        const key = item.position?.position_name ?? `__item_${item.item_id}`
-        if (!map.has(key)) {
-            map.set(key, {
-                positionName: item.position?.position_name ?? `Item #${item.item_id}`,
-                position: item.position,
-                items: [],
-                totalSlots: 0,
-                availableSlots: 0,
-                isFull: false,
-            })
-        }
-        const grp = map.get(key)!
-        grp.items.push(item)
-        grp.totalSlots++
-        if (!item.is_occupied) grp.availableSlots++
-    }
-
-    // Compute isFull after all items are grouped
-    for (const grp of map.values()) {
-        grp.isFull = grp.availableSlots === 0
-    }
-
-    return Array.from(map.values()).sort((a, b) =>
-        a.positionName.localeCompare(b.positionName)
-    )
 }
 
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
@@ -442,21 +435,14 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
     items: Item[]
 }) {
     const open = field !== null
-
-    // ── Build position groups once ────────────────────────────────────────────
     const positionGroups = useMemo(() => buildPositionGroups(items), [items])
-
-    // ── Derive the currently-selected position name from the employee's item ──
     const currentItemId = employee.item?.item_id?.toString() ?? ""
     const currentPositionName = useMemo(() => {
         return items.find(i => i.item_id.toString() === currentItemId)?.position?.position_name ?? ""
     }, [items, currentItemId])
 
-    // ── Form state ────────────────────────────────────────────────────────────
     const [form, setForm] = useState({
-        // We store the resolved item_id internally for submission
         item_id: currentItemId,
-        // We track which position group is "selected" in the UI
         selected_position_name: currentPositionName,
         date_hired: toInputDate(employee.date_hired),
         date_applied: toInputDate(employee.date_applied),
@@ -467,24 +453,14 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
-    /**
-     * When the user picks a position from the dropdown:
-     * 1. If the employee's current item belongs to this group → keep their item_id
-     *    (they're reassigning to the same position, no slot change needed)
-     * 2. Otherwise → pick the first available (non-occupied) slot
-     */
     const handlePositionSelect = (positionName: string) => {
         const grp = positionGroups.find(g => g.positionName === positionName)
         if (!grp) return
-
-        // Does the current employee already hold a slot in this group?
         const ownSlot = grp.items.find(i => i.item_id.toString() === currentItemId)
         if (ownSlot) {
             setForm(p => ({ ...p, selected_position_name: positionName, item_id: ownSlot.item_id.toString() }))
             return
         }
-
-        // Otherwise assign first available slot
         const firstAvailable = grp.items.find(i => !i.is_occupied)
         setForm(p => ({
             ...p,
@@ -493,13 +469,11 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         }))
     }
 
-    // Derive the selected group for the info panel below the select
     const selectedGroup = useMemo(() =>
         positionGroups.find(g => g.positionName === form.selected_position_name),
         [positionGroups, form.selected_position_name]
     )
 
-    // ── Save ──────────────────────────────────────────────────────────────────
     const save = () => {
         let data: Record<string, string> = {}
         if (field === "position") data = { item_id: form.item_id }
@@ -519,9 +493,6 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         work_schedule: "Edit Work Schedule",
     }
 
-    // Can only save if a valid (non-full, or own) item is resolved
-    const positionSaveDisabled = !form.item_id
-
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-sm">
@@ -530,65 +501,27 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                 </DialogHeader>
 
                 <div className="py-2 space-y-3">
-
-                    {/* ── POSITION FIELD ─────────────────────────────────────── */}
                     {field === "position" && (
                         <div className="space-y-3">
                             <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">
-                                    Position
-                                </Label>
-
-                                <Select
-                                    value={form.selected_position_name}
-                                    onValueChange={handlePositionSelect}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a position…" />
-                                    </SelectTrigger>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position</Label>
+                                <Select value={form.selected_position_name} onValueChange={handlePositionSelect}>
+                                    <SelectTrigger><SelectValue placeholder="Select a position…" /></SelectTrigger>
                                     <SelectContent className="max-h-72">
                                         {positionGroups.map(grp => {
-                                            /**
-                                             * A group is disabled when ALL slots are occupied
-                                             * AND the current employee is not one of the occupants.
-                                             * (If they're already in this group, they can stay there.)
-                                             */
-                                            const employeeIsInGroup = grp.items.some(
-                                                i => i.item_id.toString() === currentItemId
-                                            )
+                                            const employeeIsInGroup = grp.items.some(i => i.item_id.toString() === currentItemId)
                                             const isDisabled = grp.isFull && !employeeIsInGroup
-
                                             return (
-                                                <SelectItem
-                                                    key={grp.positionName}
-                                                    value={grp.positionName}
-                                                    disabled={isDisabled}
-                                                    className="py-2.5"
-                                                >
+                                                <SelectItem key={grp.positionName} value={grp.positionName} disabled={isDisabled} className="py-2.5">
                                                     <div className="flex items-center justify-between gap-3 w-full">
-                                                        {/* Position name */}
-                                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>
-                                                            {grp.positionName}
-                                                        </span>
-
-                                                        {/* Slot badge */}
+                                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.positionName}</span>
                                                         {grp.totalSlots > 1 && (
-                                                            isDisabled ? (
-                                                                <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">
-                                                                    Full
-                                                                </Badge>
-                                                            ) : (
-                                                                <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2 py-0.5 shrink-0">
-                                                                    {grp.availableSlots}/{grp.totalSlots} open
-                                                                </Badge>
-                                                            )
+                                                            isDisabled
+                                                                ? <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">Full</Badge>
+                                                                : <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2 py-0.5 shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
                                                         )}
-
-                                                        {/* Single-slot full indicator */}
                                                         {grp.totalSlots === 1 && isDisabled && (
-                                                            <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">
-                                                                Full
-                                                            </Badge>
+                                                            <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">Full</Badge>
                                                         )}
                                                     </div>
                                                 </SelectItem>
@@ -596,8 +529,6 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                         })}
                                     </SelectContent>
                                 </Select>
-
-                                {/* Helper text showing available slots for selected position */}
                                 {selectedGroup && selectedGroup.totalSlots > 1 && (
                                     <p className="text-xs text-muted-foreground mt-1.5">
                                         {selectedGroup.availableSlots === 0
@@ -607,32 +538,24 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                     </p>
                                 )}
                             </div>
-
-                            {/* Info panel: department / division / unit */}
                             {selectedGroup?.position && (
                                 <div className="rounded-lg border border-border divide-y divide-border bg-muted/20">
                                     {selectedGroup.position.department && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Department</span>
-                                            <span className="text-xs font-medium text-foreground">
-                                                {selectedGroup.position.department.department_name}
-                                            </span>
+                                            <span className="text-xs font-medium text-foreground">{selectedGroup.position.department.department_name}</span>
                                         </div>
                                     )}
                                     {selectedGroup.position.division && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Division</span>
-                                            <span className="text-xs font-medium text-foreground">
-                                                {selectedGroup.position.division.division_name}
-                                            </span>
+                                            <span className="text-xs font-medium text-foreground">{selectedGroup.position.division.division_name}</span>
                                         </div>
                                     )}
                                     {selectedGroup.position.unit && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Unit</span>
-                                            <span className="text-xs font-medium text-foreground">
-                                                {selectedGroup.position.unit.unit_name}
-                                            </span>
+                                            <span className="text-xs font-medium text-foreground">{selectedGroup.position.unit.unit_name}</span>
                                         </div>
                                     )}
                                 </div>
@@ -640,7 +563,6 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                         </div>
                     )}
 
-                    {/* ── OTHER FIELDS (unchanged) ───────────────────────────── */}
                     {field === "date_hired" && (
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Hired</Label>
@@ -704,7 +626,7 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
                     {field !== "unit_division_department" && (
-                        <Button onClick={save} disabled={field === "position" && positionSaveDisabled}>
+                        <Button onClick={save} disabled={field === "position" && !form.item_id}>
                             <Save className="w-3.5 h-3.5 mr-1.5" />Save Changes
                         </Button>
                     )}
@@ -742,7 +664,6 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                 />
             </div>
 
-            {/* ── Internal Organizations ── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Internal Organizations</span>
@@ -915,12 +836,8 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-foreground font-medium text-right">{b.remaining}</span>
                                 <span className="text-sm text-foreground font-medium text-right">{b.used}</span>
                                 <div className="flex items-center justify-end gap-1">
-                                    <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs">
-                                        <Pencil className="w-3.5 h-3.5" />
-                                    </Button>
-                                    <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs">
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
+                                    <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                    <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs"><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
                         ))}
@@ -967,8 +884,8 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-foreground font-medium">{a.duration} days</span>
                                 <span className="text-sm text-muted-foreground">{fmtShort(a.date_filed)}</span>
                                 <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
-                                        a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
-                                            "bg-destructive/10 text-destructive"
+                                    a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
+                                        "bg-destructive/10 text-destructive"
                                     }`}>● {a.status}</Badge>
                             </div>
                         ))}
@@ -1125,9 +1042,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                             <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                                                 {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                             </button>
-                                            <Button onClick={() => openEditGovDialog(type, account)} variant={"ghost"} size={"icon-xs"}>
-                                                <Pencil className="w-3.5 h-3.5" />
-                                            </Button>
+                                            <Button onClick={() => openEditGovDialog(type, account)} variant={"ghost"} size={"icon-xs"}><Pencil className="w-3.5 h-3.5" /></Button>
                                         </>
                                     ) : (
                                         <Button onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })} variant={"ghost"} size={"icon-xs"}>
@@ -1151,9 +1066,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                     <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                     </button>
-                                    <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs">
-                                        <Pencil className="w-3.5 h-3.5" />
-                                    </Button>
+                                    <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
                         )
@@ -1183,9 +1096,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
                                 <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
                                 <Badge className="text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5 shrink-0">✓ Active</Badge>
-                                <Button onClick={() => openEligDialog(e)} variant={"ghost"} size={"icon-xs"}>
-                                    <Pencil className="w-3.5 h-3.5" />
-                                </Button>
+                                <Button onClick={() => openEligDialog(e)} variant={"ghost"} size={"icon-xs"}><Pencil className="w-3.5 h-3.5" /></Button>
                             </div>
                         ))}
                     </div>
@@ -1272,14 +1183,32 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const [familyDialog, setFamilyDialog] = useState<{
         open: boolean; index?: number
         full_name: string; relationship: string; contact_number: string
-    }>({ open: false, full_name: "", relationship: "", contact_number: "" })
+        sex: string; date_of_birth: string; place_of_birth: string
+    }>({ open: false, full_name: "", relationship: "", contact_number: "", sex: "", date_of_birth: "", place_of_birth: "" })
+
     const [deleteFamilyIndex, setDeleteFamilyIndex] = useState<number | null>(null)
 
     const openFamilyDialog = (member?: FamilyMember, index?: number) =>
-        setFamilyDialog({ open: true, index, full_name: member?.full_name ?? "", relationship: member?.relationship ?? "", contact_number: member?.contact_number ?? "" })
+        setFamilyDialog({
+            open: true,
+            index,
+            full_name: member?.full_name ?? "",
+            relationship: member?.relationship ?? "",
+            contact_number: member?.contact_number ?? "",
+            sex: member?.sex !== undefined ? String(Number(member.sex)) : "",
+            date_of_birth: toInputDate(member?.date_of_birth),
+            place_of_birth: member?.place_of_birth ?? "",
+        })
 
     const saveFamilyMember = () => {
-        const data = { full_name: familyDialog.full_name, relationship: familyDialog.relationship, contact_number: familyDialog.contact_number }
+        const data = {
+            full_name: familyDialog.full_name,
+            relationship: familyDialog.relationship,
+            contact_number: familyDialog.contact_number,
+            sex: familyDialog.sex,
+            date_of_birth: familyDialog.date_of_birth || null,
+            place_of_birth: familyDialog.place_of_birth,
+        }
         if (familyDialog.index !== undefined) {
             router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, { preserveScroll: true, onSuccess: () => setFamilyDialog(p => ({ ...p, open: false })) })
         } else {
@@ -1372,7 +1301,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     return (
         <div className="p-5 space-y-5">
 
-            {/* ── Family Information ───────────────────────────────── */}
+            {/* ── Family Information ─────────────────────────────── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Family Information</span>
@@ -1380,26 +1309,56 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <Plus className="w-4 h-4" />
                     </button>
                 </div>
+
                 {familyMembers.length === 0 ? (
                     <div className="px-5 py-8 text-center">
                         <p className="text-sm text-muted-foreground italic mb-3">No family information on file.</p>
-                        <Button variant="outline" size="sm" onClick={() => openFamilyDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Family Member</Button>
+                        <Button variant="outline" size="sm" onClick={() => openFamilyDialog()} className="gap-1.5">
+                            <Plus className="w-3.5 h-3.5" /> Add Family Member
+                        </Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {familyMembers.map((member, i) => (
-                            <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                <Checkbox className="w-4 h-4" />
-                                <span className="text-sm text-foreground font-medium">{member.full_name}</span>
-                                <span className="text-sm text-muted-foreground">{member.relationship ?? "—"}</span>
-                                <span className="text-sm text-muted-foreground">{member.contact_number ?? "—"}</span>
-                                <div className="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <>
+                        {/* Column header */}
+                        <div className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                            <div className="w-4" />
+                            <span className="text-xs font-semibold text-muted-foreground">Full Name</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Relationship</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Sex</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Date of Birth</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Place of Birth</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                            {familyMembers.map((member, i) => (
+                                <div key={i} className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                    <Checkbox className="w-4 h-4" />
+                                    <span className="text-sm text-foreground font-medium truncate">{member.full_name}</span>
+                                    <span className="text-sm text-muted-foreground">{member.relationship ?? "—"}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                        {member.sex !== undefined ? (member.sex ? "Male" : "Female") : "—"}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">
+                                        {member.date_of_birth ? fmtShort(member.date_of_birth) : "—"}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground truncate">{member.place_of_birth ?? "—"}</span>
+                                    <div className="flex items-center justify-end gap-1">
+                                        <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}>
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            onClick={() => setDeleteFamilyIndex(i)}
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 
@@ -1414,34 +1373,38 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 {educations.length === 0 ? (
                     <div className="px-5 py-8 text-center">
                         <p className="text-sm text-muted-foreground italic mb-3">No educational records on file.</p>
-                        <Button variant="outline" size="sm" onClick={() => openEducDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Education</Button>
+                        <Button variant="outline" size="sm" onClick={() => openEducDialog()} className="gap-1.5">
+                            <Plus className="w-3.5 h-3.5" /> Add Education
+                        </Button>
                     </div>
                 ) : (
-                    Object.entries(educByLevel).map(([level, edus]) => (
-                        <div key={level}>
-                            <div className="px-5 py-2 bg-muted/30 border-y border-border">
-                                <span className="text-xs font-semibold text-muted-foreground">{level}</span>
-                            </div>
-                            <div className="divide-y divide-border">
-                                {edus.map((edu, i) => {
-                                    const globalIndex = educations.indexOf(edu)
-                                    return (
-                                        <div key={i} className="grid grid-cols-[auto_1fr_1fr_80px_100px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                            <Checkbox className="w-4 h-4" />
-                                            <span className="text-sm text-foreground font-medium">{edu.school_name}</span>
-                                            <span className="text-sm text-muted-foreground">{edu.school_address ?? "—"}</span>
-                                            <span className="text-sm text-muted-foreground">{edu.degree ?? "—"}</span>
-                                            <span className="text-sm text-muted-foreground text-right">{edu.graduation_date ? new Date(edu.graduation_date).getFullYear() : "—"}</span>
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                                <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteEducIndex(globalIndex)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <>
+                        {Object.entries(educByLevel).map(([level, edus]) => (
+                            <div key={level}>
+                                <div className="px-5 py-2 bg-muted/30 border-y border-border">
+                                    <span className="text-xs font-semibold text-muted-foreground">{level}</span>
+                                </div>
+                                <div className="divide-y divide-border">
+                                    {edus.map((edu, i) => {
+                                        const globalIndex = educations.indexOf(edu)
+                                        return (
+                                            <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr_80px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                                <Checkbox className="w-4 h-4" />
+                                                <span className="text-sm text-foreground font-medium">{edu.school_name}</span>
+                                                <span className="text-sm text-muted-foreground">{edu.school_address ?? "—"}</span>
+                                                <span className="text-sm text-muted-foreground">{edu.degree ?? "—"}</span>
+                                                <span className="text-sm text-muted-foreground text-right">{edu.graduation_date ? new Date(edu.graduation_date).getFullYear() : "—"}</span>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteEducIndex(globalIndex)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )
-                                })}
+                                        )
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    ))
+                        ))}
+                    </>
                 )}
             </div>
 
@@ -1456,23 +1419,34 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 {seminars.length === 0 ? (
                     <div className="px-5 py-8 text-center">
                         <p className="text-sm text-muted-foreground italic mb-3">No seminars or trainings on file.</p>
-                        <Button variant="outline" size="sm" onClick={() => openSeminarDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Seminar</Button>
+                        <Button variant="outline" size="sm" onClick={() => openSeminarDialog()} className="gap-1.5">
+                            <Plus className="w-3.5 h-3.5" /> Add Seminar
+                        </Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {seminars.map(s => (
-                            <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                <Checkbox className="w-4 h-4" />
-                                <span className="text-sm text-foreground font-medium">{s.seminar_name}</span>
-                                <span className="text-sm text-muted-foreground">{s.organizer ?? "—"}</span>
-                                <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
-                                <div className="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <>
+                        <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                            <div className="w-4" />
+                            <span className="text-xs font-semibold text-muted-foreground">Seminar / Training</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Organizer</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Date Attended</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                            {seminars.map(s => (
+                                <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                    <Checkbox className="w-4 h-4" />
+                                    <span className="text-sm text-foreground font-medium">{s.seminar_name}</span>
+                                    <span className="text-sm text-muted-foreground">{s.organizer ?? "—"}</span>
+                                    <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
+                                    <div className="flex items-center justify-end gap-1">
+                                        <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 
@@ -1487,50 +1461,109 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 {serviceRecs.length === 0 ? (
                     <div className="px-5 py-8 text-center">
                         <p className="text-sm text-muted-foreground italic mb-3">No service records on file.</p>
-                        <Button variant="outline" size="sm" onClick={() => openServiceDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Service Record</Button>
+                        <Button variant="outline" size="sm" onClick={() => openServiceDialog()} className="gap-1.5">
+                            <Plus className="w-3.5 h-3.5" /> Add Service Record
+                        </Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {serviceRecs.map(s => (
-                            <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                <Checkbox className="w-4 h-4" />
-                                <span className="text-sm text-foreground font-medium">{s.position_name}</span>
-                                <span className="text-sm text-muted-foreground">{s.department_name ?? "—"}</span>
-                                <span className="text-sm text-muted-foreground text-right">{s.year_start && s.year_end ? `${s.year_start}–${s.year_end}` : s.year_start ?? "—"}</span>
-                                <div className="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <>
+                        <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                            <div className="w-4" />
+                            <span className="text-xs font-semibold text-muted-foreground">Position</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Department</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Duration</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                            {serviceRecs.map(s => (
+                                <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                    <Checkbox className="w-4 h-4" />
+                                    <span className="text-sm text-foreground font-medium">{s.position_name}</span>
+                                    <span className="text-sm text-muted-foreground">{s.department_name ?? "—"}</span>
+                                    <span className="text-sm text-muted-foreground text-right">{s.year_start && s.year_end ? `${s.year_start}–${s.year_end}` : s.year_start ?? "—"}</span>
+                                    <div className="flex items-center justify-end gap-1">
+                                        <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 
             {/* ══ DIALOGS ══════════════════════════════════════════ */}
 
-            {/* Family Dialog */}
+            {/* Family Dialog — updated with sex, dob, place_of_birth */}
             <Dialog open={familyDialog.open} onOpenChange={o => setFamilyDialog(p => ({ ...p, open: o }))}>
-                <DialogContent className="sm:max-w-sm">
-                    <DialogHeader><DialogTitle>{familyDialog.index !== undefined ? "Edit" : "Add"} Family Member</DialogTitle></DialogHeader>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{familyDialog.index !== undefined ? "Edit" : "Add"} Family Member</DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Full Name *</Label>
-                            <Input value={familyDialog.full_name} onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Relationship</Label>
-                            <Select value={familyDialog.relationship} onValueChange={v => setFamilyDialog(p => ({ ...p, relationship: v }))}>
-                                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                                <SelectContent>
-                                    {["Spouse", "Child", "Parent", "Sibling", "Guardian", "Other"].map(r => (
-                                        <SelectItem key={r} value={r}>{r}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Contact Number</Label>
-                            <Input value={familyDialog.contact_number} onChange={e => setFamilyDialog(p => ({ ...p, contact_number: e.target.value }))} /></div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Full Name *</Label>
+                            <Input
+                                value={familyDialog.full_name}
+                                onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Relationship</Label>
+                                <Select value={familyDialog.relationship} onValueChange={v => setFamilyDialog(p => ({ ...p, relationship: v }))}>
+                                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                                    <SelectContent>
+                                        {["Spouse", "Child", "Parent", "Sibling", "Guardian", "Other"].map(r => (
+                                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Sex</Label>
+                                <Select value={familyDialog.sex} onValueChange={v => setFamilyDialog(p => ({ ...p, sex: v }))}>
+                                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">Male</SelectItem>
+                                        <SelectItem value="0">Female</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date of Birth</Label>
+                                <Input
+                                    type="date"
+                                    value={familyDialog.date_of_birth}
+                                    onChange={e => setFamilyDialog(p => ({ ...p, date_of_birth: e.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Contact Number</Label>
+                                <Input
+                                    value={familyDialog.contact_number}
+                                    onChange={e => setFamilyDialog(p => ({ ...p, contact_number: e.target.value }))}
+                                    placeholder="09XXXXXXXXXX"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Place of Birth</Label>
+                            <Input
+                                value={familyDialog.place_of_birth}
+                                onChange={e => setFamilyDialog(p => ({ ...p, place_of_birth: e.target.value }))}
+                                placeholder="e.g. Manila, Philippines"
+                            />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setFamilyDialog(p => ({ ...p, open: false }))}>Cancel</Button>
-                        <Button onClick={saveFamilyMember} disabled={!familyDialog.full_name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
+                        <Button onClick={saveFamilyMember} disabled={!familyDialog.full_name.trim()}>
+                            <Save className="w-3.5 h-3.5 mr-1.5" />Save
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -1551,15 +1584,23 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Name *</Label>
-                            <Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label>
-                            <Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} /></div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Name *</Label>
+                            <Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label>
+                            <Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} />
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label>
-                                <Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} /></div>
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Graduation Date</Label>
-                                <Input type="date" value={educDialog.graduation_date} onChange={e => setEducDialog(p => ({ ...p, graduation_date: e.target.value }))} /></div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label>
+                                <Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} />
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Graduation Date</Label>
+                                <Input type="date" value={educDialog.graduation_date} onChange={e => setEducDialog(p => ({ ...p, graduation_date: e.target.value }))} />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
@@ -1574,12 +1615,18 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label>
-                            <Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label>
-                            <Input value={seminarDialog.organizer} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label>
-                            <Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label>
+                            <Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label>
+                            <Input value={seminarDialog.organizer} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label>
+                            <Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setSeminarDialog(p => ({ ...p, open: false }))}>Cancel</Button>
@@ -1593,15 +1640,23 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader><DialogTitle>{serviceDialog.id ? "Edit" : "Add"} Service Record</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position Name *</Label>
-                            <Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Department</Label>
-                            <Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} /></div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position Name *</Label>
+                            <Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Department</Label>
+                            <Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} />
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Start</Label>
-                                <Input type="number" min="1900" max="2100" placeholder="e.g. 2020" value={serviceDialog.year_start} onChange={e => setServiceDialog(p => ({ ...p, year_start: e.target.value }))} /></div>
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year End</Label>
-                                <Input type="number" min="1900" max="2100" placeholder="e.g. 2026" value={serviceDialog.year_end} onChange={e => setServiceDialog(p => ({ ...p, year_end: e.target.value }))} /></div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Start</Label>
+                                <Input type="number" min="1900" max="2100" placeholder="e.g. 2020" value={serviceDialog.year_start} onChange={e => setServiceDialog(p => ({ ...p, year_start: e.target.value }))} />
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year End</Label>
+                                <Input type="number" min="1900" max="2100" placeholder="e.g. 2026" value={serviceDialog.year_end} onChange={e => setServiceDialog(p => ({ ...p, year_end: e.target.value }))} />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
@@ -1689,32 +1744,41 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {uploadedFiles.map(file => (
-                            <div key={file.id} className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                <Checkbox className="w-4 h-4" />
-                                <span className="text-sm text-foreground truncate">{file.file_name}</span>
-                                <span className="text-sm text-muted-foreground text-right">{formatBytes(file.file_size)}</span>
-                                <span className="text-sm text-muted-foreground text-right">{fmtShort(file.created_at)}</span>
-                                <div className="flex items-center justify-end gap-1">
-                                    <a href={file.file_url} download>
-                                        <Button variant="ghost" size="icon-xs" title="Download">
-                                            <Download className="w-3.5 h-3.5" />
+                    <>
+                        <div className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                            <div className="w-4" />
+                            <span className="text-xs font-semibold text-muted-foreground">File Name</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Size</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Uploaded</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                            {uploadedFiles.map(file => (
+                                <div key={file.id} className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                    <Checkbox className="w-4 h-4" />
+                                    <span className="text-sm text-foreground truncate">{file.file_name}</span>
+                                    <span className="text-sm text-muted-foreground text-right">{formatBytes(file.file_size)}</span>
+                                    <span className="text-sm text-muted-foreground text-right">{fmtShort(file.created_at)}</span>
+                                    <div className="flex items-center justify-end gap-1">
+                                        <a href={file.file_url} download>
+                                            <Button variant="ghost" size="icon-xs" title="Download">
+                                                <Download className="w-3.5 h-3.5" />
+                                            </Button>
+                                        </a>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            onClick={() => setDeleteFileId(file.id)}
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
-                                    </a>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                        onClick={() => setDeleteFileId(file.id)}
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 
