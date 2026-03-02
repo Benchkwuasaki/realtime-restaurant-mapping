@@ -3,9 +3,9 @@ import { Building2, GitBranch, LampDesk, LayoutGrid } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { DataTable } from "@/components/shared/data-table/data-table"
+import { StatCard } from "@/components/shared/stat-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardTitle, CardAction, CardContent, CardDescription } from "@/components/ui/card"
 import {
     Dialog,
     DialogContent,
@@ -36,33 +36,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: "Departments", href: "/organization/departments" },
 ]
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-
-interface StatCardProps {
-    title: string
-    value: number
-    description?: string
-    icon: React.ReactNode
-}
-
-function StatCard({ title, value, description, icon }: StatCardProps) {
-    return (
-        <Card className="flex flex-col gap-2">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                <div className="bg-muted text-muted-foreground rounded-lg">
-                    {icon}
-                </div>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-1">
-                <p className="text-2xl sm:text-3xl font-bold">{value}</p>
-                {description && (
-                    <CardDescription className="text-xs sm:text-sm">{description}</CardDescription>
-                )}
-            </CardContent>
-        </Card>
-    )
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
