@@ -53,6 +53,12 @@ class WhereaboutSlipController extends Controller
             ->map(fn($e) => self::mapEmployee($e))
             ->values();
 
+        $this->activityLogService->createLog([
+            'user_id' => Auth::id(),
+            'module' => 'attendance',
+            'description' => "Viewed whereabout slip management",
+        ]);
+
         return Inertia::render('Attendance/WhereaboutSlip/Index', [
             'slips'     => $slips,
             'employees' => $employees,

@@ -15,7 +15,7 @@ export default function Index() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Reports and Analytics" />
             <div>
-                
+                <h1>Reports and Analytics hehe</h1>
             </div>
         </AppLayout>
     );
