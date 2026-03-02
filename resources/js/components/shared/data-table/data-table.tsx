@@ -46,7 +46,6 @@ interface DataTableProps<TData, TValue> {
      * Defaults to `(row) => String((row as any).id)`.
      */
     getRowId?: (row: TData) => string
-
     /**
      * Optional click handler for an entire row (e.g. navigate to detail page).
      * Receives the full row object. When omitted, rows are not clickable.
@@ -90,7 +89,9 @@ export function DataTable<TData, TValue>({
     const table = useReactTable({
         data,
         columns,
-        getRowId: getRowId ?? ((row) => String((row as any).id)),
+        enableRowSelection: true,
+        getRowId,
+        getPaginationRowModel: getPaginationRowModel(),
         state: {
             sorting,
             columnVisibility,
@@ -99,7 +100,6 @@ export function DataTable<TData, TValue>({
             pagination,
         },
         autoResetPageIndex: false,
-        enableRowSelection: true,
         onRowSelectionChange: setRowSelection,
         onSortingChange: (updater) => {
             setSorting(updater)
@@ -113,7 +113,6 @@ export function DataTable<TData, TValue>({
         onPaginationChange: setPagination,
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFacetedRowModel: getFacetedRowModel(),
         getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -187,6 +186,7 @@ export function DataTable<TData, TValue>({
 
             <DataTablePagination
                 table={table}
+                rowSelection={rowSelection} // ← added
                 pageIndex={pagination.pageIndex}
                 pageSize={pagination.pageSize}
                 pageCount={pageCount}

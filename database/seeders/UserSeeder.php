@@ -13,18 +13,60 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
+        // super admin
+        $superAdmin = User::create([
+            'name' => 'SuperAdmin User',
+            'email' => 'superadmin@gmail.com',
+            'email_verified_at' => now(),
+            'password' => bcrypt('password'),
+        ]);
+
         // admin
-        User::create([
+        $admin1 = User::create([
             'name' => 'Admin User',
             'email' => 'admin@gmail.com',
             'email_verified_at' => now(),
             'password' => bcrypt('password'),
         ]);
-        User::create([
-            'name' => 'Klein Allen',
-            'email' => 'allenklein04@gmail.com',
+
+        // ogm
+        $ogm = User::create([
+            'name' => 'Ogm User',
+            'email' => 'ogm@gmail.com',
             'email_verified_at' => now(),
-            'password' => bcrypt('shira081419'),
+            'password' => bcrypt('password'),
         ]);
+
+        // ogm
+        $org = User::create([
+            'name' => 'Org User',
+            'email' => 'org@gmail.com',
+            'email_verified_at' => now(),
+            'password' => bcrypt('password'),
+        ]);
+
+        // inventory
+        $inventory = User::create([
+            'name' => 'Inventory User',
+            'email' => 'inventory@gmail.com',
+            'email_verified_at' => now(),
+            'password' => bcrypt('password'),
+        ]);
+
+        // employee
+        $employee = User::create([
+            'name' => 'Employee User',
+            'email' => 'employee@gmail.com',
+            'email_verified_at' => now(),
+            'password' => bcrypt('password'),
+        ]);
+
+
+        $superAdmin->assignRole('super_admin');
+        $admin1->assignRole('hr_admin');
+        $ogm->assignRole('ogm');
+        $org->assignRole('org');
+        $inventory->assignRole('inventory');
+        $employee->assignRole('employee');
     }
 }

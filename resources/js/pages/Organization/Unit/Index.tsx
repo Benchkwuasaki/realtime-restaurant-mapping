@@ -2,7 +2,6 @@ import { Head, useForm, usePage } from "@inertiajs/react"
 import { Building2, Puzzle } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
-import { getColumns } from "@/pages/Organization/Unit/components/columns"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,12 +22,13 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import AppLayout from "@/layouts/app-layout"
-import type { BreadcrumbItem } from "@/types"
+import { getColumns } from "@/pages/Organization/Unit/components/columns"
 import {
     type Division,
     type Unit,
     type UnitPosition,
 } from "@/pages/Organization/Unit/data/schema"
+import type { BreadcrumbItem } from "@/types"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

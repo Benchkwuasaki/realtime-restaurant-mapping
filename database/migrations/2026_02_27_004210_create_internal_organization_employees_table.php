@@ -9,24 +9,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('employee_internal_organization', function (Blueprint $table) {
-            // ── Foreign key → employees (unsignedBigInteger to match employee_id PK) ──
             $table->unsignedBigInteger('employee_id');
             $table->foreign('employee_id')
                   ->references('employee_id')
                   ->on('employees')
                   ->cascadeOnDelete();
-
-            // ── Foreign key → internal_organizations (UUID) ────────────────────────
-            $table->uuid('internal_organization_id');
+            $table->unsignedBigInteger('internal_organization_id');
             $table->foreign('internal_organization_id')
-                  ->references('id')
+                  ->references('internal_organization_id')
                   ->on('internal_organizations')
                   ->cascadeOnDelete();
-
-            // ── Composite primary key (prevents duplicate memberships) ─────────────
             $table->primary(['employee_id', 'internal_organization_id']);
-
-            // ── Optional: track when/who added the member ─────────────────────────
             $table->timestamps();
         });
     }

@@ -26,11 +26,11 @@ import {
 } from "@/components/ui/sidebar"
 import { UserInfo } from "@/components/user-info"
 import { route } from "ziggy-js"
+import { useAuth } from "@/hooks/use-auth"
 
 export function NavUser() {
-  const { props } = usePage()
-  const user = props.auth?.user
   const { isMobile } = useSidebar()
+  const { user, role } = useAuth()
 
   const handleLogout = () => {
     router.post(route('logout'))
@@ -47,7 +47,7 @@ export function NavUser() {
               size="lg"
               className="hover:cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <UserInfo user={user} showEmail={false} />
+              <UserInfo user={user} />
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
@@ -59,7 +59,7 @@ export function NavUser() {
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <UserInfo user={user} showEmail={true} />
+                <UserInfo user={user} />
               </div>
             </DropdownMenuLabel>
             {/* <DropdownMenuSeparator /> */}

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import AppLayout from "@/layouts/app-layout";
 import { Head } from "@inertiajs/react";
+import { useAuth } from "@/hooks/use-auth";
 
 const today = new Date();
 const fullDate = today.toLocaleDateString("en-US", {
@@ -49,6 +50,10 @@ const employeeItems = [
 ];
 
 export default function Page() {
+    const { user, hasRole } = useAuth()
+
+    console.log(user)
+
     return (
         <AppLayout>
             <Head title="Dashboard" />
@@ -57,7 +62,7 @@ export default function Page() {
                 {/* Welcome + Date Header */}
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-normal text-gray-800">
-                        Welcome back, <span className="font-bold">User Name!</span>
+                        Welcome back, <span className="font-bold">{user?.name}</span>
                     </h1>
                     <span className="text-lg font-normal text-gray-700">{fullDate}</span>
                 </div>
@@ -90,22 +95,24 @@ export default function Page() {
                                 <span className="text-sm font-medium text-gray-600">Attendance</span>
                                 <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                {attendanceItems.map((item) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <Card key={item.label} className="p-3 border border-gray-200">
-                                            <div className="flex items-start justify-between mb-2">
-                                                <p className="text-xs text-gray-400">{item.label}</p>
-                                                <div className={`${item.bg} p-1.5 rounded-md`}>
-                                                    <Icon className={`size-3.5 ${item.color}`} />
+                            {hasRole('ogm') && (
+                                <div className="grid grid-cols-3 gap-2">
+                                    {attendanceItems.map((item) => {
+                                        const Icon = item.icon;
+                                        return (
+                                            <Card key={item.label} className="p-3 border border-gray-200">
+                                                <div className="flex items-start justify-between mb-2">
+                                                    <p className="text-xs text-gray-400">{item.label}</p>
+                                                    <div className={`${item.bg} p-1.5 rounded-md`}>
+                                                        <Icon className={`size-3.5 ${item.color}`} />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <p className="text-xl font-bold text-gray-800">{item.value}</p>
-                                        </Card>
-                                    );
-                                })}
-                            </div>
+                                                <p className="text-xl font-bold text-gray-800">{item.value}</p>
+                                            </Card>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         {/* Total Employees */}

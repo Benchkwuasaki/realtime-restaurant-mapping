@@ -1,10 +1,12 @@
 <?php
+
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\BenefitsController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\ActivityLogsController;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
@@ -17,6 +19,7 @@ use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
+use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -25,6 +28,9 @@ Route::get('/', function () {
 })->name('home');
 
 Route::group(['middleware' => ['auth', 'verified']], function () {
+    // TODO: ayha ra add middleware kung ma approve and finalized ang routes
+
+    // Dashboard Routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Attendance Routes
@@ -35,10 +41,10 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
         Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
         Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    // User Routes
+    Route::prefix('users')->name('user.')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('index');
     });
-
-
-    Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->middleware(['auth', 'verified'])->name('document_tracking.index');
 
     // Employee Routes
     Route::prefix('employee')->name('employee.')->group(function () {
@@ -67,6 +73,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::post('/{employee}/eligibility', [EmployeeController::class, 'storeEligibility'])->name('eligibility.store');
         Route::put('/{employee}/eligibility/{eligibility}', [EmployeeController::class, 'updateEligibility'])->name('eligibility.update');
         Route::delete('/{employee}/eligibility/{eligibility}', [EmployeeController::class, 'destroyEligibility'])->name('eligibility.destroy');
+
         // Family
         Route::post('/{employee}/family', [EmployeeController::class, 'storeFamily'])->name('family.store');
         Route::put('/{employee}/family/{index}', [EmployeeController::class, 'updateFamily'])->name('family.update');
@@ -88,17 +95,13 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::delete('/{employee}/service-record/{record}', [EmployeeController::class, 'destroyServiceRecord'])->name('service-record.destroy');
     });
 
-    Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
-    Route::get('/benefits', [BenefitsController::class, 'index'])->name('benefits.index');
-    Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
-    Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
-
+    // Organization Routes
     Route::prefix('organization/units')->name('unit.')->group(function () {
         Route::get('/', [UnitController::class, 'index'])->name('index');
-        Route::get('/{unit}', [UnitController::class, 'show'])->name('show');
         Route::post('/', [UnitController::class, 'store'])->name('store');
-        Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
         Route::delete('/bulk-destroy', [UnitController::class, 'bulkDestroy'])->name('bulk-destroy');
+        Route::get('/{unit}', [UnitController::class, 'show'])->name('show');
+        Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
         Route::delete('/{unit}', [UnitController::class, 'destroy'])->name('destroy');
     });
 
@@ -112,18 +115,18 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::put('/{department}', [DepartmentController::class, 'update'])->name('update');
         Route::delete('/{department}', [DepartmentController::class, 'destroy'])->name('destroy');
     });
+
     Route::prefix('organization/internal-organizations')->name('internal-organization.')->group(function () {
         Route::get('/', [InternalOrganizationController::class, 'index'])->name('index');
         Route::get('/create', [InternalOrganizationController::class, 'create'])->name('create');
         Route::post('/', [InternalOrganizationController::class, 'store'])->name('store');
+        Route::delete('/bulk-destroy', [InternalOrganizationController::class, 'bulkDestroy'])->name('bulk-destroy');
         Route::get('/{internalOrganization}', [InternalOrganizationController::class, 'show'])->name('show');
         Route::get('/{internalOrganization}/edit', [InternalOrganizationController::class, 'edit'])->name('edit');
         Route::put('/{internalOrganization}', [InternalOrganizationController::class, 'update'])->name('update');
         Route::patch('/{internalOrganization}/toggle-status', [InternalOrganizationController::class, 'toggleStatus'])->name('toggle-status');
         Route::delete('/{internalOrganization}', [InternalOrganizationController::class, 'destroy'])->name('destroy');
-        Route::delete('/bulk-destroy', [InternalOrganizationController::class, 'bulkDestroy'])->name('bulk-destroy');
-        Route::post('/{internalOrganization}/members', [InternalOrganizationController::class, 'storeMembers'])
-            ->name('members.store');
+        Route::post('/{internalOrganization}/members', [InternalOrganizationController::class, 'storeMembers'])->name('members.store');
     });
 
 
@@ -165,7 +168,38 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         })->name('leave-settings');
     });
 
+
+
+// Attendance Routes
+Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
+    Route::get('/',                         [WhereaboutSlipController::class, 'index'])->name('index');
+    Route::post('/',                        [WhereaboutSlipController::class, 'store'])->name('store');
+    Route::put('/{whereaboutSlip}',         [WhereaboutSlipController::class, 'update'])->name('update');
+    Route::put('/{whereaboutSlip}/return',  [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
+    Route::delete('/{whereaboutSlip}',      [WhereaboutSlipController::class, 'destroy'])->name('destroy');
+    Route::delete('/',                      [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
 });
+
+
+
+// Payroll routes
+Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
+
+Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
+
+// Reports and Analytics routes
+Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
+
+// Announcement Routes
+Route::prefix('announcement')->name('announcement.')->group(function () {
+    Route::get('/', [AnnouncementController::class, 'index'])->name('index');
+});
+
+// Activity Logs Routes
+
+Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
+
+
 
 
 require __DIR__ . '/settings.php';

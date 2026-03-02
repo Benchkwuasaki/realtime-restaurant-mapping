@@ -55,7 +55,6 @@ class InternalOrganizationController extends Controller
             'employee_ids.*' => 'exists:employees,employee_id',
         ]);
 
-        // syncWithoutDetaching prevents removing existing members
         $internalOrganization->members()->syncWithoutDetaching($request->employee_ids);
 
         return back()->with('success', 'Members added successfully.');
@@ -78,7 +77,6 @@ class InternalOrganizationController extends Controller
             'status' => $employee->status,
         ]);
 
-        // Employees NOT yet in this organization (for the Add Member modal)
         $memberIds = $internalOrganization->members->pluck('employee_id');
 
         $availableEmployees = Employee::with(['basicInfo', 'item.position.department'])
@@ -99,8 +97,6 @@ class InternalOrganizationController extends Controller
         ]);
     }
 
-
-
     // ── Edit / Update ──────────────────────────────────────────────────────────
 
     public function edit(InternalOrganization $internalOrganization): Response
@@ -113,7 +109,7 @@ class InternalOrganizationController extends Controller
     public function update(Request $request, InternalOrganization $internalOrganization)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:50|unique:internal_organizations,code,' . $internalOrganization->id,
+            'code' => 'required|string|max:50|unique:internal_organizations,code,' . $internalOrganization->internal_organization_id . ',internal_organization_id',
             'name' => 'required|string|max:255',
             'type' => 'required|in:Union,Cooperative,Association',
             'head' => 'required|string|max:255',
@@ -127,7 +123,7 @@ class InternalOrganizationController extends Controller
             ->with('success', 'Organization updated successfully.');
     }
 
-    // ── Toggle Status (Deactivate / Activate) ──────────────────────────────────
+    // ── Toggle Status ──────────────────────────────────────────────────────────
 
     public function toggleStatus(InternalOrganization $internalOrganization)
     {
@@ -135,6 +131,8 @@ class InternalOrganizationController extends Controller
 
         return back()->with('success', 'Organization status updated.');
     }
+
+    // ── Destroy ────────────────────────────────────────────────────────────────
 
     public function destroy(InternalOrganization $internalOrganization)
     {
@@ -148,10 +146,10 @@ class InternalOrganizationController extends Controller
     {
         $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'exists:internal_organizations,id',
+            'ids.*' => 'exists:internal_organizations,internal_organization_id',
         ]);
 
-        InternalOrganization::whereIn('id', $request->ids)->delete();
+        InternalOrganization::whereIn('internal_organization_id', $request->ids)->delete();
 
         return back()->with('success', 'Organizations deleted successfully.');
     }
