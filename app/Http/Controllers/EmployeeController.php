@@ -63,9 +63,19 @@ class EmployeeController extends Controller
                     'is_occupied' => $item->employee !== null,
                     'position' => $item->position ? [
                         'position_name' => $item->position->position_name,
-                        'department' => $item->position->department ? ['department_name' => $item->position->department->department_name] : null,
-                        'division' => $item->position->division ? ['division_name' => $item->position->division->division_name] : null,
-                        'unit' => $item->position->unit ? ['unit_name' => $item->position->unit->unit_name] : null,
+                        'position_type' => $item->position->position_type,
+                        'department_id' => $item->position->department_id,
+                        'division_id' => $item->position->division_id,
+                        'unit_id' => $item->position->unit_id,
+                        'department' => $item->position->department
+                            ? ['department_name' => $item->position->department->department_name]
+                            : null,
+                        'division' => $item->position->division
+                            ? ['division_name' => $item->position->division->division_name]
+                            : null,
+                        'unit' => $item->position->unit
+                            ? ['unit_name' => $item->position->unit->unit_name]
+                            : null,
                     ] : null,
                 ]),
             'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),

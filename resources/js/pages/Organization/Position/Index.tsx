@@ -210,7 +210,7 @@ function PositionModal({
                         {/* Department */}
                         <div>
                             <label htmlFor="department_id" className="mb-1.5 block text-xs font-medium text-foreground">
-                                Department <span className="text-destructive">*</span>
+                                Department <span className="text-destructive"></span>
                             </label>
                             <Select
                                 value={data.department_id}
@@ -237,7 +237,7 @@ function PositionModal({
                         {/* Division */}
                         <div>
                             <label htmlFor="division_id" className="mb-1.5 block text-xs font-medium text-foreground">
-                                Division <span className="text-muted-foreground">(optional)</span>
+                                Division <span className="text-muted-foreground italic">(optional)</span>
                             </label>
                             <Select
                                 value={data.division_id}
@@ -279,7 +279,7 @@ function PositionModal({
                         {/* Unit */}
                         <div>
                             <label htmlFor="unit_id" className="mb-1.5 block text-xs font-medium text-foreground">
-                                Unit <span className="text-muted-foreground">(optional)</span>
+                                Unit <span className="text-muted-foreground italic">(optional)</span>
                             </label>
                             <Select
                                 value={data.unit_id}
