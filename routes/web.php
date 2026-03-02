@@ -28,6 +28,8 @@ Route::get('/', function () {
 })->name('home');
 
 Route::group(['middleware' => ['auth', 'verified']], function () {
+    // TODO: ayha ra add middleware kung ma approve and finalized ang routes
+
     // Dashboard Routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
