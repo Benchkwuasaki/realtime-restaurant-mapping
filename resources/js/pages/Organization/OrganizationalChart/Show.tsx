@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { ChevronLeft, ChevronDown } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import type { Department, Division, Unit, Position, Employee } from './data/schema';
 import { EmployeeModal } from './components/employee-modal';
 import type { BreadcrumbItem } from '@/types';
 
 interface Props {
     department: Department;
-}
-
-interface ExpandedState {
-    [key: number]: boolean;
 }
 
 interface EmployeeData extends Employee {
@@ -25,10 +21,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const DivisionCard: React.FC<{
     division: Division;
-    expanded: boolean;
-    onToggle: () => void;
     onUnitClick: (unit: Unit) => void;
-}> = ({ division, expanded, onToggle, onUnitClick }) => {
+}> = ({ division, onUnitClick }) => {
     const divisionHead = division.positions?.[0]?.employees?.[0];
     const headFullName = divisionHead
         ? [divisionHead.firstName, divisionHead.middleName, divisionHead.lastName]
@@ -37,73 +31,88 @@ const DivisionCard: React.FC<{
         : 'Division Head';
 
     return (
-        <div className="border-l-4 border-blue-300 pl-6 mb-8">
-            {/* Division Header */}
-            <div className="flex items-start gap-4 bg-blue-50 p-4 rounded-lg">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-b from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden">
-                    {divisionHead?.profilePicture ? (
-                        <img
-                            src={divisionHead.profilePicture}
-                            alt={headFullName}
-                            className="w-full h-full object-cover"
-                        />
-                    ) : (
-                        division.acronym?.substring(0, 2).toUpperCase() || 'D'
-                    )}
-                </div>
-
-                <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900">{division.name}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{headFullName}</p>
-                    {division.acronym && (
-                        <p className="text-xs text-gray-500 mt-1">{division.acronym}</p>
-                    )}
-                </div>
-
-                <button
-                    onClick={onToggle}
-                    className="p-2 hover:bg-blue-100 rounded-full transition-colors mt-2"
-                >
-                    <ChevronDown
-                        size={20}
-                        className={`text-blue-600 transition-transform ${expanded ? 'rotate-180' : ''}`}
+        <div className="flex flex-col items-center">
+            {/* Division Avatar Circle */}
+            <div className="w-24 h-24 rounded-full bg-gradient-to-b from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg overflow-hidden border-4 border-blue-300 mb-4">
+                {divisionHead?.profilePicture ? (
+                    <img
+                        src={divisionHead.profilePicture}
+                        alt={headFullName}
+                        className="w-full h-full object-cover"
                     />
-                </button>
+                ) : (
+                    <span className="text-2xl">{division.acronym?.substring(0, 2).toUpperCase() || 'D'}</span>
+                )}
             </div>
 
-            {/* Units */}
-            {expanded && division.units && division.units.length > 0 && (
-                <div className="mt-6 ml-6 space-y-4">
-                    {division.units.map((unit) => (
-                        <div
-                            key={unit.id}
-                            onClick={() => onUnitClick(unit)}
-                            className="cursor-pointer group"
-                        >
-                            {/* Connector line */}
-                            <div className="w-0.5 h-4 bg-gray-300 mb-2"></div>
+            {/* Division Info Card */}
+            <div className="bg-blue-50 px-6 py-4 rounded-lg border-t-4 border-blue-300 text-center min-w-max max-w-xs">
+                <h3 className="text-lg font-bold text-blue-600">{division.name}</h3>
+                <p className="text-sm text-gray-600 mt-1">{headFullName}</p>
+                {division.units && division.units.length > 0 && (
+                    <p className="text-xs font-semibold text-blue-600 mt-2">
+                        {division.units.length} Unit{division.units.length !== 1 ? 's' : ''}
+                    </p>
+                )}
+            </div>
 
-                            {/* Unit Card */}
-                            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg border-2 border-indigo-300 hover:border-indigo-500 hover:shadow-md transition-all">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h4 className="font-semibold text-gray-900 group-hover:text-indigo-600">
-                                            {unit.name}
-                                        </h4>
-                                        {unit.acronym && (
-                                            <p className="text-xs text-gray-600 mt-1">{unit.acronym}</p>
-                                        )}
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs text-gray-500">Click to view</p>
-                                        <p className="text-sm font-semibold text-indigo-600 mt-1">
-                                            {unit.positions?.reduce((sum, pos) => sum + (pos.employees?.length || 0), 0) || 0} Employees
-                                        </p>
+            {/* Units Below Division */}
+            {division.units && division.units.length > 0 && (
+                <div className="mt-6">
+                    {/* Connector line from division to units */}
+                    <div className="flex justify-center mb-4">
+                        <div className="w-0.5 h-6 bg-gray-400"></div>
+                    </div>
+
+                    {/* Horizontal line connecting units */}
+                    <div className="flex justify-center items-start relative">
+                        {division.units.length > 1 && (
+                            <svg
+                                className="absolute -top-6 left-0 right-0"
+                                height="12"
+                                style={{ width: '100%' }}
+                            >
+                                <line
+                                    x1="0%"
+                                    y1="6"
+                                    x2="100%"
+                                    y2="6"
+                                    stroke="#d1d5db"
+                                    strokeWidth="2"
+                                />
+                            </svg>
+                        )}
+
+                        {/* Units Container */}
+                        <div className="flex justify-center gap-8 flex-wrap relative px-4">
+                            {division.units.map((unit) => (
+                                <div
+                                    key={unit.id}
+                                    className="flex flex-col items-center cursor-pointer"
+                                    onClick={() => onUnitClick(unit)}
+                                >
+                                    {/* Vertical connector from horizontal line */}
+                                    <div className="w-0.5 h-6 bg-gray-400 mb-2"></div>
+
+                                    {/* Unit Card - Styled like a division card */}
+                                    <div className="group">
+                                        {/* Unit Avatar */}
+                                        <div className="w-20 h-20 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg overflow-hidden border-4 border-indigo-300 mb-3 group-hover:scale-110 transition-transform">
+                                            {unit.acronym?.substring(0, 2).toUpperCase() || 'U'}
+                                        </div>
+
+                                        {/* Unit Info Card */}
+                                        <div className="bg-indigo-50 px-4 py-3 rounded-lg border-t-4 border-indigo-300 text-center min-w-max group-hover:bg-indigo-100 transition-colors">
+                                            <h4 className="text-sm font-bold text-indigo-600">{unit.name}</h4>
+                                            <p className="text-xs text-gray-600 mt-1">
+                                                {unit.positions?.reduce((sum, pos) => sum + (pos.employees?.length || 0), 0) || 0} Employees
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            ))}
                         </div>
-                    ))}
+                    </div>
                 </div>
             )}
         </div>
@@ -111,22 +120,8 @@ const DivisionCard: React.FC<{
 };
 
 export default function DepartmentDetail({ department }: Props) {
-    const [expandedDivisions, setExpandedDivisions] = useState<ExpandedState>(
-        (department.divisions || []).reduce((acc, div) => {
-            acc[div.id] = true;
-            return acc;
-        }, {} as ExpandedState)
-    );
-
     const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
     const [showEmployeeModal, setShowEmployeeModal] = useState(false);
-
-    const toggleDivision = (divisionId: number) => {
-        setExpandedDivisions((prev) => ({
-            ...prev,
-            [divisionId]: !prev[divisionId],
-        }));
-    };
 
     const handleUnitClick = (unit: Unit) => {
         setSelectedUnit(unit);
@@ -161,9 +156,9 @@ export default function DepartmentDetail({ department }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${department.name} - Organizational Chart`} />
 
-            <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8 bg-gray-50 min-h-screen">
+            <div className="w-full py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 min-h-screen">
                 {/* Back Button */}
-                <div className="mb-6">
+                <div className="mb-8 flex justify-center">
                     <Link
                         href="/organization/organizational_chart"
                         className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
@@ -173,11 +168,12 @@ export default function DepartmentDetail({ department }: Props) {
                     </Link>
                 </div>
 
-                {/* Department Header */}
-                <div className="bg-white rounded-lg shadow-md p-8 mb-8">
-                    <div className="flex items-start gap-6">
-                        {/* Department Avatar */}
-                        <div className="w-32 h-32 rounded-full bg-gradient-to-b from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden shadow-lg">
+                {/* Main Hierarchical Tree */}
+                <div className="flex flex-col items-center">
+                    {/* Department at Top */}
+                    <div className="flex flex-col items-center mb-8">
+                        {/* Department Avatar Circle */}
+                        <div className="w-32 h-32 rounded-full bg-gradient-to-b from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg overflow-hidden border-4 border-purple-300 mb-6">
                             {departmentHead?.profilePicture ? (
                                 <img
                                     src={departmentHead.profilePicture}
@@ -185,54 +181,70 @@ export default function DepartmentDetail({ department }: Props) {
                                     className="w-full h-full object-cover"
                                 />
                             ) : (
-                                <span className="text-4xl">
+                                <span className="text-5xl">
                                     {department.acronym?.substring(0, 2).toUpperCase() || 'D'}
                                 </span>
                             )}
                         </div>
 
-                        {/* Department Info */}
-                        <div className="flex-1">
-                            <h1 className="text-4xl font-bold text-gray-900">{department.name}</h1>
-                            <p className="text-lg text-gray-600 mt-2">{headFullName}</p>
-                            {department.description && (
-                                <p className="text-gray-600 mt-3">{department.description}</p>
+                        {/* Department Info Card */}
+                        <div className="bg-purple-50 px-8 py-6 rounded-lg border-t-4 border-purple-300 text-center min-w-max max-w-sm">
+                            <h1 className="text-2xl font-bold text-purple-600">{department.name}</h1>
+                            <p className="text-gray-600 mt-2">{headFullName}</p>
+                            {department.divisions && (
+                                <p className="text-sm font-semibold text-purple-600 mt-3">
+                                    {department.divisions.length} Division{department.divisions.length !== 1 ? 's' : ''}
+                                </p>
                             )}
-                            <div className="flex gap-6 mt-4 text-sm">
-                                <div>
-                                    <span className="text-gray-600">Acronym: </span>
-                                    <span className="font-semibold text-gray-900">{department.acronym}</span>
-                                </div>
-                                <div>
-                                    <span className="text-gray-600">Divisions: </span>
-                                    <span className="font-semibold text-purple-600">
-                                        {department.divisions?.length || 0}
-                                    </span>
-                                </div>
-                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Divisions Section */}
-                <div className="bg-white rounded-lg shadow-md p-8">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Divisions & Units</h2>
+                    {/* Connector from Department to Divisions */}
+                    {department.divisions && department.divisions.length > 0 && (
+                        <div className="flex flex-col items-center w-full">
+                            {/* Vertical line from department */}
+                            <div className="w-1 h-12 bg-gray-400"></div>
 
-                    {department.divisions && department.divisions.length > 0 ? (
-                        <div className="space-y-6">
-                            {department.divisions.map((division) => (
-                                <DivisionCard
-                                    key={division.id}
-                                    division={division}
-                                    expanded={expandedDivisions[division.id] ?? true}
-                                    onToggle={() => toggleDivision(division.id)}
-                                    onUnitClick={handleUnitClick}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 text-gray-500">
-                            <p>No divisions found for this department</p>
+                            {/* Horizontal line connecting all divisions */}
+                            <div className="flex justify-center items-start relative w-full px-8">
+                                {department.divisions.length > 1 && (
+                                    <svg
+                                        className="absolute top-0 left-0 right-0"
+                                        height="12"
+                                        style={{ width: '100%' }}
+                                    >
+                                        <line
+                                            x1="0%"
+                                            y1="6"
+                                            x2="100%"
+                                            y2="6"
+                                            stroke="#d1d5db"
+                                            strokeWidth="2"
+                                        />
+                                    </svg>
+                                )}
+
+                                {/* Divisions Container */}
+                                <div className="flex justify-center gap-12 flex-wrap relative pt-6">
+                                    {department.divisions.map((division) => (
+                                        <div
+                                            key={division.id}
+                                            className="flex flex-col items-center relative"
+                                        >
+                                            {/* Vertical connector from horizontal line to division */}
+                                            <div className="w-1 h-6 bg-gray-400 mb-4 absolute -top-6"></div>
+
+                                            {/* Division Card */}
+                                            <div className="pt-2">
+                                                <DivisionCard
+                                                    division={division}
+                                                    onUnitClick={handleUnitClick}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

@@ -20,15 +20,13 @@ const EmployeeNode: React.FC<EmployeeNodeProps> = ({ employee, position, level }
         'from-blue-500 to-blue-600',
     ];
 
-    const borderColors = [
+    const color = colors[level % colors.length];
+    const borderColor = [
         'border-pink-300',
         'border-orange-300',
         'border-green-300',
         'border-blue-300',
-    ];
-
-    const color = colors[level % colors.length];
-    const borderColor = borderColors[level % borderColors.length];
+    ][level % borderColor.length];
 
     return (
         <div className="flex flex-col items-center">
