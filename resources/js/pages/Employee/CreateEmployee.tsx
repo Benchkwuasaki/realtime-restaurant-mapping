@@ -66,7 +66,15 @@ export interface CreateEmployeeProps {
 // ─── Collection row types ─────────────────────────────────────────────────────
 
 interface AddressRow    { [key: string]: string; street_address: string; city: string; state: string; zip_code: string }
-interface FamilyRow     { [key: string]: string; full_name: string; contact_number: string; relationship: string }
+interface FamilyRow     {
+    [key: string]: string
+    full_name: string
+    contact_number: string
+    relationship: string
+    sex: string
+    date_of_birth: string
+    place_of_birth: string
+}
 interface GovernmentRow { [key: string]: string; account_type: string; account_number: string }
 interface EducationRow  { [key: string]: string; level: string; school_name: string; school_address: string; graduation_date: string; degree: string }
 interface EligibilityRow{ [key: string]: string; eligibility_name: string; year_passed: string }
@@ -74,9 +82,9 @@ interface EligibilityRow{ [key: string]: string; eligibility_name: string; year_
 // ─── Position group ───────────────────────────────────────────────────────────
 
 interface PositionGroup {
-    groupKey: string          // composite key: name::deptId::divId::unitId
+    groupKey: string
     positionName: string
-    displayLabel: string      // e.g. "Job Order — Dept A / Div B"
+    displayLabel: string
     position: Position | undefined
     items: Item[]
     totalSlots: number
@@ -88,18 +96,16 @@ function buildPositionGroups(items: Item[]): PositionGroup[] {
     const map = new Map<string, PositionGroup>()
     for (const item of items) {
         const pos = item.position
-        // Composite key — same position name in different org levels = different group
         const key = pos
             ? [pos.position_name, pos.department_id ?? "null", pos.division_id ?? "null", pos.unit_id ?? "null"].join("::")
             : `__item_${item.item_id}`
 
         if (!map.has(key)) {
-            // Build a human-readable label showing org context
             const parts: string[] = []
             if (pos?.department?.department_name) parts.push(pos.department.department_name)
             if (pos?.division?.division_name)     parts.push(pos.division.division_name)
             if (pos?.unit?.unit_name)             parts.push(pos.unit.unit_name)
-            const orgLabel  = parts.join(" / ")
+            const orgLabel     = parts.join(" / ")
             const displayLabel = orgLabel
                 ? `${pos?.position_name ?? `Item #${item.item_id}`} — ${orgLabel}`
                 : (pos?.position_name ?? `Item #${item.item_id}`)
@@ -126,7 +132,6 @@ function buildPositionGroups(items: Item[]): PositionGroup[] {
 
 // ─── Position type helpers ────────────────────────────────────────────────────
 
-// Uses position_type from DB — clean, no name-based detection
 const JOB_ORDER_CLASSIFICATION = "Job Order"
 
 function isJobOrderPosition(grp: PositionGroup): boolean {
@@ -239,10 +244,7 @@ function RowCard({ onRemove, children }: { onRemove: () => void; children: React
 // ─── Manage Classifications Dialog ────────────────────────────────────────────
 
 function ManageClassificationsDialog({
-    open,
-    onClose,
-    classifications,
-    onCreated,
+    open, onClose, classifications, onCreated,
 }: {
     open: boolean
     onClose: () => void
@@ -266,10 +268,7 @@ function ManageClassificationsDialog({
         const nameToSelect = addForm.name.trim()
         router.post(route("employee.employment-classification.store"), addForm, {
             preserveScroll: true,
-            onSuccess: () => {
-                setAddForm({ name: "", description: "" })
-                onCreated(nameToSelect)
-            },
+            onSuccess: () => { setAddForm({ name: "", description: "" }); onCreated(nameToSelect) },
             onFinish: () => setLoading(false),
         })
     }
@@ -298,16 +297,11 @@ function ManageClassificationsDialog({
         <>
             <Dialog open={open} onOpenChange={v => !v && onClose()}>
                 <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle>Manage Employment Classifications</DialogTitle>
-                    </DialogHeader>
-
+                    <DialogHeader><DialogTitle>Manage Employment Classifications</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-2">
                         <div className="bg-card border border-border rounded-xl overflow-hidden">
                             {classifications.length === 0 ? (
-                                <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">
-                                    No classifications yet. Add one below.
-                                </div>
+                                <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">No classifications yet. Add one below.</div>
                             ) : (
                                 <div className="divide-y divide-border">
                                     {classifications.map(c => (
@@ -316,19 +310,11 @@ function ManageClassificationsDialog({
                                                 <div className="px-4 py-3 space-y-2 bg-muted/20">
                                                     <div>
                                                         <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Name</Label>
-                                                        <Input
-                                                            value={editForm.name}
-                                                            onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
-                                                            autoFocus
-                                                        />
+                                                        <Input value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} autoFocus />
                                                     </div>
                                                     <div>
                                                         <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Description</Label>
-                                                        <Input
-                                                            value={editForm.description}
-                                                            onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))}
-                                                            placeholder="Optional description…"
-                                                        />
+                                                        <Input value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional…" />
                                                     </div>
                                                     <div className="flex gap-2 justify-end">
                                                         <Button size="sm" variant="outline" onClick={() => setEditId(null)}>Cancel</Button>
@@ -341,22 +327,11 @@ function ManageClassificationsDialog({
                                                 <div className="flex items-start gap-3 px-4 py-3 hover:bg-muted/20 transition-colors group">
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-sm font-medium text-foreground">{c.name}</p>
-                                                        {c.description && (
-                                                            <p className="text-xs text-muted-foreground mt-0.5 truncate">{c.description}</p>
-                                                        )}
+                                                        {c.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{c.description}</p>}
                                                     </div>
                                                     <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button variant="ghost" size="icon-xs" onClick={() => openEdit(c)}>
-                                                            <Pencil className="w-3.5 h-3.5" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon-xs"
-                                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                            onClick={() => setDeleteId(c.id)}
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </Button>
+                                                        <Button variant="ghost" size="icon-xs" onClick={() => openEdit(c)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(c.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                                     </div>
                                                 </div>
                                             )}
@@ -367,44 +342,23 @@ function ManageClassificationsDialog({
                         </div>
 
                         <div className="border border-border rounded-xl p-4 space-y-3 bg-muted/10">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                                Add New Classification
-                            </p>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Add New Classification</p>
                             <div>
                                 <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Name *</Label>
-                                <Input
-                                    value={addForm.name}
-                                    onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))}
-                                    placeholder="e.g. Contract of Service"
-                                    onKeyDown={e => e.key === "Enter" && handleAdd()}
-                                />
+                                <Input value={addForm.name} onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Contract of Service" onKeyDown={e => e.key === "Enter" && handleAdd()} />
                             </div>
                             <div>
                                 <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Description</Label>
-                                <Input
-                                    value={addForm.description}
-                                    onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))}
-                                    placeholder="Optional description…"
-                                    onKeyDown={e => e.key === "Enter" && handleAdd()}
-                                />
+                                <Input value={addForm.description} onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional description…" onKeyDown={e => e.key === "Enter" && handleAdd()} />
                             </div>
                             <div className="flex justify-end">
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={handleAdd}
-                                    disabled={loading || !addForm.name.trim()}
-                                    className="gap-1.5"
-                                >
+                                <Button type="button" size="sm" onClick={handleAdd} disabled={loading || !addForm.name.trim()} className="gap-1.5">
                                     <Plus className="w-3.5 h-3.5" />Add Classification
                                 </Button>
                             </div>
                         </div>
                     </div>
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={onClose}>Done</Button>
-                    </DialogFooter>
+                    <DialogFooter><Button variant="outline" onClick={onClose}>Done</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
 
@@ -412,18 +366,11 @@ function ManageClassificationsDialog({
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Classification?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This removes the classification from the list. Existing employees already assigned to it will keep their current value.
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>Existing employees already assigned will keep their current value.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDelete}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            Delete
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -536,21 +483,13 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
         setManageOpen(false)
     }
 
-    // ── Build all position groups once ────────────────────────────────────────
     const allPositionGroups = useMemo(() => buildPositionGroups(items), [items])
 
-    // ── Filter by position_type based on selected classification ──────────────
-    // 'Job Order' classification → show only position_type = 'Job Order'
-    // Any other classification  → show only position_type = 'Regular' or 'Casual'
     const positionGroups = useMemo(() => {
         if (!data.employment_classification) return []
-
         const isJOClassification = data.employment_classification === JOB_ORDER_CLASSIFICATION
-
         return allPositionGroups.filter(grp =>
-            isJOClassification
-                ? isJobOrderPosition(grp)           // Job Order classification → JO positions only
-                : !isJobOrderPosition(grp)           // All others → Regular/Casual positions only
+            isJOClassification ? isJobOrderPosition(grp) : !isJobOrderPosition(grp)
         )
     }, [allPositionGroups, data.employment_classification])
 
@@ -561,8 +500,6 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
 
     const handleClassificationSelect = (value: string) => {
         setData("employment_classification", value)
-        // Clear position selection when classification changes
-        // since the available positions list will change completely
         setData("selected_position_name", "")
         setData("item_id", "")
     }
@@ -577,7 +514,6 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
 
     const positionDisabled = !data.employment_classification
 
-    // ── Hint text shown below the position dropdown ────────────────────────────
     const positionHint = useMemo(() => {
         if (!data.employment_classification) return null
         const isJO = data.employment_classification === JOB_ORDER_CLASSIFICATION
@@ -586,9 +522,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                 ? "No Job Order positions available. Create one under Organization → Job Order Positions."
                 : "No Regular/Casual positions available."
         }
-        return isJO
-            ? "Showing Job Order positions only."
-            : "Showing Regular and Casual positions only."
+        return isJO ? "Showing Job Order positions only." : "Showing Regular and Casual positions only."
     }, [data.employment_classification, positionGroups])
 
     return (
@@ -609,28 +543,17 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setManageOpen(true)}
-                            title="Manage classifications"
-                            className="shrink-0"
-                        >
+                        <Button type="button" variant="outline" size="icon" onClick={() => setManageOpen(true)} title="Manage classifications" className="shrink-0">
                             <List className="w-4 h-4" />
                         </Button>
                     </div>
                     <FieldError message={err("employment_classification")} />
                 </div>
 
-                {/* Position — filtered by classification */}
+                {/* Position */}
                 <div className="space-y-2 col-span-2">
                     <FieldLabel htmlFor="position">Position <Req /></FieldLabel>
-                    <Select
-                        value={data.selected_position_name}
-                        onValueChange={handlePositionSelect}
-                        disabled={positionDisabled}
-                    >
+                    <Select value={data.selected_position_name} onValueChange={handlePositionSelect} disabled={positionDisabled}>
                         <SelectTrigger id="position">
                             <SelectValue placeholder={
                                 positionDisabled
@@ -642,9 +565,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                         </SelectTrigger>
                         <SelectContent className="max-h-72">
                             {!positionDisabled && positionGroups.length === 0 && (
-                                <SelectItem value="_none" disabled>
-                                    No positions available for this classification
-                                </SelectItem>
+                                <SelectItem value="_none" disabled>No positions available for this classification</SelectItem>
                             )}
                             {positionGroups.map(grp => {
                                 const isDisabled = grp.isFull
@@ -667,11 +588,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                         </SelectContent>
                     </Select>
 
-                    {/* Hint text — tells user which type of positions are shown */}
-                    {positionHint && (
-                        <p className="text-xs text-muted-foreground">{positionHint}</p>
-                    )}
-
+                    {positionHint && <p className="text-xs text-muted-foreground">{positionHint}</p>}
                     {selectedGroup && selectedGroup.totalSlots > 1 && (
                         <p className="text-xs text-muted-foreground">
                             {selectedGroup.availableSlots === 0
@@ -681,7 +598,6 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     )}
                     <FieldError message={err("item_id")} />
 
-                    {/* Org context card */}
                     {selectedGroup?.position && (
                         <div className="rounded-lg border border-border divide-y divide-border bg-muted/20 mt-1">
                             {selectedGroup.position.department && (
@@ -796,7 +712,6 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     <Input id="work_schedule_end" type="time" value={data.work_schedule_end} onChange={e => setData("work_schedule_end", e.target.value)} />
                     <FieldError message={err("work_schedule_end")} />
                 </div>
-
             </div>
 
             <ManageClassificationsDialog
@@ -809,11 +724,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
     )
 }
 
-// ─── Remaining steps (unchanged) ──────────────────────────────────────────────
-
-const RELATIONSHIPS            = ["Spouse", "Parent", "Sibling", "Child", "Guardian", "Emergency Contact"]
-const GOVERNMENT_ACCOUNT_TYPES = ["SSS", "PhilHealth", "GSIS", "TIN", "Pag-IBIG", "Other"]
-const EDUCATION_LEVELS         = ["Elementary", "Secondary", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Post-Doctorate"]
+// ─── AddressStep ──────────────────────────────────────────────────────────────
 
 function AddressStep({ rows, setRows, err }: { rows: AddressRow[]; setRows: (r: AddressRow[]) => void; err: ErrFn }) {
     const add    = () => setRows([...rows, { street_address: "", city: "", state: "", zip_code: "" }])
@@ -854,8 +765,12 @@ function AddressStep({ rows, setRows, err }: { rows: AddressRow[]; setRows: (r: 
     )
 }
 
+// ─── FamilyStep — updated with sex, date_of_birth, place_of_birth ─────────────
+
+const RELATIONSHIPS = ["Spouse", "Parent", "Sibling", "Child", "Guardian", "Emergency Contact"]
+
 function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: FamilyRow[]) => void; err: ErrFn }) {
-    const add    = () => setRows([...rows, { full_name: "", contact_number: "", relationship: "" }])
+    const add    = () => setRows([...rows, { full_name: "", contact_number: "", relationship: "", sex: "", date_of_birth: "", place_of_birth: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof FamilyRow, value: string) => {
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
@@ -866,31 +781,85 @@ function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: Fa
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-3 gap-4 pr-6">
+
+                        {/* Full Name */}
                         <div className="space-y-1.5">
                             <FieldLabel>Full Name <Req /></FieldLabel>
-                            <Input value={row.full_name} onChange={e => update(i, "full_name", e.target.value)} placeholder="Maria Santos" className={err(`family.${i}.full_name`) ? "border-destructive" : ""} />
+                            <Input
+                                value={row.full_name}
+                                onChange={e => update(i, "full_name", e.target.value)}
+                                placeholder="Maria Santos"
+                                className={err(`family.${i}.full_name`) ? "border-destructive" : ""}
+                            />
                             <FieldError message={err(`family.${i}.full_name`)} />
                         </div>
-                        <div className="space-y-1.5">
-                            <FieldLabel>Contact Number</FieldLabel>
-                            <Input value={row.contact_number} onChange={e => update(i, "contact_number", e.target.value)} placeholder="09XXXXXXXXXX" />
-                        </div>
+
+                        {/* Relationship */}
                         <div className="space-y-1.5">
                             <FieldLabel>Relationship <Req /></FieldLabel>
                             <Select value={row.relationship} onValueChange={v => update(i, "relationship", v)}>
-                                <SelectTrigger className={err(`family.${i}.relationship`) ? "border-destructive" : ""}><SelectValue placeholder="Select relationship" /></SelectTrigger>
+                                <SelectTrigger className={err(`family.${i}.relationship`) ? "border-destructive" : ""}>
+                                    <SelectValue placeholder="Select relationship" />
+                                </SelectTrigger>
                                 <SelectContent>
                                     {RELATIONSHIPS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FieldError message={err(`family.${i}.relationship`)} />
                         </div>
+
+                        {/* Sex */}
+                        <div className="space-y-1.5">
+                            <FieldLabel>Sex</FieldLabel>
+                            <Select value={row.sex} onValueChange={v => update(i, "sex", v)}>
+                                <SelectTrigger><SelectValue placeholder="Select sex" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">Male</SelectItem>
+                                    <SelectItem value="0">Female</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Date of Birth */}
+                        <div className="space-y-1.5">
+                            <FieldLabel>Date of Birth</FieldLabel>
+                            <Input
+                                type="date"
+                                value={row.date_of_birth}
+                                onChange={e => update(i, "date_of_birth", e.target.value)}
+                            />
+                        </div>
+
+                        {/* Contact Number */}
+                        <div className="space-y-1.5">
+                            <FieldLabel>Contact Number</FieldLabel>
+                            <Input
+                                value={row.contact_number}
+                                onChange={e => update(i, "contact_number", e.target.value)}
+                                placeholder="09XXXXXXXXXX"
+                            />
+                        </div>
+
+                        {/* Place of Birth */}
+                        <div className="space-y-1.5">
+                            <FieldLabel>Place of Birth</FieldLabel>
+                            <Input
+                                value={row.place_of_birth}
+                                onChange={e => update(i, "place_of_birth", e.target.value)}
+                                placeholder="e.g. Manila, Philippines"
+                            />
+                        </div>
+
                     </div>
                 </RowCard>
             ))}
         </CollectionSection>
     )
 }
+
+// ─── GovernmentStep ───────────────────────────────────────────────────────────
+
+const GOVERNMENT_ACCOUNT_TYPES = ["SSS", "PhilHealth", "GSIS", "TIN", "Pag-IBIG", "Other"]
 
 function GovernmentStep({ rows, setRows, err }: { rows: GovernmentRow[]; setRows: (r: GovernmentRow[]) => void; err: ErrFn }) {
     const add    = () => setRows([...rows, { account_type: "", account_number: "" }])
@@ -926,6 +895,10 @@ function GovernmentStep({ rows, setRows, err }: { rows: GovernmentRow[]; setRows
     )
 }
 
+// ─── EducationStep ────────────────────────────────────────────────────────────
+
+const EDUCATION_LEVELS = ["Elementary", "Secondary", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Post-Doctorate"]
+
 function EducationStep({ rows, setRows, err }: { rows: EducationRow[]; setRows: (r: EducationRow[]) => void; err: ErrFn }) {
     const add    = () => setRows([...rows, { level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
@@ -950,7 +923,7 @@ function EducationStep({ rows, setRows, err }: { rows: EducationRow[]; setRows: 
                         </div>
                         <div className="space-y-1.5">
                             <FieldLabel>School Name <Req /></FieldLabel>
-                            <Input value={row.school_name} onChange={e => update(i, "school_name", e.target.value)} placeholder="University of the Philippines" className={err(`education.${i}.school_name`) ? "border-destructive focus-visible:ring-destructive" : ""} />
+                            <Input value={row.school_name} onChange={e => update(i, "school_name", e.target.value)} placeholder="University of the Philippines" className={err(`education.${i}.school_name`) ? "border-destructive" : ""} />
                             <FieldError message={err(`education.${i}.school_name`)} />
                         </div>
                         <div className="space-y-1.5">
@@ -971,6 +944,8 @@ function EducationStep({ rows, setRows, err }: { rows: EducationRow[]; setRows: 
         </CollectionSection>
     )
 }
+
+// ─── EligibilityStep ──────────────────────────────────────────────────────────
 
 function EligibilityStep({ rows, setRows, err }: { rows: EligibilityRow[]; setRows: (r: EligibilityRow[]) => void; err: ErrFn }) {
     const add    = () => setRows([...rows, { eligibility_name: "", year_passed: "" }])
@@ -1070,7 +1045,14 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
 
             <SectionHeading>Family / Emergency Contacts ({family.length})</SectionHeading>
             {family.length === 0 ? <EmptyState label="No family members provided." /> : family.map((f, i) => (
-                <div key={i} className="text-sm py-0.5">{i + 1}. {f.full_name} {f.relationship && `(${f.relationship})`} {f.contact_number && `— ${f.contact_number}`}</div>
+                <div key={i} className="text-sm py-0.5">
+                    {i + 1}. {f.full_name}
+                    {f.relationship && ` (${f.relationship})`}
+                    {f.sex && ` — ${f.sex === "1" ? "Male" : "Female"}`}
+                    {f.date_of_birth && `, b. ${f.date_of_birth}`}
+                    {f.place_of_birth && `, ${f.place_of_birth}`}
+                    {f.contact_number && ` — ${f.contact_number}`}
+                </div>
             ))}
 
             <SectionHeading>Government Accounts ({government.length})</SectionHeading>
@@ -1106,7 +1088,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
     const [processing,  setProcessing]  = useState(false)
 
     const [addresses,   setAddresses]   = useState<AddressRow[]>([{ street_address: "", city: "", state: "", zip_code: "" }])
-    const [family,      setFamily]      = useState<FamilyRow[]>([{ full_name: "", contact_number: "", relationship: "" }])
+    const [family,      setFamily]      = useState<FamilyRow[]>([{ full_name: "", contact_number: "", relationship: "", sex: "", date_of_birth: "", place_of_birth: "" }])
     const [government,  setGovernment]  = useState<GovernmentRow[]>([{ account_type: "", account_number: "" }])
     const [education,   setEducation]   = useState<EducationRow[]>([{ level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
     const [eligibility, setEligibility] = useState<EligibilityRow[]>([{ eligibility_name: "", year_passed: "" }])
@@ -1238,6 +1220,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Create Employee" />
+            <Toaster richColors position="top-right" />
             <div className="px-10 pt-5">
                 <Stepper steps={steps} currentStep={currentStep} onStepChange={setCurrentStep} />
 

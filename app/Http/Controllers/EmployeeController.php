@@ -21,21 +21,22 @@ use Inertia\Inertia;
 
 class EmployeeController extends Controller
 {
-    /**
-     * Display the employee list page.
-     */
     public function __construct(protected ActivityLogService $activityLogService)
     {
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Index
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function index()
     {
-
         $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'employee',
+            'user_id'     => Auth::id(),
+            'module'      => 'employee',
             'description' => 'Viewed Employee Page',
         ]);
+
         $employees = Employee::with([
             'basicInfo',
             'item.position.department',
@@ -46,12 +47,16 @@ class EmployeeController extends Controller
             ->map(fn(Employee $employee) => $this->formatForTable($employee));
 
         return Inertia::render('Employee/Index', [
-            'employees' => $employees,
-            'totalEmployees' => $employees->count(),
-            'activeEmployees' => $employees->where('status', true)->count(),
+            'employees'         => $employees,
+            'totalEmployees'    => $employees->count(),
+            'activeEmployees'   => $employees->where('status', true)->count(),
             'inactiveEmployees' => $employees->where('status', false)->count(),
         ]);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Create
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function create()
     {
@@ -59,15 +64,15 @@ class EmployeeController extends Controller
             'items' => Item::with(['position.department', 'position.division', 'position.unit', 'employee'])
                 ->get()
                 ->map(fn(Item $item) => [
-                    'item_id' => $item->item_id,
+                    'item_id'     => $item->item_id,
                     'is_occupied' => $item->employee !== null,
-                    'position' => $item->position ? [
+                    'position'    => $item->position ? [
                         'position_name' => $item->position->position_name,
                         'position_type' => $item->position->position_type,
                         'department_id' => $item->position->department_id,
-                        'division_id' => $item->position->division_id,
-                        'unit_id' => $item->position->unit_id,
-                        'department' => $item->position->department
+                        'division_id'   => $item->position->division_id,
+                        'unit_id'       => $item->position->unit_id,
+                        'department'    => $item->position->department
                             ? ['department_name' => $item->position->department->department_name]
                             : null,
                         'division' => $item->position->division
@@ -78,107 +83,126 @@ class EmployeeController extends Controller
                             : null,
                     ] : null,
                 ]),
-            'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),
+            'salaryGradeSteps'          => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),
             'employmentClassifications' => \App\Models\EmploymentClassification::orderBy('name')->get(['id', 'name', 'description']),
         ]);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Store
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function store(Request $request)
     {
         $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
+            'first_name'     => ['required', 'string', 'max:255'],
+            'last_name'      => ['required', 'string', 'max:255'],
+            'middle_name'    => ['nullable', 'string', 'max:255'],
             'name_extension' => ['nullable', 'string', 'max:50'],
-            'birth_date' => ['required', 'date'],
-            'sex' => ['required', 'boolean'],
-            'civil_status' => ['required', 'string'],
+            'birth_date'     => ['required', 'date'],
+            'sex'            => ['required', 'boolean'],
+            'civil_status'   => ['required', 'string'],
             'place_of_birth' => ['nullable', 'string', 'max:255'],
             'personal_email' => ['nullable', 'email', 'max:255'],
-            'phone_number' => ['required', 'string', 'max:20'],
-            'item_id' => ['required', 'exists:items,item_id'],
-            'salary_grade_step_id' => ['required', 'exists:salary_grade_steps,salary_grade_step_id'],
+            'phone_number'   => ['required', 'string', 'max:20'],
+
+            'item_id'                   => ['required', 'exists:items,item_id'],
+            'salary_grade_step_id'      => ['required', 'exists:salary_grade_steps,salary_grade_step_id'],
             'employment_classification' => ['required', 'string', 'exists:employment_classifications,name'],
-            'work_email' => ['required', 'email', 'unique:employees,work_email'],
-            'password' => ['required', 'string', 'min:8'],
-            'date_applied' => ['required', 'date'],
-            'date_hired' => ['required', 'date'],
-            'work_schedule_start' => ['required', 'date_format:H:i'],
-            'work_schedule_end' => ['required', 'date_format:H:i'],
-            'status' => ['required', 'boolean'],
-            'addresses' => ['nullable', 'array'],
+            'work_email'                => ['required', 'email', 'unique:employees,work_email'],
+            'password'                  => ['required', 'string', 'min:8'],
+            'date_applied'              => ['required', 'date'],
+            'date_hired'                => ['required', 'date'],
+            'work_schedule_start'       => ['required', 'date_format:H:i'],
+            'work_schedule_end'         => ['required', 'date_format:H:i'],
+            'status'                    => ['required', 'boolean'],
+
+            'addresses'                  => ['nullable', 'array'],
             'addresses.*.street_address' => ['nullable', 'string', 'max:255'],
-            'addresses.*.city' => ['nullable', 'string', 'max:255'],
-            'addresses.*.state' => ['nullable', 'string', 'max:255'],
-            'addresses.*.zip_code' => ['nullable', 'string', 'max:20'],
-            'family_info' => ['nullable', 'array'],
-            'family_info.*.full_name' => ['required_with:family_info', 'string', 'max:255'],
+            'addresses.*.city'           => ['nullable', 'string', 'max:255'],
+            'addresses.*.state'          => ['nullable', 'string', 'max:255'],
+            'addresses.*.zip_code'       => ['nullable', 'string', 'max:20'],
+
+            'family_info'                  => ['nullable', 'array'],
+            'family_info.*.full_name'      => ['required_with:family_info', 'string', 'max:255'],
             'family_info.*.contact_number' => ['nullable', 'string', 'max:20'],
-            'family_info.*.relationship' => ['nullable', 'string', 'max:100'],
-            'government_accounts' => ['nullable', 'array'],
-            'government_accounts.*.account_type' => ['required_with:government_accounts', 'string', 'max:100'],
+            'family_info.*.relationship'   => ['nullable', 'string', 'max:100'],
+            'family_info.*.sex'            => ['nullable', 'boolean'],
+            'family_info.*.date_of_birth'  => ['nullable', 'date'],
+            'family_info.*.place_of_birth' => ['nullable', 'string', 'max:255'],
+
+            'government_accounts'                  => ['nullable', 'array'],
+            'government_accounts.*.account_type'   => ['required_with:government_accounts', 'string', 'max:100'],
             'government_accounts.*.account_number' => ['required_with:government_accounts', 'string', 'max:100'],
-            'education' => ['nullable', 'array'],
-            'education.*.level' => ['nullable', 'string', 'max:100'],
-            'education.*.school_name' => ['required_with:education', 'string', 'max:255'],
-            'education.*.school_address' => ['nullable', 'string', 'max:255'],
+
+            'education'                   => ['nullable', 'array'],
+            'education.*.level'           => ['nullable', 'string', 'max:100'],
+            'education.*.school_name'     => ['required_with:education', 'string', 'max:255'],
+            'education.*.school_address'  => ['nullable', 'string', 'max:255'],
             'education.*.graduation_date' => ['nullable', 'date'],
-            'education.*.degree' => ['nullable', 'string', 'max:255'],
-            'eligibility_information' => ['nullable', 'array'],
+            'education.*.degree'          => ['nullable', 'string', 'max:255'],
+
+            'eligibility_information'                    => ['nullable', 'array'],
             'eligibility_information.*.eligibility_name' => ['required_with:eligibility_information', 'string', 'max:255'],
-            'eligibility_information.*.year_passed' => ['nullable', 'date'],
+            'eligibility_information.*.year_passed'      => ['nullable', 'date'],
         ]);
 
         DB::transaction(function () use ($request) {
+
             $basicInfo = EmployeeBasicInfo::create([
-                'first_name' => $request->first_name,
-                'last_name' => $request->last_name,
-                'middle_name' => $request->middle_name,
+                'first_name'     => $request->first_name,
+                'last_name'      => $request->last_name,
+                'middle_name'    => $request->middle_name,
                 'name_extension' => $request->name_extension,
-                'birth_date' => $request->birth_date,
-                'sex' => $request->sex,
-                'civil_status' => $request->civil_status,
+                'birth_date'     => $request->birth_date,
+                'sex'            => $request->sex,
+                'civil_status'   => $request->civil_status,
                 'place_of_birth' => $request->place_of_birth,
                 'personal_email' => $request->personal_email,
-                'phone_number' => $request->phone_number,
+                'phone_number'   => $request->phone_number,
             ]);
 
             $employee = Employee::create([
-                'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
-                'item_id' => $request->item_id,
-                'salary_grade_step_id' => $request->salary_grade_step_id,
+                'employee_basic_info_id'    => $basicInfo->employee_basic_info_id,
+                'item_id'                   => $request->item_id,
+                'salary_grade_step_id'      => $request->salary_grade_step_id,
                 'employment_classification' => $request->employment_classification,
-                'work_email' => $request->work_email,
-                'password' => Hash::make($request->password),
-                'date_applied' => $request->date_applied,
-                'date_hired' => $request->date_hired,
-                'work_schedule_start' => $request->work_schedule_start,
-                'work_schedule_end' => $request->work_schedule_end,
-                'status' => $request->status,
+                'work_email'                => $request->work_email,
+                'password'                  => Hash::make($request->password),
+                'date_applied'              => $request->date_applied,
+                'date_hired'                => $request->date_hired,
+                'work_schedule_start'       => $request->work_schedule_start,
+                'work_schedule_end'         => $request->work_schedule_end,
+                'status'                    => $request->status,
             ]);
 
             foreach ($request->addresses ?? [] as $address) {
                 EmployeeAddress::create([
                     'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
-                    'street_address' => $address['street_address'] ?? null,
-                    'city' => $address['city'] ?? null,
-                    'state' => $address['state'] ?? null,
-                    'zip_code' => $address['zip_code'] ?? null,
+                    'street_address'         => $address['street_address'] ?? null,
+                    'city'                   => $address['city']           ?? null,
+                    'state'                  => $address['state']          ?? null,
+                    'zip_code'               => $address['zip_code']       ?? null,
                 ]);
             }
 
             foreach ($request->family_info ?? [] as $member) {
                 FamilyInfo::create([
                     'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
-                    'full_name' => $member['full_name'],
-                    'contact_number' => $member['contact_number'] ?? null,
-                    'relationship' => $member['relationship'] ?? null,
+                    'full_name'              => $member['full_name'],
+                    'contact_number'         => !empty($member['contact_number'])  ? $member['contact_number']  : null,
+                    'relationship'           => !empty($member['relationship'])    ? $member['relationship']    : null,
+                    // empty string "" from the frontend must become null — use !empty(), not ?? null
+                    'sex'                    => isset($member['sex']) && $member['sex'] !== '' ? (bool) $member['sex'] : null,
+                    'date_of_birth'          => !empty($member['date_of_birth'])   ? $member['date_of_birth']   : null,
+                    'place_of_birth'         => !empty($member['place_of_birth'])  ? $member['place_of_birth']  : null,
                 ]);
             }
 
             foreach ($request->government_accounts ?? [] as $account) {
                 GovernmentAccount::create([
-                    'employee_id' => $employee->employee_id,
-                    'account_type' => $account['account_type'],
+                    'employee_id'    => $employee->employee_id,
+                    'account_type'   => $account['account_type'],
                     'account_number' => $account['account_number'],
                 ]);
             }
@@ -186,32 +210,36 @@ class EmployeeController extends Controller
             foreach ($request->education ?? [] as $edu) {
                 EmployeeEducation::create([
                     'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
-                    'level' => $edu['level'] ?? null,
-                    'school_name' => $edu['school_name'],
-                    'school_address' => $edu['school_address'] ?? null,
-                    'graduation_date' => $edu['graduation_date'] ?? null,
-                    'degree' => $edu['degree'] ?? null,
+                    'level'           => !empty($edu['level'])           ? $edu['level']           : null,
+                    'school_name'     => $edu['school_name'],
+                    'school_address'  => !empty($edu['school_address'])  ? $edu['school_address']  : null,
+                    'graduation_date' => !empty($edu['graduation_date']) ? $edu['graduation_date'] : null,
+                    'degree'          => !empty($edu['degree'])          ? $edu['degree']          : null,
                 ]);
             }
 
             foreach ($request->eligibility_information ?? [] as $eligibility) {
                 EligibilityInformation::create([
-                    'employee_id' => $employee->employee_id,
+                    'employee_id'      => $employee->employee_id,
                     'eligibility_name' => $eligibility['eligibility_name'],
-                    'year_passed' => $eligibility['year_passed'] ?? null,
+                    'year_passed'      => !empty($eligibility['year_passed']) ? $eligibility['year_passed'] : null,
                 ]);
             }
         });
 
         $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'employee',
+            'user_id'     => Auth::id(),
+            'module'      => 'employee',
             'description' => 'Created employee: ' . $request->first_name . ' ' . $request->last_name,
         ]);
 
         return redirect()->route('employee.index')
             ->with('success', 'Employee created successfully.');
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Show
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function show(Employee $employee)
     {
@@ -232,33 +260,25 @@ class EmployeeController extends Controller
             'internalOrganizations',
         ]);
 
-        $currentItemId = $employee->item?->item_id;
-
         return Inertia::render('Employee/Show', [
             'employee' => $employee,
-            'items' => Item::with([
+            'items'    => Item::with([
                 'position.department',
                 'position.division',
                 'position.unit',
-                'employee',          // ← needed to know whether each slot is taken
+                'employee',
             ])
                 ->get()
                 ->map(fn(Item $item) => [
                     'item_id' => $item->item_id,
 
-                    /**
-                     * is_occupied = this slot has an employee AND
-                     * that employee is NOT the one currently being viewed.
-                     *
-                     * This ensures the employee's own slot never appears
-                     * "Full" to themselves in the dropdown.
-                     */
+                    // Occupied = has an employee that is NOT the current one
                     'is_occupied' => $item->employee !== null
                         && $item->employee->employee_id !== $employee->employee_id,
 
                     'position' => $item->position ? [
                         'position_name' => $item->position->position_name,
-                        'department' => $item->position->department
+                        'department'    => $item->position->department
                             ? ['department_name' => $item->position->department->department_name]
                             : null,
                         'division' => $item->position->division
@@ -272,6 +292,10 @@ class EmployeeController extends Controller
         ]);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Edit
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function edit(Employee $employee)
     {
         $employee->load(['basicInfo', 'item.position']);
@@ -281,29 +305,34 @@ class EmployeeController extends Controller
         ]);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Update
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function update(Request $request, Employee $employee)
     {
         $request->validate([
-            'first_name' => 'sometimes|required|string|max:255',
-            'last_name' => 'sometimes|required|string|max:255',
-            'middle_name' => 'nullable|string|max:255',
+            'first_name'     => 'sometimes|required|string|max:255',
+            'last_name'      => 'sometimes|required|string|max:255',
+            'middle_name'    => 'nullable|string|max:255',
             'name_extension' => 'nullable|string|max:255',
-            'birth_date' => 'sometimes|required|date',
-            'sex' => 'sometimes|required|boolean',
+            'birth_date'     => 'sometimes|required|date',
+            'sex'            => 'sometimes|required|boolean',
             'personal_email' => 'nullable|email|max:255',
-            'phone_number' => 'nullable|string|max:255',
-            'civil_status' => 'nullable|in:single,married,divorced,widowed',
+            'phone_number'   => 'nullable|string|max:255',
+            'civil_status'   => 'nullable|in:single,married,divorced,widowed',
             'place_of_birth' => 'nullable|string|max:255',
-            'item_id' => 'sometimes|required|exists:items,item_id',
-            'salary_grade_step_id' => 'sometimes|required|exists:salary_grade_steps,salary_grade_step_id',
+
+            'item_id'                   => 'sometimes|required|exists:items,item_id',
+            'salary_grade_step_id'      => 'sometimes|required|exists:salary_grade_steps,salary_grade_step_id',
             'employment_classification' => 'sometimes|required|string|exists:employment_classifications,name',
-            'work_email' => 'sometimes|required|email|unique:employees,work_email,' . $employee->employee_id . ',employee_id',
-            'password' => 'nullable|string|min:8',
-            'date_applied' => 'sometimes|required|date',
-            'date_hired' => 'sometimes|required|date',
-            'work_schedule_start' => 'sometimes|required|date_format:H:i',
-            'work_schedule_end' => 'sometimes|required|date_format:H:i',
-            'status' => 'sometimes|required|boolean',
+            'work_email'                => 'sometimes|required|email|unique:employees,work_email,' . $employee->employee_id . ',employee_id',
+            'password'                  => 'nullable|string|min:8',
+            'date_applied'              => 'sometimes|required|date',
+            'date_hired'                => 'sometimes|required|date',
+            'work_schedule_start'       => 'sometimes|required|date_format:H:i',
+            'work_schedule_end'         => 'sometimes|required|date_format:H:i',
+            'status'                    => 'sometimes|required|boolean',
         ]);
 
         $employee->basicInfo->update($request->only([
@@ -344,13 +373,17 @@ class EmployeeController extends Controller
             ->with('success', 'Employee updated successfully.');
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Toggle Status / Destroy / Bulk Destroy
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function toggleStatus(Employee $employee)
     {
         $employee->update(['status' => !$employee->status]);
 
         $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'employee',
+            'user_id'     => Auth::id(),
+            'module'      => 'employee',
             'description' => ($employee->status ? 'Activated' : 'Deactivated') . ' employee: ' . $employee->basicInfo?->full_name,
         ]);
 
@@ -362,30 +395,48 @@ class EmployeeController extends Controller
         $employee->delete();
 
         $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'employee',
+            'user_id'     => Auth::id(),
+            'module'      => 'employee',
             'description' => 'Deleted employee: ' . $employee->basicInfo?->full_name,
         ]);
 
         return redirect()->route('employee.index')->with('success', 'Employee deleted successfully.');
     }
 
-    // ── Helpers ────────────────────────────────────────────────────
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids'   => ['required', 'array'],
+            'ids.*' => ['exists:employees,employee_id'],
+        ]);
+
+        $employees = Employee::whereIn('employee_id', $request->ids)->get();
+
+        foreach ($employees as $employee) {
+            $employee->delete();
+        }
+
+        return back()->with('success', count($request->ids) . ' employee(s) deleted.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
     private function formatForTable(Employee $employee): array
     {
         $position = $employee->item?->position;
 
         return [
-            'id' => (string) $employee->employee_id,
-            'name' => $employee->basicInfo?->full_name ?? '—',
-            'position' => $position?->position_name ?? '—',
-            'unit' => $position?->unit?->unit_name ?? '—',
-            'division' => $position?->division?->division_name ?? '—',
-            'department' => $position?->department?->department_name ?? '—',
+            'id'            => (string) $employee->employee_id,
+            'name'          => $employee->basicInfo?->full_name ?? '—',
+            'position'      => $position?->position_name ?? '—',
+            'unit'          => $position?->unit?->unit_name ?? '—',
+            'division'      => $position?->division?->division_name ?? '—',
+            'department'    => $position?->department?->department_name ?? '—',
             'contactNumber' => $employee->basicInfo?->phone_number ?? '—',
-            'email' => $employee->work_email,
-            'status' => (bool) $employee->status,
+            'email'         => $employee->work_email,
+            'status'        => (bool) $employee->status,
         ];
     }
 
@@ -396,7 +447,7 @@ class EmployeeController extends Controller
     public function storeGovernmentAccount(Request $request, Employee $employee)
     {
         $request->validate([
-            'account_type' => ['required', 'string', 'max:100'],
+            'account_type'   => ['required', 'string', 'max:100'],
             'account_number' => ['required', 'string', 'max:100'],
         ]);
 
@@ -406,8 +457,8 @@ class EmployeeController extends Controller
             ->delete();
 
         GovernmentAccount::create([
-            'employee_id' => $employee->employee_id,
-            'account_type' => $request->account_type,
+            'employee_id'    => $employee->employee_id,
+            'account_type'   => $request->account_type,
             'account_number' => $request->account_number,
         ]);
 
@@ -440,13 +491,13 @@ class EmployeeController extends Controller
     {
         $request->validate([
             'eligibility_name' => ['required', 'string', 'max:255'],
-            'year_passed' => ['nullable', 'date'],
+            'year_passed'      => ['nullable', 'date'],
         ]);
 
         EligibilityInformation::create([
-            'employee_id' => $employee->employee_id,
+            'employee_id'      => $employee->employee_id,
             'eligibility_name' => $request->eligibility_name,
-            'year_passed' => $request->year_passed,
+            'year_passed'      => $request->filled('year_passed') ? $request->year_passed : null,
         ]);
 
         return back()->with('success', 'Eligibility added.');
@@ -456,14 +507,13 @@ class EmployeeController extends Controller
     {
         $request->validate([
             'eligibility_name' => ['required', 'string', 'max:255'],
-            'year_passed' => ['nullable', 'date'],
+            'year_passed'      => ['nullable', 'date'],
         ]);
         abort_if($eligibility->employee_id !== $employee->employee_id, 403);
 
-        // Update the existing record — never creates a duplicate
         $eligibility->update([
             'eligibility_name' => $request->eligibility_name,
-            'year_passed' => $request->year_passed,
+            'year_passed'      => $request->filled('year_passed') ? $request->year_passed : null,
         ]);
 
         return back()->with('success', 'Eligibility updated.');
@@ -477,33 +527,30 @@ class EmployeeController extends Controller
         return back()->with('success', 'Eligibility deleted.');
     }
 
-    public function bulkDestroy(Request $request)
-    {
-        $request->validate(['ids' => ['required', 'array'], 'ids.*' => ['exists:employees,employee_id']]);
-
-        $employees = Employee::whereIn('employee_id', $request->ids)->get();
-
-        foreach ($employees as $employee) {
-            $employee->delete();
-        }
-
-        return back()->with('success', count($request->ids) . ' employee(s) deleted.');
-    }
-
+    // ─────────────────────────────────────────────────────────────────────────
+    // Family Info
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function storeFamily(Request $request, Employee $employee)
     {
         $request->validate([
-            'full_name' => ['required', 'string', 'max:255'],
-            'relationship' => ['nullable', 'string', 'max:100'],
+            'full_name'      => ['required', 'string', 'max:255'],
+            'relationship'   => ['nullable', 'string', 'max:100'],
             'contact_number' => ['nullable', 'string', 'max:20'],
+            'sex'            => ['nullable', 'boolean'],
+            'date_of_birth'  => ['nullable', 'date'],
+            'place_of_birth' => ['nullable', 'string', 'max:255'],
         ]);
 
         FamilyInfo::create([
             'employee_basic_info_id' => $employee->employee_basic_info_id,
-            'full_name' => $request->full_name,
-            'relationship' => $request->relationship,
-            'contact_number' => $request->contact_number,
+            'full_name'              => $request->full_name,
+            'relationship'           => $request->filled('relationship')   ? $request->relationship   : null,
+            'contact_number'         => $request->filled('contact_number') ? $request->contact_number : null,
+            // filled() returns false for both null AND empty string "" — prevents date/boolean column errors
+            'sex'                    => $request->filled('sex')            ? (bool) $request->sex     : null,
+            'date_of_birth'          => $request->filled('date_of_birth')  ? $request->date_of_birth  : null,
+            'place_of_birth'         => $request->filled('place_of_birth') ? $request->place_of_birth : null,
         ]);
 
         return back()->with('success', 'Family member added.');
@@ -512,12 +559,14 @@ class EmployeeController extends Controller
     public function updateFamily(Request $request, Employee $employee, int $index)
     {
         $request->validate([
-            'full_name' => ['required', 'string', 'max:255'],
-            'relationship' => ['nullable', 'string', 'max:100'],
+            'full_name'      => ['required', 'string', 'max:255'],
+            'relationship'   => ['nullable', 'string', 'max:100'],
             'contact_number' => ['nullable', 'string', 'max:20'],
+            'sex'            => ['nullable', 'boolean'],
+            'date_of_birth'  => ['nullable', 'date'],
+            'place_of_birth' => ['nullable', 'string', 'max:255'],
         ]);
 
-        // Load ordered family records and find the one at this index
         $member = FamilyInfo::where('employee_basic_info_id', $employee->employee_basic_info_id)
             ->orderBy((new FamilyInfo)->getKeyName())
             ->get()
@@ -526,9 +575,12 @@ class EmployeeController extends Controller
         abort_if(!$member, 404, 'Family member not found.');
 
         $member->update([
-            'full_name' => $request->full_name,
-            'relationship' => $request->relationship,
-            'contact_number' => $request->contact_number,
+            'full_name'      => $request->full_name,
+            'relationship'   => $request->filled('relationship')   ? $request->relationship   : null,
+            'contact_number' => $request->filled('contact_number') ? $request->contact_number : null,
+            'sex'            => $request->filled('sex')            ? (bool) $request->sex     : null,
+            'date_of_birth'  => $request->filled('date_of_birth')  ? $request->date_of_birth  : null,
+            'place_of_birth' => $request->filled('place_of_birth') ? $request->place_of_birth : null,
         ]);
 
         return back()->with('success', 'Family member updated.');
@@ -549,27 +601,26 @@ class EmployeeController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-// Education
-// Uses index-based lookup since EmployeeEducation is linked via employee_basic_info_id
-// ─────────────────────────────────────────────────────────────────────────
+    // Education
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function storeEducation(Request $request, Employee $employee)
     {
         $request->validate([
-            'school_name' => ['required', 'string', 'max:255'],
-            'level' => ['nullable', 'string', 'max:100'],
-            'school_address' => ['nullable', 'string', 'max:255'],
-            'degree' => ['nullable', 'string', 'max:255'],
+            'school_name'     => ['required', 'string', 'max:255'],
+            'level'           => ['nullable', 'string', 'max:100'],
+            'school_address'  => ['nullable', 'string', 'max:255'],
+            'degree'          => ['nullable', 'string', 'max:255'],
             'graduation_date' => ['nullable', 'date'],
         ]);
 
         EmployeeEducation::create([
             'employee_basic_info_id' => $employee->employee_basic_info_id,
-            'school_name' => $request->school_name,
-            'level' => $request->level,
-            'school_address' => $request->school_address,
-            'degree' => $request->degree,
-            'graduation_date' => $request->graduation_date,
+            'school_name'     => $request->school_name,
+            'level'           => $request->filled('level')           ? $request->level           : null,
+            'school_address'  => $request->filled('school_address')  ? $request->school_address  : null,
+            'degree'          => $request->filled('degree')          ? $request->degree           : null,
+            'graduation_date' => $request->filled('graduation_date') ? $request->graduation_date : null,
         ]);
 
         return back()->with('success', 'Education record added.');
@@ -578,10 +629,10 @@ class EmployeeController extends Controller
     public function updateEducation(Request $request, Employee $employee, int $index)
     {
         $request->validate([
-            'school_name' => ['required', 'string', 'max:255'],
-            'level' => ['nullable', 'string', 'max:100'],
-            'school_address' => ['nullable', 'string', 'max:255'],
-            'degree' => ['nullable', 'string', 'max:255'],
+            'school_name'     => ['required', 'string', 'max:255'],
+            'level'           => ['nullable', 'string', 'max:100'],
+            'school_address'  => ['nullable', 'string', 'max:255'],
+            'degree'          => ['nullable', 'string', 'max:255'],
             'graduation_date' => ['nullable', 'date'],
         ]);
 
@@ -593,11 +644,11 @@ class EmployeeController extends Controller
         abort_if(!$edu, 404, 'Education record not found.');
 
         $edu->update([
-            'school_name' => $request->school_name,
-            'level' => $request->level,
-            'school_address' => $request->school_address,
-            'degree' => $request->degree,
-            'graduation_date' => $request->graduation_date,
+            'school_name'     => $request->school_name,
+            'level'           => $request->filled('level')           ? $request->level           : null,
+            'school_address'  => $request->filled('school_address')  ? $request->school_address  : null,
+            'degree'          => $request->filled('degree')          ? $request->degree           : null,
+            'graduation_date' => $request->filled('graduation_date') ? $request->graduation_date : null,
         ]);
 
         return back()->with('success', 'Education record updated.');
@@ -618,21 +669,21 @@ class EmployeeController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-// Seminars & Trainings
-// ─────────────────────────────────────────────────────────────────────────
+    // Seminars & Trainings
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function storeSeminar(Request $request, Employee $employee)
     {
         $request->validate([
-            'seminar_name' => ['required', 'string', 'max:255'],
-            'organizer' => ['nullable', 'string', 'max:255'],
+            'seminar_name'  => ['required', 'string', 'max:255'],
+            'organizer'     => ['nullable', 'string', 'max:255'],
             'date_attended' => ['nullable', 'date'],
         ]);
 
         $employee->seminarsAndTrainings()->create([
-            'seminar_name' => $request->seminar_name,
-            'organizer' => $request->organizer,
-            'date_attended' => $request->date_attended,
+            'seminar_name'  => $request->seminar_name,
+            'organizer'     => $request->filled('organizer')     ? $request->organizer     : null,
+            'date_attended' => $request->filled('date_attended') ? $request->date_attended : null,
         ]);
 
         return back()->with('success', 'Seminar added.');
@@ -641,17 +692,17 @@ class EmployeeController extends Controller
     public function updateSeminar(Request $request, Employee $employee, $seminar)
     {
         $request->validate([
-            'seminar_name' => ['required', 'string', 'max:255'],
-            'organizer' => ['nullable', 'string', 'max:255'],
+            'seminar_name'  => ['required', 'string', 'max:255'],
+            'organizer'     => ['nullable', 'string', 'max:255'],
             'date_attended' => ['nullable', 'date'],
         ]);
 
         $record = $employee->seminarsAndTrainings()->findOrFail($seminar);
 
         $record->update([
-            'seminar_name' => $request->seminar_name,
-            'organizer' => $request->organizer,
-            'date_attended' => $request->date_attended,
+            'seminar_name'  => $request->seminar_name,
+            'organizer'     => $request->filled('organizer')     ? $request->organizer     : null,
+            'date_attended' => $request->filled('date_attended') ? $request->date_attended : null,
         ]);
 
         return back()->with('success', 'Seminar updated.');
@@ -666,23 +717,23 @@ class EmployeeController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-// Service Records
-// ─────────────────────────────────────────────────────────────────────────
+    // Service Records
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function storeServiceRecord(Request $request, Employee $employee)
     {
         $request->validate([
-            'position_name' => ['required', 'string', 'max:255'],
+            'position_name'   => ['required', 'string', 'max:255'],
             'department_name' => ['nullable', 'string', 'max:255'],
-            'year_start' => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
-            'year_end' => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
+            'year_start'      => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
+            'year_end'        => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
         ]);
 
         $employee->serviceRecords()->create([
-            'position_name' => $request->position_name,
-            'department_name' => $request->department_name,
-            'year_start' => $request->year_start,
-            'year_end' => $request->year_end,
+            'position_name'   => $request->position_name,
+            'department_name' => $request->filled('department_name') ? $request->department_name : null,
+            'year_start'      => $request->filled('year_start')      ? $request->year_start      : null,
+            'year_end'        => $request->filled('year_end')        ? $request->year_end        : null,
         ]);
 
         return back()->with('success', 'Service record added.');
@@ -691,19 +742,19 @@ class EmployeeController extends Controller
     public function updateServiceRecord(Request $request, Employee $employee, $record)
     {
         $request->validate([
-            'position_name' => ['required', 'string', 'max:255'],
+            'position_name'   => ['required', 'string', 'max:255'],
             'department_name' => ['nullable', 'string', 'max:255'],
-            'year_start' => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
-            'year_end' => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
+            'year_start'      => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
+            'year_end'        => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:2100'],
         ]);
 
         $serviceRecord = $employee->serviceRecords()->findOrFail($record);
 
         $serviceRecord->update([
-            'position_name' => $request->position_name,
-            'department_name' => $request->department_name,
-            'year_start' => $request->year_start,
-            'year_end' => $request->year_end,
+            'position_name'   => $request->position_name,
+            'department_name' => $request->filled('department_name') ? $request->department_name : null,
+            'year_start'      => $request->filled('year_start')      ? $request->year_start      : null,
+            'year_end'        => $request->filled('year_end')        ? $request->year_end        : null,
         ]);
 
         return back()->with('success', 'Service record updated.');
