@@ -4,7 +4,7 @@ import {
     GraduationCap, Award, Plus, Trash2, List, Save, Pencil,
 } from "lucide-react"
 import { type FormEventHandler, useState, useMemo, useEffect } from "react"
-import { toast, Toaster } from "sonner"
+import { toast } from "sonner"
 import { route } from "ziggy-js"
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -998,7 +998,7 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
 
     const positionDisplay = selectedGroup
         ? (selectedGroup.totalSlots > 1
-            ? `${selectedGroup.positionName} (auto-assigned slot)`
+            ? `${selectedGroup.positionName}`
             : selectedGroup.positionName)
         : undefined
 
@@ -1220,7 +1220,6 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Create Employee" />
-            <Toaster richColors position="top-right" />
             <div className="px-10 pt-5">
                 <Stepper steps={steps} currentStep={currentStep} onStepChange={setCurrentStep} />
 
