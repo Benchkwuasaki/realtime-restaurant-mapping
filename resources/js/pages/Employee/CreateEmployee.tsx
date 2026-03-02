@@ -4,9 +4,17 @@ import {
     GraduationCap, Award, Plus, Trash2, List, Save, Pencil,
 } from "lucide-react"
 import { type FormEventHandler, useState, useMemo, useEffect } from "react"
+import { toast, Toaster } from "sonner"
 import { route } from "ziggy-js"
-import { Button } from "@/components/ui/button"
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog"
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,14 +22,6 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Stepper } from "@/components/ui/stepper"
-import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog"
-import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { toast, Toaster } from "sonner"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
 
@@ -65,11 +65,11 @@ export interface CreateEmployeeProps {
 
 // ─── Collection row types ─────────────────────────────────────────────────────
 
-interface AddressRow    { [key: string]: string; street_address: string; city: string; state: string; zip_code: string }
-interface FamilyRow     { [key: string]: string; full_name: string; contact_number: string; relationship: string }
+interface AddressRow { [key: string]: string; street_address: string; city: string; state: string; zip_code: string }
+interface FamilyRow { [key: string]: string; full_name: string; contact_number: string; relationship: string }
 interface GovernmentRow { [key: string]: string; account_type: string; account_number: string }
-interface EducationRow  { [key: string]: string; level: string; school_name: string; school_address: string; graduation_date: string; degree: string }
-interface EligibilityRow{ [key: string]: string; eligibility_name: string; year_passed: string }
+interface EducationRow { [key: string]: string; level: string; school_name: string; school_address: string; graduation_date: string; degree: string }
+interface EligibilityRow { [key: string]: string; eligibility_name: string; year_passed: string }
 
 // ─── Position group ───────────────────────────────────────────────────────────
 
@@ -97,9 +97,9 @@ function buildPositionGroups(items: Item[]): PositionGroup[] {
             // Build a human-readable label showing org context
             const parts: string[] = []
             if (pos?.department?.department_name) parts.push(pos.department.department_name)
-            if (pos?.division?.division_name)     parts.push(pos.division.division_name)
-            if (pos?.unit?.unit_name)             parts.push(pos.unit.unit_name)
-            const orgLabel  = parts.join(" / ")
+            if (pos?.division?.division_name) parts.push(pos.division.division_name)
+            if (pos?.unit?.unit_name) parts.push(pos.unit.unit_name)
+            const orgLabel = parts.join(" / ")
             const displayLabel = orgLabel
                 ? `${pos?.position_name ?? `Item #${item.item_id}`} — ${orgLabel}`
                 : (pos?.position_name ?? `Item #${item.item_id}`)
@@ -136,40 +136,40 @@ function isJobOrderPosition(grp: PositionGroup): boolean {
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
 const steps = [
-    { title: "Personal Information",  description: "Step 1", icon: User },
-    { title: "Employment Details",    description: "Step 2", icon: BriefcaseBusiness },
-    { title: "Address",               description: "Step 3", icon: MapPin },
-    { title: "Family Information",    description: "Step 4", icon: Users },
-    { title: "Government Accounts",   description: "Step 5", icon: Landmark },
-    { title: "Education",             description: "Step 6", icon: GraduationCap },
-    { title: "Eligibility",           description: "Step 7", icon: Award },
-    { title: "Review & Submit",       description: "Step 8", icon: BadgeCheck },
+    { title: "Personal Information", description: "Step 1", icon: User },
+    { title: "Employment Details", description: "Step 2", icon: BriefcaseBusiness },
+    { title: "Address", description: "Step 3", icon: MapPin },
+    { title: "Family Information", description: "Step 4", icon: Users },
+    { title: "Government Accounts", description: "Step 5", icon: Landmark },
+    { title: "Education", description: "Step 6", icon: GraduationCap },
+    { title: "Eligibility", description: "Step 7", icon: Award },
+    { title: "Review & Submit", description: "Step 8", icon: BadgeCheck },
 ]
 
 const REQUIRED: Record<number, { field: string; label: string }[]> = {
     0: [
-        { field: "first_name",   label: "First Name" },
-        { field: "last_name",    label: "Last Name" },
-        { field: "birth_date",   label: "Date of Birth" },
-        { field: "sex",          label: "Sex" },
+        { field: "first_name", label: "First Name" },
+        { field: "last_name", label: "Last Name" },
+        { field: "birth_date", label: "Date of Birth" },
+        { field: "sex", label: "Sex" },
         { field: "civil_status", label: "Civil Status" },
         { field: "phone_number", label: "Phone Number" },
     ],
     1: [
-        { field: "item_id",                   label: "Position" },
-        { field: "salary_grade_step_id",      label: "Salary Grade & Step" },
+        { field: "item_id", label: "Position" },
+        { field: "salary_grade_step_id", label: "Salary Grade & Step" },
         { field: "employment_classification", label: "Employment Classification" },
-        { field: "work_email",                label: "Work Email" },
-        { field: "password",                  label: "Password" },
-        { field: "date_applied",              label: "Date Applied" },
-        { field: "date_hired",                label: "Date Hired" },
-        { field: "work_schedule_start",       label: "Schedule Start" },
-        { field: "work_schedule_end",         label: "Schedule End" },
-        { field: "status",                    label: "Status" },
+        { field: "work_email", label: "Work Email" },
+        { field: "password", label: "Password" },
+        { field: "date_applied", label: "Date Applied" },
+        { field: "date_hired", label: "Date Hired" },
+        { field: "work_schedule_start", label: "Schedule Start" },
+        { field: "work_schedule_end", label: "Schedule End" },
+        { field: "status", label: "Status" },
     ],
 }
 
-type ErrFn     = (field: string) => string | undefined
+type ErrFn = (field: string) => string | undefined
 type SetDataFn = (field: string, value: string) => void
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
@@ -249,11 +249,11 @@ function ManageClassificationsDialog({
     classifications: EmploymentClassification[]
     onCreated: (name: string) => void
 }) {
-    const [addForm,  setAddForm]  = useState({ name: "", description: "" })
-    const [editId,   setEditId]   = useState<number | null>(null)
+    const [addForm, setAddForm] = useState({ name: "", description: "" })
+    const [editId, setEditId] = useState<number | null>(null)
     const [editForm, setEditForm] = useState({ name: "", description: "" })
     const [deleteId, setDeleteId] = useState<number | null>(null)
-    const [loading,  setLoading]  = useState(false)
+    const [loading, setLoading] = useState(false)
 
     const openEdit = (c: EmploymentClassification) => {
         setEditId(c.id)
@@ -811,12 +811,12 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
 
 // ─── Remaining steps (unchanged) ──────────────────────────────────────────────
 
-const RELATIONSHIPS            = ["Spouse", "Parent", "Sibling", "Child", "Guardian", "Emergency Contact"]
+const RELATIONSHIPS = ["Spouse", "Parent", "Sibling", "Child", "Guardian", "Emergency Contact"]
 const GOVERNMENT_ACCOUNT_TYPES = ["SSS", "PhilHealth", "GSIS", "TIN", "Pag-IBIG", "Other"]
-const EDUCATION_LEVELS         = ["Elementary", "Secondary", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Post-Doctorate"]
+const EDUCATION_LEVELS = ["Elementary", "Secondary", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Post-Doctorate"]
 
 function AddressStep({ rows, setRows, err }: { rows: AddressRow[]; setRows: (r: AddressRow[]) => void; err: ErrFn }) {
-    const add    = () => setRows([...rows, { street_address: "", city: "", state: "", zip_code: "" }])
+    const add = () => setRows([...rows, { street_address: "", city: "", state: "", zip_code: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof AddressRow, value: string) => {
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
@@ -855,7 +855,7 @@ function AddressStep({ rows, setRows, err }: { rows: AddressRow[]; setRows: (r: 
 }
 
 function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: FamilyRow[]) => void; err: ErrFn }) {
-    const add    = () => setRows([...rows, { full_name: "", contact_number: "", relationship: "" }])
+    const add = () => setRows([...rows, { full_name: "", contact_number: "", relationship: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof FamilyRow, value: string) => {
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
@@ -893,7 +893,7 @@ function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: Fa
 }
 
 function GovernmentStep({ rows, setRows, err }: { rows: GovernmentRow[]; setRows: (r: GovernmentRow[]) => void; err: ErrFn }) {
-    const add    = () => setRows([...rows, { account_type: "", account_number: "" }])
+    const add = () => setRows([...rows, { account_type: "", account_number: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof GovernmentRow, value: string) => {
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
@@ -927,7 +927,7 @@ function GovernmentStep({ rows, setRows, err }: { rows: GovernmentRow[]; setRows
 }
 
 function EducationStep({ rows, setRows, err }: { rows: EducationRow[]; setRows: (r: EducationRow[]) => void; err: ErrFn }) {
-    const add    = () => setRows([...rows, { level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
+    const add = () => setRows([...rows, { level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof EducationRow, value: string) => {
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
@@ -973,7 +973,7 @@ function EducationStep({ rows, setRows, err }: { rows: EducationRow[]; setRows: 
 }
 
 function EligibilityStep({ rows, setRows, err }: { rows: EligibilityRow[]; setRows: (r: EligibilityRow[]) => void; err: ErrFn }) {
-    const add    = () => setRows([...rows, { eligibility_name: "", year_passed: "" }])
+    const add = () => setRows([...rows, { eligibility_name: "", year_passed: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof EligibilityRow, value: string) => {
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
@@ -1017,14 +1017,14 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
     addresses: AddressRow[]; family: FamilyRow[]; government: GovernmentRow[]
     education: EducationRow[]; eligibility: EligibilityRow[]
 }) {
-    const selectedSGS    = salaryGradeSteps.find(s => String(s.salary_grade_step_id) === data.salary_grade_step_id)
+    const selectedSGS = salaryGradeSteps.find(s => String(s.salary_grade_step_id) === data.salary_grade_step_id)
     const positionGroups = useMemo(() => buildPositionGroups(items), [items])
-    const selectedGroup  = positionGroups.find(g => g.groupKey === data.selected_position_name)
+    const selectedGroup = positionGroups.find(g => g.groupKey === data.selected_position_name)
 
     const positionDisplay = selectedGroup
         ? (selectedGroup.totalSlots > 1
-            ? `${selectedGroup.displayLabel} (auto-assigned slot)`
-            : selectedGroup.displayLabel)
+            ? `${selectedGroup.positionName} (auto-assigned slot)`
+            : selectedGroup.positionName)
         : undefined
 
     return (
@@ -1034,33 +1034,33 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
             </p>
 
             <SectionHeading>Personal Information</SectionHeading>
-            <ReviewRow label="First Name"     value={data.first_name} />
-            <ReviewRow label="Last Name"      value={data.last_name} />
-            <ReviewRow label="Middle Name"    value={data.middle_name} />
+            <ReviewRow label="First Name" value={data.first_name} />
+            <ReviewRow label="Last Name" value={data.last_name} />
+            <ReviewRow label="Middle Name" value={data.middle_name} />
             <ReviewRow label="Name Extension" value={data.name_extension} />
-            <ReviewRow label="Date of Birth"  value={data.birth_date} />
-            <ReviewRow label="Sex"            value={data.sex === "1" ? "Male" : data.sex === "0" ? "Female" : undefined} />
-            <ReviewRow label="Civil Status"   value={data.civil_status ? data.civil_status.charAt(0).toUpperCase() + data.civil_status.slice(1) : undefined} />
+            <ReviewRow label="Date of Birth" value={data.birth_date} />
+            <ReviewRow label="Sex" value={data.sex === "1" ? "Male" : data.sex === "0" ? "Female" : undefined} />
+            <ReviewRow label="Civil Status" value={data.civil_status ? data.civil_status.charAt(0).toUpperCase() + data.civil_status.slice(1) : undefined} />
             <ReviewRow label="Place of Birth" value={data.place_of_birth} />
             <ReviewRow label="Personal Email" value={data.personal_email} />
-            <ReviewRow label="Phone Number"   value={data.phone_number} />
+            <ReviewRow label="Phone Number" value={data.phone_number} />
 
             <SectionHeading>Employment Details</SectionHeading>
-            <ReviewRow label="Position"                   value={positionDisplay} />
+            <ReviewRow label="Position" value={positionDisplay} />
             {selectedGroup?.position?.department && <ReviewRow label="Department" value={selectedGroup.position.department.department_name} />}
-            {selectedGroup?.position?.division   && <ReviewRow label="Division"   value={selectedGroup.position.division.division_name} />}
-            {selectedGroup?.position?.unit       && <ReviewRow label="Unit"       value={selectedGroup.position.unit.unit_name} />}
-            <ReviewRow label="Employment Classification"  value={data.employment_classification || undefined} />
+            {selectedGroup?.position?.division && <ReviewRow label="Division" value={selectedGroup.position.division.division_name} />}
+            {selectedGroup?.position?.unit && <ReviewRow label="Unit" value={selectedGroup.position.unit.unit_name} />}
+            <ReviewRow label="Employment Classification" value={data.employment_classification || undefined} />
             <ReviewRow
                 label="Salary Grade & Step"
                 value={selectedSGS
                     ? `SG ${selectedSGS.salary_grade} — Step ${selectedSGS.step} (₱${Number(selectedSGS.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })})`
                     : data.salary_grade_step_id || undefined}
             />
-            <ReviewRow label="Status"        value={data.status === "1" ? "Active" : data.status === "0" ? "Inactive" : undefined} />
-            <ReviewRow label="Work Email"    value={data.work_email} />
-            <ReviewRow label="Date Applied"  value={data.date_applied} />
-            <ReviewRow label="Date Hired"    value={data.date_hired} />
+            <ReviewRow label="Status" value={data.status === "1" ? "Active" : data.status === "0" ? "Inactive" : undefined} />
+            <ReviewRow label="Work Email" value={data.work_email} />
+            <ReviewRow label="Date Applied" value={data.date_applied} />
+            <ReviewRow label="Date Hired" value={data.date_hired} />
             <ReviewRow label="Work Schedule" value={data.work_schedule_start && data.work_schedule_end ? `${data.work_schedule_start} – ${data.work_schedule_end}` : undefined} />
 
             <SectionHeading>Addresses ({addresses.length})</SectionHeading>
@@ -1102,17 +1102,17 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function CreateEmployee({ items, salaryGradeSteps, employmentClassifications }: CreateEmployeeProps) {
     const [currentStep, setCurrentStep] = useState(0)
-    const [stepErrors,  setStepErrors]  = useState<Record<string, string>>({})
-    const [processing,  setProcessing]  = useState(false)
+    const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
+    const [processing, setProcessing] = useState(false)
 
-    const [addresses,   setAddresses]   = useState<AddressRow[]>([{ street_address: "", city: "", state: "", zip_code: "" }])
-    const [family,      setFamily]      = useState<FamilyRow[]>([{ full_name: "", contact_number: "", relationship: "" }])
-    const [government,  setGovernment]  = useState<GovernmentRow[]>([{ account_type: "", account_number: "" }])
-    const [education,   setEducation]   = useState<EducationRow[]>([{ level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
+    const [addresses, setAddresses] = useState<AddressRow[]>([{ street_address: "", city: "", state: "", zip_code: "" }])
+    const [family, setFamily] = useState<FamilyRow[]>([{ full_name: "", contact_number: "", relationship: "" }])
+    const [government, setGovernment] = useState<GovernmentRow[]>([{ account_type: "", account_number: "" }])
+    const [education, setEducation] = useState<EducationRow[]>([{ level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
     const [eligibility, setEligibility] = useState<EligibilityRow[]>([{ eligibility_name: "", year_passed: "" }])
 
     const CurrentIcon = steps[currentStep].icon
-    const isLastStep  = currentStep === steps.length - 1
+    const isLastStep = currentStep === steps.length - 1
 
     const { data, setData, errors, setError, clearErrors } = useForm({
         first_name: "", last_name: "", middle_name: "", name_extension: "",
@@ -1144,16 +1144,16 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             if (addresses.length === 0) newErrors["addresses"] = "At least one address is required."
             addresses.forEach((row, i) => {
                 if (!row.street_address.trim()) newErrors[`addresses.${i}.street_address`] = "Street Address is required."
-                if (!row.city.trim())           newErrors[`addresses.${i}.city`]           = "City is required."
-                if (!row.state.trim())          newErrors[`addresses.${i}.state`]          = "Province / State is required."
-                if (!row.zip_code.trim())       newErrors[`addresses.${i}.zip_code`]       = "ZIP Code is required."
+                if (!row.city.trim()) newErrors[`addresses.${i}.city`] = "City is required."
+                if (!row.state.trim()) newErrors[`addresses.${i}.state`] = "Province / State is required."
+                if (!row.zip_code.trim()) newErrors[`addresses.${i}.zip_code`] = "ZIP Code is required."
             })
         }
 
         if (step === 3) {
             if (family.length === 0) newErrors["family"] = "At least one family member or emergency contact is required."
             family.forEach((row, i) => {
-                if (!row.full_name.trim())    newErrors[`family.${i}.full_name`]    = "Full Name is required."
+                if (!row.full_name.trim()) newErrors[`family.${i}.full_name`] = "Full Name is required."
                 if (!row.relationship.trim()) newErrors[`family.${i}.relationship`] = "Relationship is required."
             })
         }
@@ -1161,7 +1161,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
         if (step === 4) {
             if (government.length === 0) newErrors["government"] = "At least one government account is required."
             government.forEach((row, i) => {
-                if (!row.account_type.trim())   newErrors[`government.${i}.account_type`]   = "Account Type is required."
+                if (!row.account_type.trim()) newErrors[`government.${i}.account_type`] = "Account Type is required."
                 if (!row.account_number.trim()) newErrors[`government.${i}.account_number`] = "ID Number is required."
             })
         }
@@ -1170,7 +1170,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             if (education.length === 0) newErrors["education"] = "At least one education record is required."
             education.forEach((row, i) => {
                 if (!row.school_name.trim()) newErrors[`education.${i}.school_name`] = "School Name is required."
-                if (!row.level.trim())       newErrors[`education.${i}.level`]       = "Level is required."
+                if (!row.level.trim()) newErrors[`education.${i}.level`] = "Level is required."
             })
         }
 
@@ -1178,7 +1178,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             if (eligibility.length === 0) newErrors["eligibility"] = "At least one eligibility record is required."
             eligibility.forEach((row, i) => {
                 if (!row.eligibility_name.trim()) newErrors[`eligibility.${i}.eligibility_name`] = "Eligibility Name is required."
-                if (!row.year_passed.trim())      newErrors[`eligibility.${i}.year_passed`]      = "Date Passed is required."
+                if (!row.year_passed.trim()) newErrors[`eligibility.${i}.year_passed`] = "Date Passed is required."
             })
         }
 
@@ -1212,15 +1212,15 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             {
                 ...data,
                 addresses,
-                family_info:             family,
-                government_accounts:     government,
+                family_info: family,
+                government_accounts: government,
                 education,
                 eligibility_information: eligibility,
             },
             {
-                onStart:  () => setProcessing(true),
+                onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
-                onError:  (errs) => {
+                onError: (errs) => {
                     const errMap = errs as Record<string, string>
                     setStepErrors(errMap)
                     const messages = Object.values(errMap)
@@ -1259,10 +1259,10 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
                                 employmentClassifications={employmentClassifications}
                             />
                         )}
-                        {currentStep === 2 && <AddressStep     rows={addresses}   setRows={setAddresses}   err={err} />}
-                        {currentStep === 3 && <FamilyStep      rows={family}      setRows={setFamily}      err={err} />}
-                        {currentStep === 4 && <GovernmentStep  rows={government}  setRows={setGovernment}  err={err} />}
-                        {currentStep === 5 && <EducationStep   rows={education}   setRows={setEducation}   err={err} />}
+                        {currentStep === 2 && <AddressStep rows={addresses} setRows={setAddresses} err={err} />}
+                        {currentStep === 3 && <FamilyStep rows={family} setRows={setFamily} err={err} />}
+                        {currentStep === 4 && <GovernmentStep rows={government} setRows={setGovernment} err={err} />}
+                        {currentStep === 5 && <EducationStep rows={education} setRows={setEducation} err={err} />}
                         {currentStep === 6 && <EligibilityStep rows={eligibility} setRows={setEligibility} err={err} />}
                         {currentStep === 7 && (
                             <ReviewStep

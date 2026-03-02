@@ -172,6 +172,10 @@ class EmployeeController extends Controller
                     'full_name' => $member['full_name'],
                     'contact_number' => $member['contact_number'] ?? null,
                     'relationship' => $member['relationship'] ?? null,
+                    'sex' => $member['sex'],
+                    'date_of_birth' => $member['date_of_birth'],
+                    'place_of_birth' => $member['place_of_birth'] ?? null,
+
                 ]);
             }
 
