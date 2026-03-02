@@ -1,15 +1,17 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/use-auth';
 import { useInitials } from '@/hooks/use-initials';
-import type { User } from '@/types';
+import { AuthInertiaUser } from '@/types/auth-inertia-user';
 
 export function UserInfo({
     user,
-    showEmail = false,
+    showRole = true,
 }: {
-    user: User;
-    showEmail?: boolean;
+    user: AuthInertiaUser;
+    showRole?: boolean;
 }) {
     const getInitials = useInitials();
+    const { role } = useAuth()
 
     return (
         <>
@@ -21,9 +23,9 @@ export function UserInfo({
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
-                {showEmail && (
+                {showRole && (
                     <span className="truncate text-xs text-muted-foreground">
-                        {user.email}
+                        {role?.label}
                     </span>
                 )}
             </div>

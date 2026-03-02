@@ -3,4 +3,5 @@ export type AuthInertiaUser = {
     name: string;
     email: string;
     roles: string[];
+    avatar: string;
 }

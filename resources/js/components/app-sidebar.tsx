@@ -23,7 +23,8 @@ import {
   Logs,
   Pencil,
   UserCog,
-  Bell
+  Bell,
+  FileBarChart,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -203,10 +204,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("org") || hasRole("inventory"),
       },
       {
+        title: "Reports and Analytics",
+        url: route("reports_and_analytics.index"),
+        icon: FileBarChart,
+        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
+      },
+      {
         title: "Activity Logs",
         url: route("activity_logs.index"),
         icon: Logs,
-        show: true, // Visible to all roless
+        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
       },
       {
         title: "Announcements",

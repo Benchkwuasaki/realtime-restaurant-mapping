@@ -6,7 +6,15 @@ export function useAuth() {
     const user = pageProps.auth?.user ?? null;
 
     const hasRole = (role: string) => user?.roles.includes(role) ?? false;
-    // const hasPermission = (perm: string) => user?.permissions.includes(perm) ?? false;
+    const role = user?.roles?.[0]
+        ? {
+            value: user.roles[0],
+            label: user.roles[0]
+                .replace(/_/g, " ")
+                .replace(/\b\w/g, (char) => char.toUpperCase()),
+        }
+        : null;
 
-    return { user, isLoggedIn: !!user, hasRole };
+
+    return { user, isLoggedIn: !!user, hasRole, role };
 }

@@ -11,7 +11,6 @@ class ReportsAndAnalyticsController extends Controller
 {
     public function __construct(protected ActivityLogService $activityLogService) {}
 
-
     public function index()
     {
         $this->activityLogService->createLog([
