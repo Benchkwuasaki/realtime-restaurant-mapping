@@ -29,12 +29,12 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
     // Attendance Routes
     Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
-        Route::get('/',                         [WhereaboutSlipController::class, 'index'])->name('index');
-        Route::post('/',                        [WhereaboutSlipController::class, 'store'])->name('store');
-        Route::put('/{whereaboutSlip}',         [WhereaboutSlipController::class, 'update'])->name('update');
-        Route::put('/{whereaboutSlip}/return',  [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
-        Route::delete('/{whereaboutSlip}',      [WhereaboutSlipController::class, 'destroy'])->name('destroy');
-        Route::delete('/',                      [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+        Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
+        Route::post('/', [WhereaboutSlipController::class, 'store'])->name('store');
+        Route::put('/{whereaboutSlip}', [WhereaboutSlipController::class, 'update'])->name('update');
+        Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
+        Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
+        Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
     });
 
 
@@ -125,33 +125,47 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::post('/{internalOrganization}/members', [InternalOrganizationController::class, 'storeMembers'])
             ->name('members.store');
     });
+
+
+    Route::prefix('organization/divisions')->name('division.')->group(function () {
+        Route::get('/', [DivisionController::class, 'index'])->name('index');
+        Route::get('/{division}', [DivisionController::class, 'show'])->name('show');
+        Route::post('/', [DivisionController::class, 'store'])->name('store');
+        Route::put('/{division}', [DivisionController::class, 'update'])->name('update');
+        Route::delete('/bulk-destroy', [DivisionController::class, 'bulkDestroy'])->name('bulk-destroy');
+        Route::delete('/{division}', [DivisionController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('organization/positions')->name('position.')->group(function () {
+        Route::get('/', [PositionController::class, 'index'])->name('index');
+        Route::get('/{position}', [PositionController::class, 'show'])->name('show');
+        Route::post('/', [PositionController::class, 'store'])->name('store');
+        Route::put('/{position}', [PositionController::class, 'update'])->name('update');
+        Route::delete('/bulk-destroy', [PositionController::class, 'bulkDestroy'])->name('bulk-destroy');
+        Route::delete('/{position}', [PositionController::class, 'destroy'])->name('destroy');
+    });
+
+    // routes/web.php
+    Route::get('organization/position/{position}/employees', [PositionController::class, 'employees'])
+        ->name('position.employees');
+
+    Route::resource('holiday', HolidayController::class)->parameters([
+        'holiday' => 'holiday:holiday_id',
+    ]);
+
+
+
+
+
+
+
+    Route::prefix('leave')->name('leave.')->group(function () {
+        Route::get('/leave-settings', function () {
+            return Inertia::render('Leave/LeaveSettings/LeaveSettingsTabNav');
+        })->name('leave-settings');
+    });
+
 });
-
-Route::prefix('organization/divisions')->name('division.')->group(function () {
-    Route::get('/', [DivisionController::class, 'index'])->name('index');
-    Route::get('/{division}', [DivisionController::class, 'show'])->name('show');
-    Route::post('/', [DivisionController::class, 'store'])->name('store');
-    Route::put('/{division}', [DivisionController::class, 'update'])->name('update');
-    Route::delete('/bulk-destroy', [DivisionController::class, 'bulkDestroy'])->name('bulk-destroy');
-    Route::delete('/{division}', [DivisionController::class, 'destroy'])->name('destroy');
-});
-
-Route::prefix('organization/positions')->name('position.')->group(function () {
-    Route::get('/', [PositionController::class, 'index'])->name('index');
-    Route::get('/{position}', [PositionController::class, 'show'])->name('show');
-    Route::post('/', [PositionController::class, 'store'])->name('store');
-    Route::put('/{position}', [PositionController::class, 'update'])->name('update');
-    Route::delete('/bulk-destroy', [PositionController::class, 'bulkDestroy'])->name('bulk-destroy');
-    Route::delete('/{position}', [PositionController::class, 'destroy'])->name('destroy');
-});
-
-// routes/web.php
-Route::get('organization/position/{position}/employees', [PositionController::class, 'employees'])
-    ->name('position.employees');
-
-Route::resource('holiday', HolidayController::class)->parameters([
-    'holiday' => 'holiday:holiday_id',
-]);
 
 
 require __DIR__ . '/settings.php';

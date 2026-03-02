@@ -143,7 +143,7 @@ const data = {
         },
         {
           title: "Leave Settings",
-          url: "/leave/leave_settings",
+          url: route("leave.leave-settings"),
         }
       ]
     },
