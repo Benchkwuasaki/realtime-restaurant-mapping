@@ -144,6 +144,8 @@ export const columns: ColumnDef<Employee>[] = [
         </div>
       )
     },
+    enableSorting: false,
+    enableHiding: true,
     filterFn: (row, id, value: boolean[]) => value.includes(row.getValue(id)),
   },
   {

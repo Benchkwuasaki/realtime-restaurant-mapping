@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('division_id')->nullable()->constrained('divisions', 'division_id')->onDelete('cascade');
             $table->foreignId('unit_id')->nullable()->constrained('units', 'unit_id')->onDelete('cascade');
             $table->string('position_name');
+            $table->enum('position_type', ['Regular', 'Casual', 'Job Order'])->default('Regular');
             $table->timestamps();
         });
     }

@@ -1,3 +1,5 @@
+// resources/js/pages/Organization/Position/Index.tsx
+
 import { Head, useForm, usePage } from "@inertiajs/react"
 import { Briefcase, Users } from "lucide-react"
 import { useState } from "react"
@@ -85,10 +87,7 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
                     ) : (
                         <ul className="divide-y divide-border">
                             {employees.map((emp) => (
-                                <li
-                                    key={emp.id}
-                                    className="flex items-center justify-between gap-3 py-2.5"
-                                >
+                                <li key={emp.id} className="flex items-center justify-between gap-3 py-2.5">
                                     <div className="flex flex-col">
                                         <span className="text-sm font-medium text-foreground">
                                             {emp.first_name} {emp.last_name}
@@ -146,9 +145,9 @@ function PositionModal({
     const { data, setData, post, put, processing, errors, reset } = useForm({
         position_name: editingPosition?.position_name ?? "",
         department_id: editingPosition?.department_id ? String(editingPosition.department_id) : "",
-        division_id: editingPosition?.division_id ? String(editingPosition.division_id) : "",
-        unit_id: editingPosition?.unit_id ? String(editingPosition.unit_id) : "",
-        item_slots: editingPosition?.total_slots ? String(editingPosition.total_slots) : "1",
+        division_id:   editingPosition?.division_id   ? String(editingPosition.division_id)   : "",
+        unit_id:       editingPosition?.unit_id       ? String(editingPosition.unit_id)       : "",
+        item_slots:    editingPosition?.total_slots   ? String(editingPosition.total_slots)   : "1",
     })
 
     const filteredDivisions = divisions.filter(
@@ -159,7 +158,7 @@ function PositionModal({
     )
 
     const noDivisions = !!data.department_id && filteredDivisions.length === 0
-    const noUnits = !!data.division_id && filteredUnits.length === 0
+    const noUnits     = !!data.division_id   && filteredUnits.length === 0
 
     function handleClose() {
         reset()
@@ -265,10 +264,8 @@ function PositionModal({
                             {noDivisions && (
                                 <p className="mt-1.5 text-xs text-destructive">
                                     This department has no divisions yet.{" "}
-                                    <a href="/organization/divisions"
-                                        target="_blank"
-                                        className="underline underline-offset-2 hover:text-foreground"
-                                    >
+                                    <a href="/organization/divisions" target="_blank"
+                                        className="underline underline-offset-2 hover:text-foreground">
                                         Add one here.
                                     </a>
                                 </p>
@@ -307,10 +304,8 @@ function PositionModal({
                             {noUnits && (
                                 <p className="mt-1.5 text-xs text-destructive">
                                     This division has no units yet.{" "}
-                                    <a href="/organization/units"
-                                        target="_blank"
-                                        className="underline underline-offset-2 hover:text-foreground"
-                                    >
+                                    <a href="/organization/units" target="_blank"
+                                        className="underline underline-offset-2 hover:text-foreground">
                                         Add one here.
                                     </a>
                                 </p>
@@ -370,11 +365,9 @@ function PositionModal({
 export default function PositionIndex({ positions, departments, divisions, units }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
-    // ── Position modal state ──
     const [modalOpen, setModalOpen] = useState(false)
     const [editingPosition, setEditingPosition] = useState<Position | null>(null)
 
-    // ── Employees dialog state ──
     const [employeesDialogOpen, setEmployeesDialogOpen] = useState(false)
     const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
 
@@ -436,6 +429,15 @@ export default function PositionIndex({ positions, departments, divisions, units
                     searchPlaceholder="Search positions..."
                     filters={[
                         {
+                            columnId: "position_type",
+                            title: "Type",
+                            options: [
+                                { value: "Regular",   label: "Regular"   },
+                                { value: "Casual",    label: "Casual"    },
+                                { value: "Job Order", label: "Job Order" },
+                            ],
+                        },
+                        {
                             columnId: "department",
                             title: "Department",
                             options: departments.map((d) => ({
@@ -472,7 +474,6 @@ export default function PositionIndex({ positions, departments, divisions, units
                 />
             </div>
 
-            {/* ── Position Create/Edit Modal ── */}
             <PositionModal
                 key={editingPosition?.position_id ?? "create"}
                 open={modalOpen}
@@ -483,7 +484,6 @@ export default function PositionIndex({ positions, departments, divisions, units
                 onClose={closeModal}
             />
 
-            {/* ── Employees Dialog ── */}
             <EmployeesDialog
                 open={employeesDialogOpen}
                 position={selectedPosition}

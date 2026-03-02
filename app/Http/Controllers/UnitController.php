@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Division;
+use App\Models\Position;
 use App\Models\Unit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,18 +18,18 @@ class UnitController extends Controller
             ->orderBy('unit_name')
             ->get()
             ->map(fn(Unit $unit) => [
-                'unit_id' => $unit->unit_id,
-                'unit_name' => $unit->unit_name,
-                'unit_acronym' => $unit->unit_acronym,
+                'unit_id'          => $unit->unit_id,
+                'unit_name'        => $unit->unit_name,
+                'unit_acronym'     => $unit->unit_acronym,
                 'unit_description' => $unit->unit_description,
-                'division_id' => $unit->division_id,
-                'division' => [
-                    'division_id' => $unit->division->division_id,
+                'division_id'      => $unit->division_id,
+                'division'         => [
+                    'division_id'   => $unit->division->division_id,
                     'division_name' => $unit->division->division_name,
                 ],
-                'positions' => $unit->positions               // ← new
+                'positions' => $unit->positions
                     ->map(fn($p) => [
-                        'position_id' => $p->position_id,
+                        'position_id'   => $p->position_id,
                         'position_name' => $p->position_name,
                     ])
                     ->values(),
@@ -38,9 +39,9 @@ class UnitController extends Controller
             ->get(['division_id', 'division_name']);
 
         return Inertia::render('Organization/Unit/Index', [
-            'units' => $units,
-            'divisions' => $divisions,
-            'totalUnits' => $units->count(),
+            'units'          => $units,
+            'divisions'      => $divisions,
+            'totalUnits'     => $units->count(),
             'totalDivisions' => $divisions->count(),
             'totalPositions' => $units->sum(fn($u) => count($u['positions'])),
         ]);
@@ -52,17 +53,17 @@ class UnitController extends Controller
 
         return Inertia::render('Organization/Unit/Show', [
             'unit' => [
-                'unit_id' => $unit->unit_id,
-                'unit_name' => $unit->unit_name,
-                'unit_acronym' => $unit->unit_acronym,
+                'unit_id'          => $unit->unit_id,
+                'unit_name'        => $unit->unit_name,
+                'unit_acronym'     => $unit->unit_acronym,
                 'unit_description' => $unit->unit_description,
-                'division_id' => $unit->division_id,
-                'division' => [
-                    'division_id' => $unit->division->division_id,
+                'division_id'      => $unit->division_id,
+                'division'         => [
+                    'division_id'   => $unit->division->division_id,
                     'division_name' => $unit->division->division_name,
                 ],
                 'positions' => $unit->positions->map(fn($p) => [
-                    'position_id' => $p->position_id,
+                    'position_id'   => $p->position_id,
                     'position_name' => $p->position_name,
                 ]),
             ],
@@ -72,13 +73,29 @@ class UnitController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'division_id' => ['required', 'integer', 'exists:divisions,division_id'],
-            'unit_name' => ['required', 'string', 'max:255'],
-            'unit_acronym' => ['required', 'string', 'max:10'],
+            'division_id'      => ['required', 'integer', 'exists:divisions,division_id'],
+            'unit_name'        => ['required', 'string', 'max:255'],
+            'unit_acronym'     => ['required', 'string', 'max:10'],
             'unit_description' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        Unit::create($validated);
+        $unit = Unit::create($validated);
+
+        // ── Auto-create a default JO position for this unit ───────────────────
+        $division = Division::find($unit->division_id);
+
+        $position = Position::create([
+            'department_id' => $division->department_id,
+            'division_id'   => $unit->division_id,
+            'unit_id'       => $unit->unit_id,
+            'position_name' => 'Job Order',
+            'position_type' => 'Job Order',
+        ]);
+
+        $position->items()->create([
+            'item_name' => 'Job Order Item 1',
+        ]);
+        // ─────────────────────────────────────────────────────────────────────
 
         return redirect()->route('unit.index')
             ->with('success', 'Unit created successfully.');
@@ -87,9 +104,9 @@ class UnitController extends Controller
     public function update(Request $request, Unit $unit): RedirectResponse
     {
         $validated = $request->validate([
-            'division_id' => ['required', 'integer', 'exists:divisions,division_id'],
-            'unit_name' => ['required', 'string', 'max:255'],
-            'unit_acronym' => ['required', 'string', 'max:10'],
+            'division_id'      => ['required', 'integer', 'exists:divisions,division_id'],
+            'unit_name'        => ['required', 'string', 'max:255'],
+            'unit_acronym'     => ['required', 'string', 'max:10'],
             'unit_description' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -110,7 +127,7 @@ class UnitController extends Controller
     public function bulkDestroy(Request $request): RedirectResponse
     {
         $request->validate([
-            'ids' => ['required', 'array'],
+            'ids'   => ['required', 'array'],
             'ids.*' => ['integer', 'exists:units,unit_id'],
         ]);
 
