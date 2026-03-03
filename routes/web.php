@@ -184,6 +184,50 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{position}', [JobOrderPositionController::class, 'destroy'])->name('destroy');
     });
 
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - api calls
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('attendance')->name('attendance.')->group(function () {
+        Route::post('/clock-in', [AttendanceController::class, 'clockIn'])->name('clock-in');
+        Route::post('/enroll', [AttendanceController::class, 'enroll'])->name('enroll');
+        Route::post('/detect', [AttendanceController::class, 'detect'])->name('detect');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - Recognition logs
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
+        Route::get('/', [RecognitionLogController::class, 'index'])->name('index');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - Whereabout Slip
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
+        Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
+        Route::post('/', [WhereaboutSlipController::class, 'store'])->name('store');
+        Route::put('/{whereaboutSlip}', [WhereaboutSlipController::class, 'update'])->name('update');
+        Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
+        Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
+        Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - Holiday Management
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('holiday', HolidayController::class)->parameters([
+        'holiday' => 'holiday:holiday_id',
+    ]);
+
+
 
     /*
     |--------------------------------------------------------------------------

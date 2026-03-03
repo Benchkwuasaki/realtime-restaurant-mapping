@@ -81,7 +81,7 @@ export default function Kiosk() {
 
     const { props } = usePage<PageProps>()
     const employees = props.employees ?? []
-    const breadcrumbs: BreadcrumbItem[] = [{ title: "Attendance Logs", href: route("attendance-logs.index") }]
+    const breadcrumbs: BreadcrumbItem[] = [{ title: "Attendance Logs", href: route("recognition-logs.index") }]
 
     // UI state
     const [tab, setTab] = React.useState<"attendance" | "enroll">("attendance")
