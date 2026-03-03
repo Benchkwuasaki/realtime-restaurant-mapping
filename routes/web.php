@@ -8,6 +8,7 @@ use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LeaveCalendarController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
@@ -211,6 +212,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::get('/leave-settings', function () {
             return Inertia::render('Leave/LeaveSettings/LeaveSettingsTabNav');
         })->name('leave-settings');
+        Route::get('/leave-calendar', [LeaveCalendarController::class, 'index'])->name('leave-calendar');
     });
 
     /*

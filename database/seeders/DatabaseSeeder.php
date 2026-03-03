@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             InternalOrganizationSeeder::class,
+            // seed leave-related tables added by latest migrations
         ]);
 
         // ── 1. Salary Grade Steps ──────────────────────────────────

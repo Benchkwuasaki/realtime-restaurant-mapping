@@ -1,35 +1,24 @@
 "use client"
 
-import * as React from "react"
+import { Link } from "@inertiajs/react"
 import {
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  LifeBuoy,
-  Map,
-  PieChart,
-  Send,
-  SquareTerminal,
   User,
-  Globe,
   LayoutDashboard,
   File,
   Building2,
-  FileCheck,
   FileCheck2,
   Calendar,
   Wallet,
   Logs,
-  Pencil,
   UserCog,
   Bell,
   FileBarChart,
 } from "lucide-react"
+import * as React from "react"
 
+import { route } from "ziggy-js"
+import Logo from "@/assets/images/logo.svg"
 import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -40,196 +29,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { url } from "inspector"
-import { title } from "process"
-import { route } from "ziggy-js"
-import { Link } from "@inertiajs/react"
-import Logo from "@/assets/images/logo.svg"
 import { useAuth } from "@/hooks/use-auth"
 
-const data = {
-  navMain: [
-    {
-      title: "Dashboard",
-      url: route("dashboard"),
-      icon: LayoutDashboard,
-      isActive: true,
-    },
-    {
-      title: "Employee",
-      url: route("employee.index"),
-      icon: User,
-    },
-    {
-      title: "Organization",
-      url: null,
-      icon: Building2,
-      items: [
-        // TODO: Update the URLs for the organization sub-menu items
-        {
-          title: "Organisational Chart",
-          url: "/organization/organizational_chart",
-        },
-        {
-          title: "Departments",
-          url: "/organization/departments",
-        },
-        {
-          title: "Divisions",
-          url: "/organization/divisions",
-        },
-        {
-          title: "Units",
-          url: "/organization/units",
-        },
-        {
-          title: "Positions",
-          url: "/organization/positions",
-        },
-        {
-          title: "Signatories",
-          url: "/organization/signatories",
-        },
-        {
-          title: "Internal Organization",
-          url: "/organization/internal-organizations",
-        }
-      ]
-    },
-    {
-      title: "Attendance",
-      url: null,
-      icon: FileCheck2,
-      items: [
-        {
-          title: "Whereabout Slip",
-          url: route('whereabout-slip.index'),
-        },
-        {
-          title: "Holiday Management",
-          url: "/holiday",
-        },
-        {
-          title: "Overtime Entry",
-          url: "/organization/overtime_entry",
-        },
-      ]
-    },
-
-    {
-      title: "Leave",
-      url: "/leave",
-      icon: Calendar,
-      items: [
-        {
-          title: "Leave Calendar",
-          url: "/leave/leave_calendar",
-        },
-        {
-          title: "Leave Filing",
-          url: "/leave/leave_filing",
-        },
-        {
-          title: "Leave Approval Workflow",
-          url: "/leave/leaving_approval_workflow",
-        },
-        {
-          title: "Leave Adjustment Memo",
-          url: "/leave/leave_adjustment_memo",
-        },
-        {
-          title: "Monthly Earned Leave Posting",
-          url: "/leave/monthly_earned_leave_posting",
-        },
-        {
-          title: "Leave History",
-          url: "/leave/leave_history",
-        },
-        {
-          title: "Leave Settings",
-          url: route("leave.leave-settings"),
-        }
-      ]
-    },
-    {
-      title: "Payroll",
-      url: null,
-      icon: Wallet,
-      items: [
-        {
-          title: "Payroll Processing",
-          url: "/payroll/payroll_processsing",
-        },
-        {
-          title: "Payroll Register",
-          url: "/payroll/payroll_register",
-        },
-        {
-          title: "Pay Slip Generation",
-          url: "/payroll/pay_slip_generation",
-        },
-        {
-          title: "Allowances Management",
-          url: "/payroll/allowances_management",
-        },
-        {
-          title: "Loan Entry",
-          url: "/payroll/loan_entry",
-        },
-        {
-          title: "Other Deduction Entry",
-          url: "/payroll/other_deduction_entry",
-        },
-        {
-          title: "Payroll Deduction Settings",
-          url: "/payroll/payroll_deduction_settings",
-        }
-      ]
-    },
-    {
-      title: "Document Tracking",
-      url: route("document_tracking.index"),
-      icon: File,
-    },
-    {
-      title: "Activity Logs",
-      url: "/activity_logs",
-      icon: Logs,
-    },
-  ],
-  // navSecondary: [
-  //   {
-  //     title: "Support",
-  //     url: "#",
-  //     icon: LifeBuoy,
-  //   },
-  //   {
-  //     title: "Feedback",
-  //     url: "#",
-  //     icon: Send,
-  //   },
-  // ],
-  // projects: [
-  //   {
-  //     name: "Design Engineering",
-  //     url: "#",
-  //     icon: Frame,
-  //   },
-  //   {
-  //     name: "Sales & Marketing",
-  //     url: "#",
-  //     icon: PieChart,
-  //   },
-  //   {
-  //     name: "Travel",
-  //     url: "#",
-  //     icon: Map,
-  //   },
-  // ],
-}
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, hasRole } = useAuth()
+  const { hasRole } = useAuth()
 
   const data = {
     navMain: [
@@ -313,31 +116,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         items: [
           {
             title: "Leave Calendar",
-            url: "/leave/leave_calendar",
+            url: "/leave/leave-calendar",
           },
           {
             title: "Leave Filing",
-            url: "/leave/leave_filing",
+            url: "/leave/leave-filing",
           },
           {
             title: "Leave Approval Workflow",
-            url: "/leave/leaving_approval_workflow",
+            url: "/leave/leave-approval-workflow",
           },
           {
             title: "Leave Adjustment Memo",
-            url: "/leave/leave_adjustment_memo",
+            url: "/leave/leave-adjustment-memo",
           },
           {
             title: "Monthly Earned Leave Posting",
-            url: "/leave/monthly_earned_leave_posting",
+            url: "/leave/monthly-earned-leave-posting",
           },
           {
             title: "Leave History",
-            url: "/leave/leave_history",
+            url: "/leave/leave-history",
           },
           {
             title: "Leave Settings",
-            url: "/leave/leave_settings",
+            url: "/leave/leave-settings",
           }
         ]
       },
