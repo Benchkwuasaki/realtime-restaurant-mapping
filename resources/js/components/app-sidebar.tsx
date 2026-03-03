@@ -80,7 +80,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           // TODO: Update the URLs for the organization sub-menu items
           {
             title: "Organizational Chart",
-            url: "/organization/organizational_chart",
+            url: route("organization.chart"),
           },
           {
             title: "Departments",
