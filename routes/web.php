@@ -72,6 +72,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::patch('/{employee}/toggle', [EmployeeController::class, 'toggleStatus'])->name('toggleStatus');
         Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
 
+        Route::post('/{employee}/avatar', [EmployeeController::class, 'updateAvatar'])->name('avatar.update');
         // Employment Classifications
         Route::prefix('employment-classifications')->name('employment-classification.')->group(function () {
             Route::post('/', [EmploymentClassificationController::class, 'store'])->name('store');

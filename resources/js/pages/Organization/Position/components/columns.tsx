@@ -20,9 +20,9 @@ interface ColumnOptions {
 }
 
 const typeBadgeVariant: Record<PositionType, "default" | "secondary" | "outline"> = {
-    "Regular":   "outline",
-    "Casual":    "secondary",
-    "Job Order": "default",
+    "Regular":   "default",
+    "Casual":    "outline",
+    "Job Order": "secondary",
 }
 
 export function getColumns({ onEdit }: ColumnOptions): ColumnDef<Position>[] {
