@@ -95,57 +95,77 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            // ── Personal Information ───────────────────────────────────────────────
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'name_extension' => ['nullable', 'string', 'max:50'],
-            'birth_date' => ['required', 'date'],
+            'birth_date' => ['required', 'date', 'before:today'],
             'sex' => ['required', 'boolean'],
-            'civil_status' => ['required', 'string'],
+            'civil_status' => ['required', 'string', 'in:single,married,divorced,widowed'],
             'place_of_birth' => ['nullable', 'string', 'max:255'],
             'personal_email' => ['nullable', 'email', 'max:255'],
-            'phone_number' => ['required', 'string', 'max:20'],
+            'phone_number' => ['required', 'string', 'regex:/^09\d{9}$/'],
 
+            // ── Employment Details ─────────────────────────────────────────────────
             'item_id' => ['required', 'exists:items,item_id'],
             'salary_grade_step_id' => ['required', 'exists:salary_grade_steps,salary_grade_step_id'],
             'employment_classification' => ['required', 'string', 'exists:employment_classifications,name'],
-            'work_email' => ['required', 'email', 'unique:employees,work_email'],
-            'password' => ['required', 'string', 'min:8'],
+            'work_email' => ['required', 'email', 'max:255', 'unique:employees,work_email'],
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*\-_=+[\]{};:\'",.<>?\/\\|`~]).+$/',
+            ],
             'date_applied' => ['required', 'date'],
-            'date_hired' => ['required', 'date'],
+            'date_hired' => ['required', 'date', 'after_or_equal:date_applied'],
             'work_schedule_start' => ['required', 'date_format:H:i'],
-            'work_schedule_end' => ['required', 'date_format:H:i'],
+            'work_schedule_end' => ['required', 'date_format:H:i', 'different:work_schedule_start'],
             'status' => ['required', 'boolean'],
 
-            'addresses' => ['nullable', 'array'],
-            'addresses.*.street_address' => ['nullable', 'string', 'max:255'],
-            'addresses.*.city' => ['nullable', 'string', 'max:255'],
-            'addresses.*.state' => ['nullable', 'string', 'max:255'],
-            'addresses.*.zip_code' => ['nullable', 'string', 'max:20'],
+            // ── Addresses ─────────────────────────────────────────────────────────
+            'addresses' => ['required', 'array', 'min:1'],
+            'addresses.*.street_address' => ['required', 'string', 'max:255'],
+            'addresses.*.city' => ['required', 'string', 'max:255'],
+            'addresses.*.state' => ['required', 'string', 'max:255'],
+            'addresses.*.zip_code' => ['required', 'string', 'max:20'],
 
-            'family_info' => ['nullable', 'array'],
-            'family_info.*.full_name' => ['required_with:family_info', 'string', 'max:255'],
+            // ── Family Information ────────────────────────────────────────────────
+            'family_info' => ['required', 'array', 'min:1'],
+            'family_info.*.full_name' => ['required', 'string', 'max:255'],
             'family_info.*.contact_number' => ['nullable', 'string', 'max:20'],
-            'family_info.*.relationship' => ['nullable', 'string', 'max:100'],
+            'family_info.*.relationship' => ['required', 'string', 'max:100'],
             'family_info.*.sex' => ['nullable', 'boolean'],
             'family_info.*.date_of_birth' => ['nullable', 'date'],
             'family_info.*.place_of_birth' => ['nullable', 'string', 'max:255'],
 
-            'government_accounts' => ['nullable', 'array'],
-            'government_accounts.*.account_type' => ['required_with:government_accounts', 'string', 'max:100'],
-            'government_accounts.*.account_number' => ['required_with:government_accounts', 'string', 'max:100'],
+            // ── Government Accounts ───────────────────────────────────────────────
+            'government_accounts' => ['required', 'array', 'min:1'],
+            'government_accounts.*.account_type' => ['required', 'string', 'max:100'],
+            'government_accounts.*.account_number' => ['required', 'string', 'max:100'],
 
-            'education' => ['nullable', 'array'],
-            'education.*.level' => ['nullable', 'string', 'max:100'],
-            'education.*.school_name' => ['required_with:education', 'string', 'max:255'],
+            // ── Education ─────────────────────────────────────────────────────────
+            'education' => ['required', 'array', 'min:1'],
+            'education.*.level' => ['required', 'string', 'max:100'],
+            'education.*.school_name' => ['required', 'string', 'max:255'],
             'education.*.school_address' => ['nullable', 'string', 'max:255'],
             'education.*.graduation_date' => ['nullable', 'date'],
             'education.*.degree' => ['nullable', 'string', 'max:255'],
 
-            'eligibility_information' => ['nullable', 'array'],
-            'eligibility_information.*.eligibility_name' => ['required_with:eligibility_information', 'string', 'max:255'],
-            'eligibility_information.*.year_passed' => ['nullable', 'date'],
+            // ── Eligibility ───────────────────────────────────────────────────────
+            'eligibility_information' => ['required', 'array', 'min:1'],
+            'eligibility_information.*.eligibility_name' => ['required', 'string', 'max:255'],
+            'eligibility_information.*.year_passed' => ['required', 'date'],
         ]);
+
+        // ── Duplicate government account type check ────────────────────────────────
+        $accountTypes = collect($request->government_accounts)->pluck('account_type');
+        if ($accountTypes->count() !== $accountTypes->unique()->count()) {
+            return back()->withErrors([
+                'government_accounts' => 'Each government account type must be unique.',
+            ])->withInput();
+        }
 
         DB::transaction(function () use ($request) {
 
@@ -176,30 +196,29 @@ class EmployeeController extends Controller
                 'status' => $request->status,
             ]);
 
-            foreach ($request->addresses ?? [] as $address) {
+            foreach ($request->addresses as $address) {
                 EmployeeAddress::create([
                     'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
-                    'street_address' => $address['street_address'] ?? null,
-                    'city' => $address['city'] ?? null,
-                    'state' => $address['state'] ?? null,
-                    'zip_code' => $address['zip_code'] ?? null,
+                    'street_address' => $address['street_address'],
+                    'city' => $address['city'],
+                    'state' => $address['state'],
+                    'zip_code' => $address['zip_code'],
                 ]);
             }
 
-            foreach ($request->family_info ?? [] as $member) {
+            foreach ($request->family_info as $member) {
                 FamilyInfo::create([
                     'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
                     'full_name' => $member['full_name'],
                     'contact_number' => !empty($member['contact_number']) ? $member['contact_number'] : null,
-                    'relationship' => !empty($member['relationship']) ? $member['relationship'] : null,
-                    // empty string "" from the frontend must become null — use !empty(), not ?? null
+                    'relationship' => $member['relationship'],
                     'sex' => isset($member['sex']) && $member['sex'] !== '' ? (bool) $member['sex'] : null,
                     'date_of_birth' => !empty($member['date_of_birth']) ? $member['date_of_birth'] : null,
                     'place_of_birth' => !empty($member['place_of_birth']) ? $member['place_of_birth'] : null,
                 ]);
             }
 
-            foreach ($request->government_accounts ?? [] as $account) {
+            foreach ($request->government_accounts as $account) {
                 GovernmentAccount::create([
                     'employee_id' => $employee->employee_id,
                     'account_type' => $account['account_type'],
@@ -207,10 +226,10 @@ class EmployeeController extends Controller
                 ]);
             }
 
-            foreach ($request->education ?? [] as $edu) {
+            foreach ($request->education as $edu) {
                 EmployeeEducation::create([
                     'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
-                    'level' => !empty($edu['level']) ? $edu['level'] : null,
+                    'level' => $edu['level'],
                     'school_name' => $edu['school_name'],
                     'school_address' => !empty($edu['school_address']) ? $edu['school_address'] : null,
                     'graduation_date' => !empty($edu['graduation_date']) ? $edu['graduation_date'] : null,
@@ -218,11 +237,11 @@ class EmployeeController extends Controller
                 ]);
             }
 
-            foreach ($request->eligibility_information ?? [] as $eligibility) {
+            foreach ($request->eligibility_information as $eligibility) {
                 EligibilityInformation::create([
                     'employee_id' => $employee->employee_id,
                     'eligibility_name' => $eligibility['eligibility_name'],
-                    'year_passed' => !empty($eligibility['year_passed']) ? $eligibility['year_passed'] : null,
+                    'year_passed' => $eligibility['year_passed'],
                 ]);
             }
         });

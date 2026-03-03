@@ -65,8 +65,8 @@ export interface CreateEmployeeProps {
 
 // ─── Collection row types ─────────────────────────────────────────────────────
 
-interface AddressRow    { [key: string]: string; street_address: string; city: string; state: string; zip_code: string }
-interface FamilyRow     {
+interface AddressRow { [key: string]: string; street_address: string; city: string; state: string; zip_code: string }
+interface FamilyRow {
     [key: string]: string
     full_name: string
     contact_number: string
@@ -138,6 +138,30 @@ function isJobOrderPosition(grp: PositionGroup): boolean {
     return grp.position?.position_type === "Job Order"
 }
 
+// ─── Validation helpers ───────────────────────────────────────────────────────
+
+const PH_PHONE_REGEX = /^09\d{9}$/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// At least 1 uppercase, 1 lowercase, 1 digit, 1 special char from the set, min 8 chars
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*\-_=+[\]{};:'",.<>?/\\|`~])[A-Za-z\d!@#$%^&*\-_=+[\]{};:'",.<>?/\\|`~]{8,}$/
+
+function validateEmail(email: string): boolean {
+    return EMAIL_REGEX.test(email)
+}
+
+function validatePhone(phone: string): boolean {
+    return PH_PHONE_REGEX.test(phone)
+}
+
+function validatePassword(password: string): boolean {
+    return PASSWORD_REGEX.test(password)
+}
+
+function isFutureDate(dateStr: string): boolean {
+    if (!dateStr) return false
+    return new Date(dateStr) > new Date()
+}
+
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
 const steps = [
@@ -162,7 +186,8 @@ const REQUIRED: Record<number, { field: string; label: string }[]> = {
     ],
     1: [
         { field: "item_id", label: "Position" },
-        { field: "salary_grade_step_id", label: "Salary Grade & Step" },
+        { field: "salary_grade", label: "Salary Grade" },
+        { field: "salary_grade_step_id", label: "Step" },
         { field: "employment_classification", label: "Employment Classification" },
         { field: "work_email", label: "Work Email" },
         { field: "password", label: "Password" },
@@ -444,10 +469,11 @@ function PersonalStep({ data, setData, err }: {
             <div className="space-y-2">
                 <FieldLabel htmlFor="personal_email">Personal Email</FieldLabel>
                 <Input id="personal_email" type="email" value={data.personal_email} onChange={e => setData("personal_email", e.target.value)} placeholder="johndoe@gmail.com" />
+                <FieldError message={err("personal_email")} />
             </div>
             <div className="space-y-2">
                 <FieldLabel htmlFor="phone_number">Phone Number <Req /></FieldLabel>
-                <Input id="phone_number" value={data.phone_number} onChange={e => setData("phone_number", e.target.value)} placeholder="09XXXXXXXXXX" />
+                <Input id="phone_number" value={data.phone_number} onChange={e => setData("phone_number", e.target.value)} placeholder="09XXXXXXXXX" />
                 <FieldError message={err("phone_number")} />
             </div>
         </div>
@@ -765,12 +791,12 @@ function AddressStep({ rows, setRows, err }: { rows: AddressRow[]; setRows: (r: 
     )
 }
 
-// ─── FamilyStep — updated with sex, date_of_birth, place_of_birth ─────────────
+// ─── FamilyStep ───────────────────────────────────────────────────────────────
 
 const RELATIONSHIPS = ["Spouse", "Parent", "Sibling", "Child", "Guardian", "Emergency Contact"]
 
 function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: FamilyRow[]) => void; err: ErrFn }) {
-    const add    = () => setRows([...rows, { full_name: "", contact_number: "", relationship: "", sex: "", date_of_birth: "", place_of_birth: "" }])
+    const add = () => setRows([...rows, { full_name: "", contact_number: "", relationship: "", sex: "", date_of_birth: "", place_of_birth: "" }])
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
     const update = (i: number, field: keyof FamilyRow, value: string) => {
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
@@ -781,34 +807,21 @@ function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: Fa
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-3 gap-4 pr-6">
-
-                        {/* Full Name */}
                         <div className="space-y-1.5">
                             <FieldLabel>Full Name <Req /></FieldLabel>
-                            <Input
-                                value={row.full_name}
-                                onChange={e => update(i, "full_name", e.target.value)}
-                                placeholder="Maria Santos"
-                                className={err(`family.${i}.full_name`) ? "border-destructive" : ""}
-                            />
+                            <Input value={row.full_name} onChange={e => update(i, "full_name", e.target.value)} placeholder="Maria Santos" className={err(`family.${i}.full_name`) ? "border-destructive" : ""} />
                             <FieldError message={err(`family.${i}.full_name`)} />
                         </div>
-
-                        {/* Relationship */}
                         <div className="space-y-1.5">
                             <FieldLabel>Relationship <Req /></FieldLabel>
                             <Select value={row.relationship} onValueChange={v => update(i, "relationship", v)}>
-                                <SelectTrigger className={err(`family.${i}.relationship`) ? "border-destructive" : ""}>
-                                    <SelectValue placeholder="Select relationship" />
-                                </SelectTrigger>
+                                <SelectTrigger className={err(`family.${i}.relationship`) ? "border-destructive" : ""}><SelectValue placeholder="Select relationship" /></SelectTrigger>
                                 <SelectContent>
                                     {RELATIONSHIPS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FieldError message={err(`family.${i}.relationship`)} />
                         </div>
-
-                        {/* Sex */}
                         <div className="space-y-1.5">
                             <FieldLabel>Sex</FieldLabel>
                             <Select value={row.sex} onValueChange={v => update(i, "sex", v)}>
@@ -819,37 +832,18 @@ function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: Fa
                                 </SelectContent>
                             </Select>
                         </div>
-
-                        {/* Date of Birth */}
                         <div className="space-y-1.5">
                             <FieldLabel>Date of Birth</FieldLabel>
-                            <Input
-                                type="date"
-                                value={row.date_of_birth}
-                                onChange={e => update(i, "date_of_birth", e.target.value)}
-                            />
+                            <Input type="date" value={row.date_of_birth} onChange={e => update(i, "date_of_birth", e.target.value)} />
                         </div>
-
-                        {/* Contact Number */}
                         <div className="space-y-1.5">
                             <FieldLabel>Contact Number</FieldLabel>
-                            <Input
-                                value={row.contact_number}
-                                onChange={e => update(i, "contact_number", e.target.value)}
-                                placeholder="09XXXXXXXXXX"
-                            />
+                            <Input value={row.contact_number} onChange={e => update(i, "contact_number", e.target.value)} placeholder="09XXXXXXXXXX" />
                         </div>
-
-                        {/* Place of Birth */}
                         <div className="space-y-1.5">
                             <FieldLabel>Place of Birth</FieldLabel>
-                            <Input
-                                value={row.place_of_birth}
-                                onChange={e => update(i, "place_of_birth", e.target.value)}
-                                placeholder="e.g. Manila, Philippines"
-                            />
+                            <Input value={row.place_of_birth} onChange={e => update(i, "place_of_birth", e.target.value)} placeholder="e.g. Manila, Philippines" />
                         </div>
-
                     </div>
                 </RowCard>
             ))}
@@ -1087,16 +1081,16 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
     const [processing, setProcessing] = useState(false)
 
-    const [addresses,   setAddresses]   = useState<AddressRow[]>([{ street_address: "", city: "", state: "", zip_code: "" }])
-    const [family,      setFamily]      = useState<FamilyRow[]>([{ full_name: "", contact_number: "", relationship: "", sex: "", date_of_birth: "", place_of_birth: "" }])
-    const [government,  setGovernment]  = useState<GovernmentRow[]>([{ account_type: "", account_number: "" }])
-    const [education,   setEducation]   = useState<EducationRow[]>([{ level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
+    const [addresses, setAddresses] = useState<AddressRow[]>([{ street_address: "", city: "", state: "", zip_code: "" }])
+    const [family, setFamily] = useState<FamilyRow[]>([{ full_name: "", contact_number: "", relationship: "", sex: "", date_of_birth: "", place_of_birth: "" }])
+    const [government, setGovernment] = useState<GovernmentRow[]>([{ account_type: "", account_number: "" }])
+    const [education, setEducation] = useState<EducationRow[]>([{ level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
     const [eligibility, setEligibility] = useState<EligibilityRow[]>([{ eligibility_name: "", year_passed: "" }])
 
     const CurrentIcon = steps[currentStep].icon
     const isLastStep = currentStep === steps.length - 1
 
-    const { data, setData, errors, setError, clearErrors } = useForm({
+    const { data, setData, errors } = useForm({
         first_name: "", last_name: "", middle_name: "", name_extension: "",
         birth_date: "", sex: "", personal_email: "", phone_number: "",
         civil_status: "", place_of_birth: "",
@@ -1113,15 +1107,62 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
         const rules = REQUIRED[step] ?? []
         const newErrors: Record<string, string> = {}
 
+        // ── Required field presence ────────────────────────────────────────────
         for (const { field, label } of rules) {
             const value = (data as Record<string, string>)[field]
             if (!value || value.trim() === "") newErrors[field] = `${label} is required.`
         }
 
-        if (step === 1 && data.password && data.password.length < 8) {
-            newErrors["password"] = "Password must be at least 8 characters."
+        // ── Step 0: Personal Information ──────────────────────────────────────
+        if (step === 0) {
+            // Birth date must not be in the future
+            if (data.birth_date && isFutureDate(data.birth_date)) {
+                newErrors["birth_date"] = "Date of birth cannot be in the future."
+            }
+
+            // Phone number — Philippine format: 09XXXXXXXXXX (11 digits)
+            if (data.phone_number && !validatePhone(data.phone_number)) {
+                newErrors["phone_number"] = "Phone number must be in the format 09XXXXXXXXXX."
+            }
+
+            // Personal email — optional but must be valid if filled
+            if (data.personal_email && !validateEmail(data.personal_email)) {
+                newErrors["personal_email"] = "Please enter a valid email address."
+            }
         }
 
+        // ── Step 1: Employment Details ────────────────────────────────────────
+        if (step === 1) {
+            // Work email format
+            if (data.work_email && !validateEmail(data.work_email)) {
+                newErrors["work_email"] = "Please enter a valid email address."
+            }
+
+            // Password complexity: uppercase, lowercase, number, special char, min 8
+            if (data.password) {
+                if (data.password.length < 8) {
+                    newErrors["password"] = "Password must be at least 8 characters."
+                } else if (!validatePassword(data.password)) {
+                    newErrors["password"] = "Password must include uppercase, lowercase, a number, and a special character."
+                }
+            }
+
+            // Date hired must not be before date applied
+            if (data.date_applied && data.date_hired) {
+                if (new Date(data.date_hired) < new Date(data.date_applied)) {
+                    newErrors["date_hired"] = "Date Hired cannot be earlier than Date Applied."
+                }
+            }
+
+            // Schedule start and end must not be identical
+            if (data.work_schedule_start && data.work_schedule_end) {
+                if (data.work_schedule_start === data.work_schedule_end) {
+                    newErrors["work_schedule_end"] = "Schedule End cannot be the same as Schedule Start."
+                }
+            }
+        }
+
+        // ── Step 2: Address ───────────────────────────────────────────────────
         if (step === 2) {
             if (addresses.length === 0) newErrors["addresses"] = "At least one address is required."
             addresses.forEach((row, i) => {
@@ -1132,6 +1173,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             })
         }
 
+        // ── Step 3: Family ────────────────────────────────────────────────────
         if (step === 3) {
             if (family.length === 0) newErrors["family"] = "At least one family member or emergency contact is required."
             family.forEach((row, i) => {
@@ -1140,14 +1182,31 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             })
         }
 
+        // ── Step 4: Government Accounts ───────────────────────────────────────
         if (step === 4) {
             if (government.length === 0) newErrors["government"] = "At least one government account is required."
+
+            // Duplicate account type check
+            const seenTypes = new Map<string, number>()
             government.forEach((row, i) => {
-                if (!row.account_type.trim()) newErrors[`government.${i}.account_type`] = "Account Type is required."
+                if (!row.account_type.trim()) {
+                    newErrors[`government.${i}.account_type`] = "Account Type is required."
+                } else {
+                    const type = row.account_type.trim()
+                    if (seenTypes.has(type)) {
+                        // Flag both the first occurrence and the current duplicate
+                        const firstIdx = seenTypes.get(type)!
+                        newErrors[`government.${firstIdx}.account_type`] = `Duplicate account type: ${type}.`
+                        newErrors[`government.${i}.account_type`] = `Duplicate account type: ${type}.`
+                    } else {
+                        seenTypes.set(type, i)
+                    }
+                }
                 if (!row.account_number.trim()) newErrors[`government.${i}.account_number`] = "ID Number is required."
             })
         }
 
+        // ── Step 5: Education ─────────────────────────────────────────────────
         if (step === 5) {
             if (education.length === 0) newErrors["education"] = "At least one education record is required."
             education.forEach((row, i) => {
@@ -1156,6 +1215,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             })
         }
 
+        // ── Step 6: Eligibility ───────────────────────────────────────────────
         if (step === 6) {
             if (eligibility.length === 0) newErrors["eligibility"] = "At least one eligibility record is required."
             eligibility.forEach((row, i) => {
@@ -1174,7 +1234,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             setStepErrors({})
             setCurrentStep(s => Math.min(s + 1, steps.length - 1))
         } else {
-            toast.error("Please fill up required fields.", { duration: 4000 })
+            toast.error("Please fix the errors before continuing.", { duration: 4000 })
         }
     }
 
@@ -1189,10 +1249,14 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault()
+
+        // Strip frontend-only fields before sending to the backend
+        const { selected_position_name, salary_grade, step, ...payload } = data
+
         router.post(
             route("employee.store"),
             {
-                ...data,
+                ...payload,
                 addresses,
                 family_info: family,
                 government_accounts: government,
