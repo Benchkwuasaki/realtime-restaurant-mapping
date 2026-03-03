@@ -5,6 +5,23 @@ import {
     Eye, EyeOff, Plus, Trash2, Save, ChevronUp,
     Pen, Upload, Download, FolderOpen,
 } from "lucide-react"
+import LeaveTypeIndex from '../LeaveTypeIndex';
+import type { LeaveType } from '../data/schema';
+
+// type LeaveType = {
+//     leave_type_id: number;
+//     leave_type_name: string;
+//     leave_type_description: string;
+//     eligible_sex: string;
+//     is_paid: boolean;
+//     is_convertible: boolean;
+//     status: string;
+//     requirements: string;
+// }
+
+type LeaveTabsProps = {
+    leave_types: LeaveType[];
+}
 
 export function TabsLine() {
     return (
@@ -24,7 +41,7 @@ export function TabsLine() {
 
 
 
-export function LeaveTabs() {
+export function LeaveTabs({ leave_types }: LeaveTabsProps) {
     return (
 
         <Tabs defaultValue="leave-types" className="flex flex-col flex-1">
@@ -46,7 +63,9 @@ export function LeaveTabs() {
             </section>
 
             <section className="mt-4">
-                <TabsContent value="leave-types" className="flex-1 mt-0 overflow-y-auto">Type</TabsContent>
+                <TabsContent value="leave-types" className="flex-1 mt-0 overflow-y-auto">
+                    <LeaveTypeIndex leave_types={leave_types} />
+                </TabsContent>
                 <TabsContent value="leave-entitlements" className="flex-1 mt-0 overflow-y-auto">Entitlement</TabsContent>
             </section>
 

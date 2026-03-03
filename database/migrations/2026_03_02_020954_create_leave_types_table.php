@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -15,7 +14,7 @@ return new class extends Migration
             $table->id('leave_type_id');
             $table->string('leave_type_name')->unique();
             $table->text('leave_type_description')->nullable();
-            $table->boolean('eligible_sex')->default(false);
+            $table->enum('eligible_sex', ['All', 'Male', 'Female'])->default('All');
             $table->boolean('is_paid')->default(false);
             $table->boolean('is_convertible')->default(false);
             $table->boolean('status')->default(true);

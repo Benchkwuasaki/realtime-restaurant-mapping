@@ -20,6 +20,7 @@ use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\LeaveTypeController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -41,6 +42,8 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
         Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
         Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    });
+
     // User Routes
     Route::prefix('users')->name('user.')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('index');
@@ -163,43 +166,42 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
 
     Route::prefix('leave')->name('leave.')->group(function () {
-        Route::get('/leave-settings', function () {
-            return Inertia::render('Leave/LeaveSettings/LeaveSettingsTabNav');
-        })->name('leave-settings');
+        Route::get('/leave-settings', [LeaveTypeController::class, 'index'])->name('leave-settings');
+        Route::post('/', [LeaveTypeController::class, 'store'])->name('store');
+        Route::put('/{leave}', [LeaveTypeController::class, 'update'])->name('update');
     });
 
 
 
-// Attendance Routes
-Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
-    Route::get('/',                         [WhereaboutSlipController::class, 'index'])->name('index');
-    Route::post('/',                        [WhereaboutSlipController::class, 'store'])->name('store');
-    Route::put('/{whereaboutSlip}',         [WhereaboutSlipController::class, 'update'])->name('update');
-    Route::put('/{whereaboutSlip}/return',  [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
-    Route::delete('/{whereaboutSlip}',      [WhereaboutSlipController::class, 'destroy'])->name('destroy');
-    Route::delete('/',                      [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    // Attendance Routes
+    Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
+        Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
+        Route::post('/', [WhereaboutSlipController::class, 'store'])->name('store');
+        Route::put('/{whereaboutSlip}', [WhereaboutSlipController::class, 'update'])->name('update');
+        Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
+        Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
+        Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    });
+
+
+
+    // Payroll routes
+    Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
+
+    Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
+
+    // Reports and Analytics routes
+    Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
+
+    // Announcement Routes
+    Route::prefix('announcement')->name('announcement.')->group(function () {
+        Route::get('/', [AnnouncementController::class, 'index'])->name('index');
+    });
+
+    // Activity Logs Routes
+
+    Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
+
 });
-
-
-
-// Payroll routes
-Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
-
-Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
-
-// Reports and Analytics routes
-Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
-
-// Announcement Routes
-Route::prefix('announcement')->name('announcement.')->group(function () {
-    Route::get('/', [AnnouncementController::class, 'index'])->name('index');
-});
-
-// Activity Logs Routes
-
-Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
-
-
-
 
 require __DIR__ . '/settings.php';

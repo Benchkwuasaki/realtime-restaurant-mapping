@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id('leave_type_requirement_id');
             $table->foreignId('leave_type_id')->constrained('leave_types', 'leave_type_id');
             $table->string('requirement_name');
-            $table->text('requirement_description')->nullable();
             $table->timestamps();
         });
     }

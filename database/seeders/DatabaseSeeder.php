@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             UserSeeder::class,
+            LeaveTypeSeeder::class,
         ]);
 
         // ── 1. Salary Grade Steps ──────────────────────────────────
