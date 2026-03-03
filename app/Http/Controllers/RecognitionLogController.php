@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class AttendanceLogs extends Controller
+class RecognitionLogController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Attendance/AttendanceLogs/Index');
+        return Inertia::render('Attendance/RecognitionLog/Index');
     }
 }

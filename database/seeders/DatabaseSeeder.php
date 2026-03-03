@@ -11,12 +11,6 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // TODO: refactor to separate seeder files
-
-        $this->call([
-            RoleSeeder::class,
-            UserSeeder::class,
-        ]);
-
         // ── 1. Salary Grade Steps ──────────────────────────────────
         $salaryGradeSteps = [
             ['salary_grade' =>  7, 'step' => 1, 'salary_amount' =>  17899.00],
@@ -972,5 +966,13 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         }
+
+        $this->call([
+            RoleSeeder::class,
+            UserSeeder::class,
+            FaceEmbeddingSeeder::class,
+            RecognitionLogSeeder::class,
+            AttendanceRecordSeeder::class,
+        ]);
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\AttendanceLogs;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
@@ -161,7 +162,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Attendance Routes
     Route::prefix('attendance/attendance-logs')->name('attendance-logs.')->group(function () {
-        Route::get('/', [AttendanceLogs::class, 'index'])->name('index');
+        Route::get('/', [RecognitionLogController::class, 'index'])->name('index');
     });
 
     Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
