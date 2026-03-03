@@ -8,7 +8,6 @@ use App\Models\Item;
 use App\Models\SalaryGradeStep;
 use App\Models\EmployeeAddress;
 use App\Models\EmployeeEducation;
-use App\Models\EmployeeAllowance;
 use App\Models\FamilyInfo;
 use App\Models\GovernmentAccount;
 use App\Models\EligibilityInformation;
@@ -16,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Services\ActivityLogService;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -341,7 +341,6 @@ class EmployeeController extends Controller
             'phone_number' => 'nullable|string|max:255',
             'civil_status' => 'nullable|in:single,married,divorced,widowed',
             'place_of_birth' => 'nullable|string|max:255',
-
             'item_id' => 'sometimes|required|exists:items,item_id',
             'salary_grade_step_id' => 'sometimes|required|exists:salary_grade_steps,salary_grade_step_id',
             'employment_classification' => 'sometimes|required|string|exists:employment_classifications,name',
@@ -785,5 +784,51 @@ class EmployeeController extends Controller
         $serviceRecord->delete();
 
         return back()->with('success', 'Service record deleted.');
+    }
+
+    public function updateAvatar(Request $request, Employee $employee)
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'max:5120'],
+        ]);
+
+        if ($employee->avatar_path) {
+            Storage::disk('public')->delete($employee->avatar_path);
+        }
+
+        $path = $request->file('avatar')->store(
+            'avatars/' . $employee->employee_id,
+            'public'
+        );
+
+        $employee->update([
+            'avatar_path' => $path,
+            'avatar_url' => Storage::url($path),   // ← fixed
+        ]);
+
+        return back()->with('success', 'Avatar updated successfully.');
+    }
+
+    public function storeFile(Request $request, Employee $employee)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240'],
+        ]);
+
+        $uploaded = $request->file('file');
+
+        $path = $uploaded->store(
+            'employee-files/' . $employee->employee_id,
+            'public'
+        );
+
+        $employee->uploadedFiles()->create([
+            'file_name' => $uploaded->getClientOriginalName(),
+            'file_path' => $path,
+            'file_size' => $uploaded->getSize(),
+            'file_url' => Storage::url($path),     
+        ]);
+
+        return back()->with('success', 'File uploaded successfully.');
     }
 }

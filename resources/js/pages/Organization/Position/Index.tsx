@@ -110,12 +110,6 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
                         </ul>
                     )}
                 </div>
-
-                <DialogFooter className="border-t border-border bg-muted/30 px-5 py-3">
-                    <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
-                        Close
-                    </Button>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
     )

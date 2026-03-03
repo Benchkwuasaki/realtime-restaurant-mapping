@@ -27,7 +27,6 @@ class Employee extends Model
         'employee_basic_info_id',
         'item_id',
         'salary_grade_step_id',
-        'profile_picture',
         'employment_classification',
         'work_email',
         'password',
@@ -35,6 +34,8 @@ class Employee extends Model
         'date_hired',
         'work_schedule_start',
         'work_schedule_end',
+        'avatar_path',
+        'avatar_url',
         'status',
     ];
 
