@@ -5,7 +5,7 @@ import {
     Eye, EyeOff, Plus, Trash2, Save, ChevronUp,
     Pen, Upload, Download, FolderOpen,
 } from "lucide-react"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import React from "react"
 import { route } from "ziggy-js"
 import {
@@ -41,7 +41,7 @@ interface Position {
 }
 interface Item {
     item_id: number
-    is_occupied: boolean       // ← NEW: true if another employee holds this slot
+    is_occupied: boolean
     position?: Position
 }
 interface SalaryGradeStep {
@@ -68,6 +68,9 @@ interface FamilyMember {
     full_name: string
     relationship?: string
     contact_number?: string
+    sex?: boolean
+    date_of_birth?: string
+    place_of_birth?: string
 }
 interface BasicInfo {
     first_name: string
@@ -136,6 +139,12 @@ interface ServiceRecord {
     year_start?: string
     year_end?: string
 }
+interface InternalOrganization {
+    internal_organization_id: number
+    name: string
+    type: string
+    code: string
+}
 interface Employee {
     employee_id: number
     work_email: string
@@ -145,6 +154,7 @@ interface Employee {
     work_schedule_start?: string
     work_schedule_end?: string
     status: boolean
+    avatar_url?: string                  // ← new: URL to the stored avatar
     basic_info?: BasicInfo
     item?: Item
     salary_grade_step?: SalaryGradeStep
@@ -163,14 +173,7 @@ interface Props {
     items: Item[]
 }
 
-interface InternalOrganization {
-    internal_organization_id: number
-    name: string
-    type: string
-    code: string
-}
-
-// ─── Position group (derived from items list) ─────────────────────────────────
+// ─── Position group ───────────────────────────────────────────────────────────
 
 interface PositionGroup {
     positionName: string
@@ -179,6 +182,29 @@ interface PositionGroup {
     totalSlots: number
     availableSlots: number
     isFull: boolean
+}
+
+function buildPositionGroups(items: Item[]): PositionGroup[] {
+    const map = new Map<string, PositionGroup>()
+    for (const item of items) {
+        const key = item.position?.position_name ?? `__item_${item.item_id}`
+        if (!map.has(key)) {
+            map.set(key, {
+                positionName: item.position?.position_name ?? `Item #${item.item_id}`,
+                position: item.position,
+                items: [],
+                totalSlots: 0,
+                availableSlots: 0,
+                isFull: false,
+            })
+        }
+        const grp = map.get(key)!
+        grp.items.push(item)
+        grp.totalSlots++
+        if (!item.is_occupied) grp.availableSlots++
+    }
+    for (const grp of map.values()) grp.isFull = grp.availableSlots === 0
+    return Array.from(map.values()).sort((a, b) => a.positionName.localeCompare(b.positionName))
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -198,38 +224,6 @@ function cap(str?: string) {
 function toInputDate(date?: string) {
     if (!date) return ""
     return date.slice(0, 10)
-}
-
-/** Build position groups from the flat items array. */
-function buildPositionGroups(items: Item[]): PositionGroup[] {
-    const map = new Map<string, PositionGroup>()
-
-    for (const item of items) {
-        const key = item.position?.position_name ?? `__item_${item.item_id}`
-        if (!map.has(key)) {
-            map.set(key, {
-                positionName: item.position?.position_name ?? `Item #${item.item_id}`,
-                position: item.position,
-                items: [],
-                totalSlots: 0,
-                availableSlots: 0,
-                isFull: false,
-            })
-        }
-        const grp = map.get(key)!
-        grp.items.push(item)
-        grp.totalSlots++
-        if (!item.is_occupied) grp.availableSlots++
-    }
-
-    // Compute isFull after all items are grouped
-    for (const grp of map.values()) {
-        grp.isFull = grp.availableSlots === 0
-    }
-
-    return Array.from(map.values()).sort((a, b) =>
-        a.positionName.localeCompare(b.positionName)
-    )
 }
 
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
@@ -442,21 +436,14 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
     items: Item[]
 }) {
     const open = field !== null
-
-    // ── Build position groups once ────────────────────────────────────────────
     const positionGroups = useMemo(() => buildPositionGroups(items), [items])
-
-    // ── Derive the currently-selected position name from the employee's item ──
     const currentItemId = employee.item?.item_id?.toString() ?? ""
     const currentPositionName = useMemo(() => {
         return items.find(i => i.item_id.toString() === currentItemId)?.position?.position_name ?? ""
     }, [items, currentItemId])
 
-    // ── Form state ────────────────────────────────────────────────────────────
     const [form, setForm] = useState({
-        // We store the resolved item_id internally for submission
         item_id: currentItemId,
-        // We track which position group is "selected" in the UI
         selected_position_name: currentPositionName,
         date_hired: toInputDate(employee.date_hired),
         date_applied: toInputDate(employee.date_applied),
@@ -467,24 +454,14 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
-    /**
-     * When the user picks a position from the dropdown:
-     * 1. If the employee's current item belongs to this group → keep their item_id
-     *    (they're reassigning to the same position, no slot change needed)
-     * 2. Otherwise → pick the first available (non-occupied) slot
-     */
     const handlePositionSelect = (positionName: string) => {
         const grp = positionGroups.find(g => g.positionName === positionName)
         if (!grp) return
-
-        // Does the current employee already hold a slot in this group?
         const ownSlot = grp.items.find(i => i.item_id.toString() === currentItemId)
         if (ownSlot) {
             setForm(p => ({ ...p, selected_position_name: positionName, item_id: ownSlot.item_id.toString() }))
             return
         }
-
-        // Otherwise assign first available slot
         const firstAvailable = grp.items.find(i => !i.is_occupied)
         setForm(p => ({
             ...p,
@@ -493,13 +470,11 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         }))
     }
 
-    // Derive the selected group for the info panel below the select
     const selectedGroup = useMemo(() =>
         positionGroups.find(g => g.positionName === form.selected_position_name),
         [positionGroups, form.selected_position_name]
     )
 
-    // ── Save ──────────────────────────────────────────────────────────────────
     const save = () => {
         let data: Record<string, string> = {}
         if (field === "position") data = { item_id: form.item_id }
@@ -519,9 +494,6 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         work_schedule: "Edit Work Schedule",
     }
 
-    // Can only save if a valid (non-full, or own) item is resolved
-    const positionSaveDisabled = !form.item_id
-
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-sm">
@@ -530,65 +502,27 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                 </DialogHeader>
 
                 <div className="py-2 space-y-3">
-
-                    {/* ── POSITION FIELD ─────────────────────────────────────── */}
                     {field === "position" && (
                         <div className="space-y-3">
                             <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">
-                                    Position
-                                </Label>
-
-                                <Select
-                                    value={form.selected_position_name}
-                                    onValueChange={handlePositionSelect}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a position…" />
-                                    </SelectTrigger>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position</Label>
+                                <Select value={form.selected_position_name} onValueChange={handlePositionSelect}>
+                                    <SelectTrigger><SelectValue placeholder="Select a position…" /></SelectTrigger>
                                     <SelectContent className="max-h-72">
                                         {positionGroups.map(grp => {
-                                            /**
-                                             * A group is disabled when ALL slots are occupied
-                                             * AND the current employee is not one of the occupants.
-                                             * (If they're already in this group, they can stay there.)
-                                             */
-                                            const employeeIsInGroup = grp.items.some(
-                                                i => i.item_id.toString() === currentItemId
-                                            )
+                                            const employeeIsInGroup = grp.items.some(i => i.item_id.toString() === currentItemId)
                                             const isDisabled = grp.isFull && !employeeIsInGroup
-
                                             return (
-                                                <SelectItem
-                                                    key={grp.positionName}
-                                                    value={grp.positionName}
-                                                    disabled={isDisabled}
-                                                    className="py-2.5"
-                                                >
+                                                <SelectItem key={grp.positionName} value={grp.positionName} disabled={isDisabled} className="py-2.5">
                                                     <div className="flex items-center justify-between gap-3 w-full">
-                                                        {/* Position name */}
-                                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>
-                                                            {grp.positionName}
-                                                        </span>
-
-                                                        {/* Slot badge */}
+                                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.positionName}</span>
                                                         {grp.totalSlots > 1 && (
-                                                            isDisabled ? (
-                                                                <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">
-                                                                    Full
-                                                                </Badge>
-                                                            ) : (
-                                                                <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2 py-0.5 shrink-0">
-                                                                    {grp.availableSlots}/{grp.totalSlots} open
-                                                                </Badge>
-                                                            )
+                                                            isDisabled
+                                                                ? <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">Full</Badge>
+                                                                : <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2 py-0.5 shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
                                                         )}
-
-                                                        {/* Single-slot full indicator */}
                                                         {grp.totalSlots === 1 && isDisabled && (
-                                                            <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">
-                                                                Full
-                                                            </Badge>
+                                                            <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">Full</Badge>
                                                         )}
                                                     </div>
                                                 </SelectItem>
@@ -596,8 +530,6 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                         })}
                                     </SelectContent>
                                 </Select>
-
-                                {/* Helper text showing available slots for selected position */}
                                 {selectedGroup && selectedGroup.totalSlots > 1 && (
                                     <p className="text-xs text-muted-foreground mt-1.5">
                                         {selectedGroup.availableSlots === 0
@@ -607,32 +539,24 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                     </p>
                                 )}
                             </div>
-
-                            {/* Info panel: department / division / unit */}
                             {selectedGroup?.position && (
                                 <div className="rounded-lg border border-border divide-y divide-border bg-muted/20">
                                     {selectedGroup.position.department && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Department</span>
-                                            <span className="text-xs font-medium text-foreground">
-                                                {selectedGroup.position.department.department_name}
-                                            </span>
+                                            <span className="text-xs font-medium text-foreground">{selectedGroup.position.department.department_name}</span>
                                         </div>
                                     )}
                                     {selectedGroup.position.division && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Division</span>
-                                            <span className="text-xs font-medium text-foreground">
-                                                {selectedGroup.position.division.division_name}
-                                            </span>
+                                            <span className="text-xs font-medium text-foreground">{selectedGroup.position.division.division_name}</span>
                                         </div>
                                     )}
                                     {selectedGroup.position.unit && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Unit</span>
-                                            <span className="text-xs font-medium text-foreground">
-                                                {selectedGroup.position.unit.unit_name}
-                                            </span>
+                                            <span className="text-xs font-medium text-foreground">{selectedGroup.position.unit.unit_name}</span>
                                         </div>
                                     )}
                                 </div>
@@ -640,7 +564,6 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                         </div>
                     )}
 
-                    {/* ── OTHER FIELDS (unchanged) ───────────────────────────── */}
                     {field === "date_hired" && (
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Hired</Label>
@@ -704,7 +627,7 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
                     {field !== "unit_division_department" && (
-                        <Button onClick={save} disabled={field === "position" && positionSaveDisabled}>
+                        <Button onClick={save} disabled={field === "position" && !form.item_id}>
                             <Save className="w-3.5 h-3.5 mr-1.5" />Save Changes
                         </Button>
                     )}
@@ -742,7 +665,6 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                 />
             </div>
 
-            {/* ── Internal Organizations ── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Internal Organizations</span>
@@ -884,7 +806,6 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
 
     return (
         <div className="p-5 space-y-5">
-            {/* Leave Balances */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Leave Balances</span>
@@ -915,12 +836,8 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-foreground font-medium text-right">{b.remaining}</span>
                                 <span className="text-sm text-foreground font-medium text-right">{b.used}</span>
                                 <div className="flex items-center justify-end gap-1">
-                                    <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs">
-                                        <Pencil className="w-3.5 h-3.5" />
-                                    </Button>
-                                    <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs">
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
+                                    <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                    <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs"><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
                         ))}
@@ -928,7 +845,6 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* Leave Availments */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Leave Availments</span>
@@ -967,8 +883,8 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-foreground font-medium">{a.duration} days</span>
                                 <span className="text-sm text-muted-foreground">{fmtShort(a.date_filed)}</span>
                                 <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
-                                        a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
-                                            "bg-destructive/10 text-destructive"
+                                    a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
+                                        "bg-destructive/10 text-destructive"
                                     }`}>● {a.status}</Badge>
                             </div>
                         ))}
@@ -976,7 +892,6 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* Leave Balance Dialog */}
             <Dialog open={balanceDialog.open} onOpenChange={open => setBalanceDialog(p => ({ ...p, open }))}>
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader><DialogTitle>{balanceDialog.id ? "Edit" : "Add"} Leave Balance</DialogTitle></DialogHeader>
@@ -1097,7 +1012,6 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
 
     return (
         <div className="p-5 space-y-5">
-            {/* Government IDs */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Government ID Numbers</span>
@@ -1125,9 +1039,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                             <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                                                 {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                             </button>
-                                            <Button onClick={() => openEditGovDialog(type, account)} variant={"ghost"} size={"icon-xs"}>
-                                                <Pencil className="w-3.5 h-3.5" />
-                                            </Button>
+                                            <Button onClick={() => openEditGovDialog(type, account)} variant={"ghost"} size={"icon-xs"}><Pencil className="w-3.5 h-3.5" /></Button>
                                         </>
                                     ) : (
                                         <Button onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })} variant={"ghost"} size={"icon-xs"}>
@@ -1151,9 +1063,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                     <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                     </button>
-                                    <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs">
-                                        <Pencil className="w-3.5 h-3.5" />
-                                    </Button>
+                                    <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
                         )
@@ -1161,7 +1071,6 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 </div>
             </div>
 
-            {/* Eligibility */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Eligibility and Credentials</span>
@@ -1183,16 +1092,13 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
                                 <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
                                 <Badge className="text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5 shrink-0">✓ Active</Badge>
-                                <Button onClick={() => openEligDialog(e)} variant={"ghost"} size={"icon-xs"}>
-                                    <Pencil className="w-3.5 h-3.5" />
-                                </Button>
+                                <Button onClick={() => openEligDialog(e)} variant={"ghost"} size={"icon-xs"}><Pencil className="w-3.5 h-3.5" /></Button>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Government ID Dialog */}
             <Dialog open={govDialog.open} onOpenChange={open => setGovDialog(p => ({ ...p, open }))}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -1233,7 +1139,6 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Eligibility Dialog */}
             <Dialog open={eligDialog.open} onOpenChange={open => setEligDialog(p => ({ ...p, open }))}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>{eligDialog.id ? "Edit" : "Add"} Eligibility</DialogTitle></DialogHeader>
@@ -1268,31 +1173,44 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const seminars = employee.seminarsAndTrainings ?? []
     const serviceRecs = employee.serviceRecords ?? []
 
-    // ── Family ────────────────────────────────────────────────────
     const [familyDialog, setFamilyDialog] = useState<{
         open: boolean; index?: number
         full_name: string; relationship: string; contact_number: string
-    }>({ open: false, full_name: "", relationship: "", contact_number: "" })
+        sex: string; date_of_birth: string; place_of_birth: string
+    }>({ open: false, full_name: "", relationship: "", contact_number: "", sex: "", date_of_birth: "", place_of_birth: "" })
     const [deleteFamilyIndex, setDeleteFamilyIndex] = useState<number | null>(null)
 
     const openFamilyDialog = (member?: FamilyMember, index?: number) =>
-        setFamilyDialog({ open: true, index, full_name: member?.full_name ?? "", relationship: member?.relationship ?? "", contact_number: member?.contact_number ?? "" })
+        setFamilyDialog({
+            open: true, index,
+            full_name: member?.full_name ?? "",
+            relationship: member?.relationship ?? "",
+            contact_number: member?.contact_number ?? "",
+            sex: member?.sex !== undefined ? String(Number(member.sex)) : "",
+            date_of_birth: toInputDate(member?.date_of_birth),
+            place_of_birth: member?.place_of_birth ?? "",
+        })
 
     const saveFamilyMember = () => {
-        const data = { full_name: familyDialog.full_name, relationship: familyDialog.relationship, contact_number: familyDialog.contact_number }
+        const data = {
+            full_name: familyDialog.full_name,
+            relationship: familyDialog.relationship,
+            contact_number: familyDialog.contact_number,
+            sex: familyDialog.sex,
+            date_of_birth: familyDialog.date_of_birth || null,
+            place_of_birth: familyDialog.place_of_birth,
+        }
         if (familyDialog.index !== undefined) {
             router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, { preserveScroll: true, onSuccess: () => setFamilyDialog(p => ({ ...p, open: false })) })
         } else {
             router.post(route("employee.family.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setFamilyDialog(p => ({ ...p, open: false })) })
         }
     }
-
     const confirmDeleteFamily = () => {
         if (deleteFamilyIndex === null) return
         router.delete(route("employee.family.destroy", { employee: employee.employee_id, index: deleteFamilyIndex }), { preserveScroll: true, onSuccess: () => setDeleteFamilyIndex(null) })
     }
 
-    // ── Education ──────────────────────────────────────────────────
     const [educDialog, setEducDialog] = useState<{
         open: boolean; index?: number
         level: string; school_name: string; school_address: string; degree: string; graduation_date: string
@@ -1310,7 +1228,6 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             router.post(route("employee.education.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setEducDialog(p => ({ ...p, open: false })) })
         }
     }
-
     const confirmDeleteEduc = () => {
         if (deleteEducIndex === null) return
         router.delete(route("employee.education.destroy", { employee: employee.employee_id, index: deleteEducIndex }), { preserveScroll: true, onSuccess: () => setDeleteEducIndex(null) })
@@ -1323,7 +1240,6 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
         return acc
     }, {})
 
-    // ── Seminars ───────────────────────────────────────────────────
     const [seminarDialog, setSeminarDialog] = useState<{
         open: boolean; id?: number; seminar_name: string; organizer: string; date_attended: string
     }>({ open: false, seminar_name: "", organizer: "", date_attended: "" })
@@ -1340,13 +1256,11 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             router.post(route("employee.seminar.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setSeminarDialog(p => ({ ...p, open: false })) })
         }
     }
-
     const confirmDeleteSeminar = () => {
         if (!deleteSeminarId) return
         router.delete(route("employee.seminar.destroy", { employee: employee.employee_id, seminar: deleteSeminarId }), { preserveScroll: true, onSuccess: () => setDeleteSeminarId(null) })
     }
 
-    // ── Service Records ────────────────────────────────────────────
     const [serviceDialog, setServiceDialog] = useState<{
         open: boolean; id?: number; position_name: string; department_name: string; year_start: string; year_end: string
     }>({ open: false, position_name: "", department_name: "", year_start: "", year_end: "" })
@@ -1363,7 +1277,6 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             router.post(route("employee.service-record.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setServiceDialog(p => ({ ...p, open: false })) })
         }
     }
-
     const confirmDeleteService = () => {
         if (!deleteServiceId) return
         router.delete(route("employee.service-record.destroy", { employee: employee.employee_id, record: deleteServiceId }), { preserveScroll: true, onSuccess: () => setDeleteServiceId(null) })
@@ -1371,8 +1284,6 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
     return (
         <div className="p-5 space-y-5">
-
-            {/* ── Family Information ───────────────────────────────── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Family Information</span>
@@ -1386,30 +1297,40 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <Button variant="outline" size="sm" onClick={() => openFamilyDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Family Member</Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {familyMembers.map((member, i) => (
-                            <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                <Checkbox className="w-4 h-4" />
-                                <span className="text-sm text-foreground font-medium">{member.full_name}</span>
-                                <span className="text-sm text-muted-foreground">{member.relationship ?? "—"}</span>
-                                <span className="text-sm text-muted-foreground">{member.contact_number ?? "—"}</span>
-                                <div className="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <>
+                        <div className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                            <div className="w-4" />
+                            <span className="text-xs font-semibold text-muted-foreground">Full Name</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Relationship</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Sex</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Date of Birth</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Place of Birth</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                            {familyMembers.map((member, i) => (
+                                <div key={i} className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                    <Checkbox className="w-4 h-4" />
+                                    <span className="text-sm text-foreground font-medium truncate">{member.full_name}</span>
+                                    <span className="text-sm text-muted-foreground">{member.relationship ?? "—"}</span>
+                                    <span className="text-sm text-muted-foreground">{member.sex !== undefined ? (member.sex ? "Male" : "Female") : "—"}</span>
+                                    <span className="text-sm text-muted-foreground">{member.date_of_birth ? fmtShort(member.date_of_birth) : "—"}</span>
+                                    <span className="text-sm text-muted-foreground truncate">{member.place_of_birth ?? "—"}</span>
+                                    <div className="flex items-center justify-end gap-1">
+                                        <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 
-            {/* ── Educational Background ───────────────────────────── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Educational Background</span>
-                    <button onClick={() => openEducDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
-                        <Plus className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => openEducDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
                 </div>
                 {educations.length === 0 ? (
                     <div className="px-5 py-8 text-center">
@@ -1419,14 +1340,12 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 ) : (
                     Object.entries(educByLevel).map(([level, edus]) => (
                         <div key={level}>
-                            <div className="px-5 py-2 bg-muted/30 border-y border-border">
-                                <span className="text-xs font-semibold text-muted-foreground">{level}</span>
-                            </div>
+                            <div className="px-5 py-2 bg-muted/30 border-y border-border"><span className="text-xs font-semibold text-muted-foreground">{level}</span></div>
                             <div className="divide-y divide-border">
                                 {edus.map((edu, i) => {
                                     const globalIndex = educations.indexOf(edu)
                                     return (
-                                        <div key={i} className="grid grid-cols-[auto_1fr_1fr_80px_100px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                        <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr_80px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
                                             <Checkbox className="w-4 h-4" />
                                             <span className="text-sm text-foreground font-medium">{edu.school_name}</span>
                                             <span className="text-sm text-muted-foreground">{edu.school_address ?? "—"}</span>
@@ -1445,13 +1364,10 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* ── Seminars and Trainings ───────────────────────────── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Seminars and Trainings</span>
-                    <button onClick={() => openSeminarDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
-                        <Plus className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => openSeminarDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
                 </div>
                 {seminars.length === 0 ? (
                     <div className="px-5 py-8 text-center">
@@ -1459,30 +1375,36 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <Button variant="outline" size="sm" onClick={() => openSeminarDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Seminar</Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {seminars.map(s => (
-                            <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                <Checkbox className="w-4 h-4" />
-                                <span className="text-sm text-foreground font-medium">{s.seminar_name}</span>
-                                <span className="text-sm text-muted-foreground">{s.organizer ?? "—"}</span>
-                                <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
-                                <div className="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <>
+                        <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                            <div className="w-4" />
+                            <span className="text-xs font-semibold text-muted-foreground">Seminar / Training</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Organizer</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Date Attended</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                            {seminars.map(s => (
+                                <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                    <Checkbox className="w-4 h-4" />
+                                    <span className="text-sm text-foreground font-medium">{s.seminar_name}</span>
+                                    <span className="text-sm text-muted-foreground">{s.organizer ?? "—"}</span>
+                                    <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
+                                    <div className="flex items-center justify-end gap-1">
+                                        <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 
-            {/* ── Service Records ──────────────────────────────────── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Service Records</span>
-                    <button onClick={() => openServiceDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
-                        <Plus className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => openServiceDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
                 </div>
                 {serviceRecs.length === 0 ? (
                     <div className="px-5 py-8 text-center">
@@ -1490,43 +1412,59 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <Button variant="outline" size="sm" onClick={() => openServiceDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Service Record</Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {serviceRecs.map(s => (
-                            <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                <Checkbox className="w-4 h-4" />
-                                <span className="text-sm text-foreground font-medium">{s.position_name}</span>
-                                <span className="text-sm text-muted-foreground">{s.department_name ?? "—"}</span>
-                                <span className="text-sm text-muted-foreground text-right">{s.year_start && s.year_end ? `${s.year_start}–${s.year_end}` : s.year_start ?? "—"}</span>
-                                <div className="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <>
+                        <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                            <div className="w-4" />
+                            <span className="text-xs font-semibold text-muted-foreground">Position</span>
+                            <span className="text-xs font-semibold text-muted-foreground">Department</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Duration</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                            {serviceRecs.map(s => (
+                                <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                    <Checkbox className="w-4 h-4" />
+                                    <span className="text-sm text-foreground font-medium">{s.position_name}</span>
+                                    <span className="text-sm text-muted-foreground">{s.department_name ?? "—"}</span>
+                                    <span className="text-sm text-muted-foreground text-right">{s.year_start && s.year_end ? `${s.year_start}–${s.year_end}` : s.year_start ?? "—"}</span>
+                                    <div className="flex items-center justify-end gap-1">
+                                        <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 
-            {/* ══ DIALOGS ══════════════════════════════════════════ */}
-
-            {/* Family Dialog */}
+            {/* Dialogs */}
             <Dialog open={familyDialog.open} onOpenChange={o => setFamilyDialog(p => ({ ...p, open: o }))}>
-                <DialogContent className="sm:max-w-sm">
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>{familyDialog.index !== undefined ? "Edit" : "Add"} Family Member</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Full Name *</Label>
-                            <Input value={familyDialog.full_name} onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Relationship</Label>
-                            <Select value={familyDialog.relationship} onValueChange={v => setFamilyDialog(p => ({ ...p, relationship: v }))}>
-                                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                                <SelectContent>
-                                    {["Spouse", "Child", "Parent", "Sibling", "Guardian", "Other"].map(r => (
-                                        <SelectItem key={r} value={r}>{r}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Contact Number</Label>
-                            <Input value={familyDialog.contact_number} onChange={e => setFamilyDialog(p => ({ ...p, contact_number: e.target.value }))} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Full Name *</Label><Input value={familyDialog.full_name} onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))} autoFocus /></div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Relationship</Label>
+                                <Select value={familyDialog.relationship} onValueChange={v => setFamilyDialog(p => ({ ...p, relationship: v }))}>
+                                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                                    <SelectContent>{["Spouse", "Child", "Parent", "Sibling", "Guardian", "Other"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Sex</Label>
+                                <Select value={familyDialog.sex} onValueChange={v => setFamilyDialog(p => ({ ...p, sex: v }))}>
+                                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                                    <SelectContent><SelectItem value="1">Male</SelectItem><SelectItem value="0">Female</SelectItem></SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date of Birth</Label><Input type="date" value={familyDialog.date_of_birth} onChange={e => setFamilyDialog(p => ({ ...p, date_of_birth: e.target.value }))} /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Contact Number</Label><Input value={familyDialog.contact_number} onChange={e => setFamilyDialog(p => ({ ...p, contact_number: e.target.value }))} placeholder="09XXXXXXXXXX" /></div>
+                        </div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Place of Birth</Label><Input value={familyDialog.place_of_birth} onChange={e => setFamilyDialog(p => ({ ...p, place_of_birth: e.target.value }))} placeholder="e.g. Manila, Philippines" /></div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setFamilyDialog(p => ({ ...p, open: false }))}>Cancel</Button>
@@ -1535,7 +1473,6 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Education Dialog */}
             <Dialog open={educDialog.open} onOpenChange={o => setEducDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>{educDialog.index !== undefined ? "Edit" : "Add"} Education</DialogTitle></DialogHeader>
@@ -1544,22 +1481,14 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Education Level</Label>
                             <Select value={educDialog.level} onValueChange={v => setEducDialog(p => ({ ...p, level: v }))}>
                                 <SelectTrigger><SelectValue placeholder="Select level…" /></SelectTrigger>
-                                <SelectContent>
-                                    {["Elementary Education", "Secondary Education", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Other"].map(l => (
-                                        <SelectItem key={l} value={l}>{l}</SelectItem>
-                                    ))}
-                                </SelectContent>
+                                <SelectContent>{["Elementary Education", "Secondary Education", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Other"].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Name *</Label>
-                            <Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label>
-                            <Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Name *</Label><Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label><Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} /></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label>
-                                <Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} /></div>
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Graduation Date</Label>
-                                <Input type="date" value={educDialog.graduation_date} onChange={e => setEducDialog(p => ({ ...p, graduation_date: e.target.value }))} /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label><Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Graduation Date</Label><Input type="date" value={educDialog.graduation_date} onChange={e => setEducDialog(p => ({ ...p, graduation_date: e.target.value }))} /></div>
                         </div>
                     </div>
                     <DialogFooter>
@@ -1569,17 +1498,13 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Seminar Dialog */}
             <Dialog open={seminarDialog.open} onOpenChange={o => setSeminarDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label>
-                            <Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label>
-                            <Input value={seminarDialog.organizer} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label>
-                            <Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.organizer} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label><Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setSeminarDialog(p => ({ ...p, open: false }))}>Cancel</Button>
@@ -1588,20 +1513,15 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Service Record Dialog */}
             <Dialog open={serviceDialog.open} onOpenChange={o => setServiceDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader><DialogTitle>{serviceDialog.id ? "Edit" : "Add"} Service Record</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position Name *</Label>
-                            <Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Department</Label>
-                            <Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position Name *</Label><Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Department</Label><Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} /></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Start</Label>
-                                <Input type="number" min="1900" max="2100" placeholder="e.g. 2020" value={serviceDialog.year_start} onChange={e => setServiceDialog(p => ({ ...p, year_start: e.target.value }))} /></div>
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year End</Label>
-                                <Input type="number" min="1900" max="2100" placeholder="e.g. 2026" value={serviceDialog.year_end} onChange={e => setServiceDialog(p => ({ ...p, year_end: e.target.value }))} /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Start</Label><Input type="number" min="1900" max="2100" placeholder="e.g. 2020" value={serviceDialog.year_start} onChange={e => setServiceDialog(p => ({ ...p, year_start: e.target.value }))} /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year End</Label><Input type="number" min="1900" max="2100" placeholder="e.g. 2026" value={serviceDialog.year_end} onChange={e => setServiceDialog(p => ({ ...p, year_end: e.target.value }))} /></div>
                         </div>
                     </div>
                     <DialogFooter>
@@ -1611,7 +1531,6 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirms */}
             {[
                 { open: deleteFamilyIndex !== null, onClose: () => setDeleteFamilyIndex(null), onConfirm: confirmDeleteFamily, label: "family member" },
                 { open: deleteEducIndex !== null, onClose: () => setDeleteEducIndex(null), onConfirm: confirmDeleteEduc, label: "education record" },
@@ -1670,51 +1589,45 @@ function DocumentsTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Uploaded Files</span>
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
-                        title="Upload file"
-                    >
+                    <button onClick={() => fileInputRef.current?.click()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors" title="Upload file">
                         <Upload className="w-4 h-4" />
                     </button>
                     <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
                 </div>
-
                 {uploadedFiles.length === 0 ? (
                     <div className="px-5 py-12 text-center">
                         <FolderOpen className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
                         <p className="text-sm text-muted-foreground italic mb-3">No files uploaded yet.</p>
-                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5">
-                            <Upload className="w-3.5 h-3.5" /> Upload File
-                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5"><Upload className="w-3.5 h-3.5" /> Upload File</Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {uploadedFiles.map(file => (
-                            <div key={file.id} className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                <Checkbox className="w-4 h-4" />
-                                <span className="text-sm text-foreground truncate">{file.file_name}</span>
-                                <span className="text-sm text-muted-foreground text-right">{formatBytes(file.file_size)}</span>
-                                <span className="text-sm text-muted-foreground text-right">{fmtShort(file.created_at)}</span>
-                                <div className="flex items-center justify-end gap-1">
-                                    <a href={file.file_url} download>
-                                        <Button variant="ghost" size="icon-xs" title="Download">
-                                            <Download className="w-3.5 h-3.5" />
+                    <>
+                        <div className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                            <div className="w-4" />
+                            <span className="text-xs font-semibold text-muted-foreground">File Name</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Size</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Uploaded</span>
+                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                            {uploadedFiles.map(file => (
+                                <div key={file.id} className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                    <Checkbox className="w-4 h-4" />
+                                    <span className="text-sm text-foreground truncate">{file.file_name}</span>
+                                    <span className="text-sm text-muted-foreground text-right">{formatBytes(file.file_size)}</span>
+                                    <span className="text-sm text-muted-foreground text-right">{fmtShort(file.created_at)}</span>
+                                    <div className="flex items-center justify-end gap-1">
+                                        <a href={file.file_url} download>
+                                            <Button variant="ghost" size="icon-xs" title="Download"><Download className="w-3.5 h-3.5" /></Button>
+                                        </a>
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFileId(file.id)} title="Delete">
+                                            <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
-                                    </a>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                        onClick={() => setDeleteFileId(file.id)}
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 
@@ -1734,6 +1647,227 @@ function DocumentsTab({ employee }: { employee: Employee }) {
     )
 }
 
+
+
+
+// ─── Avatar Preview Dialog ────────────────────────────────────────────────────
+
+function AvatarPreviewDialog({ src, name, open, onClose }: {
+    src: string; name?: string; open: boolean; onClose: () => void
+}) {
+    return (
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+            <DialogContent className="sm:max-w-xs p-0 overflow-hidden rounded-2xl border border-border shadow-2xl gap-0">
+                <div className="relative flex flex-col items-center bg-card rounded-2xl overflow-hidden">
+                    <img
+                        src={src}
+                        alt={name}
+                        className="w-full aspect-square object-cover"
+                    />
+                    {name && (
+                        <div className="w-full px-5 py-3.5 border-t border-border bg-card">
+                            <p className="text-sm font-semibold text-foreground text-center">{name}</p>
+                        </div>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+// ─── Avatar file validator ────────────────────────────────────────────────────
+
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024 // 5 MB
+const ALLOWED_AVATAR_TYPES = ["image/jpeg"]
+
+function validateAvatarFile(file: File): string | null {
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) return "Only JPEG/JPG images are allowed."
+    if (file.size > MAX_AVATAR_SIZE) return "File size must not exceed 5 MB."
+    return null
+}
+
+// ─── Avatar Upload Dialog ─────────────────────────────────────────────────────
+
+function AvatarUploadDialog({ open, onClose, onFileSelected }: {
+    open: boolean; onClose: () => void; onFileSelected: (file: File) => void
+}) {
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const videoRef = useRef<HTMLVideoElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const streamRef = useRef<MediaStream | null>(null)
+
+    const [mode, setMode] = useState<"choose" | "camera">("choose")
+    const [cameraError, setCameraError] = useState<string | null>(null)
+    const [cameraReady, setCameraReady] = useState(false)
+
+    const stopCamera = () => {
+        streamRef.current?.getTracks().forEach(t => t.stop())
+        streamRef.current = null
+        setCameraReady(false)
+    }
+
+    const startCamera = async () => {
+        setCameraError(null)
+        setCameraReady(false)
+        setMode("camera")
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            streamRef.current = stream
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream
+                videoRef.current.onloadedmetadata = () => {
+                    videoRef.current?.play()
+                    setCameraReady(true)
+                }
+            }
+        } catch {
+            setCameraError("Could not access camera. Please allow camera permission or use 'Select Image' instead.")
+        }
+    }
+
+    // WITH:
+    const [fileError, setFileError] = useState<string | null>(null)
+
+    const capturePhoto = () => {
+        const video = videoRef.current
+        const canvas = canvasRef.current
+        if (!video || !canvas) return
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        canvas.getContext("2d")?.drawImage(video, 0, 0)
+        canvas.toBlob(blob => {
+            if (!blob) return
+            const file = new File([blob], "avatar-capture.jpg", { type: "image/jpeg" })
+            const error = validateAvatarFile(file)
+            if (error) { setCameraError(error); return }
+            onFileSelected(file)
+            handleClose()
+        }, "image/jpeg", 0.92)
+    }
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        const error = validateAvatarFile(file)
+        if (error) { setFileError(error); e.target.value = ""; return }
+        setFileError(null)
+        onFileSelected(file)
+        handleClose()
+        e.target.value = ""
+    }
+
+    const handleClose = () => {
+        stopCamera()
+        setMode("choose")
+        setCameraError(null)
+        setFileError(null)
+        onClose()
+    }
+
+    const backToChoose = () => {
+        stopCamera()
+        setMode("choose")
+        setCameraError(null)
+        setFileError(null)
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+            <DialogContent className="sm:max-w-sm rounded-2xl overflow-hidden p-0 gap-0">
+                <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
+                    <DialogTitle className="text-base font-bold">
+                        {mode === "camera" ? "Take a Photo" : "Update Profile Photo"}
+                    </DialogTitle>
+                </DialogHeader>
+
+                {mode === "choose" && (
+                    <div className="px-5 py-5 space-y-4">
+                        <p className="text-sm text-muted-foreground">Choose how you'd like to update your profile photo.</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent/40 transition-all group cursor-pointer"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                                    <Upload className="w-5 h-5 text-primary" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-sm font-semibold text-foreground">Select Image</p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">Choose from device</p>
+                                </div>
+                            </button>
+                            <button
+                                onClick={startCamera}
+                                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent/40 transition-all group cursor-pointer"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                                    <Camera className="w-5 h-5 text-primary" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-sm font-semibold text-foreground">Take a Photo</p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">Use your camera</p>
+                                </div>
+                            </button>
+                        </div>
+                        <input ref={fileInputRef} type="file" accept="image/jpeg" className="hidden" onChange={handleFileChange} />                        {fileError && (
+                            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-2.5">
+                                <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                                <p className="text-sm text-destructive leading-snug">{fileError}</p>
+                            </div>
+                        )}
+                        <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground" onClick={handleClose}>
+                            Cancel
+                        </Button>
+                    </div>
+                )}
+
+                {mode === "camera" && (
+                    <div className="px-5 py-5 space-y-4">
+                        {cameraError ? (
+                            <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-center space-y-3">
+                                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+                                    <XCircle className="w-5 h-5 text-destructive" />
+                                </div>
+                                <p className="text-sm text-destructive leading-snug">{cameraError}</p>
+                            </div>
+                        ) : (
+                            <div className="relative rounded-xl overflow-hidden bg-black aspect-square shadow-inner">
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    className="w-full h-full object-cover scale-x-[-1]"
+                                />
+                                {!cameraReady && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted gap-2">
+                                        <Camera className="w-8 h-8 text-muted-foreground/30 animate-pulse" />
+                                        <p className="text-xs text-muted-foreground animate-pulse">Starting camera…</p>
+                                    </div>
+                                )}
+                                {cameraReady && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className="w-44 h-44 rounded-full border-2 border-white/50 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        <canvas ref={canvasRef} className="hidden" />
+                        <div className="flex gap-2.5">
+                            <Button variant="outline" className="flex-1" onClick={backToChoose}>Back</Button>
+                            {!cameraError && (
+                                <Button className="flex-1" onClick={capturePhoto} disabled={!cameraReady}>
+                                    <Camera className="w-3.5 h-3.5 mr-1.5" />Capture
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ShowEmployee({ employee, items }: Props) {
@@ -1745,6 +1879,30 @@ export default function ShowEmployee({ employee, items }: Props) {
         : undefined
 
     const [basicEditOpen, setBasicEditOpen] = useState(false)
+
+    // ── Avatar upload ──────────────────────────────────────────────────────────
+    //   Clicking the camera button opens a hidden <input type="file" accept="image/*">.
+    //   On selection, the file is placed in a FormData object and submitted via
+    //   router.post() — Inertia automatically sends this as multipart/form-data.
+    // WITH THIS:
+    const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false)
+    const [avatarUploadOpen, setAvatarUploadOpen] = useState(false)
+
+    const handleAvatarFileSelected = (file: File) => {
+        const formData = new FormData()
+        formData.append("avatar", file)
+        router.post(
+            route("employee.avatar.update", employee.employee_id),
+            formData,
+            { preserveScroll: true }
+        )
+    }
+
+    // Prefer the real stored URL; fall back to the initials avatar generator.
+    const avatarSrc =
+        employee.avatar_url ??
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(basic?.full_name ?? "E")}&background=5854cc&color=fff&size=96`
+    // ──────────────────────────────────────────────────────────────────────────
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: "Employee", href: route("employee.index") },
@@ -1775,14 +1933,23 @@ export default function ShowEmployee({ employee, items }: Props) {
                             </Button>
                         </div>
                         <div className="relative">
-                            <div className="w-24 h-24 rounded-full overflow-hidden bg-muted border-4 border-card shadow-lg ring-2 ring-primary/20">
+                            <button
+                                onClick={() => setAvatarPreviewOpen(true)}
+                                className="w-24 h-24 rounded-full overflow-hidden bg-muted border-4 border-card shadow-lg ring-2 ring-primary/20 hover:ring-primary/50 transition-all cursor-pointer"
+                                title="View photo"
+                            >
                                 <img
-                                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(basic?.full_name ?? "E")}&background=5854cc&color=fff&size=96`}
+                                    src={avatarSrc}
                                     alt={basic?.full_name}
                                     className="w-full h-full object-cover"
                                 />
-                            </div>
-                            <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:opacity-90 transition-opacity border-2 border-card">
+                            </button>
+
+                            <button
+                                onClick={() => setAvatarUploadOpen(true)}
+                                title="Change photo"
+                                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:opacity-90 transition-opacity border-2 border-card"
+                            >
                                 <Camera className="w-3 h-3" />
                             </button>
                         </div>
@@ -1797,7 +1964,7 @@ export default function ShowEmployee({ employee, items }: Props) {
 
                     <div className="flex-1 px-4 py-3 overflow-y-auto">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Basic Information</p>
-                        <InfoRow icon={Mail} label="Email" value={basic?.personal_email} />
+                        <InfoRow icon={Mail} label="Work Email" value={employee.work_email} />
                         <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} />
                         <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} />
                         <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} />
@@ -1807,8 +1974,8 @@ export default function ShowEmployee({ employee, items }: Props) {
                     </div>
 
                     <div className="px-4 pb-4 pt-2 border-t border-border">
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Work Email</p>
-                        <p className="text-xs text-foreground/70 font-medium truncate">{employee.work_email}</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Personal Email</p>
+                        <p className="text-xs text-foreground/70 font-medium truncate">{basic?.personal_email}</p>
                     </div>
                 </div>
 
@@ -1845,6 +2012,17 @@ export default function ShowEmployee({ employee, items }: Props) {
                 </div>
             </div>
 
+            <AvatarPreviewDialog
+                src={avatarSrc}
+                name={basic?.full_name}
+                open={avatarPreviewOpen}
+                onClose={() => setAvatarPreviewOpen(false)}
+            />
+            <AvatarUploadDialog
+                open={avatarUploadOpen}
+                onClose={() => setAvatarUploadOpen(false)}
+                onFileSelected={handleAvatarFileSelected}
+            />
             <BasicInfoEditDialog employee={employee} open={basicEditOpen} onClose={() => setBasicEditOpen(false)} />
         </AppLayout>
     )

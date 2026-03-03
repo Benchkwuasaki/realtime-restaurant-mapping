@@ -19,49 +19,50 @@ class PositionController extends Controller
             ->orderBy('position_name')
             ->get()
             ->map(fn(Position $position) => [
-                'position_id' => $position->position_id,
-                'position_name' => $position->position_name,
-                'department_id' => $position->department_id,
-                'division_id' => $position->division_id,
-                'unit_id' => $position->unit_id,
-                'department' => [
-                    'department_id' => $position->department->department_id,
+                'position_id'    => $position->position_id,
+                'position_name'  => $position->position_name,
+                'position_type'  => $position->position_type,   // ← correct column
+                'department_id'  => $position->department_id,
+                'division_id'    => $position->division_id,
+                'unit_id'        => $position->unit_id,
+                'department'     => [
+                    'department_id'   => $position->department->department_id,
                     'department_name' => $position->department->department_name,
                 ],
                 'division' => $position->division ? [
-                    'division_id' => $position->division->division_id,
+                    'division_id'   => $position->division->division_id,
                     'division_name' => $position->division->division_name,
                     'department_id' => $position->division->department_id,
                 ] : null,
                 'unit' => $position->unit ? [
-                    'unit_id' => $position->unit->unit_id,
-                    'unit_name' => $position->unit->unit_name,
+                    'unit_id'     => $position->unit->unit_id,
+                    'unit_name'   => $position->unit->unit_name,
                     'division_id' => $position->unit->division_id,
                 ] : null,
-                'total_slots' => $position->items->count(),
+                'total_slots'    => $position->items->count(),
                 'occupied_slots' => $position->items->filter(fn($i) => $i->employee !== null)->count(),
-                'employees' => $position->items
+                'employees'      => $position->items
                     ->filter(fn($item) => $item->employee !== null)
                     ->map(fn($item) => [
-                        'id' => $item->employee->employee_id,
+                        'id'         => $item->employee->employee_id,
                         'first_name' => $item->employee->basicInfo->first_name,
-                        'last_name' => $item->employee->basicInfo->last_name,
-                        'email' => $item->employee->work_email,
-                        'is_active' => $item->employee->status,
-                        'item_name' => $item->item_name,
+                        'last_name'  => $item->employee->basicInfo->last_name,
+                        'email'      => $item->employee->work_email,
+                        'is_active'  => $item->employee->status,
+                        'item_name'  => $item->item_name,
                     ])
                     ->values(),
             ]);
 
         $departments = Department::orderBy('department_name')->get(['department_id', 'department_name']);
-        $divisions = Division::orderBy('division_name')->get(['division_id', 'division_name', 'department_id']);
-        $units = Unit::orderBy('unit_name')->get(['unit_id', 'unit_name', 'division_id']);
+        $divisions   = Division::orderBy('division_name')->get(['division_id', 'division_name', 'department_id']);
+        $units       = Unit::orderBy('unit_name')->get(['unit_id', 'unit_name', 'division_id']);
 
         return Inertia::render('Organization/Position/Index', [
-            'positions' => $positions,
+            'positions'   => $positions,
             'departments' => $departments,
-            'divisions' => $divisions,
-            'units' => $units,
+            'divisions'   => $divisions,
+            'units'       => $units,
         ]);
     }
 
@@ -71,27 +72,28 @@ class PositionController extends Controller
 
         return Inertia::render('Organization/Position/Show', [
             'position' => [
-                'position_id' => $position->position_id,
+                'position_id'   => $position->position_id,
                 'position_name' => $position->position_name,
+                'position_type' => $position->position_type,
                 'department_id' => $position->department_id,
-                'division_id' => $position->division_id,
-                'unit_id' => $position->unit_id,
-                'department' => [
-                    'department_id' => $position->department->department_id,
+                'division_id'   => $position->division_id,
+                'unit_id'       => $position->unit_id,
+                'department'    => [
+                    'department_id'   => $position->department->department_id,
                     'department_name' => $position->department->department_name,
                 ],
                 'division' => $position->division ? [
-                    'division_id' => $position->division->division_id,
+                    'division_id'   => $position->division->division_id,
                     'division_name' => $position->division->division_name,
                     'department_id' => $position->division->department_id,
                 ] : null,
                 'unit' => $position->unit ? [
-                    'unit_id' => $position->unit->unit_id,
-                    'unit_name' => $position->unit->unit_name,
+                    'unit_id'     => $position->unit->unit_id,
+                    'unit_name'   => $position->unit->unit_name,
                     'division_id' => $position->unit->division_id,
                 ] : null,
                 'items' => $position->items->map(fn($i) => [
-                    'item_id' => $i->item_id,
+                    'item_id'   => $i->item_id,
                     'item_name' => $i->item_name,
                 ]),
             ],
@@ -103,11 +105,12 @@ class PositionController extends Controller
         $validated = $request->validate([
             'position_name' => ['required', 'string', 'max:255'],
             'department_id' => ['required', 'integer', 'exists:departments,department_id'],
-            'division_id' => ['required', 'integer', 'exists:divisions,division_id'],
-            'unit_id' => ['nullable', 'integer', 'exists:units,unit_id'],
-            'item_slots' => ['required', 'integer', 'min:1', 'max:100'],
+            'division_id'   => ['nullable', 'integer', 'exists:divisions,division_id'],
+            'unit_id'       => ['nullable', 'integer', 'exists:units,unit_id'],
+            'item_slots'    => ['required', 'integer', 'min:1', 'max:100'],
         ]);
 
+        // position_type defaults to 'Regular' via the DB default
         $position = Position::create(collect($validated)->except('item_slots')->toArray());
 
         for ($i = 1; $i <= $validated['item_slots']; $i++) {
@@ -125,15 +128,15 @@ class PositionController extends Controller
         $validated = $request->validate([
             'position_name' => ['required', 'string', 'max:255'],
             'department_id' => ['required', 'integer', 'exists:departments,department_id'],
-            'division_id' => ['required', 'integer', 'exists:divisions,division_id'],
-            'unit_id' => ['nullable', 'integer', 'exists:units,unit_id'],
-            'item_slots' => ['required', 'integer', 'min:1', 'max:100'],
+            'division_id'   => ['nullable', 'integer', 'exists:divisions,division_id'],
+            'unit_id'       => ['nullable', 'integer', 'exists:units,unit_id'],
+            'item_slots'    => ['required', 'integer', 'min:1', 'max:100'],
         ]);
 
         $position->update(collect($validated)->except('item_slots')->toArray());
 
         $currentCount = $position->items()->count();
-        $newCount = $validated['item_slots'];
+        $newCount     = $validated['item_slots'];
 
         if ($newCount > $currentCount) {
             for ($i = $currentCount + 1; $i <= $newCount; $i++) {
@@ -169,7 +172,7 @@ class PositionController extends Controller
     public function bulkDestroy(Request $request): RedirectResponse
     {
         $request->validate([
-            'ids' => ['required', 'array'],
+            'ids'   => ['required', 'array'],
             'ids.*' => ['integer', 'exists:positions,position_id'],
         ]);
 

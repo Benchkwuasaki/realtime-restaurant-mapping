@@ -12,6 +12,10 @@ export const modules = [
         label: 'Document Tracking',
     },
     {
+        value: 'User',
+        label: 'User',
+    },
+    {
         value: 'Employee',
         label: 'Employee',
     },
@@ -20,11 +24,11 @@ export const modules = [
         label: 'Payroll',
     },
     {
-        value: 'Benefits',
-        label: 'Benefits',
+        value: 'Organization',
+        label: 'Organization',
     },
     {
-        value: 'Reports and Analytics',
-        label: 'Reports and Analytics',
+        value: 'Leave',
+        label: 'Leave',
     },
 ]
