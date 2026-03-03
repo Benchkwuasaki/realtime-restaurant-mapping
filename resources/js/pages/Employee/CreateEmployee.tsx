@@ -991,7 +991,9 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
     const selectedGroup = positionGroups.find(g => g.groupKey === data.selected_position_name)
 
     const positionDisplay = selectedGroup
-        ? (selectedGroup.totalSlots > 1 ? `${selectedGroup.positionName} (auto-assigned slot)` : selectedGroup.positionName)
+        ? (selectedGroup.totalSlots > 1
+            ? `${selectedGroup.positionName}`
+            : selectedGroup.positionName)
         : undefined
 
     return (
