@@ -160,7 +160,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
           {
             title: "Leave Settings",
-            url: "/leave/leave_settings",
+            url: route("leave.leave-settings"),
           }
         ]
       },
