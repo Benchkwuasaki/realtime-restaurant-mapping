@@ -11,12 +11,11 @@ class ReportsAndAnalyticsController extends Controller
 {
     public function __construct(protected ActivityLogService $activityLogService) {}
 
-
     public function index()
     {
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
-            'module' => 'reports_and_analytics',
+            'module' => 'general',
             'description' => 'Viewed Reports and Analytics Page',
         ]);
         return Inertia::render('ReportsAndAnalytics/Index');

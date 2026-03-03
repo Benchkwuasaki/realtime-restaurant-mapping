@@ -1,5 +1,7 @@
 "use client"
 
+// resources/js/pages/Organization/Position/components/columns.tsx
+
 import { router } from "@inertiajs/react"
 import { type ColumnDef } from "@tanstack/react-table"
 import { route } from "ziggy-js"
@@ -9,11 +11,18 @@ import {
     editAction,
     deleteAction,
 } from "@/components/shared/data-table/data-table-row-action"
+import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { type Position } from "../data/schema"
+import { type Position, type PositionType } from "../data/schema"
 
 interface ColumnOptions {
     onEdit: (position: Position) => void
+}
+
+const typeBadgeVariant: Record<PositionType, "default" | "secondary" | "outline"> = {
+    "Regular":   "default",
+    "Casual":    "outline",
+    "Job Order": "secondary",
 }
 
 export function getColumns({ onEdit }: ColumnOptions): ColumnDef<Position>[] {
@@ -51,6 +60,24 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<Position>[] {
             cell: ({ row }) => (
                 <div className="min-w-[180px] font-medium">{row.getValue("position_name")}</div>
             ),
+            enableSorting: true,
+            enableHiding: true,
+        },
+        {
+            accessorKey: "position_type",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Type" />
+            ),
+            cell: ({ row }) => {
+                const type = row.getValue<PositionType>("position_type")
+                return (
+                    <Badge variant={typeBadgeVariant[type]} className="text-xs whitespace-nowrap">
+                        {type}
+                    </Badge>
+                )
+            },
+            filterFn: (row, _id, value: string[]) =>
+                value.includes(row.getValue("position_type")),
             enableSorting: true,
             enableHiding: true,
         },
@@ -132,18 +159,24 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<Position>[] {
                     row={row}
                     actions={[
                         editAction(onEdit),
-                        deleteAction((position) => router.delete(route("position.destroy", position.position_id)), {
-                            getName: (p) => p.position_name,
-                            description: (p) => (
-                                <>
-                                    Are you sure you want to delete{" "}
-                                    <span className="font-medium text-foreground">{p.position_name}</span>?{" "}
-                                    This will also affect any items assigned to this position.
-                                    This action cannot be undone.
-                                </>
-                            ),
-                            confirmLabel: "Delete Position",
-                        }),
+                        deleteAction(
+                            (position) =>
+                                router.delete(route("position.destroy", position.position_id)),
+                            {
+                                getName: (p) => p.position_name,
+                                description: (p) => (
+                                    <>
+                                        Are you sure you want to delete{" "}
+                                        <span className="font-medium text-foreground">
+                                            {p.position_name}
+                                        </span>?{" "}
+                                        This will also affect any items assigned to this position.
+                                        This action cannot be undone.
+                                    </>
+                                ),
+                                confirmLabel: "Delete Position",
+                            }
+                        ),
                     ]}
                 />
             ),

@@ -17,11 +17,12 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 
-type NavItem = {
+export type NavItem = {
   title: string
   url?: string | null
   icon: LucideIcon
   isActive?: boolean
+  show?: boolean
   items?: { title: string; url?: string | null }[]
 }
 
@@ -65,6 +66,8 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
       <SidebarMenu>
         {items.map((item) => {
+          if (item.show === false) return null
+
           const hasChildren = !!item.items?.length
 
           const isActive = isActivePath(item.url)

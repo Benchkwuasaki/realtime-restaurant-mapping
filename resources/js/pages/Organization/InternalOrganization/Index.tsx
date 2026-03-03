@@ -1,9 +1,12 @@
 import { Head, router, useForm } from "@inertiajs/react"
+import { Building2, CheckCircle2, XCircle } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { route } from "ziggy-js"
 
 import { DataTable } from "@/components/shared/data-table/data-table"
+import { StatCard } from "@/components/shared/stat-card"
 import { Button } from "@/components/ui/button"
+
 import {
   Dialog,
   DialogContent,
@@ -44,6 +47,8 @@ interface AddOrganizationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
+
+
 
 function AddOrganizationDialog({ open, onOpenChange }: AddOrganizationDialogProps) {
   const { data, setData, post, processing, errors, reset } = useForm({
@@ -401,6 +406,27 @@ export default function Index({
       <Head title="Internal Organizations" />
 
       <div className="flex h-full flex-1 flex-col gap-8 p-8">
+
+        <div className="max-w-300 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard
+            title="Total Organizations"
+            value={totalOrganizations}
+            description="All registered organizations"
+            icon={<Building2 className="size-4 text-destructive" />}
+          />
+          <StatCard
+            title="Active"
+            value={activeOrganizations}
+            description="Currently active organizations"
+            icon={<CheckCircle2 className="size-4 text-green-500" />}
+          />
+          <StatCard
+            title="Inactive"
+            value={inactiveOrganizations}
+            description="Currently inactive organizations"
+            icon={<XCircle className="size-4 text-destructive" />}
+          />
+        </div>
         {/* ── Table ────────────────────────────────────────────────────────── */}
         <DataTable
           data={organizations}

@@ -18,7 +18,7 @@ This README contains the essential steps for local development setup, including 
 
 ## 🔐 Default Development User
 
-For development and testing purposes, a pre-seeded user account is available after running the database seeders.
+For development and testing purposes, a pre-seeded user account is available after running the database seeders. Check RoleSeeder.php for more accounts for role-based access.
 
 > ⚠️ **This account is intended for local development only.**  
 > Do NOT use these credentials in production environments.
@@ -26,7 +26,7 @@ For development and testing purposes, a pre-seeded user account is available aft
 ### 📧 Credentials
 
 **Email:**  
-`admin@gmail.com`
+`superadmin@gmail.com`
 
 **Password:**  
 `password`

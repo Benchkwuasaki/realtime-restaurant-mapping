@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\Division;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Models\Position;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,7 +27,7 @@ class DivisionController extends Controller
                     'department_id' => $division->department->department_id,
                     'department_name' => $division->department->department_name,
                 ],
-                'units' => $division->units              
+                'units' => $division->units
                     ->map(fn($u) => [
                         'unit_id' => $u->unit_id,
                         'unit_name' => $u->unit_name,
@@ -40,6 +41,9 @@ class DivisionController extends Controller
         return Inertia::render('Organization/Division/Index', [
             'divisions' => $divisions,
             'departments' => $departments,
+            'totalDivisions' => $divisions->count(),
+            'totalDepartments' => $departments->count(),
+            'totalUnits' => $divisions->sum(fn($d) => count($d['units'])),
         ]);
     }
 
@@ -71,11 +75,25 @@ class DivisionController extends Controller
         $validated = $request->validate([
             'department_id' => ['required', 'integer', 'exists:departments,department_id'],
             'division_name' => ['required', 'string', 'max:255'],
-            'division_acronym' => ['required', 'string', 'max:10'],
+            'division_acronym' => ['nullable', 'string', 'max:10'],
             'division_description' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        Division::create($validated);
+        $division = Division::create($validated);
+
+        // ── Auto-create a default JO position for this division ───────────────
+        $position = Position::create([
+            'department_id' => $division->department_id,
+            'division_id' => $division->division_id,
+            'unit_id' => null,
+            'position_name' => 'Job Order',
+            'position_type' => 'Job Order',
+        ]);
+
+        $position->items()->create([
+            'item_name' => 'Job Order Item 1',
+        ]);
+        // ─────────────────────────────────────────────────────────────────────
 
         return redirect()->route('division.index')
             ->with('success', 'Division created successfully.');
@@ -86,7 +104,7 @@ class DivisionController extends Controller
         $validated = $request->validate([
             'department_id' => ['required', 'integer', 'exists:departments,department_id'],
             'division_name' => ['required', 'string', 'max:255'],
-            'division_acronym' => ['required', 'string', 'max:10'],
+            'division_acronym' => ['nullable', 'string', 'max:10'],
             'division_description' => ['nullable', 'string', 'max:1000'],
         ]);
 

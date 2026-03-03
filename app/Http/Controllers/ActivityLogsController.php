@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class ActivityLogsController extends Controller
@@ -45,6 +46,12 @@ class ActivityLogsController extends Controller
                     'created_at' => $log->created_at->toISOString(),
                 ];
             });
+
+        $this->activityLogService->createLog([
+            'user_id' => Auth::id(),
+            'module' => 'general',
+            'description' => 'Viewed activity logs',
+        ]);
 
         return Inertia::render('ActivityLogs/Index', [
             'activity_logs' => $activityLogs,
