@@ -8,6 +8,7 @@ use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\AttendanceLogs;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
@@ -206,6 +207,15 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::post('/clock-in', [AttendanceController::class, 'clockIn'])->name('clock-in');
         Route::post('/enroll', [AttendanceController::class, 'enroll'])->name('enroll');
         Route::post('/detect', [AttendanceController::class, 'detect'])->name('detect');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - Recognition Logs
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('attendance/attendance-logs')->name('attendance-logs.')->group(function () {
+        Route::get('/', [RecognitionLogController::class, 'index'])->name('index');
     });
 
     /*
