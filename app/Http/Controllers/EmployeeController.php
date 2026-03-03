@@ -341,7 +341,6 @@ class EmployeeController extends Controller
             'phone_number' => 'nullable|string|max:255',
             'civil_status' => 'nullable|in:single,married,divorced,widowed',
             'place_of_birth' => 'nullable|string|max:255',
-
             'item_id' => 'sometimes|required|exists:items,item_id',
             'salary_grade_step_id' => 'sometimes|required|exists:salary_grade_steps,salary_grade_step_id',
             'employment_classification' => 'sometimes|required|string|exists:employment_classifications,name',
@@ -790,7 +789,7 @@ class EmployeeController extends Controller
     public function updateAvatar(Request $request, Employee $employee)
     {
         $request->validate([
-            'avatar' => ['required', 'image', 'max:2048'],
+            'avatar' => ['required', 'image', 'max:5120'],
         ]);
 
         if ($employee->avatar_path) {

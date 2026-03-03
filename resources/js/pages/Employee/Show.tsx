@@ -1675,6 +1675,16 @@ function AvatarPreviewDialog({ src, name, open, onClose }: {
     )
 }
 
+// ─── Avatar file validator ────────────────────────────────────────────────────
+
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024 // 5 MB
+const ALLOWED_AVATAR_TYPES = ["image/jpeg"]
+
+function validateAvatarFile(file: File): string | null {
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) return "Only JPEG/JPG images are allowed."
+    if (file.size > MAX_AVATAR_SIZE) return "File size must not exceed 5 MB."
+    return null
+}
 
 // ─── Avatar Upload Dialog ─────────────────────────────────────────────────────
 
@@ -1715,6 +1725,9 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
         }
     }
 
+    // WITH:
+    const [fileError, setFileError] = useState<string | null>(null)
+
     const capturePhoto = () => {
         const video = videoRef.current
         const canvas = canvasRef.current
@@ -1725,6 +1738,8 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
         canvas.toBlob(blob => {
             if (!blob) return
             const file = new File([blob], "avatar-capture.jpg", { type: "image/jpeg" })
+            const error = validateAvatarFile(file)
+            if (error) { setCameraError(error); return }
             onFileSelected(file)
             handleClose()
         }, "image/jpeg", 0.92)
@@ -1733,6 +1748,9 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
+        const error = validateAvatarFile(file)
+        if (error) { setFileError(error); e.target.value = ""; return }
+        setFileError(null)
         onFileSelected(file)
         handleClose()
         e.target.value = ""
@@ -1742,6 +1760,7 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
         stopCamera()
         setMode("choose")
         setCameraError(null)
+        setFileError(null)
         onClose()
     }
 
@@ -1749,6 +1768,7 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
         stopCamera()
         setMode("choose")
         setCameraError(null)
+        setFileError(null)
     }
 
     return (
@@ -1789,7 +1809,12 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                                 </div>
                             </button>
                         </div>
-                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                        <input ref={fileInputRef} type="file" accept="image/jpeg" className="hidden" onChange={handleFileChange} />                        {fileError && (
+                            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-2.5">
+                                <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                                <p className="text-sm text-destructive leading-snug">{fileError}</p>
+                            </div>
+                        )}
                         <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground" onClick={handleClose}>
                             Cancel
                         </Button>
