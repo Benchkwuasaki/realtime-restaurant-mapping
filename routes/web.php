@@ -31,12 +31,11 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-// Authenticated routes
-Route::group(['middleware' => ['auth', 'verified']], function () {
 
-    // Dashboard
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Dashboard Routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
 
     // User Routes
     Route::prefix('users')->name('user.')->group(function () {
@@ -197,55 +196,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         })->name('leave-settings');
     });
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Attendance - api callss
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('attendance')->name('attendance.')->group(function () {
-        Route::post('/clock-in', [AttendanceController::class, 'clockIn'])->name('clock-in');
-        Route::post('/enroll', [AttendanceController::class, 'enroll'])->name('enroll');
-        Route::post('/detect', [AttendanceController::class, 'detect'])->name('detect');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Attendance - Recognition Logs
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('attendance/attendance-logs')->name('attendance-logs.')->group(function () {
-        Route::get('/', [RecognitionLogController::class, 'index'])->name('index');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Attendance - Whereabout Slips
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
-        Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
-        Route::post('/', [WhereaboutSlipController::class, 'store'])->name('store');
-        Route::put('/{whereaboutSlip}', [WhereaboutSlipController::class, 'update'])->name('update');
-        Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
-        Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
-        Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Attendance - Holiday Management
-    |--------------------------------------------------------------------------
-    */
-    Route::resource('holiday', HolidayController::class)->parameters([
-        'holiday' => 'holiday:holiday_id',
-    ]);
-
-    /*
-    |--------------------------------------------------------------------------
-    | Payroll
-    |--------------------------------------------------------------------------
-    */
+    // Payroll routes
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
 
     /*
