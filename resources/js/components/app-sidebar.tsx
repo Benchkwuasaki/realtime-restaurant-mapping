@@ -111,6 +111,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
         items: [
           {
+            title: "Recognition Logs",
+            url: route('recognition-logs.index'),
+          },
+          {
             title: "Whereabout Slip",
             url: route('whereabout-slip.index'),
           },
@@ -209,16 +213,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
       },
       {
-        title: "Activity Logs",
-        url: route("activity_logs.index"),
-        icon: Logs,
-        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
-      },
-      {
         title: "Announcements",
         url: route("announcement.index"),
         icon: Bell,
         show: true,
+      },
+      {
+        title: "Activity Logs",
+        url: route("activity_logs.index"),
+        icon: Logs,
+        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
       },
     ],
     // navSecondary: [

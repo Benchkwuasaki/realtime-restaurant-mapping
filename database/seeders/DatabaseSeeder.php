@@ -11,13 +11,6 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // TODO: refactor to separate seeder files
-
-        $this->call([
-            RoleSeeder::class,
-            UserSeeder::class,
-            InternalOrganizationSeeder::class,
-        ]);
-
         // ── 1. Salary Grade Steps ──────────────────────────────────
         $salaryGradeSteps = [
             ['salary_grade' => 7, 'step' => 1, 'salary_amount' => 17899.00],
@@ -724,9 +717,9 @@ class DatabaseSeeder extends Seeder
 
             $workEmail = strtolower(
                 preg_replace('/[^a-z0-9]/', '', $firstName) . '.' .
-                preg_replace('/[^a-z0-9]/', '', $lastName) .
-                ($i > 0 ? $i : '') .
-                '@obx.gov.ph'
+                    preg_replace('/[^a-z0-9]/', '', $lastName) .
+                    ($i > 0 ? $i : '') .
+                    '@obx.gov.ph'
             );
 
             // Basic info
@@ -986,5 +979,14 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         }
+
+        $this->call([
+            RoleSeeder::class,
+            UserSeeder::class,
+            InternalOrganizationSeeder::class,
+            FaceEmbeddingSeeder::class,
+            RecognitionLogSeeder::class,
+            AttendanceRecordSeeder::class,
+        ]);
     }
 }
