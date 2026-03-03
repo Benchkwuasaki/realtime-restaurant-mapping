@@ -24,6 +24,7 @@ use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
+use App\Http\Controllers\LeaveTypeController;
 use Illuminate\Support\Facades\Http;
 
 Route::get('/', function () {
@@ -37,6 +38,16 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard Routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Attendance Routes
+    Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
+        Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
+        Route::post('/', [WhereaboutSlipController::class, 'store'])->name('store');
+        Route::put('/{whereaboutSlip}', [WhereaboutSlipController::class, 'update'])->name('update');
+        Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
+        Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
+        Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    });
 
     // User Routes
     Route::prefix('users')->name('user.')->group(function () {
@@ -236,10 +247,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('leave')->name('leave.')->group(function () {
-        Route::get('/leave-settings', function () {
-            return Inertia::render('Leave/LeaveSettings/LeaveSettingsTabNav');
-        })->name('leave-settings');
-        Route::get('/leave-calendar', [LeaveCalendarController::class, 'index'])->name('leave-calendar');
+        Route::get('/leave-settings', [LeaveTypeController::class, 'index'])->name('leave-settings');
+        Route::post('/', [LeaveTypeController::class, 'store'])->name('store');
+        Route::put('/{leave}', [LeaveTypeController::class, 'update'])->name('update');
     });
 
     // Payroll routes
@@ -279,8 +289,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
 
-
-    require __DIR__ . '/settings.php';
 });
 
 require __DIR__ . '/settings.php';
