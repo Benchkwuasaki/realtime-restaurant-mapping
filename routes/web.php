@@ -244,6 +244,13 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::get('/', [AnnouncementController::class, 'index'])->name('index');
     });
 
+        // Organizational Chart
+    Route::get('/organization/organizational_chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
+    Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
+
+
+
+
     // Activity Logs Routes
 
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
