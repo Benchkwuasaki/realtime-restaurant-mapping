@@ -18,13 +18,12 @@ use Illuminate\Support\Facades\Hash;
 use App\Services\ActivityLogService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class EmployeeController extends Controller
 {
-    public function __construct(protected ActivityLogService $activityLogService)
-    {
-    }
+    public function __construct(protected ActivityLogService $activityLogService) {}
 
     // ─────────────────────────────────────────────────────────────────────────
     // Index
@@ -112,7 +111,7 @@ class EmployeeController extends Controller
             'item_id' => ['required', 'exists:items,item_id'],
             'salary_grade_step_id' => ['required', 'exists:salary_grade_steps,salary_grade_step_id'],
             'employment_classification' => ['required', 'string', 'exists:employment_classifications,name'],
-            'work_email' => ['required', 'email', 'max:255', 'unique:employees,work_email'],
+            'work_email' => ['required', 'email', 'max:255', Rule::unique('employees', 'work_email')->whereNull('deleted_at')],
             'password' => [
                 'required',
                 'string',
@@ -305,7 +304,12 @@ class EmployeeController extends Controller
 
                 // camelCase keys — match the TypeScript interface exactly
                 'uploadedFiles' => $employee->uploadedFiles,
-                'seminarsAndTrainings' => $employee->seminarsAndTrainings,
+                'seminarsAndTrainings' => $employee->seminarsAndTrainings->map(fn($s) => [
+                    'id' => $s->employee_seminar_training_id,
+                    'seminar_name' => $s->seminar_training_name,
+                    'venue' => $s->venue,
+                    'date_attended' => $s->date_attended,
+                ]),
                 'serviceRecords' => $employee->serviceRecords,
             ],
             'items' => Item::with([
@@ -723,8 +727,8 @@ class EmployeeController extends Controller
         ]);
 
         $employee->seminarsAndTrainings()->create([
-            'seminar_name' => $request->seminar_name,
-            'organizer' => $request->filled('organizer') ? $request->organizer : null,
+            'seminar_name' => $request->seminar_training_name,
+            'organizer' => $request->filled('venue') ? $request->venue : null,
             'date_attended' => $request->filled('date_attended') ? $request->date_attended : null,
         ]);
 
@@ -742,8 +746,8 @@ class EmployeeController extends Controller
         $record = $employee->seminarsAndTrainings()->findOrFail($seminar);
 
         $record->update([
-            'seminar_name' => $request->seminar_name,
-            'organizer' => $request->filled('organizer') ? $request->organizer : null,
+            'seminar_name' => $request->seminar_training_name,
+            'organizer' => $request->filled('venue') ? $request->venue : null,
             'date_attended' => $request->filled('date_attended') ? $request->date_attended : null,
         ]);
 

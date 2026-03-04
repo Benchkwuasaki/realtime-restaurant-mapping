@@ -131,7 +131,7 @@ interface UploadedFile {
 interface SeminarTraining {
     id: number
     seminar_name: string
-    organizer?: string
+    venue?: string
     date_attended?: string
 }
 interface ServiceRecord {
@@ -1285,15 +1285,15 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     }, {})
 
     const [seminarDialog, setSeminarDialog] = useState<{
-        open: boolean; id?: number; seminar_name: string; organizer: string; date_attended: string
-    }>({ open: false, seminar_name: "", organizer: "", date_attended: "" })
+        open: boolean; id?: number; seminar_name: string; venue: string; date_attended: string
+    }>({ open: false, seminar_name: "", venue: "", date_attended: "" })
     const [deleteSeminarId, setDeleteSeminarId] = useState<number | null>(null)
 
     const openSeminarDialog = (s?: SeminarTraining) =>
-        setSeminarDialog({ open: true, id: s?.id, seminar_name: s?.seminar_name ?? "", organizer: s?.organizer ?? "", date_attended: toInputDate(s?.date_attended) })
+        setSeminarDialog({ open: true, id: s?.id, seminar_name: s?.seminar_name ?? "", venue: s?.venue ?? "", date_attended: toInputDate(s?.date_attended) })
 
     const saveSeminar = () => {
-        const data = { seminar_name: seminarDialog.seminar_name, organizer: seminarDialog.organizer, date_attended: seminarDialog.date_attended || null }
+        const data = { seminar_name: seminarDialog.seminar_name, venue: seminarDialog.venue, date_attended: seminarDialog.date_attended || null }
         if (seminarDialog.id) {
             router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, { preserveScroll: true, onSuccess: () => setSeminarDialog(p => ({ ...p, open: false })) })
         } else {
@@ -1442,7 +1442,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                     <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
                                         <Checkbox className="w-4 h-4" />
                                         <span className="text-sm text-foreground font-medium">{s.seminar_name}</span>
-                                        <span className="text-sm text-muted-foreground">{s.organizer ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground">{s.venue ?? "—"}</span>
                                         <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
                                         <div className="flex items-center justify-end gap-1">
                                             <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -1561,7 +1561,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.organizer} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label><Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
                     </div>
                     <DialogFooter>
@@ -1761,38 +1761,42 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                             return (
                                 <div
                                     key={file.id}
-                                    className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-muted/20 transition-colors group cursor-pointer"
+                                    className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/20 transition-colors group cursor-pointer"
                                     onClick={() => canView ? setViewFile(file) : window.open(file.file_url, "_blank")}
                                 >
                                     {/* File type badge */}
-                                    <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                                         <span className={`text-[9px] font-black ${color} tracking-tight`}>{icon}</span>
                                     </div>
 
-                                    {/* File info */}
+                                    {/* File info — takes all remaining space */}
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-foreground truncate leading-snug">{file.file_name}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                            {formatBytes(file.file_size)} · {fmtShort(file.created_at)}
+                                        <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
+                                            <span>{formatBytes(file.file_size)}</span>
+                                            <span className="hidden sm:inline">·</span>
+                                            <span className="hidden sm:inline">{fmtShort(file.created_at)}</span>
                                         </p>
+                                        {/* Date shown below name on mobile */}
+                                        <p className="text-xs text-muted-foreground sm:hidden mt-0.5">{fmtShort(file.created_at)}</p>
                                     </div>
 
                                     {/* Actions */}
                                     <div
-                                        className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                                         onClick={e => e.stopPropagation()}
                                     >
-                                        {/* Only show download button for viewable files — non-viewable files download on row click */}
                                         {canView && (
                                             <a href={file.file_url} download={file.file_name} target="_blank" rel="noreferrer">
-                                                <Button variant="ghost" size="icon-xs" title="Download" className="text-muted-foreground hover:text-primary">
+                                                <Button variant="ghost" size="icon-xs" title="Download"
+                                                    className="text-muted-foreground hover:text-primary w-8 h-8 sm:w-7 sm:h-7">
                                                     <Download className="w-3.5 h-3.5" />
                                                 </Button>
                                             </a>
                                         )}
                                         <Button
                                             variant="ghost" size="icon-xs"
-                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-8 h-8 sm:w-7 sm:h-7"
                                             onClick={() => setDeleteFileId(file.id)}
                                             title="Delete"
                                         >
