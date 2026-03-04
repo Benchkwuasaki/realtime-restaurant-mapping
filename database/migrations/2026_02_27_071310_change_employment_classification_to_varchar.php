@@ -8,11 +8,18 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration {
     public function up(): void
     {
-        DB::statement('ALTER TABLE employees MODIFY employment_classification VARCHAR(255) NOT NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE employees MODIFY employment_classification VARCHAR(255) NOT NULL');
+        } elseif (DB::getDriverName() === 'sqlite') {
+            // SQLite doesn't support MODIFY, so we skip this for SQLite
+            // The column is already created correctly in the initial migration
+        }
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE employees MODIFY employment_classification ENUM('Regular', 'Job Order', 'Casual') NOT NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE employees MODIFY employment_classification ENUM('Regular', 'Job Order', 'Casual') NOT NULL");
+        }
     }
 };

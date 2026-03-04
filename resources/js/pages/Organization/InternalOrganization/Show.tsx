@@ -110,6 +110,41 @@ function InfoRow({
     )
 }
 
+// ─── Mobile Member Card ────────────────────────────────────────────────────────
+
+interface MobileMemberCardProps {
+    row: OrganizationMember
+}
+
+function MobileMemberCard({ row }: MobileMemberCardProps) {
+    return (
+        <div className="flex flex-col bg-background overflow-hidden">
+            {/* ── Card Body ── */}
+            <div className="px-4 pt-4 pb-5 space-y-2">
+                <span className="font-semibold text-base text-foreground">
+                    {row.name}
+                </span>
+
+                <div className="flex flex-col gap-0.5">
+                    {row.position && (
+                        <span className="text-xs text-muted-foreground">
+                            {row.position}
+                            {row.department && <> · {row.department}</>}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* ── Card Footer ── */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
+                <Badge variant={row.status ? "default" : "secondary"} className="text-xs">
+                    {row.status ? "Active" : "Inactive"}
+                </Badge>
+            </div>
+        </div>
+    )
+}
+
 // ─── Member Columns ────────────────────────────────────────────────────────────
 
 const memberColumns: ColumnDef<OrganizationMember>[] = [
@@ -144,6 +179,7 @@ const memberColumns: ColumnDef<OrganizationMember>[] = [
         cell: ({ row }) => (
             <div className="min-w-[140px] font-medium">{row.getValue("name")}</div>
         ),
+        mobileCard: (row) => <MobileMemberCard row={row} />,
     },
     {
         accessorKey: "position",
@@ -258,8 +294,6 @@ function AddMemberDialog({
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="flex h-[85vh] flex-col gap-0 p-0 sm:max-w-lg">
-
-                {/* ── Fixed header area ─────────────────────────────────────────────── */}
                 <div className="shrink-0 space-y-4 p-6 pb-4">
                     <DialogHeader>
                         <DialogTitle>Add Members</DialogTitle>
@@ -269,7 +303,6 @@ function AddMemberDialog({
                         </DialogDescription>
                     </DialogHeader>
 
-                    {/* Search */}
                     <div className="relative">
                         <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                         <Input
@@ -280,7 +313,6 @@ function AddMemberDialog({
                         />
                     </div>
 
-                    {/* Select-all row */}
                     <div className="flex items-center gap-3 rounded-md w-fit px-3 py-2">
                         <Checkbox
                             checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
@@ -300,7 +332,6 @@ function AddMemberDialog({
                     </div>
                 </div>
 
-                {/* ── Scrollable employee list ──────────────────────────────────────── */}
                 <ScrollArea className="min-h-0 flex-1 border-y">
                     {filtered.length === 0 ? (
                         <div className="text-muted-foreground flex h-24 items-center justify-center text-sm">
@@ -315,8 +346,7 @@ function AddMemberDialog({
                                 return (
                                     <div
                                         key={employee.id}
-                                        className={`flex cursor-pointer items-center gap-3 px-6 py-3 transition-colors ${isSelected ? "bg-primary/5" : "hover:bg-muted/50"
-                                            }`}
+                                        className={`flex cursor-pointer items-center gap-3 px-6 py-3 transition-colors ${isSelected ? "bg-primary/5" : "hover:bg-muted/50"}`}
                                         onClick={() => toggleEmployee(employee.id)}
                                     >
                                         <Checkbox
@@ -345,7 +375,6 @@ function AddMemberDialog({
                     )}
                 </ScrollArea>
 
-                {/* ── Fixed footer ──────────────────────────────────────────────────── */}
                 <div className="shrink-0 p-6 pt-4">
                     <DialogFooter showCloseButton>
                         <Button
@@ -360,7 +389,6 @@ function AddMemberDialog({
                         </Button>
                     </DialogFooter>
                 </div>
-
             </DialogContent>
         </Dialog>
     )
@@ -439,7 +467,6 @@ export default function Show({ organization, availableEmployees }: Props) {
                 {/* ── Left Sidebar ───────────────────────────────────────────────────── */}
                 <aside className="w-72 shrink-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col p-5">
 
-                    {/* Avatar + Name */}
                     <div className="mb-4 flex flex-col items-center gap-3 text-center">
                         <div className="bg-primary/10 border-primary/20 flex h-20 w-20 items-center justify-center rounded-2xl border-2">
                             <Building2 className="text-primary h-10 w-10" />
@@ -452,7 +479,6 @@ export default function Show({ organization, availableEmployees }: Props) {
                             <p className="text-muted-foreground font-mono text-sm">{organization.code}</p>
                         </div>
 
-                        {/* Status pill */}
                         <div className="flex items-center gap-1.5">
                             {organization.status ? (
                                 <>
@@ -471,7 +497,6 @@ export default function Show({ organization, availableEmployees }: Props) {
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="mb-4 flex gap-2">
                         <Button
                             variant="outline"
@@ -496,15 +521,12 @@ export default function Show({ organization, availableEmployees }: Props) {
 
                     <Separator className="mb-2" />
 
-                    {/* Info Rows */}
                     <div className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-widest">
                         Organization Info
                     </div>
 
                     <InfoRow label="Type" icon={<Tag className="h-3 w-3" />}>
-                        <span
-                            className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${typeClass}`}
-                        >
+                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${typeClass}`}>
                             {organization.type}
                         </span>
                     </InfoRow>
@@ -563,7 +585,6 @@ export default function Show({ organization, availableEmployees }: Props) {
                 {/* ── Right Content ──────────────────────────────────────────────────── */}
                 <main className="flex-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col min-w-0 p-5">
 
-                    {/* Members header */}
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-foreground text-lg font-semibold">Members</h2>
@@ -587,7 +608,6 @@ export default function Show({ organization, availableEmployees }: Props) {
                         </div>
                     </div>
 
-                    {/* Members Table */}
                     <DataTable
                         data={members}
                         columns={memberColumns}
@@ -595,12 +615,10 @@ export default function Show({ organization, availableEmployees }: Props) {
                         defaultPageSize={10}
                         searchColumnId="name"
                         searchPlaceholder="Search members..."
-                        
                     />
                 </main>
             </div>
 
-            {/* ── Dialogs ─────────────────────────────────────────────────────────── */}
             <AddMemberDialog
                 open={addMemberDialogOpen}
                 onOpenChange={setAddMemberDialogOpen}
