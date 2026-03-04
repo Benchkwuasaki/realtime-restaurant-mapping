@@ -11,6 +11,7 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\AttendanceLogs;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LeaveCalendarController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
@@ -37,6 +38,16 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard Routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Attendance Routes
+    Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
+        Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
+        Route::post('/', [WhereaboutSlipController::class, 'store'])->name('store');
+        Route::put('/{whereaboutSlip}', [WhereaboutSlipController::class, 'update'])->name('update');
+        Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
+        Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
+        Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    });
 
     // User Routes
     Route::prefix('users')->name('user.')->group(function () {
@@ -268,12 +279,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [AnnouncementController::class, 'index'])->name('index');
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Activity Logs
-    |--------------------------------------------------------------------------
-    */
+        // Organizational Chart
+    Route::get('/organization/organizational_chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
+    Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
+
+
+
+
+    // Activity Logs Routes
+
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
+
 });
 
 require __DIR__ . '/settings.php';

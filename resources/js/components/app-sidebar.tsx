@@ -1,35 +1,24 @@
 "use client"
 
-import * as React from "react"
+import { Link } from "@inertiajs/react"
 import {
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  LifeBuoy,
-  Map,
-  PieChart,
-  Send,
-  SquareTerminal,
   User,
-  Globe,
   LayoutDashboard,
   File,
   Building2,
-  FileCheck,
   FileCheck2,
   Calendar,
   Wallet,
   Logs,
-  Pencil,
   UserCog,
   Bell,
   FileBarChart,
 } from "lucide-react"
+import * as React from "react"
 
+import { route } from "ziggy-js"
+import Logo from "@/assets/images/logo.svg"
 import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -40,15 +29,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { url } from "inspector"
-import { title } from "process"
-import { route } from "ziggy-js"
-import { Link } from "@inertiajs/react"
-import Logo from "@/assets/images/logo.svg"
 import { useAuth } from "@/hooks/use-auth"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, hasRole } = useAuth()
+  const { hasRole } = useAuth()
 
   const data = {
     navMain: [
@@ -136,27 +120,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         items: [
           {
             title: "Leave Calendar",
-            url: "/leave/leave_calendar",
+            url: "/leave/leave-calendar",
           },
           {
             title: "Leave Filing",
-            url: "/leave/leave_filing",
+            url: "/leave/leave-filing",
           },
           {
             title: "Leave Approval Workflow",
-            url: "/leave/leaving_approval_workflow",
+            url: "/leave/leave-approval-workflow",
           },
           {
             title: "Leave Adjustment Memo",
-            url: "/leave/leave_adjustment_memo",
+            url: "/leave/leave-adjustment-memo",
           },
           {
             title: "Monthly Earned Leave Posting",
-            url: "/leave/monthly_earned_leave_posting",
+            url: "/leave/monthly-earned-leave-posting",
           },
           {
             title: "Leave History",
-            url: "/leave/leave_history",
+            url: "/leave/leave-history",
           },
           {
             title: "Leave Settings",

@@ -15,7 +15,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             UserSeeder::class,
-            LeaveTypeSeeder::class,
+            InternalOrganizationSeeder::class,
+            // seed leave-related tables added by latest migrations
         ]);
 
         // ── 1. Salary Grade Steps ──────────────────────────────────
