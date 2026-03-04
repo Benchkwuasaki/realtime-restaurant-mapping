@@ -100,9 +100,8 @@ export function DataTableToolbar<TData>({
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        {/* Left — search + filters */}
-        <div className="flex flex-1 items-center gap-2 flex-wrap">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-1 flex-wrap items-center gap-2">
           <Input
             placeholder={searchPlaceholder}
             value={searchValue}
@@ -110,11 +109,11 @@ export function DataTableToolbar<TData>({
               setSearchValue(e.target.value)
               const col = table.getColumn(searchColumnId)
               if (!col && process.env.NODE_ENV === "development") {
-                console.warn(`[DataTableToolbar] searchColumnId "${searchColumnId}" not found. Check your column accessorKey or id.`)
+                console.warn(`[DataTableToolbar] searchColumnId "${searchColumnId}" not found.`)
               }
               col?.setFilterValue(e.target.value)
             }}
-            className="h-8 w-[180px] lg:w-[250px]"
+            className="h-8 sm:w-50 lg:w-62.5"
           />
 
           {filters.map(({ columnId, title, options }) =>
@@ -138,13 +137,13 @@ export function DataTableToolbar<TData>({
               }}
             >
               Reset
-              <X />
+              <X className="ml-1 size-3.5" />
             </Button>
           )}
         </div>
 
-        {/* Right — bulk delete, view options, add button */}
-        <div className="flex items-center gap-2">
+        {/* Right — actions: always row, wraps to next line on mobile */}
+        <div className="flex shrink-0 items-center gap-2">
           {hasSelection && bulkDelete && (
             <Button
               variant="destructive"
@@ -152,8 +151,10 @@ export function DataTableToolbar<TData>({
               onClick={() => setDeleteDialogOpen(true)}
               className="gap-1.5"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete ({selectedCount})
+              <Trash2 className="size-3.5 shrink-0" />
+              {/* Hide label on xs to save space, show count always */}
+              <span className="hidden sm:inline">Delete</span>
+              <span>({selectedCount})</span>
             </Button>
           )}
           <DataTableViewOptions table={table} />
@@ -163,21 +164,19 @@ export function DataTableToolbar<TData>({
               className="gap-1.5 text-xs"
               onClick={addButton.onClick}
             >
-              <Plus className="w-3.5 h-3.5" />
-              {addButton.label}
+              <Plus className="size-3.5 shrink-0" />
+              <span className="hidden sm:inline">{addButton.label}</span>
             </Button>
           )}
         </div>
       </div>
 
-      {/* Bulk delete confirmation dialog */}
+      {/* Bulk delete confirmation dialog — unchanged */}
       {bulkDelete && (
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                Delete {entityPlural}?
-              </AlertDialogTitle>
+              <AlertDialogTitle>Delete {entityPlural}?</AlertDialogTitle>
               <AlertDialogDescription>
                 This will permanently delete {entityPlural} and all associated
                 data. This action cannot be undone.
