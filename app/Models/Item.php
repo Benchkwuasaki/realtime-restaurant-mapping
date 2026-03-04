@@ -5,12 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 // ─── Item ─────────────────────────────────────────────────────────────────────
 
 class Item extends Model
 {
-    protected $table      = 'items';
+    protected $table = 'items';
     protected $primaryKey = 'item_id';
 
     protected $fillable = [
@@ -32,5 +33,10 @@ class Item extends Model
     public function employees(): HasMany
     {
         return $this->hasMany(Employee::class, 'item_id', 'item_id');
+    }
+
+    public function employee(): HasOne
+    {
+        return $this->hasOne(Employee::class, 'item_id', 'item_id');
     }
 }
