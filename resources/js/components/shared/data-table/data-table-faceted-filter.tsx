@@ -63,19 +63,16 @@ export function DataTableFacetedFilter<TData, TValue>({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 border-dashed">
+        <Button variant="outline" size="sm" className="h-8 border-dashed max-w-40 sm:max-w-none">
           <PlusCircle />
           {title}
           {selectedKeys.size > 0 && (
             <>
               <Separator orientation="vertical" className="mx-2 h-4" />
-              <Badge
-                variant="secondary"
-                className="rounded-sm px-1 font-normal lg:hidden"
-              >
+              <Badge className="rounded-sm px-1 font-normal sm:hidden">
                 {selectedKeys.size}
               </Badge>
-              <div className="hidden gap-1 lg:flex">
+              <div className="hidden gap-1 sm:flex">
                 {selectedKeys.size > 2 ? (
                   <Badge
                     variant="secondary"
@@ -101,7 +98,10 @@ export function DataTableFacetedFilter<TData, TValue>({
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[220px]">
+      <DropdownMenuContent
+        align="start"
+        className="w-[min(220px,calc(100vw-2rem))]"
+      >
         {options.map((option) => {
           const key = String(option.value)
           const isSelected = selectedKeys.has(key)
@@ -113,11 +113,11 @@ export function DataTableFacetedFilter<TData, TValue>({
                 e.preventDefault()
                 handleSelect(option)
               }}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 py-2 sm:py-1.5"
             >
               <div
                 className={cn(
-                  "flex size-4 shrink-0 items-center justify-center rounded-[4px] border",
+                  "flex size-4 shrink-0 items-center justify-center rounded-xl border",
                   isSelected
                     ? "bg-primary border-primary text-primary-foreground"
                     : "border-input"

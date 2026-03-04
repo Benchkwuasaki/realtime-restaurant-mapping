@@ -1,32 +1,68 @@
 "use client"
 
 import { router } from "@inertiajs/react"
-import { type ColumnDef } from "@tanstack/react-table"
 import React from "react"
 import { route } from "ziggy-js"
+
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import {
   DataTableRowActions,
   deleteAction,
 } from "@/components/shared/data-table/data-table-row-action"
+import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 
 import { type Employee } from "../data/schema"
 
-// function StatusToggle({ id, currentStatus }: { id: string; currentStatus: boolean }) {
+// ─── Reusable mobile field row ─────────────────────────────────────────────────
 
-//   return (
-//     <Switch
-//       checked={isActive}
-//       onCheckedChange={handleChange}
-//       disabled={isPending}
-//     />
-//   )
-// }
+function CardField({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 text-sm">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="text-right">{value}</span>
+    </div>
+  )
+}
 
-export const columns: ColumnDef<Employee>[] = [
+// ─── Toggle — extracted so it can be reused in table cell and card ─────────────
+
+function EmployeeToggle({ employee }: { employee: Employee }) {
+  const [isActive, setIsActive] = React.useState(employee.status)
+  const [isPending, setIsPending] = React.useState(false)
+
+  const handleChange = (checked: boolean) => {
+    setIsActive(checked)
+    setIsPending(true)
+    router.patch(
+      route("employee.toggleStatus", employee.id),
+      {},
+      {
+        preserveScroll: true,
+        onFinish: () => setIsPending(false),
+        onError: () => {
+          setIsActive(!checked)
+          setIsPending(false)
+        },
+      }
+    )
+  }
+
+  return (
+    <Switch
+      onClick={(e) => e.stopPropagation()}
+      checked={isActive}
+      onCheckedChange={handleChange}
+      disabled={isPending}
+    />
+  )
+}
+
+// ─── Columns ───────────────────────────────────────────────────────────────────
+
+export const columns: DataTableColumnDef<Employee>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -62,6 +98,9 @@ export const columns: ColumnDef<Employee>[] = [
     ),
     enableSorting: true,
     enableHiding: true,
+    mobileCard: (row) => (
+      <span className="font-semibold text-base">{row.name}</span>
+    ),
   },
   {
     accessorKey: "position",
@@ -147,45 +186,31 @@ export const columns: ColumnDef<Employee>[] = [
     enableSorting: true,
     enableHiding: true,
     filterFn: (row, id, value: boolean[]) => value.includes(row.getValue(id)),
+    mobileCard: (row) => (
+      <CardField
+        label="Status"
+        value={
+          <Badge variant={row.status ? "default" : "secondary"}>
+            {row.status ? "Active" : "Inactive"}
+          </Badge>
+        }
+      />
+    ),
   },
   {
     accessorKey: "toggle",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Toggle" />
     ),
-    cell: ({ row }) => {
-      const [isActive, setIsActive] = React.useState(row.original.status)
-      const [isPending, setIsPending] = React.useState(false)
-
-      const handleChange = (checked: boolean) => {
-        setIsActive(checked)
-        setIsPending(true)
-
-        router.patch(
-          route('employee.toggleStatus', row.original.id),
-          {},
-          {
-            preserveScroll: true,
-            onFinish: () => setIsPending(false),
-            onError: () => {
-              setIsActive(!checked)
-              setIsPending(false)
-            },
-          }
-        )
-      }
-
-      return (
-        <Switch
-          onClick={(e) => e.stopPropagation()}
-          checked={isActive}
-          onCheckedChange={handleChange}
-          disabled={isPending}
-        />
-      )
-    },
+    cell: ({ row }) => <EmployeeToggle employee={row.original} />,
     enableSorting: false,
     enableHiding: false,
+    mobileCard: (row) => (
+      <CardField
+        label=""
+        value={<EmployeeToggle employee={row} />}
+      />
+    ),
   },
   {
     id: "actions",
@@ -195,11 +220,14 @@ export const columns: ColumnDef<Employee>[] = [
         row={row}
         actions={[
           deleteAction(
-            (employee) => router.delete(route("employee.destroy", employee.id), { preserveScroll: true }),
+            (employee) =>
+              router.delete(route("employee.destroy", employee.id), {
+                preserveScroll: true,
+              }),
             { getName: (e) => e.name }
           ),
         ]}
       />
     ),
-  }, 
+  },
 ]
