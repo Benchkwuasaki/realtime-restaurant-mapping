@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Users, Building2, Layers, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Users, Building2, Layers, ChevronDown, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmployeeDetailModal, type EmployeeWithContext } from './employee_detail_card';
 import type { Department, Division, Position, Unit } from '../data/schema';
@@ -275,7 +275,7 @@ const DivisionNode: React.FC<{
                     >
                         {expanded
                             ? <ChevronDown className="h-3.5 w-3.5 text-secondary-foreground" />
-                            : <ChevronUp className="h-3.5 w-3.5 text-secondary-foreground" />
+                            : <ChevronRight className="h-3.5 w-3.5 text-secondary-foreground" />
                         }
                     </button>
                 )}
@@ -356,6 +356,7 @@ const DivisionNode: React.FC<{
 // ─── OrgChart public handle ───────────────────────────────────────────────────
 export interface OrgChartHandle {
     panToEmployee: (employeeId: number) => void;
+    fitToCanvas: () => void;
 }
 
 // ─── Main OrgChart ────────────────────────────────────────────────────────────
@@ -386,17 +387,49 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
     // Keep scaleRef in sync
     useEffect(() => { scaleRef.current = scale; }, [scale]);
 
-    // Responsive initial scale
-    useEffect(() => {
-        const updateScale = () => {
-            const s = window.innerWidth < 640 ? 0.45 : window.innerWidth < 1024 ? 0.65 : 0.85;
-            scaleRef.current = s;
-            setScale(s);
-        };
-        updateScale();
-        window.addEventListener('resize', updateScale);
-        return () => window.removeEventListener('resize', updateScale);
+    // ── Fit-to-canvas ────────────────────────────────────────────────────────
+    // Measures the actual rendered content and computes the scale that fits it
+    // inside the canvas with a small padding margin. Fully dynamic — re-runs
+    // whenever `department` changes (new divisions / units added / removed).
+    const minScaleRef = useRef(0.2);
+
+    const fitToCanvas = useCallback(() => {
+        if (!canvasRef.current || !contentRef.current) return;
+
+        const canvasW = canvasRef.current.offsetWidth;
+        const canvasH = canvasRef.current.offsetHeight;
+        const contentW = contentRef.current.scrollWidth;
+        const contentH = contentRef.current.scrollHeight;
+
+        if (contentW === 0 || contentH === 0) return;
+
+        const PADDING = 48; // px breathing room on each side
+        const fitScale = Math.min(
+            (canvasW - PADDING * 2) / contentW,
+            (canvasH - PADDING * 2) / contentH,
+            1.0,   // never auto-zoom in past 100%
+        );
+        const clamped = Math.max(0.1, fitScale);
+
+        minScaleRef.current = clamped;
+        scaleRef.current    = clamped;
+        setScale(clamped);
+        setTrans({ x: 0, y: 0 }); // content is centred by the transform already
     }, []);
+
+    // Fit on first render and whenever department structure changes
+    useEffect(() => {
+        // Use rAF to wait for the DOM to finish layout after React render
+        const id = requestAnimationFrame(() => fitToCanvas());
+        return () => cancelAnimationFrame(id);
+    }, [department, fitToCanvas]);
+
+    // Re-fit on window resize
+    useEffect(() => {
+        const onResize = () => requestAnimationFrame(() => fitToCanvas());
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, [fitToCanvas]);
 
     // ── Expose panToEmployee ────────────────────────────────────────────────
     // Uses current getBoundingClientRect to find where the node is on screen RIGHT NOW,
@@ -443,15 +476,17 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
                 y: prev.y + dy * targetScale,
             }));
         },
-    }), []);
+        fitToCanvas() { fitToCanvas(); },
+    }), [fitToCanvas]);
 
     const lineColor = 'var(--border)';
-    const MIN = 0.2, MAX = 2.5, STEP = 0.1;
+    const MAX  = 2.5;
+    const STEP = 0.1;
 
     // ── Mouse handlers ──────────────────────────────────────────────────────
     const handleWheel = useCallback((e: React.WheelEvent) => {
         e.preventDefault();
-        setScale(s => Math.min(MAX, Math.max(MIN, s + (e.deltaY < 0 ? STEP : -STEP))));
+        setScale(s => Math.min(MAX, Math.max(minScaleRef.current, s + (e.deltaY < 0 ? STEP : -STEP))));
     }, []);
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (e.button !== 0) return;
@@ -495,7 +530,7 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
             const dist = Math.hypot(dx, dy);
             const delta = (dist - lastPinchDist.current) * 0.005;
             lastPinchDist.current = dist;
-            setScale(s => Math.min(MAX, Math.max(MIN, s + delta)));
+            setScale(s => Math.min(MAX, Math.max(minScaleRef.current, s + delta)));
         }
     }, []);
     const handleTouchEnd = useCallback(() => {
@@ -530,8 +565,8 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
             <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
                 {[
                     { icon: <ZoomIn className="h-3.5 w-3.5" />,    action: () => setScale(s => Math.min(MAX, s + STEP)), title: 'Zoom In' },
-                    { icon: <ZoomOut className="h-3.5 w-3.5" />,   action: () => setScale(s => Math.max(MIN, s - STEP)), title: 'Zoom Out' },
-                    { icon: <RotateCcw className="h-3.5 w-3.5" />, action: () => { setScale(window.innerWidth < 640 ? 0.45 : window.innerWidth < 1024 ? 0.65 : 0.85); setTrans({ x: 0, y: 0 }); }, title: 'Reset' },
+                    { icon: <ZoomOut className="h-3.5 w-3.5" />,   action: () => setScale(s => Math.max(minScaleRef.current, s - STEP)), title: 'Zoom Out' },
+                    { icon: <RotateCcw className="h-3.5 w-3.5" />, action: () => fitToCanvas(), title: 'Reset' },
                 ].map(({ icon, action, title }) => (
                     <button key={title} onClick={action} title={title}
                         className="w-8 h-8 bg-card border border-border rounded-lg shadow-sm
