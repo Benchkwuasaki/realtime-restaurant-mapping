@@ -16,9 +16,6 @@ class LeaveTypeController extends Controller
      */
     public function index()
     {
-        // $leave_types = LeaveType::with('requirements')->get()->all();
-
-        // return Inertia::render('Leave/LeaveSettings/LeaveSettingsTabNav', compact('leave_types'));
 
         $leave_types = LeaveType::with('requirements')->get()->all();
         $total_leave_types = LeaveType::count();
@@ -46,19 +43,7 @@ class LeaveTypeController extends Controller
      */
     public function store(Request $request)
     {
-        // $validated = $request->validate([
-        //     'leave_type_name' => 'required|string|max:255|unique:leave_types,leave_type_name',
-        //     'leave_type_description' => 'nullable|string',
-        //     'eligible_sex' => 'required|in:All,Male,Female',
-        //     // Booleans
-        //     'is_paid' => 'required|boolean',
-        //     'is_convertible' => 'required|boolean',
-        //     'status' => 'required|boolean',
-        // ]);
 
-        // LeaveType::create($validated);
-
-        // return back()->with('success', 'Leave type created successfully.');
 
         $validated = $request->validate([
             'leave_type_name' => 'required|string|max:255|unique:leave_types,leave_type_name',

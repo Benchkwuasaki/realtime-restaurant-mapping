@@ -1148,6 +1148,8 @@ class DatabaseSeeder extends Seeder
             FaceEmbeddingSeeder::class,
             RecognitionLogSeeder::class,
             AttendanceRecordSeeder::class,
+            LeaveTypeSeeder::class,
+            // LeaveEntitlementSeeder::class,
         ]);
     }
 }
