@@ -253,12 +253,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('leave')->name('leave.')->group(function () {
+        Route::get('/leave-calendar', [LeaveCalendarController::class, 'index'])->name('leave-calendar');
         Route::get('/leave-settings', [LeaveTypeController::class, 'index'])->name('leave-settings');
         Route::post('/', [LeaveTypeController::class, 'store'])->name('store');
         Route::put('/{leave}', [LeaveTypeController::class, 'update'])->name('update');
         Route::delete('/{leave}', [LeaveTypeController::class, 'destroy'])->name('destroy');
         Route::delete('/', [LeaveTypeController::class, 'bulkDestroy'])->name('bulk-destroy');
     });
+
 
     // Payroll routes
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');

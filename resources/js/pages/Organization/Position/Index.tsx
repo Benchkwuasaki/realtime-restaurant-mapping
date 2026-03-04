@@ -1,10 +1,11 @@
 // resources/js/pages/Organization/Position/Index.tsx
 
 import { Head, useForm, usePage } from "@inertiajs/react"
-import { Briefcase, Users } from "lucide-react"
+import { Briefcase, Users, Building2, LayoutGrid } from "lucide-react"
 import { useState } from "react"
 import { route } from "ziggy-js"
 import { DataTable } from "@/components/shared/data-table/data-table"
+import { StatCard } from "@/components/shared/stat-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -40,6 +41,10 @@ interface Props {
     departments: Department[]
     divisions: Division[]
     units: Unit[]
+    totalPositions: number
+    totalDepartments: number
+    totalSlots: number
+    occupiedSlots: number
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -143,7 +148,6 @@ function PositionModal({
         unit_id: editingPosition?.unit_id ? String(editingPosition.unit_id) : "",
         item_slots: editingPosition?.total_slots ? String(editingPosition.total_slots) : "1",
     })
-    
 
     const filteredDivisions = divisions.filter(
         (d) => !data.department_id || d.department_id === Number(data.department_id)
@@ -154,8 +158,6 @@ function PositionModal({
 
     const noDivisions = !!data.department_id && filteredDivisions.length === 0
     const noUnits = !!data.division_id && filteredUnits.length === 0
-
-    
 
     function handleClose() {
         reset()
@@ -204,7 +206,7 @@ function PositionModal({
                         {/* Department */}
                         <div>
                             <label htmlFor="department_id" className="mb-1.5 block text-xs font-medium text-foreground">
-                                Department <span className="text-destructive"></span>
+                                Department
                             </label>
                             <Select
                                 value={data.department_id}
@@ -236,7 +238,7 @@ function PositionModal({
                             <Select
                                 value={data.division_id}
                                 onValueChange={(v) => {
-                                    setData("division_id", v == "none" ? "" : v)
+                                    setData("division_id", v === "none" ? "" : v)
                                     setData("unit_id", "")
                                 }}
                                 disabled={!data.department_id || noDivisions}
@@ -260,7 +262,7 @@ function PositionModal({
                                 </SelectContent>
                             </Select>
                             {noDivisions && (
-                                <p className="mt-1.5 text-xs text-muted-foreground">  
+                                <p className="mt-1.5 text-xs text-muted-foreground">
                                     This department has no divisions yet.{" "}
                                     <a href="/organization/divisions" target="_blank"
                                         className="underline underline-offset-2 hover:text-foreground">
@@ -338,16 +340,11 @@ function PositionModal({
                         </div>
                     </div>
 
-                    <DialogFooter className="border-t border-border bg-muted/30 px-5 py-4">
+                    <DialogFooter className="border-t border-border xs:flex xs:flex-row xs:justify-between bg-muted/30 px-5 py-4">
                         <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            size="sm"
-                            disabled={processing}
-                            className="text-xs"
-                        >
+                        <Button type="submit" size="sm" disabled={processing} className="text-xs">
                             {processing ? "Saving…" : isEdit ? "Update Position" : "Create Position"}
                         </Button>
                     </DialogFooter>
@@ -359,7 +356,7 @@ function PositionModal({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function PositionIndex({ positions, departments, divisions, units }: Props) {
+export default function PositionIndex({ positions, departments, divisions, units, totalPositions, totalDepartments, totalSlots, occupiedSlots }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
 
     const [modalOpen, setModalOpen] = useState(false)
@@ -398,16 +395,34 @@ export default function PositionIndex({ positions, departments, divisions, units
             <Head title="Positions" />
 
             <div className="flex h-full flex-1 flex-col gap-6 px-6 py-4">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground">
-                            <Briefcase className="w-5 h-5 text-primary" />
-                            Positions
-                        </h1>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            {positions.length} position{positions.length !== 1 ? "s" : ""} across{" "}
-                            {departments.length} department{departments.length !== 1 ? "s" : ""}
-                        </p>
+
+                {/* ── Stat Cards ── */}
+                <div className="w-full max-w-300">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <StatCard
+                            title="Total Positions"
+                            value={totalPositions}
+                            description="All registered positions"
+                            icon={<Briefcase className="size-4" />}
+                        />
+                        <StatCard
+                            title="Total Departments"
+                            value={totalDepartments}
+                            description="Departments with positions"
+                            icon={<Building2 className="size-4" />}
+                        />
+                        <StatCard
+                            title="Total Slots"
+                            value={totalSlots}
+                            description="Slots across all positions"
+                            icon={<LayoutGrid className="size-4" />}
+                        />
+                        <StatCard
+                            title="Occupied Slots"
+                            value={occupiedSlots}
+                            description="Slots currently filled"
+                            icon={<Users className="size-4" />}
+                        />
                     </div>
                 </div>
 

@@ -177,7 +177,7 @@ export const columns: DataTableColumnDef<Employee>[] = [
       const isActive: boolean = row.getValue("status")
       return (
         <div className="flex items-center gap-2 min-w-[100px]">
-          <Badge variant={isActive ? "default" : "secondary"}>
+          <Badge variant={isActive ? "default" : "destructive"}>
             {isActive ? "Active" : "Inactive"}
           </Badge>
         </div>
@@ -187,14 +187,15 @@ export const columns: DataTableColumnDef<Employee>[] = [
     enableHiding: true,
     filterFn: (row, id, value: boolean[]) => value.includes(row.getValue(id)),
     mobileCard: (row) => (
-      <CardField
-        label="Status"
-        value={
-          <Badge variant={row.status ? "default" : "secondary"}>
+      <div className="flex flex-col gap-1">
+        <span className="text-muted-foreground text-xs ml-2">Status</span>
+        <div className="flex items-center justify-between">
+          <Badge variant={row.status ? "default" : "destructive"}>
             {row.status ? "Active" : "Inactive"}
           </Badge>
-        }
-      />
+          <EmployeeToggle employee={row} />
+        </div>
+      </div>
     ),
   },
   {
@@ -205,12 +206,6 @@ export const columns: DataTableColumnDef<Employee>[] = [
     cell: ({ row }) => <EmployeeToggle employee={row.original} />,
     enableSorting: false,
     enableHiding: false,
-    mobileCard: (row) => (
-      <CardField
-        label=""
-        value={<EmployeeToggle employee={row} />}
-      />
-    ),
   },
   {
     id: "actions",
