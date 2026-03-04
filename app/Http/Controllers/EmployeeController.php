@@ -18,13 +18,12 @@ use Illuminate\Support\Facades\Hash;
 use App\Services\ActivityLogService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class EmployeeController extends Controller
 {
-    public function __construct(protected ActivityLogService $activityLogService)
-    {
-    }
+    public function __construct(protected ActivityLogService $activityLogService) {}
 
     // ─────────────────────────────────────────────────────────────────────────
     // Index
@@ -112,7 +111,7 @@ class EmployeeController extends Controller
             'item_id' => ['required', 'exists:items,item_id'],
             'salary_grade_step_id' => ['required', 'exists:salary_grade_steps,salary_grade_step_id'],
             'employment_classification' => ['required', 'string', 'exists:employment_classifications,name'],
-            'work_email' => ['required', 'email', 'max:255', 'unique:employees,work_email'],
+            'work_email' => ['required', 'email', 'max:255', Rule::unique('employees', 'work_email')->whereNull('deleted_at')],
             'password' => [
                 'required',
                 'string',
