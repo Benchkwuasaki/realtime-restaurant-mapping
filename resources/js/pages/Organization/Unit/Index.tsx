@@ -304,6 +304,16 @@ export default function UnitIndex({ units, divisions, totalUnits, totalDivisions
                     onRowClick={(row) => openPositions(row.original)}
                     searchColumnId="unit_name"
                     searchPlaceholder="Search units..."
+                    filters={[
+                        {
+                            columnId: "division_name",
+                            title: "Division",
+                            options: divisions.map((d) => ({
+                                value: d.division_name,
+                                label: d.division_name,
+                            })),
+                        },
+                    ]}
                     addButton={{
                         label: "Create Unit",
                         onClick: openCreate,

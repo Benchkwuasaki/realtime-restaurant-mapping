@@ -1,9 +1,27 @@
 "use client"
 
 import * as React from "react"
+import { router } from "@inertiajs/react"
+import { useForm } from "@inertiajs/react"
+import { type Row } from "@tanstack/react-table"
+import { Trash2, Plus, Pencil } from "lucide-react"
+import { route } from "ziggy-js"
+
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { getColumns } from "./components/columns"
 import type { LeaveType } from "./data/schema"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
@@ -12,8 +30,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
 import {
     Select,
     SelectContent,
@@ -21,9 +37,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { useForm } from "@inertiajs/react"
-import { route } from "ziggy-js"
-import { Trash2, Plus } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { useIsMobile } from "@/hooks/use-is-mobile"
 
 type Props = {
     leave_types: LeaveType[]
@@ -34,20 +49,157 @@ function FieldError({ message }: { message?: string }) {
     return <p className="text-xs text-destructive mt-1">{message}</p>
 }
 
+// ─── Mobile Detail Modal ───────────────────────────────────────────────────────
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div className="flex items-start justify-between gap-4 py-2 border-b border-secondary last:border-0">
+            <span className="text-xs text-muted-foreground shrink-0">{label}</span>
+            <span className="text-xs text-right">{value}</span>
+        </div>
+    )
+}
+
+interface MobileDetailModalProps {
+    leaveType: LeaveType | null
+    onClose: () => void
+    onEdit: (leaveType: LeaveType) => void
+    onDeleted: () => void
+}
+
+function MobileDetailModal({ leaveType, onClose, onEdit, onDeleted }: MobileDetailModalProps) {
+    const [confirmOpen, setConfirmOpen] = React.useState(false)
+
+    if (!leaveType) return null
+
+    function handleDelete() {
+        router.delete(route("leave.leave-type.destroy", leaveType!.leave_type_id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setConfirmOpen(false)
+                onDeleted()
+            },
+        })
+    }
+
+    return (
+        <>
+            <Dialog open={!!leaveType} onOpenChange={(o) => !o && onClose()}>
+                <DialogContent className="p-0 gap-0 max-w-sm max-h-[85vh] flex flex-col">
+                    <DialogHeader className="px-5 py-4 border-b border-secondary shrink-0">
+                        <DialogTitle className="text-sm font-semibold pr-6">
+                            {leaveType.leave_type_name}
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="px-5 py-4 overflow-y-auto flex-1 space-y-1">
+                        <DetailRow
+                            label="Description"
+                            value={
+                                <span className="text-muted-foreground">
+                                    {leaveType.leave_type_description || "—"}
+                                </span>
+                            }
+                        />
+                        <DetailRow
+                            label="Eligible Sex"
+                            value={leaveType.eligible_sex ?? "—"}
+                        />
+                        <DetailRow
+                            label="Compensation"
+                            value={
+                                <Badge variant={leaveType.is_paid ? "default" : "secondary"}>
+                                    {leaveType.is_paid ? "Paid" : "Not Paid"}
+                                </Badge>
+                            }
+                        />
+                        <DetailRow
+                            label="Cash Convertible"
+                            value={
+                                <Badge variant={leaveType.is_convertible ? "default" : "secondary"}>
+                                    {leaveType.is_convertible ? "Convertible" : "Not Convertible"}
+                                </Badge>
+                            }
+                        />
+                        <DetailRow
+                            label="Status"
+                            value={
+                                <Badge variant={leaveType.status ? "default" : "secondary"}>
+                                    {leaveType.status ? "Active" : "Inactive"}
+                                </Badge>
+                            }
+                        />
+                        <DetailRow
+                            label="Requirements"
+                            value={
+                                leaveType.requirements && leaveType.requirements.length > 0
+                                    ? leaveType.requirements.map((r) => r.requirement_name).join(", ")
+                                    : "None"
+                            }
+                        />
+                    </div>
+
+                    <DialogFooter className="px-5 py-4 bg-muted/30 shrink-0 flex-row justify-between gap-2">
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => setConfirmOpen(true)}
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
+                        </Button>
+
+                        <Button
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => {
+                                onClose()
+                                onEdit(leaveType)
+                            }}
+                        >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete confirmation — rendered outside the detail Dialog to avoid nesting issues */}
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete {leaveType.leave_type_name}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will also remove all associated requirements. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    )
+}
+
+// ─── Create / Edit Modal ───────────────────────────────────────────────────────
+
 interface LeaveTypeModalProps {
     open: boolean
     editingLeaveType: LeaveType | null
     onClose: () => void
 }
 
-function LeaveTypeModal({
-    open,
-    editingLeaveType,
-    onClose,
-}: LeaveTypeModalProps) {
+function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps) {
     const isEdit = editingLeaveType !== null
 
-    // Local state for dynamic requirements list
     const [requirementInputs, setRequirementInputs] = React.useState<
         { leave_type_requirement_id?: number; requirement_name: string }[]
     >(() =>
@@ -67,26 +219,19 @@ function LeaveTypeModal({
         requirements: editingLeaveType?.requirements ?? [],
     })
 
-    // Sync requirements into form data whenever the local list changes
     React.useEffect(() => {
         setData("requirements", requirementInputs as any)
     }, [requirementInputs])
 
     function addRequirement() {
-        setRequirementInputs((prev) => [
-            ...prev,
-            { requirement_name: "" },
-        ])
+        setRequirementInputs((prev) => [...prev, { requirement_name: "" }])
     }
 
     function removeRequirement(index: number) {
         setRequirementInputs((prev) => prev.filter((_, i) => i !== index))
     }
 
-    function updateRequirement(
-        index: number,
-        value: string
-    ) {
+    function updateRequirement(index: number, value: string) {
         setRequirementInputs((prev) =>
             prev.map((req, i) => (i === index ? { ...req, requirement_name: value } : req))
         )
@@ -100,13 +245,7 @@ function LeaveTypeModal({
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
-
-        // Build final payload including requirements
-        const payload = {
-            ...data,
-            requirements: requirementInputs,
-        }
-
+        const payload = { ...data, requirements: requirementInputs }
         if (isEdit) {
             put(route("leave.update", editingLeaveType!.leave_type_id), {
                 data: payload,
@@ -130,13 +269,11 @@ function LeaveTypeModal({
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                    {/* Scrollable body */}
                     <div className="px-5 py-5 space-y-4 overflow-y-auto flex-1">
                         <p className="text-xs text-muted-foreground">
                             All fields with <span className="text-red-600">*</span> are required.
                         </p>
 
-                        {/* Leave Type Name */}
                         <div>
                             <label className="text-xs font-medium">
                                 Leave Type Name <span className="text-red-600">*</span>
@@ -150,7 +287,6 @@ function LeaveTypeModal({
                             <FieldError message={errors.leave_type_name} />
                         </div>
 
-                        {/* Description */}
                         <div>
                             <label className="text-xs font-medium">Description</label>
                             <Textarea
@@ -163,17 +299,12 @@ function LeaveTypeModal({
                             <FieldError message={errors.leave_type_description} />
                         </div>
 
-
                         <section className="grid grid-cols-2 gap-5">
-                            {/* Eligible Sex */}
                             <div>
                                 <label className="text-xs font-medium">
                                     Eligible Sex <span className="text-red-600">*</span>
                                 </label>
-                                <Select
-                                    value={data.eligible_sex}
-                                    onValueChange={(v) => setData("eligible_sex", v)}
-                                >
+                                <Select value={data.eligible_sex} onValueChange={(v) => setData("eligible_sex", v)}>
                                     <SelectTrigger className="mt-1">
                                         <SelectValue placeholder="Select eligible sex" />
                                     </SelectTrigger>
@@ -186,15 +317,11 @@ function LeaveTypeModal({
                                 <FieldError message={errors.eligible_sex} />
                             </div>
 
-                            {/* Compensation Status */}
                             <div>
                                 <label className="text-xs font-medium">
                                     Compensation Status <span className="text-red-600">*</span>
                                 </label>
-                                <Select
-                                    value={data.is_paid}
-                                    onValueChange={(v) => setData("is_paid", v)}
-                                >
+                                <Select value={data.is_paid} onValueChange={(v) => setData("is_paid", v)}>
                                     <SelectTrigger className="mt-1">
                                         <SelectValue placeholder="Select compensation status" />
                                     </SelectTrigger>
@@ -204,20 +331,14 @@ function LeaveTypeModal({
                                     </SelectContent>
                                 </Select>
                             </div>
-
                         </section>
 
-
                         <section className="grid grid-cols-2 gap-5">
-                            {/* Cash Convertible */}
                             <div>
                                 <label className="text-xs font-medium">
                                     Cash Convertible Status <span className="text-red-600">*</span>
                                 </label>
-                                <Select
-                                    value={data.is_convertible}
-                                    onValueChange={(v) => setData("is_convertible", v)}
-                                >
+                                <Select value={data.is_convertible} onValueChange={(v) => setData("is_convertible", v)}>
                                     <SelectTrigger className="mt-1">
                                         <SelectValue placeholder="Select cash conversion status" />
                                     </SelectTrigger>
@@ -228,15 +349,11 @@ function LeaveTypeModal({
                                 </Select>
                             </div>
 
-                            {/* Status */}
                             <div>
                                 <label className="text-xs font-medium">
                                     Status <span className="text-red-600">*</span>
                                 </label>
-                                <Select
-                                    value={data.status}
-                                    onValueChange={(v) => setData("status", v)}
-                                >
+                                <Select value={data.status} onValueChange={(v) => setData("status", v)}>
                                     <SelectTrigger className="mt-1">
                                         <SelectValue placeholder="Select" />
                                     </SelectTrigger>
@@ -246,10 +363,8 @@ function LeaveTypeModal({
                                     </SelectContent>
                                 </Select>
                             </div>
-
                         </section>
 
-                        {/* ── Requirements ── */}
                         <div>
                             <div className="flex items-center justify-between mb-2">
                                 <label className="text-xs font-medium">Requirements</label>
@@ -266,28 +381,19 @@ function LeaveTypeModal({
                             </div>
 
                             {requirementInputs.length === 0 ? (
-                                <p className="text-xs text-muted-foreground">
-                                    No requirements added yet.
-                                </p>
+                                <p className="text-xs text-muted-foreground">No requirements added yet.</p>
                             ) : (
                                 <div className="space-y-3">
                                     {requirementInputs.map((req, index) => (
-                                        <div
-                                            key={index}
-                                            className="bg-muted/20 relative flex items-center gap-2"
-                                        >
+                                        <div key={index} className="bg-muted/20 relative flex items-center gap-2">
                                             <Input
                                                 value={req.requirement_name}
-                                                onChange={(e) =>
-                                                    updateRequirement(index, e.target.value)
-                                                }
+                                                onChange={(e) => updateRequirement(index, e.target.value)}
                                                 className="text-sm"
                                                 placeholder="e.g. Medical Certificate"
                                             />
                                             {(errors as any)[`requirements.${index}.requirement_name`] && (
-                                                <FieldError
-                                                    message={(errors as any)[`requirements.${index}.requirement_name`]}
-                                                />
+                                                <FieldError message={(errors as any)[`requirements.${index}.requirement_name`]} />
                                             )}
                                             <button
                                                 type="button"
@@ -305,12 +411,7 @@ function LeaveTypeModal({
                     </div>
 
                     <DialogFooter className="px-5 py-4 border-t bg-muted/30 shrink-0">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleClose}
-                        >
+                        <Button type="button" variant="outline" size="sm" onClick={handleClose}>
                             Cancel
                         </Button>
                         <Button type="submit" size="sm" disabled={processing}>
@@ -323,9 +424,14 @@ function LeaveTypeModal({
     )
 }
 
+// ─── Page ──────────────────────────────────────────────────────────────────────
+
 export default function LeaveTypeIndex({ leave_types }: Props) {
+    const isMobile = useIsMobile()
+
     const [modalOpen, setModalOpen] = React.useState(false)
     const [editingLeaveType, setEditingLeaveType] = React.useState<LeaveType | null>(null)
+    const [detailLeaveType, setDetailLeaveType] = React.useState<LeaveType | null>(null)
 
     function openCreate() {
         setEditingLeaveType(null)
@@ -342,6 +448,12 @@ export default function LeaveTypeIndex({ leave_types }: Props) {
         setEditingLeaveType(null)
     }
 
+    function handleRowClick(row: Row<LeaveType>) {
+        if (isMobile) {
+            setDetailLeaveType(row.original)
+        }
+    }
+
     const columns = getColumns({ onEdit: openEdit })
 
     return (
@@ -352,6 +464,7 @@ export default function LeaveTypeIndex({ leave_types }: Props) {
                 getRowId={(row) => String(row.leave_type_id)}
                 searchColumnId="leave_type_name"
                 searchPlaceholder="Search leave types..."
+                onRowClick={isMobile ? handleRowClick : undefined}
                 filters={[
                     {
                         columnId: "eligible_sex",
@@ -393,6 +506,15 @@ export default function LeaveTypeIndex({ leave_types }: Props) {
                 }}
             />
 
+            {/* Mobile-only detail modal */}
+            <MobileDetailModal
+                leaveType={detailLeaveType}
+                onClose={() => setDetailLeaveType(null)}
+                onEdit={openEdit}
+                onDeleted={() => setDetailLeaveType(null)}
+            />
+
+            {/* Create / Edit modal */}
             <LeaveTypeModal
                 key={editingLeaveType?.leave_type_id ?? "create"}
                 open={modalOpen}

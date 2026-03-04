@@ -1,24 +1,37 @@
 'use client';
 
 import { router } from '@inertiajs/react';
-import { type ColumnDef } from '@tanstack/react-table';
+import React from 'react';
 import { route } from 'ziggy-js';
+
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     DataTableRowActions,
     editAction,
     deleteAction,
 } from '@/components/shared/data-table/data-table-row-action';
-import React from 'react';
+import { type DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+
 import type { LeaveType } from '../data/schema';
 
 interface ColumnOptions {
     onEdit: (leaveType: LeaveType) => void;
 }
 
-export function getColumns({ onEdit }: ColumnOptions): ColumnDef<LeaveType>[] {
+// ─── Reusable mobile field row ─────────────────────────────────────────────────
+
+function CardField({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div className="flex items-center justify-between gap-4 text-sm">
+            <span className="text-muted-foreground shrink-0">{label}</span>
+            <span className="text-right">{value}</span>
+        </div>
+    );
+}
+
+export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveType>[] {
     return [
         // checkbox
         {
@@ -62,68 +75,90 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<LeaveType>[] {
             ),
             enableSorting: true,
             enableHiding: true,
+            mobileCard: (row) => (
+                <div className="flex flex-col -mx-3 -my-1.5">
+                    <div className="px-3 py-3 space-y-2">
+                        <p className="font-semibold text-sm leading-snug">
+                            {row.leave_type_name}
+                        </p>
+                        {row.leave_type_description ? (
+                            <p className="text-sm text-muted-foreground text-justify leading-relaxed">
+                                {row.leave_type_description}
+                            </p>
+                        ) : (
+                            <p className="text-sm italic text-muted-foreground/50">
+                                No description
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="border-t border-secondary px-3 py-2.5 flex items-center">
+                        <Badge variant={row.status ? 'default' : 'destructive'}>
+                            {row.status ? 'Active' : 'Inactive'}
+                        </Badge>
+                    </div>
+                </div>
+            ),
         },
 
         // description
         {
-            accessorKey: "leave_type_description",
+            accessorKey: 'leave_type_description',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Description" />
             ),
             cell: ({ row }) => {
-                const [expanded, setExpanded] = React.useState(false)
-                const description = row.getValue("leave_type_description") as string | null
-
+                const [expanded, setExpanded] = React.useState(false);
+                const description = row.getValue('leave_type_description') as string | null;
                 return (
                     <div
-                        className={`min-w-50 max-w-75 text-sm text-muted-foreground text-justify cursor-pointer ${expanded ? "whitespace-normal wrap-break-word" : "truncate"
+                        className={`min-w-50 max-w-75 text-sm text-muted-foreground text-justify cursor-pointer ${expanded ? 'whitespace-normal wrap-break-word' : 'truncate'
                             }`}
                         onClick={(e) => {
-                            e.stopPropagation()
-                            setExpanded((prev) => !prev)
+                            e.stopPropagation();
+                            setExpanded((prev) => !prev);
                         }}
-                        title="click to expand">
-                        {description || "N/A"}
+                        title="click to expand"
+                    >
+                        {description || 'N/A'}
                     </div>
-                )
+                );
             },
             enableSorting: false,
             enableHiding: true,
+            
         },
 
         // requirements
         {
-            accessorKey: "requirements",
+            accessorKey: 'requirements',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Requirements" />
             ),
             cell: ({ row }) => {
-                const [expanded, setExpanded] = React.useState(false)
-                const requirements = row.original.requirements
-
+                const [expanded, setExpanded] = React.useState(false);
+                const requirements = row.original.requirements;
                 if (!requirements || requirements.length === 0) {
-                    return <span className="text-sm text-muted-foreground">N/A</span>
+                    return <span className="text-sm text-muted-foreground">N/A</span>;
                 }
-
                 return (
                     <div
-                        className={`min-w-40 max-w-70 text-sm text-muted-foreground cursor-pointer ${expanded ? "whitespace-normal wrap-break-word" : "truncate"
+                        className={`min-w-40 max-w-70 text-sm text-muted-foreground cursor-pointer ${expanded ? 'whitespace-normal wrap-break-word' : 'truncate'
                             }`}
                         onClick={(e) => {
-                            e.stopPropagation()
-                            setExpanded((prev) => !prev)
+                            e.stopPropagation();
+                            setExpanded((prev) => !prev);
                         }}
-                        title="click to expand">
-                        {requirements.map((req) => req.requirement_name).join(", ")}
+                        title="click to expand"
+                    >
+                        {requirements.map((req) => req.requirement_name).join(', ')}
                     </div>
-                )
+                );
             },
             enableSorting: false,
             enableHiding: true,
         },
 
-
-        
         // eligible sex
         {
             accessorKey: 'eligible_sex',
@@ -135,15 +170,12 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<LeaveType>[] {
             cell: ({ row }) => {
                 const val = row.getValue('eligible_sex') as string | null;
                 return (
-                    <span className="text-sm text-muted-foreground">
-                        {val}
-                    </span>
-
-
+                    <span className="text-sm text-muted-foreground">{val}</span>
                 );
             },
             enableSorting: true,
             enableHiding: true,
+
         },
 
         // is paid
@@ -157,7 +189,7 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<LeaveType>[] {
             cell: ({ row }) => {
                 const isPaid = row.getValue('is_paid') as boolean;
                 return (
-                    <Badge variant={isPaid ? 'default' : 'secondary'}>
+                    <Badge variant={isPaid ? 'default' : 'destructive'}>
                         {isPaid ? 'Paid' : 'Not paid'}
                     </Badge>
                 );
@@ -177,13 +209,14 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<LeaveType>[] {
             cell: ({ row }) => {
                 const isConvertible = row.getValue('is_convertible') as boolean;
                 return (
-                    <Badge variant={isConvertible ? 'default' : 'secondary'}>
+                    <Badge variant={isConvertible ? 'default' : 'destructive'}>
                         {isConvertible ? 'Convertible' : 'Not Convertible'}
                     </Badge>
                 );
             },
             enableSorting: true,
             enableHiding: true,
+            // no mobileCard — rendered inside is_paid card above
         },
 
         // status
@@ -197,13 +230,14 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<LeaveType>[] {
             cell: ({ row }) => {
                 const status = row.getValue('status') as string;
                 return (
-                    <Badge variant={status ? 'default' : 'secondary'}>
+                    <Badge variant={status ? 'default' : 'destructive'}>
                         {status ? 'Active' : 'Inactive'}
                     </Badge>
                 );
             },
             enableSorting: true,
             enableHiding: true,
+            
         },
 
         // actions
@@ -218,10 +252,7 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<LeaveType>[] {
                         deleteAction(
                             (leaveType: LeaveType) =>
                                 router.delete(
-                                    route(
-                                        'leave.leave-type.destroy',
-                                        leaveType.leave_type_id,
-                                    ),
+                                    route('leave.leave-type.destroy', leaveType.leave_type_id),
                                 ),
                             {
                                 getName: (lt) => lt.leave_type_name,
@@ -231,9 +262,8 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<LeaveType>[] {
                                         <span className="font-medium text-foreground">
                                             {lt.leave_type_name}
                                         </span>
-                                        ? This will also remove all associated
-                                        requirements. This action cannot be
-                                        undone.
+                                        ? This will also remove all associated requirements. This
+                                        action cannot be undone.
                                     </>
                                 ),
                                 confirmLabel: 'Delete Leave Type',
@@ -243,6 +273,7 @@ export function getColumns({ onEdit }: ColumnOptions): ColumnDef<LeaveType>[] {
                 />
             ),
             enableHiding: false,
+            // no mobileCard
         },
     ];
 }
