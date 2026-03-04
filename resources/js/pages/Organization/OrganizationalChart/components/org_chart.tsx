@@ -384,9 +384,6 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
         setModal({ open: true, title, employees });
     }, []);
 
-    // Keep scaleRef in sync
-    useEffect(() => { scaleRef.current = scale; }, [scale]);
-
     // ── Fit-to-canvas ────────────────────────────────────────────────────────
     // Measures the actual rendered content and computes the scale that fits it
     // inside the canvas with a small padding margin. Fully dynamic — re-runs
@@ -483,6 +480,49 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
     const MAX  = 2.5;
     const STEP = 0.1;
 
+    // ── Pan bounds ───────────────────────────────────────────────────────────
+    // The content div sits at left:50% with transform translate(calc(-50%+tx), ty+40) scale(s).
+    // After scaling, the rendered content is:
+    //   width  = contentW * s   (centred horizontally because of -50% + tx)
+    //   height = contentH * s   (starts at top: ty+40)
+    //
+    // We allow panning until only MARGIN px of content remains visible on each edge.
+    // That gives:   -maxTx <= tx <= maxTx   and   minTy <= ty <= maxTy
+    const MARGIN = 80; // px of content that must remain visible
+
+    const clampTranslate = useCallback((tx: number, ty: number, s: number) => {
+        if (!canvasRef.current || !contentRef.current) return { x: tx, y: ty };
+
+        const canvasW  = canvasRef.current.offsetWidth;
+        const canvasH  = canvasRef.current.offsetHeight;
+        const contentW = contentRef.current.scrollWidth  * s;
+        const contentH = contentRef.current.scrollHeight * s;
+
+        // Horizontal: content is centred. The left edge of content on screen is:
+        //   canvasW/2 + tx - contentW/2
+        // We want left edge >= -(contentW - MARGIN), i.e. most of it can slide left
+        // and right edge <= canvasW + contentW - MARGIN
+        const maxTx = contentW / 2 - MARGIN;
+        const minTx = -(contentW / 2 - MARGIN);
+
+        // Vertical: content top on screen = ty + 40
+        // Allow scrolling so at least MARGIN of content remains in view vertically
+        const maxTy = MARGIN - 40;                        // top edge can move down this far
+        const minTy = canvasH - contentH - 40 - MARGIN;  // bottom edge stays visible
+
+        return {
+            x: Math.min(maxTx, Math.max(minTx, tx)),
+            y: Math.min(maxTy, Math.max(minTy, ty)),
+        };
+    }, []);
+
+    // Keep scaleRef in sync and re-clamp translate when scale changes
+    // (must be after clampTranslate definition)
+    useEffect(() => {
+        scaleRef.current = scale;
+        setTrans(prev => clampTranslate(prev.x, prev.y, scale));
+    }, [scale, clampTranslate]);
+
     // ── Mouse handlers ──────────────────────────────────────────────────────
     const handleWheel = useCallback((e: React.WheelEvent) => {
         e.preventDefault();
@@ -496,11 +536,12 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
     }, [translate]);
     const handleMouseMove = useCallback((e: React.MouseEvent) => {
         if (!isPanning.current) return;
-        setTrans({
+        const raw = {
             x: startTrans.current.x + (e.clientX - startPos.current.x),
             y: startTrans.current.y + (e.clientY - startPos.current.y),
-        });
-    }, []);
+        };
+        setTrans(clampTranslate(raw.x, raw.y, scaleRef.current));
+    }, [clampTranslate]);
     const handleMouseUp = useCallback(() => { isPanning.current = false; }, []);
 
     // ── Touch handlers ──────────────────────────────────────────────────────
@@ -520,10 +561,11 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
     const handleTouchMove = useCallback((e: React.TouchEvent) => {
         e.preventDefault();
         if (e.touches.length === 1 && isPanning.current) {
-            setTrans({
+            const raw = {
                 x: startTrans.current.x + (e.touches[0].clientX - startPos.current.x),
                 y: startTrans.current.y + (e.touches[0].clientY - startPos.current.y),
-            });
+            };
+            setTrans(clampTranslate(raw.x, raw.y, scaleRef.current));
         } else if (e.touches.length === 2 && lastPinchDist.current !== null) {
             const dx   = e.touches[0].clientX - e.touches[1].clientX;
             const dy   = e.touches[0].clientY - e.touches[1].clientY;
@@ -532,7 +574,7 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
             lastPinchDist.current = dist;
             setScale(s => Math.min(MAX, Math.max(minScaleRef.current, s + delta)));
         }
-    }, []);
+    }, [clampTranslate]);
     const handleTouchEnd = useCallback(() => {
         isPanning.current     = false;
         lastPinchDist.current = null;
