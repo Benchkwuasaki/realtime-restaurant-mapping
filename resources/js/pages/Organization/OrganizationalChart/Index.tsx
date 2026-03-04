@@ -1,47 +1,182 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { Card, CardContent } from '@/components/ui/card';
-import { DepartmentHierarchy } from './components/department-hierarchy';
+import { Badge } from '@/components/ui/badge';
+import { Building2, Layers, Users, ChevronRight, Network } from 'lucide-react';
 import type { Department } from './data/schema';
 import type { BreadcrumbItem } from '@/types';
 
 interface Props {
     organizationalChart: Department[];
-    departmentCount?: number;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: "Organization", href: "#" },
-    { title: "Organisational Chart", href: "/organization/organizational_chart" },
+    { title: 'Organization', href: '#' },
+    { title: 'Organizational Chart', href: '/organization/organizational_chart' },
 ];
 
-export default function OrganizationalChart({ organizationalChart, departmentCount }: Props) {
+function countEmployees(dept: Department): number {
+    const top  = (dept.topPositions ?? []).reduce((s, p) => s + (p.employees?.length ?? 0), 0);
+    const div  = (dept.divisions ?? []).reduce((ds, d) =>
+        ds + (d.positions ?? []).reduce((ps, p) => ps + (p.employees?.length ?? 0), 0), 0);
+    const unit = (dept.divisions ?? []).reduce((ds, d) =>
+        ds + (d.units ?? []).reduce((us, u) =>
+            us + (u.positions ?? []).reduce((ps, p) => ps + (p.employees?.length ?? 0), 0), 0), 0);
+    return top + div + unit;
+}
+
+function getDeptHead(dept: Department) {
+    const emp = dept.topPositions?.[0]?.employees?.[0];
+    if (!emp) return null;
+    return {
+        name: [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(' '),
+        position: dept.topPositions?.[0]?.name ?? '',
+        initials: [emp.firstName, emp.lastName]
+            .filter(Boolean).map(n => n.charAt(0).toUpperCase()).join(''),
+        avatarUrl: emp.avatarUrl,
+    };
+}
+
+export default function OrganizationalChartIndex({ organizationalChart }: Props) {
+    const departments    = organizationalChart ?? [];
+    const totalEmployees = departments.reduce((s, d) => s + countEmployees(d), 0);
+    const totalDivisions = departments.reduce((s, d) => s + (d.divisions?.length ?? 0), 0);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Organizational Chart" />
 
-            <div className="max-w-full mx-auto py-6 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
-                {/* Header with department count */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Organizational Chart</h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-2">
-                        Total Departments: <span className="font-semibold text-purple-600 dark:text-purple-400">{organizationalChart?.length || 0}</span>
-                    </p>
-                </div>
+            <div className="min-h-screen bg-background">
+                <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
-                <div className="space-y-8">
-                    {organizationalChart && organizationalChart.length > 0 ? (
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
-                            <DepartmentHierarchy departments={organizationalChart} level={0} />
+                    {/* Page header */}
+                    <div>
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10
+                                flex items-center justify-center shrink-0">
+                                <Network className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                            </div>
+                            <h1 className="text-lg sm:text-xl font-bold text-foreground">
+                                Organizational Chart
+                            </h1>
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground ml-11">
+                            Browse departments and view their structure, divisions, and personnel.
+                        </p>
+                    </div>
+
+                    {/* Summary stats — 3 cols always */}
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                        {[
+                            { icon: Building2, label: 'Departments', value: departments.length },
+                            { icon: Layers,    label: 'Divisions',   value: totalDivisions },
+                            { icon: Users,     label: 'Employees',   value: totalEmployees },
+                        ].map(({ icon: Icon, label, value }) => (
+                            <div key={label}
+                                className="bg-card border border-border rounded-xl sm:rounded-2xl
+                                    px-3 py-2.5 sm:px-4 sm:py-3 flex items-center gap-2 sm:gap-3 shadow-sm">
+                                <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl
+                                    bg-secondary flex items-center justify-center shrink-0">
+                                    <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-base sm:text-lg font-bold text-foreground leading-none">
+                                        {value}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground truncate">{label}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Department grid */}
+                    {departments.length === 0 ? (
+                        <div className="bg-card border border-border rounded-2xl shadow-sm
+                            flex flex-col items-center justify-center py-16 sm:py-20">
+                            <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/20 mb-3 sm:mb-4" />
+                            <p className="text-sm font-medium text-muted-foreground">No departments found</p>
+                            <p className="text-xs text-muted-foreground/60 mt-1 text-center px-4">
+                                Departments will appear here once they are added.
+                            </p>
                         </div>
                     ) : (
-                        <Card>
-                            <CardContent className="pt-6">
-                                <p className="text-center text-gray-500 dark:text-gray-400">
-                                    No departments found in the database
-                                </p>
-                            </CardContent>
-                        </Card>
+                        /* 1 col mobile → 2 col sm → 3 col lg → 4 col xl */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                            {departments.map(dept => {
+                                const head     = getDeptHead(dept);
+                                const empCount = countEmployees(dept);
+                                const divCount = dept.divisions?.length ?? 0;
+                                const acronym  = dept.acronym?.substring(0, 2) || 'DP';
+
+                                return (
+                                    <Link
+                                        key={dept.id}
+                                        href={`/organization/organizational_chart/${dept.id}`}
+                                        className="group block bg-card border border-border rounded-2xl
+                                            shadow-sm hover:shadow-md hover:border-primary/40
+                                            active:scale-[0.98] transition-all duration-200 overflow-hidden"
+                                    >
+                                        <div className="h-1 bg-primary/50 group-hover:bg-primary
+                                            transition-colors duration-200" />
+
+                                        <div className="p-3 sm:p-4">
+                                            {/* Avatar + badge */}
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className="relative">
+                                                    {head?.avatarUrl ? (
+                                                        <img
+                                                            src={head.avatarUrl}
+                                                            alt={head.name}
+                                                            className="h-11 w-11 sm:h-12 sm:w-12 rounded-full
+                                                                object-cover ring-2 ring-border"
+                                                        />
+                                                    ) : (
+                                                        <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-full
+                                                            bg-accent ring-2 ring-border flex items-center
+                                                            justify-center text-sm font-bold text-accent-foreground">
+                                                            {head ? head.initials : acronym}
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3
+                                                        bg-green-500 rounded-full ring-2 ring-background" />
+                                                </div>
+                                                <Badge variant="outline" className="font-mono text-xs shrink-0">
+                                                    {dept.acronym}
+                                                </Badge>
+                                            </div>
+
+                                            {/* Name */}
+                                            <h2 className="text-sm font-bold text-foreground leading-tight
+                                                mb-0.5 line-clamp-2 group-hover:text-primary
+                                                transition-colors duration-200">
+                                                {dept.name}
+                                            </h2>
+
+                                            {/* Stats + arrow */}
+                                            <div className="flex items-center justify-between
+                                                pt-2.5 border-t border-border">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Layers className="h-3 w-3 text-muted-foreground" />
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {divCount}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Users className="h-3 w-3 text-muted-foreground" />
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {empCount}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <ChevronRight className="h-4 w-4 text-muted-foreground/40
+                                                    group-hover:text-primary group-hover:translate-x-0.5
+                                                    transition-all duration-200" />
+                                            </div>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             </div>

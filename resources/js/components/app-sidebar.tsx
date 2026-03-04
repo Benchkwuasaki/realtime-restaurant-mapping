@@ -120,7 +120,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         items: [
           {
             title: "Leave Calendar",
-            url: "/leave/leave-calendar",
+            url: route("leave.leave-calendar")
           },
           {
             title: "Leave Filing",

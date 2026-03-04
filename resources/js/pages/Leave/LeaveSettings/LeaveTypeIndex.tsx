@@ -1,15 +1,14 @@
 "use client"
 
-import * as React from "react"
 import { router } from "@inertiajs/react"
 import { useForm } from "@inertiajs/react"
 import { type Row } from "@tanstack/react-table"
 import { Trash2, Plus, Pencil } from "lucide-react"
+import * as React from "react"
+import { toast } from "sonner"
 import { route } from "ziggy-js"
 
 import { DataTable } from "@/components/shared/data-table/data-table"
-import { getColumns } from "./components/columns"
-import type { LeaveType } from "./data/schema"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -38,6 +37,8 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { getColumns } from "./components/columns"
+import type { LeaveType } from "./data/schema"
 import { useIsMobile } from "@/hooks/use-is-mobile"
 
 type Props = {
@@ -209,13 +210,13 @@ function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps
         })) ?? []
     )
 
-    const { data, setData, post, put, processing, errors, reset } = useForm({
+    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         leave_type_name: editingLeaveType?.leave_type_name ?? "",
         leave_type_description: editingLeaveType?.leave_type_description ?? "",
         eligible_sex: editingLeaveType?.eligible_sex ?? "",
-        is_paid: editingLeaveType ? String(editingLeaveType.is_paid) : "",
-        is_convertible: editingLeaveType ? String(editingLeaveType.is_convertible) : "",
-        status: editingLeaveType ? String(editingLeaveType.status) : "",
+        is_paid: editingLeaveType ? (editingLeaveType.is_paid ? "1" : "0") : "",
+        is_convertible: editingLeaveType ? (editingLeaveType.is_convertible ? "1" : "0") : "",
+        status: editingLeaveType ? (editingLeaveType.status ? "1" : "0") : "",
         requirements: editingLeaveType?.requirements ?? [],
     })
 
@@ -239,6 +240,7 @@ function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps
 
     function handleClose() {
         reset()
+        clearErrors()
         setRequirementInputs([])
         onClose()
     }
@@ -249,12 +251,22 @@ function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps
         if (isEdit) {
             put(route("leave.update", editingLeaveType!.leave_type_id), {
                 data: payload,
-                onSuccess: handleClose,
+                // onSuccess: handleClose,
+                onSuccess: () => {
+                    toast.success("Leave type updated successfully.")
+                    handleClose()
+                },
+                onError: () => toast.error("Failed to update leave type."),
             } as any)
         } else {
             post(route("leave.store"), {
                 data: payload,
-                onSuccess: handleClose,
+                // onSuccess: handleClose,
+                onSuccess: () => {
+                toast.success("Leave type created successfully.")
+                handleClose()
+            },
+            onError: () => toast.error("Failed to create leave type."),
             } as any)
         }
     }
@@ -330,6 +342,7 @@ function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps
                                         <SelectItem value="0">Not Paid</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <FieldError message={errors.is_paid} />
                             </div>
                         </section>
 
@@ -340,13 +353,14 @@ function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps
                                 </label>
                                 <Select value={data.is_convertible} onValueChange={(v) => setData("is_convertible", v)}>
                                     <SelectTrigger className="mt-1">
-                                        <SelectValue placeholder="Select cash conversion status" />
+                                        <SelectValue placeholder="Select conversion status" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="1">Convertible</SelectItem>
                                         <SelectItem value="0">Not Convertible</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <FieldError message={errors.is_convertible} />
                             </div>
 
                             <div>
@@ -355,13 +369,14 @@ function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps
                                 </label>
                                 <Select value={data.status} onValueChange={(v) => setData("status", v)}>
                                     <SelectTrigger className="mt-1">
-                                        <SelectValue placeholder="Select" />
+                                        <SelectValue placeholder="Select status" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="1">Active</SelectItem>
                                         <SelectItem value="0">Inactive</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <FieldError message={errors.status} />
                             </div>
                         </section>
 
@@ -503,6 +518,11 @@ export default function LeaveTypeIndex({ leave_types }: Props) {
                 addButton={{
                     label: "Add Leave Type",
                     onClick: openCreate,
+                }}
+                bulkDelete={{
+                    route: route("leave.bulk-destroy"),
+                    entityName: "Leave Type",
+                    getId: (row) => (row as LeaveType).leave_type_id,
                 }}
             />
 

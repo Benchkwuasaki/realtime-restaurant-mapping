@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 
 import type { LeaveType } from '../data/schema';
+import { toast } from 'sonner'
 
 interface ColumnOptions {
     onEdit: (leaveType: LeaveType) => void;
@@ -252,7 +253,11 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
                         deleteAction(
                             (leaveType: LeaveType) =>
                                 router.delete(
-                                    route('leave.leave-type.destroy', leaveType.leave_type_id),
+                                    route('leave.destroy', leaveType.leave_type_id,),
+                                    {
+                                        onSuccess: () => toast.success(`${leaveType.leave_type_name} deleted successfully.`),
+                                        onError: () => toast.error(`Failed to delete ${leaveType.leave_type_name}.`),
+                                    }
                                 ),
                             {
                                 getName: (lt) => lt.leave_type_name,

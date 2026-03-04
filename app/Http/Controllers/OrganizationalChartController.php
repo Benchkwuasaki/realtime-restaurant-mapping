@@ -3,147 +3,171 @@
 namespace App\Http\Controllers;
 
 use App\Models\Department;
-use Illuminate\Support\Facades\Log;
+use App\Models\Position;
 use Inertia\Inertia;
-use Inertia\Response;
 
 class OrganizationalChartController extends Controller
 {
-    /**
-     * Display the organizational chart with departments, divisions, and employees.
-     */
-    public function index(): Response
+    // ─── Index ────────────────────────────────────────────────────────────────
+    public function index()
     {
-        try {
-            // Fetch departments with eager loading - optimized for the new hierarchical view
-            $departments = Department::with([
-                'divisions' => function ($query) {
-                    $query->orderBy('division_name');
-                },
-                'divisions.positions.items.employee.basicInfo',
-                'divisions.units',
-                'positions.items.employee.basicInfo',
-            ])->orderBy('department_name')->get();
+        $departments = Department::with($this->eagerLoads())->get();
 
-            // Transform the data
-            $organizationalChart = $departments->map(function ($department) {
-                return $this->transformDepartment($department);
-            })->values();
-
-            return Inertia::render('Organization/OrganizationalChart/Index', [
-                'organizationalChart' => $organizationalChart->all(),
-                'departmentCount' => $departments->count(),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Organizational Chart Error: ' . $e->getMessage());
-            
-            return Inertia::render('Organization/OrganizationalChart/Index', [
-                'organizationalChart' => [],
-                'departmentCount' => 0,
-            ]);
-        }
+        return Inertia::render('Organization/OrganizationalChart/Index', [
+            'organizationalChart' => $departments
+                ->map(fn ($d) => $this->formatDepartment($d))
+                ->values(),
+        ]);
     }
 
-    /**
-     * Display a specific department with divisions and units.
-     */
-    public function show(Department $department): Response
+    // ─── Show ─────────────────────────────────────────────────────────────────
+    public function show(Department $department)
     {
-        try {
-            // Fetch department with eager loading for divisions, units, and positions
-            $department->load([
-                'divisions' => function ($query) {
-                    $query->orderBy('division_name');
-                },
-                'divisions.units' => function ($query) {
-                    $query->orderBy('unit_name');
-                },
-                'divisions.units.positions.items.employee.basicInfo',
-                'divisions.positions.items.employee.basicInfo',
-                'positions.items.employee.basicInfo',
-            ]);
+        $department->load($this->eagerLoads());
 
-            $transformedDepartment = $this->transformDepartment($department);
-
-            return Inertia::render('Organization/OrganizationalChart/Show', [
-                'department' => $transformedDepartment,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Department Detail Error: ' . $e->getMessage());
-            
-            return Inertia::render('Organization/OrganizationalChart/Show', [
-                'department' => null,
-            ]);
-        }
+        return Inertia::render('Organization/OrganizationalChart/Show', [
+            'department' => $this->formatDepartment($department),
+        ]);
     }
 
-    private function transformDepartment($department)
+    // ─── Eager loads ─────────────────────────────────────────────────────────
+    private function eagerLoads(): array
     {
         return [
-            'id' => $department->department_id,
-            'name' => $department->department_name ?? 'Unknown',
-            'acronym' => $department->department_acronym ?? '',
-            'description' => $department->department_description ?? '',
-            'divisions' => $this->transformDivisions($department->divisions ?? []),
-            'topPositions' => $this->transformPositions($department->positions ?? []),
+            // Department-direct positions (division_id = null, unit_id = null)
+            'positions.items.employee.basicInfo',
+            // Divisions → their direct positions (unit_id = null)
+            'divisions.positions.items.employee.basicInfo',
+            // Divisions → Units → their positions → items → employee
+            'divisions.units.positions.items.employee.basicInfo',
         ];
     }
 
-    private function transformDivisions($divisions)
+    // ─── Formatters ──────────────────────────────────────────────────────────
+
+    private function formatDepartment(Department $dept): array
     {
-        return $divisions->map(function ($division) {
-            return [
-                'id' => $division->division_id,
-                'name' => $division->division_name ?? 'Unknown',
-                'acronym' => $division->division_acronym ?? '',
-                'description' => $division->division_description ?? '',
-                'units' => $this->transformUnits($division->units ?? []),
-                'positions' => $this->transformPositions($division->positions ?? []),
-            ];
-        })->values()->all();
+        return [
+            'id'          => $dept->department_id,
+            'name'        => $dept->department_name,
+            'acronym'     => $dept->department_acronym     ?? '',
+            'description' => $dept->department_description ?? null,
+
+            // Positions with NO division and NO unit (pure dept-level)
+            'topPositions' => $dept->positions
+                ->filter(fn ($p) => is_null($p->division_id) && is_null($p->unit_id))
+                ->map(fn ($p) => $this->formatPosition($p))
+                ->values(),
+
+            'divisions' => $dept->divisions
+                ->map(fn ($d) => $this->formatDivision($d))
+                ->values(),
+        ];
     }
 
-    private function transformUnits($units)
+    private function formatDivision($div): array
     {
-        return $units->map(function ($unit) {
-            return [
-                'id' => $unit->unit_id ?? null,
-                'name' => $unit->unit_name ?? 'Unknown',
-                'acronym' => $unit->unit_acronym ?? '',
-                'description' => $unit->unit_description ?? '',
-                'positions' => $this->transformPositions($unit->positions ?? []),
-            ];
-        })->values()->all();
+        return [
+            'id'          => $div->division_id,
+            'name'        => $div->division_name,
+            'acronym'     => $div->division_acronym     ?? '',
+            'description' => $div->division_description ?? null,
+
+            // Positions directly on the division (no unit) — e.g. Division Chief
+            // If the Division model has no positions() relationship, fall back to
+            // querying Position directly scoped to this division with unit_id null.
+            'positions' => $this->getDivisionDirectPositions($div),
+
+            'units' => $div->units
+                ->map(fn ($u) => $this->formatUnit($u))
+                ->values(),
+        ];
     }
 
-    private function transformPositions($positions)
+    /**
+     * Get positions that belong directly to a division (unit_id IS NULL).
+     * Tries the eager-loaded relationship first; falls back to a direct query
+     * if the Division model has no positions() relationship or it's empty
+     * due to missing eager load.
+     */
+    private function getDivisionDirectPositions($div): array
     {
-        return $positions->map(function ($position) {
-            return [
-                'id' => $position->position_id,
-                'name' => $position->position_name ?? 'Unknown',
-                'employees' => $this->transformEmployees($position->items ?? []),
-            ];
-        })->values()->all();
+        // If the division has a loaded positions relation, use it
+        if ($div->relationLoaded('positions')) {
+            $positions = $div->positions
+                ->filter(fn ($p) => is_null($p->unit_id));
+
+            // If items are NOT loaded on these positions, load them now
+            if ($positions->isNotEmpty() && ! $positions->first()->relationLoaded('items')) {
+                $positions->load('items.employee.basicInfo');
+            }
+
+            return $positions
+                ->map(fn ($p) => $this->formatPosition($p))
+                ->values()
+                ->toArray();
+        }
+
+        // Fallback: query directly
+        $positions = Position::with('items.employee.basicInfo')
+            ->where('division_id', $div->division_id)
+            ->whereNull('unit_id')
+            ->get();
+
+        return $positions
+            ->map(fn ($p) => $this->formatPosition($p))
+            ->values()
+            ->toArray();
     }
 
-    private function transformEmployees($items)
+    private function formatUnit($unit): array
     {
-        return $items->filter(function ($item) {
-            return $item->employee && $item->employee->basicInfo;
-        })->map(function ($item) {
-            $employee = $item->employee;
-            $basicInfo = $employee->basicInfo;
+        return [
+            'id'        => $unit->unit_id,
+            'name'      => $unit->unit_name,
+            'acronym'   => $unit->unit_acronym ?? null,
+            'positions' => $unit->positions
+                ->map(fn ($p) => $this->formatPosition($p))
+                ->values(),
+        ];
+    }
 
-            return [
-                'id' => $employee->employee_id,
-                'firstName' => $basicInfo->first_name ?? 'Unknown',
-                'lastName' => $basicInfo->last_name ?? '',
-                'middleName' => $basicInfo->middle_name ?? '',
-                'email' => $employee->work_email ?? 'N/A',
-                'dateHired' => $employee->date_hired ?? null,
-                'profilePicture' => $employee->profile_picture ?? null,
-            ];
-        })->values()->all();
+    /**
+     * Position → items() → item.employee
+     * Skips vacant slots (no employee assigned).
+     * Includes both active and inactive employees.
+     */
+    private function formatPosition($pos): array
+    {
+        $employees = $pos->items
+            ->filter(fn ($item) => $item->employee !== null)
+            ->map(fn ($item) => $this->formatEmployee($item->employee))
+            ->values();
+
+        return [
+            'id'        => $pos->position_id,
+            'name'      => $pos->position_name,
+            'employees' => $employees,
+        ];
+    }
+
+    /**
+     * avatar_url / avatar_path live on the employees table.
+     * Name fields are on employee_basic_info via basicInfo relationship.
+     */
+    private function formatEmployee($emp): array
+    {
+        $info = $emp->basicInfo;
+
+        return [
+            'id'         => $emp->employee_id,
+            'firstName'  => $info?->first_name  ?? '',
+            'lastName'   => $info?->last_name   ?? '',
+            'middleName' => $info?->middle_name ?? null,
+            'email'      => $emp->work_email,
+            'dateHired'  => $emp->date_hired,
+            'avatarUrl'  => $emp->avatar_url,
+            'avatarPath' => $emp->avatar_path,
+        ];
     }
 }
