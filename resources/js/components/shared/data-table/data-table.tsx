@@ -70,7 +70,7 @@ export function DataTable<TData, TValue>({
     data,
     getRowId,
     onRowClick,
-    defaultPageSize = 25,
+    defaultPageSize = 10,
     searchColumnId,
     searchPlaceholder,
     filters,
