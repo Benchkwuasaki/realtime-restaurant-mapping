@@ -71,7 +71,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
 
         Route::post('/{employee}/avatar', [EmployeeController::class, 'updateAvatar'])->name('avatar.update');
-
         // Employment Classifications
         Route::prefix('employment-classifications')->name('employment-classification.')->group(function () {
             Route::post('/', [EmploymentClassificationController::class, 'store'])->name('store');
@@ -195,7 +194,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Position employees
     Route::get('organization/position/{position}/employees', [PositionController::class, 'employees'])
         ->name('position.employees');
-
     Route::prefix('organization/job-order-positions')->name('job-order-position.')->group(function () {
         Route::get('/', [JobOrderPositionController::class, 'index'])->name('index');
         Route::post('/', [JobOrderPositionController::class, 'store'])->name('store');
@@ -206,43 +204,48 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Organization - Organizational Chart
+    | Attendance - api calls
     |--------------------------------------------------------------------------
     */
-    Route::prefix('organization/organizational_chart')->name('organization.chart')->group(function () {
-        Route::get('/', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('');
-        Route::get('/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('.show');
+    Route::prefix('attendance')->name('attendance.')->group(function () {
+        Route::post('/clock-in', [AttendanceController::class, 'clockIn'])->name('clock-in');
+        Route::post('/enroll', [AttendanceController::class, 'enroll'])->name('enroll');
+        Route::post('/detect', [AttendanceController::class, 'detect'])->name('detect');
     });
 
     /*
     |--------------------------------------------------------------------------
-    | Attendance
+    | Attendance - Recognition logs
     |--------------------------------------------------------------------------
     */
-    Route::prefix('attendance')->name('attendance.')->group(function () {
-        // API calls
-        Route::post('/clock-in', [AttendanceController::class, 'clockIn'])->name('clock-in');
-        Route::post('/enroll', [AttendanceController::class, 'enroll'])->name('enroll');
-        Route::post('/detect', [AttendanceController::class, 'detect'])->name('detect');
-
-        // Recognition Logs
-        Route::get('/recognition-logs', [RecognitionLogController::class, 'index'])->name('recognition-logs.index');
-
-        // Whereabout Slips
-        Route::prefix('whereabout-slips')->name('whereabout-slip.')->group(function () {
-            Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
-            Route::post('/', [WhereaboutSlipController::class, 'store'])->name('store');
-            Route::put('/{whereaboutSlip}', [WhereaboutSlipController::class, 'update'])->name('update');
-            Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
-            Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
-            Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
-        });
-
-        // Holiday Management
-        Route::resource('holiday', HolidayController::class)->parameters([
-            'holiday' => 'holiday:holiday_id',
-        ]);
+    Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
+        Route::get('/', [RecognitionLogController::class, 'index'])->name('index');
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - Whereabout Slip
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
+        Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
+        Route::post('/', [WhereaboutSlipController::class, 'store'])->name('store');
+        Route::put('/{whereaboutSlip}', [WhereaboutSlipController::class, 'update'])->name('update');
+        Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
+        Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
+        Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - Holiday Management
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('holiday', HolidayController::class)->parameters([
+        'holiday' => 'holiday:holiday_id',
+    ]);
+
+
 
     /*
     |--------------------------------------------------------------------------
@@ -255,11 +258,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{leave}', [LeaveTypeController::class, 'update'])->name('update');
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Payroll
-    |--------------------------------------------------------------------------
-    */
+    // Payroll routes
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
 
     /*
