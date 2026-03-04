@@ -201,7 +201,7 @@ function CalendarTab({ leaves }: { leaves: LeaveApplication[] }) {
                             <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     </button>
-                    <h2 className="text-2xl font-semibold text-foreground">
+                    <h2 className="text-lg lg:text-2xl font-semibold text-foreground">
                         {MONTHS[month]}{" "}
                         <span className="text-muted-foreground font-normal">{year}</span>
                     </h2>
@@ -244,7 +244,7 @@ function CalendarTab({ leaves }: { leaves: LeaveApplication[] }) {
                 {DAYS.map((d, i) => (
                     <div
                         key={d}
-                        className={`py-2 text-center text-xl font-bold tracking-widest text-muted-foreground
+                        className={`py-2 text-center text-sm lg:text-xl font-bold tracking-widest text-muted-foreground
                             ${i < 6 ? "border-r border-border" : ""}`}
                     >
                         {d}
@@ -289,7 +289,7 @@ function CalendarTab({ leaves }: { leaves: LeaveApplication[] }) {
                                 >
                                     {/* Day number — absolute center */}
                                     <div className={[
-                                        "w-7 h-7 flex items-center justify-center rounded-full text-xl font-medium leading-none",
+                                        "w-7 h-7 flex items-center justify-center rounded-full text-sm lg:text-xl font-medium leading-none",
                                         !cell.current
                                             ? "text-muted-foreground/40"
                                             : isSelected
