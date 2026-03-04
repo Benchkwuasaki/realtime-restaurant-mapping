@@ -601,7 +601,7 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
     };
 
     return (
-        <div className="relative w-full h-full">
+        <div className="relative w-full h-full overflow-hidden">
 
             {/* Zoom controls */}
             <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
@@ -643,7 +643,7 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
             {/* Canvas */}
             <div
                 ref={canvasRef}
-                className="w-full h-full cursor-grab active:cursor-grabbing select-none overflow-hidden touch-none"
+                className="w-full h-full cursor-grab active:cursor-grabbing select-none overflow-hidden touch-none isolate"
                 onWheel={handleWheel}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
@@ -663,6 +663,10 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
                         left: '50%',
                         top: 0,
                         paddingBottom: '5rem',
+                        // width:0 + overflow:visible means this element never contributes
+                        // to the parent's scroll/layout width — prevents mobile page blowout
+                        width: 0,
+                        overflow: 'visible',
                     }}
                 >
                     <div className="flex flex-col items-center">
