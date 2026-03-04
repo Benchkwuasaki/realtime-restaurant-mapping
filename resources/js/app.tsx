@@ -5,7 +5,8 @@ import { createRoot } from 'react-dom/client';
 import '../css/app.css';
 import { initializeTheme } from './hooks/use-appearance';
 import { route } from 'ziggy-js';
-import { Toaster } from 'sonner';
+// import { Toaster } from 'sonner';
+import { Toaster } from '@/components/ui/sonner' 
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
