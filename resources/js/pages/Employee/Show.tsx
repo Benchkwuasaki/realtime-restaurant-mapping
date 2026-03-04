@@ -1614,17 +1614,69 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
 // ─── Documents Tab ────────────────────────────────────────────────────────────
 
+
+const FILE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
+    pdf: { icon: "PDF", color: "text-red-600", bg: "bg-red-50 dark:bg-red-950/40" },
+    doc: { icon: "DOC", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/40" },
+    docx: { icon: "DOCX", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/40" },
+    xls: { icon: "XLS", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
+    xlsx: { icon: "XLSX", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
+    png: { icon: "PNG", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/40" },
+    jpg: { icon: "JPG", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/40" },
+    jpeg: { icon: "JPEG", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/40" },
+    txt: { icon: "TXT", color: "text-muted-foreground", bg: "bg-muted" },
+    zip: { icon: "ZIP", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/40" },
+}
+
+function getFileExt(name: string) {
+    return name.split(".").pop()?.toLowerCase() ?? ""
+}
+
+function getFileIcon(name: string) {
+    const ext = getFileExt(name)
+    return FILE_ICONS[ext] ?? { icon: ext.toUpperCase() || "FILE", color: "text-muted-foreground", bg: "bg-muted" }
+}
+
+function isViewable(name: string) {
+    return ["pdf", "png", "jpg", "jpeg", "gif", "webp", "txt"].includes(getFileExt(name))
+}
+
+function isImage(name: string) {
+    return ["png", "jpg", "jpeg", "gif", "webp"].includes(getFileExt(name))
+}
+
 function DocumentsTab({ employee }: { employee: Employee }) {
     const uploadedFiles = employee.uploadedFiles ?? []
     const fileInputRef = React.useRef<HTMLInputElement>(null)
     const [deleteFileId, setDeleteFileId] = useState<number | null>(null)
+    const [viewFile, setViewFile] = useState<UploadedFile | null>(null)
+    const [uploading, setUploading] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
+
+    const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
+
+        if (file.size > MAX_FILE_SIZE) {
+            setUploadError(`File is too large. Maximum size is 25 MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)} MB.`)
+            e.target.value = ""
+            return
+        }
+
+        setUploadError(null)
+        setUploading(true)
         const formData = new FormData()
         formData.append("file", file)
-        router.post(route("employee.file.store", employee.employee_id), formData, { preserveScroll: true })
+        router.post(route("employee.file.store", employee.employee_id), formData, {
+            preserveScroll: true,
+            onFinish: () => setUploading(false),
+            onError: () => {
+                setUploadError("Upload failed. Please try again.")
+                setUploading(false)
+            },
+        })
         e.target.value = ""
     }
 
@@ -1639,67 +1691,189 @@ function DocumentsTab({ employee }: { employee: Employee }) {
     const formatBytes = (bytes: number) => {
         if (bytes < 1024) return bytes + " B"
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB"
-        return (bytes / (1024 * 1024)).toFixed(1) + " MB"
+        return (bytes / (1024 * 1024)).toFixed(2) + " MB"
     }
 
     return (
-        <div className="p-3 sm:p-5">
+        <div className="p-3 sm:p-5 space-y-4">
             <div className="bg-card border border-border rounded-xl overflow-hidden">
+
+                {/* ── Header ── */}
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
-                    <span className="text-sm font-bold text-foreground">Uploaded Files</span>
-                    <button onClick={() => fileInputRef.current?.click()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors" title="Upload file">
-                        <Upload className="w-4 h-4" />
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-foreground">Uploaded Files</span>
+                        {uploadedFiles.length > 0 && (
+                            <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-full px-2 py-0.5">
+                                {uploadedFiles.length}
+                            </Badge>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Upload file"
+                    >
+                        <Upload className="w-3.5 h-3.5" />
+                        {uploading ? "Uploading…" : "Upload"}
                     </button>
                     <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
                 </div>
+
+                {/* ── Upload error ── */}
+                {uploadError && (
+                    <div className="mx-4 sm:mx-5 mt-3 rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-2.5">
+                        <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm text-destructive leading-snug">{uploadError}</p>
+                        </div>
+                        <button onClick={() => setUploadError(null)} className="text-destructive/60 hover:text-destructive transition-colors shrink-0">
+                            <XCircle className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                )}
+
+                {/* ── Size hint ── */}
+                <div className="px-4 sm:px-5 py-2 border-b border-border bg-muted/20">
+                    <p className="text-[11px] text-muted-foreground">
+                        Maximum file size: <span className="font-semibold">25 MB</span>. All file types accepted.
+                    </p>
+                </div>
+
+                {/* ── Empty state ── */}
                 {uploadedFiles.length === 0 ? (
-                    <div className="px-5 py-12 text-center">
-                        <FolderOpen className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
-                        <p className="text-sm text-muted-foreground italic mb-3">No files uploaded yet.</p>
-                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5"><Upload className="w-3.5 h-3.5" /> Upload File</Button>
+                    <div className="px-5 py-14 text-center">
+                        <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                            <FolderOpen className="w-7 h-7 text-muted-foreground/30" />
+                        </div>
+                        <p className="text-sm font-medium text-foreground mb-1">No files uploaded yet</p>
+                        <p className="text-xs text-muted-foreground mb-4">Upload documents, certificates, or any relevant files.</p>
+                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5">
+                            <Upload className="w-3.5 h-3.5" /> Upload First File
+                        </Button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <div className="min-w-[480px]">
-                            <div className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
-                                <div className="w-4" />
-                                <span className="text-xs font-semibold text-muted-foreground">File Name</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Size</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Uploaded</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
-                            </div>
-                            <div className="divide-y divide-border">
-                                {uploadedFiles.map(file => (
-                                    <div key={file.id} className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                        <Checkbox className="w-4 h-4" />
-                                        <span className="text-sm text-foreground truncate">{file.file_name}</span>
-                                        <span className="text-sm text-muted-foreground text-right">{formatBytes(file.file_size)}</span>
-                                        <span className="text-sm text-muted-foreground text-right">{fmtShort(file.created_at)}</span>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <a href={file.file_url} download>
-                                                <Button variant="ghost" size="icon-xs" title="Download"><Download className="w-3.5 h-3.5" /></Button>
-                                            </a>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFileId(file.id)} title="Delete">
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </Button>
-                                        </div>
+                    /* ── File list ── */
+                    <div className="divide-y divide-border">
+                        {uploadedFiles.map(file => {
+                            const { icon, color, bg } = getFileIcon(file.file_name)
+                            const canView = isViewable(file.file_name)
+                            return (
+                                <div
+                                    key={file.id}
+                                    className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-muted/20 transition-colors group cursor-pointer"
+                                    onClick={() => canView ? setViewFile(file) : window.open(file.file_url, "_blank")}
+                                >
+                                    {/* File type badge */}
+                                    <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                                        <span className={`text-[9px] font-black ${color} tracking-tight`}>{icon}</span>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
+
+                                    {/* File info */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-foreground truncate leading-snug">{file.file_name}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            {formatBytes(file.file_size)} · {fmtShort(file.created_at)}
+                                        </p>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div
+                                        className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        {/* Only show download button for viewable files — non-viewable files download on row click */}
+                                        {canView && (
+                                            <a href={file.file_url} download={file.file_name} target="_blank" rel="noreferrer">
+                                                <Button variant="ghost" size="icon-xs" title="Download" className="text-muted-foreground hover:text-primary">
+                                                    <Download className="w-3.5 h-3.5" />
+                                                </Button>
+                                            </a>
+                                        )}
+                                        <Button
+                                            variant="ghost" size="icon-xs"
+                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            onClick={() => setDeleteFileId(file.id)}
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 )}
             </div>
 
+            {/* ── View / Preview Dialog ── */}
+            <Dialog open={!!viewFile} onOpenChange={o => !o && setViewFile(null)}>
+                <DialogContent className="sm:max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl">
+                    <DialogHeader className="px-5 py-4 border-b border-border shrink-0 flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                            {viewFile && (() => {
+                                const { icon, color, bg } = getFileIcon(viewFile.file_name)
+                                return (
+                                    <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
+                                        <span className={`text-[9px] font-black ${color}`}>{icon}</span>
+                                    </div>
+                                )
+                            })()}
+                            <div className="min-w-0">
+                                <DialogTitle className="text-sm font-bold truncate">{viewFile?.file_name}</DialogTitle>
+                                <p className="text-xs text-muted-foreground">{viewFile ? formatBytes(viewFile.file_size) : ""} · {fmtShort(viewFile?.created_at)}</p>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    {/* Preview body */}
+                    <div className="flex-1 overflow-auto bg-muted/30 min-h-0" style={{ maxHeight: "calc(90vh - 80px)" }}>
+                        {viewFile && isImage(viewFile.file_name) && (
+                            <div className="flex items-center justify-center p-6 min-h-64">
+                                <img
+                                    src={viewFile.file_url}
+                                    alt={viewFile.file_name}
+                                    className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-lg"
+                                />
+                            </div>
+                        )}
+                        {viewFile && getFileExt(viewFile.file_name) === "pdf" && (
+                            <iframe
+                                src={viewFile.file_url}
+                                className="w-full"
+                                style={{ height: "calc(90vh - 80px)" }}
+                                title={viewFile.file_name}
+                            />
+                        )}
+                        {viewFile && getFileExt(viewFile.file_name) === "txt" && (
+                            <div className="p-6">
+                                <iframe
+                                    src={viewFile.file_url}
+                                    className="w-full min-h-96 rounded-xl border border-border bg-card"
+                                    title={viewFile.file_name}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Delete Confirm ── */}
             <AlertDialog open={!!deleteFileId} onOpenChange={o => !o && setDeleteFileId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete File?</AlertDialogTitle>
-                        <AlertDialogDescription>This will permanently delete the file. This action cannot be undone.</AlertDialogDescription>
+                        <AlertDialogDescription>
+                            This will permanently delete <span className="font-semibold text-foreground">
+                                {uploadedFiles.find(f => f.id === deleteFileId)?.file_name}
+                            </span>. This action cannot be undone.
+                        </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDeleteFile} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                        <AlertDialogAction onClick={confirmDeleteFile} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
