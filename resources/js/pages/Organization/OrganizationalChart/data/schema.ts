@@ -2,18 +2,11 @@ export interface Employee {
     id: number;
     firstName: string;
     lastName: string;
-    middleName: string;
+    middleName?: string;
     email: string;
     dateHired: string;
-    profilePicture: string;
-}
-
-export interface Unit {
-    id: number;
-    name: string;
-    acronym?: string;
-    description?: string;
-    positions?: Position[];
+    avatarUrl?: string | null;   // maps to avatar_url on the employees table
+    avatarPath?: string | null;  // maps to avatar_path on the employees table
 }
 
 export interface Position {
@@ -22,11 +15,18 @@ export interface Position {
     employees: Employee[];
 }
 
+export interface Unit {
+    id: number;
+    name: string;
+    acronym?: string;
+    positions?: Position[];
+}
+
 export interface Division {
     id: number;
     name: string;
     acronym: string;
-    description: string;
+    description?: string;
     units: Unit[];
     positions: Position[];
 }
@@ -35,7 +35,7 @@ export interface Department {
     id: number;
     name: string;
     acronym: string;
-    description: string;
+    description?: string;
     divisions: Division[];
     topPositions: Position[];
 }

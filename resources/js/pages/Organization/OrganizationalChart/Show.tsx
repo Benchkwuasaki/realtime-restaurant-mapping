@@ -1,483 +1,351 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useMemo, useLayoutEffect, useCallback } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { ChevronLeft, ChevronDown, ChevronRight, Users } from 'lucide-react';
-import type { Department, Division, Unit, Employee } from './data/schema';
-import { EmployeeModal } from './components/employee-modal';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ChevronLeft, Building2, Layers, Users, FileText, Smartphone, Search, X } from 'lucide-react';
+import { OrgChart, type OrgChartHandle } from './components/org_chart';
+import type { Department, Employee } from './data/schema';
 import type { BreadcrumbItem } from '@/types';
 
-interface Props { department: Department; }
-interface EmployeeData extends Employee { positionName?: string; }
+interface Props { department?: Department }
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
-const UNIT_W    = 148;   // px width per unit card
-const UNIT_GAP  = 12;    // px gap between unit cards
-const DIV_MIN_W = 220;   // minimum division column width
-const DIV_GAP   = 24;    // px gap between division columns
-
-/** Calculate how wide a division column needs to be to fit all its units */
-function divColWidth(unitCount: number): number {
-    if (unitCount <= 0) return DIV_MIN_W;
-    return Math.max(DIV_MIN_W, unitCount * UNIT_W + (unitCount - 1) * UNIT_GAP + 16);
-}
-
-// ─── Hook: detect mobile ───────────────────────────────────────────────────────
-function useIsMobile(breakpoint = 768) {
-    const [isMobile, setIsMobile] = useState(() =>
-        typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
-    );
-    useEffect(() => {
-        const handler = () => setIsMobile(window.innerWidth < breakpoint);
-        window.addEventListener('resize', handler);
-        return () => window.removeEventListener('resize', handler);
-    }, [breakpoint]);
-    return isMobile;
-}
-
-// ─── SVG Connector (desktop only) ─────────────────────────────────────────────
-const SvgConnector: React.FC<{
-    parentRef: React.RefObject<HTMLDivElement>;
-    childRefs: React.RefObject<HTMLDivElement>[];
-    containerRef: React.RefObject<HTMLDivElement>;
-    color: string;
-}> = ({ parentRef, childRefs, containerRef, color }) => {
-    type Seg = { x1: number; y1: number; x2: number; y2: number };
-    const [segs, setSegs] = useState<Seg[]>([]);
-    const [box, setBox] = useState({ t: 0, l: 0, w: 0, h: 0 });
-
-    const compute = useCallback(() => {
-        const ct = containerRef.current;
-        const pt = parentRef.current;
-        if (!ct || !pt) return;
-        const valid = childRefs.filter(r => r.current);
-        if (!valid.length) return;
-
-        const cr  = ct.getBoundingClientRect();
-        const pr  = pt.getBoundingClientRect();
-        const crs = valid.map(r => r.current!.getBoundingClientRect());
-
-        const pCX = pr.left + pr.width  / 2 - cr.left;
-        const pBY = pr.bottom - cr.top;
-        const kids = crs.map(r => ({
-            cx: r.left + r.width / 2 - cr.left,
-            ty: r.top - cr.top,
-        }));
-
-        const allX = [pCX, ...kids.map(k => k.cx)];
-        const minX = Math.min(...allX) - 2;
-        const maxX = Math.max(...allX) + 2;
-        const minY = pBY;
-        const maxY = Math.max(...kids.map(k => k.ty));
-        if (maxY <= minY + 2) return;
-
-        const w = maxX - minX;
-        const h = maxY - minY;
-        setBox({ t: minY, l: minX, w, h });
-
-        const ox   = minX;
-        const px   = pCX - ox;
-        const barY = h * 0.5;
-        const lines: Seg[] = [];
-        lines.push({ x1: px, y1: 0, x2: px, y2: barY });
-        if (kids.length > 1) {
-            lines.push({
-                x1: kids[0].cx - ox, y1: barY,
-                x2: kids[kids.length - 1].cx - ox, y2: barY,
-            });
-        }
-        kids.forEach(k => lines.push({ x1: k.cx - ox, y1: barY, x2: k.cx - ox, y2: h }));
-        setSegs(lines);
-    }, [parentRef, childRefs, containerRef]);
-
-    useEffect(() => {
-        const id = requestAnimationFrame(() => setTimeout(compute, 0));
-        const ro = new ResizeObserver(() => requestAnimationFrame(() => setTimeout(compute, 0)));
-        if (containerRef.current) ro.observe(containerRef.current);
-        window.addEventListener('resize', compute);
-        return () => { cancelAnimationFrame(id); ro.disconnect(); window.removeEventListener('resize', compute); };
-    }, [compute]);
-
-    if (!segs.length || box.w < 2 || box.h < 2) return null;
-    return (
-        <svg style={{
-            position: 'absolute', top: box.t, left: box.l,
-            width: box.w, height: box.h,
-            pointerEvents: 'none', overflow: 'visible', zIndex: 1,
-        }}>
-            {segs.map((s, i) => (
-                <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-                    stroke={color} strokeWidth={2} strokeLinecap="round" />
-            ))}
-        </svg>
-    );
-};
-
-// ─── Unit Card (desktop) ───────────────────────────────────────────────────────
-const UnitCard = React.forwardRef<HTMLDivElement, { unit: Unit; onClick: () => void }>(
-    ({ unit, onClick }, ref) => {
-        const empCount = unit.positions?.reduce((s, p) => s + (p.employees?.length || 0), 0) ?? 0;
-        return (
-            <div ref={ref} onClick={onClick}
-                className="flex flex-col items-center cursor-pointer group shrink-0"
-                style={{ width: UNIT_W }}>
-                <div className="w-20 h-20 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600
-                    border-4 border-indigo-300 flex items-center justify-center text-white font-bold
-                    shadow-lg overflow-hidden group-hover:scale-110 transition-transform text-base">
-                    {unit.acronym?.substring(0, 2).toUpperCase() || 'U'}
-                </div>
-                <div className="bg-indigo-50 dark:bg-gray-800 border-t-4 border-indigo-400
-                    px-2 py-2 rounded-lg text-center mt-2 w-full
-                    group-hover:bg-indigo-100 dark:group-hover:bg-gray-700 transition-colors">
-                    <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400
-                        leading-tight break-words">{unit.name}</h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{empCount} Employees</p>
-                </div>
-            </div>
-        );
-    }
+const SafeAvatar: React.FC<{
+    src?: string | null; alt: string; fallback: string; className?: string;
+}> = ({ src, alt, fallback, className = '' }) => (
+    <Avatar className={className}>
+        {src ? <AvatarImage src={src} alt={alt} /> : null}
+        <AvatarFallback>{fallback}</AvatarFallback>
+    </Avatar>
 );
-UnitCard.displayName = 'UnitCard';
 
-// ─── Division Column (desktop) ─────────────────────────────────────────────────
-const DivisionColumn: React.FC<{
-    division: Division;
-    divCardRef: React.RefObject<HTMLDivElement>;
-    onUnitClick: (u: Unit) => void;
-    lineColor: string;
-}> = ({ division, divCardRef, onUnitClick, lineColor }) => {
-    const colRef = useRef<HTMLDivElement>(null);
-    const divisionHead = division.positions?.[0]?.employees?.[0];
-    const headName = divisionHead
-        ? [divisionHead.firstName, divisionHead.middleName, divisionHead.lastName].filter(Boolean).join(' ')
-        : 'Division Head';
+// Collect every employee in the department with their context
+interface EmployeeEntry {
+    id: number;
+    fullName: string;
+    position: string;
+    location: string;
+    initials: string;
+    avatarUrl?: string | null;
+}
 
-    const units    = division.units ?? [];
-    const colWidth = divColWidth(units.length);
+function collectEmployees(dept: Department): EmployeeEntry[] {
+    const entries: EmployeeEntry[] = [];
 
-    const unitRefs = useRef<React.RefObject<HTMLDivElement>[]>(
-        units.map(() => React.createRef<HTMLDivElement>())
+    const addEmp = (emp: Employee, position: string, location: string) => {
+        entries.push({
+            id: emp.id,
+            fullName: [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(' '),
+            position,
+            location,
+            initials: [emp.firstName, emp.lastName].filter(Boolean).map(n => n[0].toUpperCase()).join(''),
+            avatarUrl: emp.avatarUrl,
+        });
+    };
+
+    (dept.topPositions ?? []).forEach(p =>
+        (p.employees ?? []).forEach(e => addEmp(e, p.name, dept.name))
     );
 
-    return (
-        <div ref={colRef}
-            className="relative flex flex-col items-center shrink-0"
-            style={{ width: colWidth }}>
+    (dept.divisions ?? []).forEach(div => {
+        (div.positions ?? []).forEach(p =>
+            (p.employees ?? []).forEach(e => addEmp(e, p.name, `${div.name}`))
+        );
+        (div.units ?? []).forEach(unit =>
+            (unit.positions ?? []).forEach(p =>
+                (p.employees ?? []).forEach(e => addEmp(e, p.name, `${unit.name} · ${div.name}`))
+            )
+        );
+    });
 
-            {/* Division card */}
-            <div ref={divCardRef} className="flex flex-col items-center z-10" style={{ width: DIV_MIN_W }}>
-                <div className="w-24 h-24 rounded-full bg-gradient-to-b from-blue-400 to-blue-600
-                    border-4 border-blue-300 flex items-center justify-center text-white font-bold
-                    shadow-lg overflow-hidden mb-3 text-2xl shrink-0">
-                    {divisionHead?.profilePicture
-                        ? <img src={divisionHead.profilePicture} alt={headName} className="w-full h-full object-cover" />
-                        : division.acronym?.substring(0, 2).toUpperCase() || 'D'}
-                </div>
-                <div className="bg-blue-50 dark:bg-gray-800 border-t-4 border-blue-400
-                    px-3 py-3 rounded-lg text-center w-full">
-                    <h3 className="text-sm font-bold text-blue-600 dark:text-blue-400 leading-tight">{division.name}</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{headName}</p>
-                    {units.length > 0 && (
-                        <p className="text-xs font-semibold text-blue-500 dark:text-blue-400 mt-2">
-                            {units.length} Unit{units.length !== 1 ? 's' : ''}
-                        </p>
-                    )}
-                </div>
-            </div>
+    return entries;
+}
 
-            {/* Units + connector */}
-            {units.length > 0 && (
-                <>
-                    <SvgConnector
-                        parentRef={divCardRef}
-                        childRefs={unitRefs.current}
-                        containerRef={colRef as React.RefObject<HTMLDivElement>}
-                        color={lineColor}
-                    />
-                    <div
-                        className="flex flex-row flex-nowrap justify-center mt-16"
-                        style={{ gap: UNIT_GAP }}
-                    >
-                        {units.map((unit, i) => (
-                            <UnitCard
-                                key={unit.id}
-                                ref={unitRefs.current[i]}
-                                unit={unit}
-                                onClick={() => onUnitClick(unit)}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
-        </div>
-    );
-};
+function countEmployees(dept: Department): number {
+    return collectEmployees(dept).length;
+}
 
-// ─── Mobile Unit Row ───────────────────────────────────────────────────────────
-const MobileUnitRow: React.FC<{ unit: Unit; onClick: () => void }> = ({ unit, onClick }) => {
-    const empCount = unit.positions?.reduce((s, p) => s + (p.employees?.length || 0), 0) ?? 0;
-    return (
-        <button onClick={onClick}
-            className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl
-                bg-indigo-50 dark:bg-gray-800 border border-indigo-200 dark:border-indigo-900
-                hover:bg-indigo-100 dark:hover:bg-gray-700 active:scale-95 transition-all">
-            <div className="w-11 h-11 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600
-                border-2 border-indigo-300 flex items-center justify-center text-white font-bold text-xs shrink-0">
-                {unit.acronym?.substring(0, 2).toUpperCase() || 'U'}
-            </div>
-            <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 leading-tight truncate">{unit.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
-                    <Users size={11} /> {empCount} Employees
-                </p>
-            </div>
-            <ChevronRight size={16} className="text-indigo-400 shrink-0" />
-        </button>
-    );
-};
+export default function OrganizationalChartShow({ department }: Props) {
+    if (!department) return null;
 
-// ─── Mobile Division Card (accordion) ─────────────────────────────────────────
-const MobileDivisionCard: React.FC<{
-    division: Division;
-    onUnitClick: (u: Unit) => void;
-    index: number;
-}> = ({ division, onUnitClick, index }) => {
-    const [open, setOpen] = useState(index === 0);
-    const divisionHead = division.positions?.[0]?.employees?.[0];
-    const headName = divisionHead
-        ? [divisionHead.firstName, divisionHead.middleName, divisionHead.lastName].filter(Boolean).join(' ')
-        : 'Division Head';
-    const units = division.units ?? [];
+    const chartRef   = useRef<OrgChartHandle>(null);
+    const inputRef   = useRef<HTMLInputElement>(null);
+    const searchWrap = useRef<HTMLDivElement>(null);
 
-    return (
-        <div className="rounded-2xl overflow-hidden border border-blue-200 dark:border-blue-900 bg-white dark:bg-gray-900 shadow-sm">
-            <button onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center gap-4 px-4 py-4 bg-blue-50 dark:bg-gray-800
-                    active:bg-blue-100 dark:active:bg-gray-700 transition-colors">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-b from-blue-400 to-blue-600
-                    border-2 border-blue-300 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-md">
-                    {divisionHead?.profilePicture
-                        ? <img src={divisionHead.profilePicture} alt={headName} className="w-full h-full object-cover rounded-full" />
-                        : division.acronym?.substring(0, 2).toUpperCase() || 'D'}
-                </div>
-                <div className="flex-1 min-w-0 text-left">
-                    <h3 className="text-sm font-bold text-blue-600 dark:text-blue-400 leading-tight">{division.name}</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{headName}</p>
-                    {units.length > 0 && (
-                        <span className="inline-block mt-1 text-xs font-semibold text-blue-500 dark:text-blue-400
-                            bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 rounded-full">
-                            {units.length} Unit{units.length !== 1 ? 's' : ''}
-                        </span>
-                    )}
-                </div>
-                <div className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
-                    <ChevronDown size={20} className="text-blue-400" />
-                </div>
-            </button>
+    const [query, setQuery]             = useState('');
+    const [showDropdown, setDropdown]   = useState(false);
+    const [highlightIds, setHighlight]  = useState<Set<number>>(new Set());
+    const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
 
-            {open && units.length > 0 && (
-                <div className="px-4 py-3 space-y-2 border-t border-blue-100 dark:border-blue-900/50">
-                    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-1">Units</p>
-                    {units.map(unit => (
-                        <MobileUnitRow key={unit.id} unit={unit} onClick={() => onUnitClick(unit)} />
-                    ))}
-                </div>
-            )}
-            {open && units.length === 0 && (
-                <div className="px-4 py-4 text-center text-sm text-gray-400 dark:text-gray-500 border-t border-blue-100 dark:border-blue-900/50">
-                    No units in this division
-                </div>
-            )}
-        </div>
-    );
-};
-
-// ─── Mobile Layout ─────────────────────────────────────────────────────────────
-const MobileLayout: React.FC<{
-    department: Department;
-    onUnitClick: (u: Unit) => void;
-}> = ({ department, onUnitClick }) => {
-    const deptHead = department.topPositions?.[0]?.employees?.[0];
-    const deptHeadName = deptHead
-        ? [deptHead.firstName, deptHead.middleName, deptHead.lastName].filter(Boolean).join(' ')
-        : 'Department Head';
-    const divisions = department.divisions ?? [];
-
-    return (
-        <div className="space-y-4">
-            <div className="flex flex-col items-center text-center bg-white dark:bg-gray-800
-                rounded-2xl shadow-md border-t-4 border-purple-400 px-5 py-5">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-b from-purple-500 to-purple-600
-                    border-4 border-purple-300 flex items-center justify-center text-white font-bold
-                    shadow-lg overflow-hidden text-2xl mb-3">
-                    {deptHead?.profilePicture
-                        ? <img src={deptHead.profilePicture} alt={deptHeadName} className="w-full h-full object-cover" />
-                        : department.acronym?.substring(0, 2).toUpperCase() || 'D'}
-                </div>
-                <h1 className="text-lg font-bold text-purple-600 dark:text-purple-400 leading-tight">{department.name}</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{deptHeadName}</p>
-                {divisions.length > 0 && (
-                    <span className="inline-block mt-2 text-xs font-semibold text-purple-600 dark:text-purple-400
-                        bg-purple-100 dark:bg-purple-900/30 px-3 py-1 rounded-full">
-                        {divisions.length} Division{divisions.length !== 1 ? 's' : ''}
-                    </span>
-                )}
-            </div>
-
-            {divisions.length > 0 && (
-                <div className="flex items-center gap-3 px-2">
-                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                    <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Divisions</span>
-                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                </div>
-            )}
-
-            {divisions.map((div, i) => (
-                <MobileDivisionCard key={div.id} division={div} onUnitClick={onUnitClick} index={i} />
-            ))}
-        </div>
-    );
-};
-
-// ─── Page ──────────────────────────────────────────────────────────────────────
-export default function DepartmentDetail({ department }: Props) {
-    const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
-    const [showModal, setShowModal]       = useState(false);
-    const [isDark, setIsDark]             = useState(false);
-    const isMobile                        = useIsMobile(768);
-
-    const containerRef = useRef<HTMLDivElement>(null);
-    const deptRef      = useRef<HTMLDivElement>(null);
-    const divisions    = department.divisions ?? [];
-
-    // Total tree width = sum of each column's dynamic width + gaps
-    const totalTreeWidth = divisions.reduce((sum, div) => sum + divColWidth((div.units ?? []).length), 0)
-        + Math.max(0, divisions.length - 1) * DIV_GAP
-        + 64; // side padding
-
-    const divRefs = useRef<React.RefObject<HTMLDivElement>[]>(
-        divisions.map(() => React.createRef<HTMLDivElement>())
-    );
-
-    useEffect(() => {
-        const check = () => setIsDark(document.documentElement.classList.contains('dark'));
-        check();
-        const obs = new MutationObserver(check);
-        obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        return () => obs.disconnect();
-    }, []);
-
-    const lineColor = isDark ? '#6b7280' : '#9ca3af';
+    // Reposition dropdown to fixed coords whenever it opens
+    useLayoutEffect(() => {
+        if (showDropdown && searchWrap.current) {
+            const r = searchWrap.current.getBoundingClientRect();
+            setDropdownRect({ top: r.bottom + 6, left: r.left, width: r.width });
+        }
+    }, [showDropdown, query]);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Organization', href: '#' },
-        { title: 'Organisational Chart', href: '/organization/organizational_chart' },
+        { title: 'Organizational Chart', href: '/organization/organizational_chart' },
         { title: department.name, href: '#' },
     ];
 
-    const deptHead     = department.topPositions?.[0]?.employees?.[0];
-    const deptHeadName = deptHead
-        ? [deptHead.firstName, deptHead.middleName, deptHead.lastName].filter(Boolean).join(' ')
-        : 'Department Head';
+    const head     = department.topPositions?.[0]?.employees?.[0];
+    const headName = head ? [head.firstName, head.middleName, head.lastName].filter(Boolean).join(' ') : null;
+    const headPos  = department.topPositions?.[0]?.name;
+    const divCount = department.divisions?.length ?? 0;
+    const empCount = countEmployees(department);
+    const acronym  = department.acronym?.substring(0, 2) || 'DP';
+    const hasData  = (department.divisions?.length ?? 0) > 0 || (department.topPositions?.length ?? 0) > 0;
 
-    const handleUnitClick = (u: Unit) => { setSelectedUnit(u); setShowModal(true); };
-    const closeModal       = ()        => { setSelectedUnit(null); setShowModal(false); };
+    const allEmployees = useMemo(() => collectEmployees(department), [department]);
 
-    const selectedUnitEmployees: EmployeeData[] = selectedUnit
-        ? (selectedUnit.positions ?? [])
-            .flatMap(p => (p.employees ?? []).map(e => ({ ...e, positionName: p.name })))
-            .sort((a, b) => (a.firstName || '').localeCompare(b.firstName || ''))
-        : [];
+    const results = useMemo(() => {
+        if (query.trim().length < 2) return [];
+        const q = query.toLowerCase();
+        return allEmployees.filter(e =>
+            e.fullName.toLowerCase().includes(q) ||
+            e.position.toLowerCase().includes(q) ||
+            e.location.toLowerCase().includes(q)
+        ).slice(0, 8);
+    }, [query, allEmployees]);
+
+    const handleSelect = (emp: EmployeeEntry) => {
+        setQuery(emp.fullName);
+        setDropdown(false);
+        setHighlight(new Set([emp.id]));
+        chartRef.current?.panToEmployee(emp.id);
+    };
+
+    const clearSearch = () => {
+        setQuery('');
+        setHighlight(new Set());
+        setDropdown(false);
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`${department.name} - Organizational Chart`} />
+            <Head title={`${department.name} — Organizational Chart`} />
 
-            <div className="w-full py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
-                {/* Back button */}
-                <div className="mb-6">
-                    <Link href="/organization/organizational_chart"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700
-                            hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600
-                            font-medium transition-colors rounded-lg text-sm">
-                        <ChevronLeft size={18} />
-                        Back to Chart
+            <div className="min-h-screen bg-background">
+                <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4">
+
+                    {/* Back link */}
+                    <Link
+                        href="/organization/organizational_chart"
+                        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground
+                            hover:text-foreground transition-colors font-medium"
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                        All Departments
                     </Link>
-                </div>
 
-                {/* ── MOBILE ── */}
-                {isMobile && (
-                    <MobileLayout department={department} onUnitClick={handleUnitClick} />
-                )}
+                    {/* ── Department header card ─────────────────────────────── */}
+                    <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-sm">
+                        <div className="h-1 bg-primary rounded-t-2xl" />
+                        <div className="p-4 sm:p-5">
 
-                {/* ── DESKTOP ── */}
-                {!isMobile && (
-                    <div className="overflow-x-auto pb-8">
-                        <div
-                            ref={containerRef}
-                            className="relative flex flex-col items-center"
-                            style={{ minWidth: Math.max(600, totalTreeWidth) }}
-                        >
-                            {/* Department node */}
-                            <div ref={deptRef} className="flex flex-col items-center z-10">
-                                <div className="w-32 h-32 rounded-full bg-gradient-to-b from-purple-500 to-purple-600
-                                    border-4 border-purple-300 flex items-center justify-center text-white
-                                    font-bold shadow-lg overflow-hidden mb-4 text-4xl shrink-0">
-                                    {deptHead?.profilePicture
-                                        ? <img src={deptHead.profilePicture} alt={deptHeadName} className="w-full h-full object-cover" />
-                                        : department.acronym?.substring(0, 2).toUpperCase() || 'D'}
+                            {/* Avatar + info */}
+                            <div className="flex items-start gap-3 sm:gap-4 mb-4">
+                                <div className="relative shrink-0">
+                                    <SafeAvatar
+                                        src={head?.avatarUrl}
+                                        alt={headName ?? department.name}
+                                        fallback={acronym}
+                                        className="h-14 w-14 sm:h-20 sm:w-20 ring-2 sm:ring-4 ring-border
+                                            bg-accent text-accent-foreground font-bold text-xl sm:text-2xl"
+                                    />
+                                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5
+                                        bg-green-500 rounded-full ring-2 ring-background" />
                                 </div>
-                                <div className="bg-purple-50 dark:bg-gray-800 border-t-4 border-purple-400
-                                    px-8 py-5 rounded-lg text-center w-72">
-                                    <h1 className="text-xl font-bold text-purple-600 dark:text-purple-400 leading-tight">
-                                        {department.name}
-                                    </h1>
-                                    <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">{deptHeadName}</p>
-                                    {divisions.length > 0 && (
-                                        <p className="text-xs font-semibold text-purple-500 dark:text-purple-400 mt-2">
-                                            {divisions.length} Division{divisions.length !== 1 ? 's' : ''}
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                        <h1 className="text-base sm:text-xl font-bold text-foreground leading-tight">
+                                            {department.name}
+                                        </h1>
+                                        <Badge variant="outline" className="font-mono text-xs shrink-0">
+                                            {department.acronym}
+                                        </Badge>
+                                    </div>
+                                    {headName && (
+                                        <div className="mb-1.5">
+                                            <p className="text-xs sm:text-sm font-medium text-foreground">{headName}</p>
+                                            {headPos && <p className="text-xs text-primary mt-0.5">{headPos}</p>}
+                                        </div>
+                                    )}
+                                    {department.description && (
+                                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2">
+                                            {department.description}
                                         </p>
                                     )}
                                 </div>
                             </div>
 
-                            {/* Dept → Divisions connector */}
-                            {divisions.length > 0 && (
-                                <SvgConnector
-                                    parentRef={deptRef}
-                                    childRefs={divRefs.current}
-                                    containerRef={containerRef}
-                                    color={lineColor}
-                                />
-                            )}
-
-                            {/* Division row */}
-                            {divisions.length > 0 && (
-                                <div
-                                    className="flex flex-row flex-nowrap justify-center mt-24 w-full px-8"
-                                    style={{ gap: DIV_GAP }}
-                                >
-                                    {divisions.map((div, i) => (
-                                        <DivisionColumn
-                                            key={div.id}
-                                            division={div}
-                                            divCardRef={divRefs.current[i]}
-                                            onUnitClick={handleUnitClick}
-                                            lineColor={lineColor}
-                                        />
-                                    ))}
+                            {/* ── Stats — full width stretched cards ─────────── */}
+                            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
+                                {/* Divisions */}
+                                <div className="relative overflow-hidden flex items-center gap-3
+                                    bg-gradient-to-br from-primary/10 to-primary/5
+                                    border border-primary/20 rounded-2xl px-4 py-3.5">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center
+                                        justify-center shrink-0">
+                                        <Layers className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-foreground leading-none">{divCount}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">Divisions</p>
+                                    </div>
+                                    {/* Decorative circle */}
+                                    <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full
+                                        bg-primary/5 pointer-events-none" />
                                 </div>
+
+                                {/* Employees */}
+                                <div className="relative overflow-hidden flex items-center gap-3
+                                    bg-gradient-to-br from-emerald-500/10 to-emerald-500/5
+                                    border border-emerald-500/20 rounded-2xl px-4 py-3.5">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center
+                                        justify-center shrink-0">
+                                        <Users className="h-5 w-5 text-emerald-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-foreground leading-none">{empCount}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">Employees</p>
+                                    </div>
+                                    <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full
+                                        bg-emerald-500/5 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {/* ── Search bar ──────────────────────────────── */}
+                            <div className="relative mt-3" ref={searchWrap}>
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2
+                                    h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    value={query}
+                                    placeholder="Search employee by name, position or unit…"
+                                    onChange={e => { setQuery(e.target.value); setDropdown(true); }}
+                                    onFocus={() => setDropdown(true)}
+                                    onBlur={() => setTimeout(() => setDropdown(false), 200)}
+                                    className="w-full h-10 pl-9 pr-9 text-sm rounded-xl
+                                        bg-background/60 border border-border
+                                        text-foreground placeholder:text-muted-foreground/60
+                                        focus:outline-none focus:ring-2 focus:ring-primary/40
+                                        focus:border-primary/50 transition-all"
+                                />
+                                {query && (
+                                    <button
+                                        onClick={clearSearch}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 z-10
+                                            text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {/* ── Org chart canvas ───────────────────────────────────── */}
+                    <div className="bg-card text-card-foreground rounded-2xl border border-border
+                        shadow-sm overflow-hidden"
+                        style={{ height: 'calc(100svh - 380px)', minHeight: '380px' }}
+                    >
+                        {/* Toolbar — simple title + hint only */}
+                        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5
+                            border-b border-border bg-muted/30">
+                            <div className="flex items-center gap-2">
+                                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Organizational Tree
+                                </span>
+                            </div>
+                            <p className="hidden sm:block text-xs text-muted-foreground/70">
+                                Scroll to zoom · Drag to pan · Click nodes to view employees
+                            </p>
+                            <p className="sm:hidden text-xs text-muted-foreground/70 flex items-center gap-1">
+                                <Smartphone className="h-3 w-3" />
+                                Pinch · Drag · Tap
+                            </p>
+                        </div>
+
+                        <div className="relative w-full h-[calc(100%-41px)]">
+                            {!hasData ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="text-center px-4">
+                                        <Building2 className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
+                                        <p className="text-sm font-medium text-muted-foreground">
+                                            No hierarchy data available
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <OrgChart
+                                    ref={chartRef}
+                                    department={department}
+                                    highlightIds={highlightIds}
+                                />
                             )}
                         </div>
                     </div>
-                )}
-            </div>
 
-            <EmployeeModal
-                isOpen={showModal}
-                onClose={closeModal}
-                title={`${department.name} / ${selectedUnit?.name || ''}`}
-                employees={selectedUnitEmployees}
-            />
+                </div>
+            </div>
+            {/* ── Fixed dropdown portal — renders outside all overflow:hidden parents ── */}
+            {showDropdown && dropdownRect && (results.length > 0 || query.trim().length >= 2) && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: dropdownRect.top,
+                        left: dropdownRect.left,
+                        width: dropdownRect.width,
+                        zIndex: 9999,
+                    }}
+                    className="bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden"
+                    onMouseDown={e => e.preventDefault()}
+                >
+                    {results.length > 0 ? results.map((emp, i) => (
+                        <button
+                            key={emp.id}
+                            onMouseDown={() => handleSelect(emp)}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5
+                                hover:bg-accent transition-colors text-left
+                                ${i > 0 ? 'border-t border-border/40' : ''}`}
+                        >
+                            {emp.avatarUrl ? (
+                                <img src={emp.avatarUrl} alt={emp.fullName}
+                                    className="h-9 w-9 rounded-full object-cover ring-1 ring-border shrink-0" />
+                            ) : (
+                                <div className="h-9 w-9 rounded-full bg-accent shrink-0
+                                    flex items-center justify-center
+                                    text-xs font-bold text-accent-foreground ring-1 ring-border">
+                                    {emp.initials}
+                                </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-foreground truncate">
+                                    {emp.fullName}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                    {emp.position} · {emp.location}
+                                </p>
+                            </div>
+                            <Search className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                        </button>
+                    )) : (
+                        <div className="px-4 py-3">
+                            <p className="text-sm text-muted-foreground text-center">
+                                No employees found for "{query}"
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
         </AppLayout>
     );
 }
