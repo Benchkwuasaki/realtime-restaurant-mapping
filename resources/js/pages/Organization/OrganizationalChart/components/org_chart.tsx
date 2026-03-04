@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Users, Building2, Layers, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Users, Building2, Layers, ChevronDown, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmployeeDetailModal, type EmployeeWithContext } from './employee_detail_card';
 import type { Department, Division, Position, Unit } from '../data/schema';
@@ -275,7 +275,7 @@ const DivisionNode: React.FC<{
                     >
                         {expanded
                             ? <ChevronDown className="h-3.5 w-3.5 text-secondary-foreground" />
-                            : <ChevronUp className="h-3.5 w-3.5 text-secondary-foreground" />
+                            : <ChevronRight className="h-3.5 w-3.5 text-secondary-foreground" />
                         }
                     </button>
                 )}
@@ -356,6 +356,7 @@ const DivisionNode: React.FC<{
 // ─── OrgChart public handle ───────────────────────────────────────────────────
 export interface OrgChartHandle {
     panToEmployee: (employeeId: number) => void;
+    fitToCanvas: () => void;
 }
 
 // ─── Main OrgChart ────────────────────────────────────────────────────────────
@@ -383,20 +384,49 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
         setModal({ open: true, title, employees });
     }, []);
 
-    // Keep scaleRef in sync
-    useEffect(() => { scaleRef.current = scale; }, [scale]);
+    // ── Fit-to-canvas ────────────────────────────────────────────────────────
+    // Measures the actual rendered content and computes the scale that fits it
+    // inside the canvas with a small padding margin. Fully dynamic — re-runs
+    // whenever `department` changes (new divisions / units added / removed).
+    const minScaleRef = useRef(0.2);
 
-    // Responsive initial scale
-    useEffect(() => {
-        const updateScale = () => {
-            const s = window.innerWidth < 640 ? 0.45 : window.innerWidth < 1024 ? 0.65 : 0.85;
-            scaleRef.current = s;
-            setScale(s);
-        };
-        updateScale();
-        window.addEventListener('resize', updateScale);
-        return () => window.removeEventListener('resize', updateScale);
+    const fitToCanvas = useCallback(() => {
+        if (!canvasRef.current || !contentRef.current) return;
+
+        const canvasW = canvasRef.current.offsetWidth;
+        const canvasH = canvasRef.current.offsetHeight;
+        const contentW = contentRef.current.scrollWidth;
+        const contentH = contentRef.current.scrollHeight;
+
+        if (contentW === 0 || contentH === 0) return;
+
+        const PADDING = 48; // px breathing room on each side
+        const fitScale = Math.min(
+            (canvasW - PADDING * 2) / contentW,
+            (canvasH - PADDING * 2) / contentH,
+            1.0,   // never auto-zoom in past 100%
+        );
+        const clamped = Math.max(0.1, fitScale);
+
+        minScaleRef.current = clamped;
+        scaleRef.current    = clamped;
+        setScale(clamped);
+        setTrans({ x: 0, y: 0 }); // content is centred by the transform already
     }, []);
+
+    // Fit on first render and whenever department structure changes
+    useEffect(() => {
+        // Use rAF to wait for the DOM to finish layout after React render
+        const id = requestAnimationFrame(() => fitToCanvas());
+        return () => cancelAnimationFrame(id);
+    }, [department, fitToCanvas]);
+
+    // Re-fit on window resize
+    useEffect(() => {
+        const onResize = () => requestAnimationFrame(() => fitToCanvas());
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, [fitToCanvas]);
 
     // ── Expose panToEmployee ────────────────────────────────────────────────
     // Uses current getBoundingClientRect to find where the node is on screen RIGHT NOW,
@@ -443,15 +473,60 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
                 y: prev.y + dy * targetScale,
             }));
         },
-    }), []);
+        fitToCanvas() { fitToCanvas(); },
+    }), [fitToCanvas]);
 
     const lineColor = 'var(--border)';
-    const MIN = 0.2, MAX = 2.5, STEP = 0.1;
+    const MAX  = 2.5;
+    const STEP = 0.1;
+
+    // ── Pan bounds ───────────────────────────────────────────────────────────
+    // The content div sits at left:50% with transform translate(calc(-50%+tx), ty+40) scale(s).
+    // After scaling, the rendered content is:
+    //   width  = contentW * s   (centred horizontally because of -50% + tx)
+    //   height = contentH * s   (starts at top: ty+40)
+    //
+    // We allow panning until only MARGIN px of content remains visible on each edge.
+    // That gives:   -maxTx <= tx <= maxTx   and   minTy <= ty <= maxTy
+    const MARGIN = 80; // px of content that must remain visible
+
+    const clampTranslate = useCallback((tx: number, ty: number, s: number) => {
+        if (!canvasRef.current || !contentRef.current) return { x: tx, y: ty };
+
+        const canvasW  = canvasRef.current.offsetWidth;
+        const canvasH  = canvasRef.current.offsetHeight;
+        const contentW = contentRef.current.scrollWidth  * s;
+        const contentH = contentRef.current.scrollHeight * s;
+
+        // Horizontal: content is centred. The left edge of content on screen is:
+        //   canvasW/2 + tx - contentW/2
+        // We want left edge >= -(contentW - MARGIN), i.e. most of it can slide left
+        // and right edge <= canvasW + contentW - MARGIN
+        const maxTx = contentW / 2 - MARGIN;
+        const minTx = -(contentW / 2 - MARGIN);
+
+        // Vertical: content top on screen = ty + 40
+        // Allow scrolling so at least MARGIN of content remains in view vertically
+        const maxTy = MARGIN - 40;                        // top edge can move down this far
+        const minTy = canvasH - contentH - 40 - MARGIN;  // bottom edge stays visible
+
+        return {
+            x: Math.min(maxTx, Math.max(minTx, tx)),
+            y: Math.min(maxTy, Math.max(minTy, ty)),
+        };
+    }, []);
+
+    // Keep scaleRef in sync and re-clamp translate when scale changes
+    // (must be after clampTranslate definition)
+    useEffect(() => {
+        scaleRef.current = scale;
+        setTrans(prev => clampTranslate(prev.x, prev.y, scale));
+    }, [scale, clampTranslate]);
 
     // ── Mouse handlers ──────────────────────────────────────────────────────
     const handleWheel = useCallback((e: React.WheelEvent) => {
         e.preventDefault();
-        setScale(s => Math.min(MAX, Math.max(MIN, s + (e.deltaY < 0 ? STEP : -STEP))));
+        setScale(s => Math.min(MAX, Math.max(minScaleRef.current, s + (e.deltaY < 0 ? STEP : -STEP))));
     }, []);
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (e.button !== 0) return;
@@ -461,11 +536,12 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
     }, [translate]);
     const handleMouseMove = useCallback((e: React.MouseEvent) => {
         if (!isPanning.current) return;
-        setTrans({
+        const raw = {
             x: startTrans.current.x + (e.clientX - startPos.current.x),
             y: startTrans.current.y + (e.clientY - startPos.current.y),
-        });
-    }, []);
+        };
+        setTrans(clampTranslate(raw.x, raw.y, scaleRef.current));
+    }, [clampTranslate]);
     const handleMouseUp = useCallback(() => { isPanning.current = false; }, []);
 
     // ── Touch handlers ──────────────────────────────────────────────────────
@@ -485,19 +561,20 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
     const handleTouchMove = useCallback((e: React.TouchEvent) => {
         e.preventDefault();
         if (e.touches.length === 1 && isPanning.current) {
-            setTrans({
+            const raw = {
                 x: startTrans.current.x + (e.touches[0].clientX - startPos.current.x),
                 y: startTrans.current.y + (e.touches[0].clientY - startPos.current.y),
-            });
+            };
+            setTrans(clampTranslate(raw.x, raw.y, scaleRef.current));
         } else if (e.touches.length === 2 && lastPinchDist.current !== null) {
             const dx   = e.touches[0].clientX - e.touches[1].clientX;
             const dy   = e.touches[0].clientY - e.touches[1].clientY;
             const dist = Math.hypot(dx, dy);
             const delta = (dist - lastPinchDist.current) * 0.005;
             lastPinchDist.current = dist;
-            setScale(s => Math.min(MAX, Math.max(MIN, s + delta)));
+            setScale(s => Math.min(MAX, Math.max(minScaleRef.current, s + delta)));
         }
-    }, []);
+    }, [clampTranslate]);
     const handleTouchEnd = useCallback(() => {
         isPanning.current     = false;
         lastPinchDist.current = null;
@@ -530,8 +607,8 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
             <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
                 {[
                     { icon: <ZoomIn className="h-3.5 w-3.5" />,    action: () => setScale(s => Math.min(MAX, s + STEP)), title: 'Zoom In' },
-                    { icon: <ZoomOut className="h-3.5 w-3.5" />,   action: () => setScale(s => Math.max(MIN, s - STEP)), title: 'Zoom Out' },
-                    { icon: <RotateCcw className="h-3.5 w-3.5" />, action: () => { setScale(window.innerWidth < 640 ? 0.45 : window.innerWidth < 1024 ? 0.65 : 0.85); setTrans({ x: 0, y: 0 }); }, title: 'Reset' },
+                    { icon: <ZoomOut className="h-3.5 w-3.5" />,   action: () => setScale(s => Math.max(minScaleRef.current, s - STEP)), title: 'Zoom Out' },
+                    { icon: <RotateCcw className="h-3.5 w-3.5" />, action: () => fitToCanvas(), title: 'Reset' },
                 ].map(({ icon, action, title }) => (
                     <button key={title} onClick={action} title={title}
                         className="w-8 h-8 bg-card border border-border rounded-lg shadow-sm
