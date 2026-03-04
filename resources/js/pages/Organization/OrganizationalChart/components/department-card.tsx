@@ -61,9 +61,6 @@ export const DepartmentCard: React.FC<DepartmentCardProps> = ({
                 <div className={`${textSize} font-bold ${colors.text}`}>
                     {department.name}
                 </div>
-                <div className={`text-xs ${colors.text} opacity-75 mt-1`}>
-                    {headFullName}
-                </div>
                 {department.divisions && department.divisions.length > 0 && (
                     <div className={`text-xs font-semibold ${colors.text} mt-2 pt-2 border-t ${colors.border}`}>
                         {department.divisions.length} {department.divisions.length === 1 ? 'Division' : 'Divisions'}

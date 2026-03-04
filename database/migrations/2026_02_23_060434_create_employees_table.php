@@ -21,7 +21,7 @@ return new class extends Migration {
             $table->string('avatar_path')->nullable();
             $table->string('avatar_url')->nullable();
             $table->date('date_applied');
-            $table->date('date_hired');
+            $table->date('date_hired'); 
             $table->time('work_schedule_start');
             $table->time('work_schedule_end');
             $table->softDeletes();
@@ -37,3 +37,4 @@ return new class extends Migration {
         Schema::dropIfExists('employees');
     }
 };
+
