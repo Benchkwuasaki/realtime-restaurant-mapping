@@ -131,7 +131,7 @@ interface UploadedFile {
 interface SeminarTraining {
     id: number
     seminar_name: string
-    organizer?: string
+    venue?: string
     date_attended?: string
 }
 interface ServiceRecord {
@@ -1285,15 +1285,15 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     }, {})
 
     const [seminarDialog, setSeminarDialog] = useState<{
-        open: boolean; id?: number; seminar_name: string; organizer: string; date_attended: string
-    }>({ open: false, seminar_name: "", organizer: "", date_attended: "" })
+        open: boolean; id?: number; seminar_name: string; venue: string; date_attended: string
+    }>({ open: false, seminar_name: "", venue: "", date_attended: "" })
     const [deleteSeminarId, setDeleteSeminarId] = useState<number | null>(null)
 
     const openSeminarDialog = (s?: SeminarTraining) =>
-        setSeminarDialog({ open: true, id: s?.id, seminar_name: s?.seminar_name ?? "", organizer: s?.organizer ?? "", date_attended: toInputDate(s?.date_attended) })
+        setSeminarDialog({ open: true, id: s?.id, seminar_name: s?.seminar_name ?? "", venue: s?.venue ?? "", date_attended: toInputDate(s?.date_attended) })
 
     const saveSeminar = () => {
-        const data = { seminar_name: seminarDialog.seminar_name, organizer: seminarDialog.organizer, date_attended: seminarDialog.date_attended || null }
+        const data = { seminar_name: seminarDialog.seminar_name, venue: seminarDialog.venue, date_attended: seminarDialog.date_attended || null }
         if (seminarDialog.id) {
             router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, { preserveScroll: true, onSuccess: () => setSeminarDialog(p => ({ ...p, open: false })) })
         } else {
@@ -1442,7 +1442,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                     <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
                                         <Checkbox className="w-4 h-4" />
                                         <span className="text-sm text-foreground font-medium">{s.seminar_name}</span>
-                                        <span className="text-sm text-muted-foreground">{s.organizer ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground">{s.venue ?? "—"}</span>
                                         <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
                                         <div className="flex items-center justify-end gap-1">
                                             <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -1561,7 +1561,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.organizer} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label><Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
                     </div>
                     <DialogFooter>
