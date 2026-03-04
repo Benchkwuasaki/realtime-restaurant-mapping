@@ -12,12 +12,6 @@ class DatabaseSeeder extends Seeder
     {
         // TODO: refactor to separate seeder files
 
-        $this->call([
-            RoleSeeder::class,
-            UserSeeder::class,
-            InternalOrganizationSeeder::class,
-        ]);
-
         // ── 1. Salary Grade Steps ──────────────────────────────────
         $salaryGradeSteps = [
             ['salary_grade' => 7, 'step' => 1, 'salary_amount' => 17899.00],
@@ -1145,26 +1139,15 @@ class DatabaseSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-
-            // Uploaded files
-            DB::table('employee_uploaded_files')->insert([
-                'employee_id'            => $employeeId,
-                'file_name'              => 'pds_form.pdf',
-                'file_size'              => '450KB',
-                'file_database_location' => "employees/{$employeeId}/pds_form.pdf",
-                'created_at'             => now(),
-                'updated_at'             => now(),
-            ]);
-            if ($i % 3 === 0) {
-                DB::table('employee_uploaded_files')->insert([
-                    'employee_id'            => $employeeId,
-                    'file_name'              => 'diploma.pdf',
-                    'file_size'              => '1.1MB',
-                    'file_database_location' => "employees/{$employeeId}/diploma.pdf",
-                    'created_at'             => now(),
-                    'updated_at'             => now(),
-                ]);
-            }
         }
+
+        $this->call([
+            RoleSeeder::class,
+            UserSeeder::class,
+            InternalOrganizationSeeder::class,
+            FaceEmbeddingSeeder::class,
+            RecognitionLogSeeder::class,
+            AttendanceRecordSeeder::class,
+        ]);
     }
 }

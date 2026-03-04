@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->foreignId('item_id')->constrained('items', 'item_id')->onDelete('cascade');
             $table->foreignId('salary_grade_step_id')->constrained('salary_grade_steps', 'salary_grade_step_id')->onDelete('cascade');
             $table->enum('employment_classification', ['Regular', 'Job Order', 'Casual']);
-            $table->string('work_email')->unique();
+            $table->string('work_email');
             $table->string('password');
             $table->string('avatar_path')->nullable();
             $table->string('avatar_url')->nullable();

@@ -104,6 +104,22 @@ class Employee extends Model
         return $this->hasMany(GovernmentAccount::class, 'employee_id', 'employee_id');
     }
 
+    /**
+     * Leave applications filed by this employee.
+     */
+    public function leaveApplications(): HasMany
+    {
+        return $this->hasMany(LeaveApplication::class, 'employee_id', 'employee_id');
+    }
+
+    /**
+     * Leave balances per leave type per cycle year.
+     */
+    public function leaveBalances(): HasMany
+    {
+        return $this->hasMany(EmployeeLeaveBalance::class, 'employee_id', 'employee_id');
+    }
+
     // ── Internal Organizations ─────────────────────────────────────────────────
 
     // In App\Models\Employee.php
@@ -118,4 +134,5 @@ class Employee extends Model
             'internal_organization_id'
         )->withTimestamps();
     }
+    
 }

@@ -37,7 +37,7 @@ class UserSeeder extends Seeder
             'password' => bcrypt('password'),
         ]);
 
-        // ogm
+        // org
         $org = User::create([
             'name' => 'Org User',
             'email' => 'org@gmail.com',

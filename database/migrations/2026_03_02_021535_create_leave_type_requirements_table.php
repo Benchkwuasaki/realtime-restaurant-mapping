@@ -6,23 +6,16 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('leave_type_requirements', function (Blueprint $table) {
             $table->id('leave_type_requirement_id');
             $table->foreignId('leave_type_id')->constrained('leave_types', 'leave_type_id');
             $table->string('requirement_name');
-            $table->text('requirement_description')->nullable();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('leave_type_requirements');

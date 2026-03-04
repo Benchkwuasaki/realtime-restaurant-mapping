@@ -9,7 +9,6 @@ import {
     getPaginationRowModel,
     getSortedRowModel,
     useReactTable,
-    type ColumnDef,
     type ColumnFiltersState,
     type Row,
     type RowSelectionState,
@@ -17,6 +16,7 @@ import {
     type VisibilityState,
 } from "@tanstack/react-table"
 import * as React from "react"
+import { Checkbox } from "@/components/ui/checkbox"
 
 import {
     Table,
@@ -27,6 +27,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 
+import { useIsMobile } from "../../../hooks/use-is-mobile"
 import { DataTablePagination } from "./data-table-pagination"
 import {
     DataTableToolbar,
@@ -34,11 +35,12 @@ import {
     type ToolbarBulkDeleteConfig,
     type ToolbarFilterConfig,
 } from "./data-table-toolbar"
+import { type DataTableColumnDef } from "./types/data-table-types"
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
 interface DataTableProps<TData, TValue> {
-    columns: ColumnDef<TData, TValue>[]
+    columns: DataTableColumnDef<TData, TValue>[]
     data: TData[]
 
     /**
@@ -70,7 +72,7 @@ export function DataTable<TData, TValue>({
     data,
     getRowId,
     onRowClick,
-    defaultPageSize = 25,
+    defaultPageSize = 10,
     searchColumnId,
     searchPlaceholder,
     filters,
@@ -120,6 +122,7 @@ export function DataTable<TData, TValue>({
 
     const totalFiltered = table.getFilteredRowModel().rows.length
     const pageCount = Math.max(1, Math.ceil(totalFiltered / pagination.pageSize))
+    const isMobile = useIsMobile()
 
     return (
         <div className="flex flex-col gap-4">
@@ -133,55 +136,115 @@ export function DataTable<TData, TValue>({
                 bulkDelete={bulkDelete}
             />
 
-            <div className="overflow-x-auto rounded-md border border-gray-200">
-                <Table>
-                    <TableHeader>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id} colSpan={header.colSpan}>
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef.header,
-                                                header.getContext()
-                                            )}
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
+            <div className="rounded-md border border-gray-200">
+                {isMobile ? (
+                    <div className="divide-y divide-gray-200">
+                        {/* ── Select-all header ── */}
+                        <div className="flex items-center gap-3 bg-muted/50 px-4 py-2">
+                            <Checkbox
+                                checked={
+                                    table.getIsAllPageRowsSelected() ||
+                                    (table.getIsSomePageRowsSelected() && "indeterminate")
+                                }
+                                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                                aria-label="Select all"
+                            />
+                            <span className="text-muted-foreground text-xs font-medium">
+                                {table.getIsSomePageRowsSelected() || table.getIsAllPageRowsSelected()
+                                    ? `${Object.keys(rowSelection).length} selected`
+                                    : "Select all"}
+                            </span>
+                        </div>
+
+                        {/* ── Cards ── */}
                         {table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                    className={onRowClick ? "cursor-pointer" : undefined}
-                                    onClick={onRowClick ? () => onRowClick(row) : undefined}
-                                >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext()
-                                            )}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
+                            table.getRowModel().rows.map((row) => {
+                                const cardColumns = (columns as DataTableColumnDef<TData>[]).filter(
+                                    (col) => col.mobileCard
+                                )
+                                return (
+                                    <div
+                                        key={row.id}
+                                        data-state={row.getIsSelected() && "selected"}
+                                        onClick={onRowClick ? () => onRowClick(row) : undefined}
+                                        className={[
+                                            "flex items-center gap-3 px-4 py-3 transition-colors",
+                                            row.getIsSelected() ? "bg-muted" : "bg-background",
+                                            onRowClick ? "cursor-pointer active:bg-muted" : "",
+                                        ].join(" ")}
+                                    >
+                                        {/* Per-row checkbox */}
+                                        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                                            <Checkbox
+                                                checked={row.getIsSelected()}
+                                                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                                                aria-label="Select row"
+                                            />
+                                        </div>
+
+                                        {/* Card fields */}
+                                        <div className="flex flex-1 flex-col gap-1.5 min-w-0">
+                                            {cardColumns.map((col) => {
+                                                const colId =
+                                                    (col as { accessorKey?: string }).accessorKey ?? (col.id as string)
+                                                return (
+                                                    <div key={colId}>{col.mobileCard!(row.original)}</div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )
+                            })
                         ) : (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={columns.length}
-                                    className="h-24 text-center"
-                                >
-                                    No results.
-                                </TableCell>
-                            </TableRow>
+                            <div className="text-muted-foreground flex h-24 items-center justify-center text-sm">
+                                No results.
+                            </div>
                         )}
-                    </TableBody>
-                </Table>
+                    </div>
+                ) : (
+                    /* ── Table view (desktop) ── */
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                {table.getHeaderGroups().map((headerGroup) => (
+                                    <TableRow key={headerGroup.id}>
+                                        {headerGroup.headers.map((header) => (
+                                            <TableHead key={header.id} colSpan={header.colSpan}>
+                                                {header.isPlaceholder
+                                                    ? null
+                                                    : flexRender(header.column.columnDef.header, header.getContext())}
+                                            </TableHead>
+                                        ))}
+                                    </TableRow>
+                                ))}
+                            </TableHeader>
+                            <TableBody>
+                                {table.getRowModel().rows?.length ? (
+                                    table.getRowModel().rows.map((row) => (
+                                        <TableRow
+                                            key={row.id}
+                                            data-state={row.getIsSelected() && "selected"}
+                                            className={onRowClick ? "cursor-pointer" : undefined}
+                                            onClick={onRowClick ? () => onRowClick(row) : undefined}
+                                        >
+                                            {row.getVisibleCells().map((cell) => (
+                                                <TableCell key={cell.id}>
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={columns.length} className="h-24 text-center">
+                                            No results.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
             </div>
 
             <DataTablePagination

@@ -7,13 +7,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmployeeUploadedFile extends Model
 {
-    protected $primaryKey = 'uploaded_file_id';
+    protected $table = 'employee_uploaded_files';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
         'employee_id',
         'file_name',
+        'file_path',
         'file_size',
-        'file_database_location',
+        'file_url',
     ];
 
     public function employee(): BelongsTo
