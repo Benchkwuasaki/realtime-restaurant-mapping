@@ -1,4 +1,6 @@
+
 import { Head, router } from "@inertiajs/react"
+import Cropper from "react-easy-crop"
 import {
     Pencil, Mail, Phone, Calendar, MapPin, User, Heart, Home,
     Briefcase, Clock, FileText, Landmark, Camera, XCircle,
@@ -154,7 +156,7 @@ interface Employee {
     work_schedule_start?: string
     work_schedule_end?: string
     status: boolean
-    avatar_url?: string                  // ← new: URL to the stored avatar
+    avatar_url?: string
     basic_info?: BasicInfo
     item?: Item
     salary_grade_step?: SalaryGradeStep
@@ -224,6 +226,29 @@ function cap(str?: string) {
 function toInputDate(date?: string) {
     if (!date) return ""
     return date.slice(0, 10)
+}
+
+async function getCroppedImg(imageSrc: string, croppedAreaPixels: { x: number; y: number; width: number; height: number }): Promise<Blob> {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve(img)
+        img.onerror = reject
+        img.src = imageSrc
+    })
+    const canvas = document.createElement("canvas")
+    canvas.width = croppedAreaPixels.width
+    canvas.height = croppedAreaPixels.height
+    const ctx = canvas.getContext("2d")!
+    ctx.drawImage(
+        image,
+        croppedAreaPixels.x, croppedAreaPixels.y,
+        croppedAreaPixels.width, croppedAreaPixels.height,
+        0, 0,
+        croppedAreaPixels.width, croppedAreaPixels.height,
+    )
+    return new Promise((resolve, reject) =>
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Canvas is empty")), "image/jpeg", 0.92)
+    )
 }
 
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
@@ -335,7 +360,7 @@ function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; 
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Edit Basic Information</DialogTitle></DialogHeader>
-                <div className="grid grid-cols-2 gap-3 py-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
                     <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">First Name *</Label><Input value={form.first_name} onChange={e => set("first_name", e.target.value)} /></div>
                     <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Last Name *</Label><Input value={form.last_name} onChange={e => set("last_name", e.target.value)} /></div>
                     <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Middle Name</Label><Input value={form.middle_name} onChange={e => set("middle_name", e.target.value)} /></div>
@@ -366,8 +391,8 @@ function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; 
                 </div>
                 <div className="border-t border-border pt-3 mt-1">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Address</p>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2"><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Street Address</Label><Input value={form.street_address} onChange={e => set("street_address", e.target.value)} /></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="col-span-full"><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Street Address</Label><Input value={form.street_address} onChange={e => set("street_address", e.target.value)} /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">City</Label><Input value={form.city} onChange={e => set("city", e.target.value)} /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Province / State</Label><Input value={form.state} onChange={e => set("state", e.target.value)} /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Zip Code</Label><Input value={form.zip_code} onChange={e => set("zip_code", e.target.value)} /></div>
@@ -646,8 +671,9 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
     const toggleStatus = () => router.patch(route("employee.toggleStatus", employee.employee_id), {}, { preserveScroll: true })
 
     return (
-        <div className="p-5 space-y-4">
-            <div className="grid grid-cols-3 gap-3">
+        <div className="p-3 sm:p-5 space-y-4">
+            {/* Responsive grid: 1 col on mobile, 2 on sm, 3 on lg */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <DetailCard title="Position" value={position?.position_name} onEdit={() => setEditField("position")} />
                 <DetailCard title="Date Hired" value={fmt(employee.date_hired)} onEdit={() => setEditField("date_hired")} />
                 <DetailCard title="Status" isStatus statusValue={employee.status} onToggleStatus={toggleStatus} />
@@ -666,7 +692,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
             </div>
 
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-border">
+                <div className="px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Internal Organizations</span>
                 </div>
                 {orgs.length === 0 ? (
@@ -676,7 +702,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                 ) : (
                     <div className="divide-y divide-border">
                         {orgs.map(org => (
-                            <div key={org.internal_organization_id} className="flex items-center gap-4 px-5 py-3">
+                            <div key={org.internal_organization_id} className="flex items-center gap-4 px-4 sm:px-5 py-3">
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-foreground">{org.name}</p>
                                     <p className="text-xs text-muted-foreground">{org.code}</p>
@@ -703,10 +729,11 @@ function CompensationTab({ employee }: { employee: Employee }) {
     const [salaryEditOpen, setSalaryEditOpen] = useState(false)
 
     return (
-        <div className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+        <div className="p-3 sm:p-5 space-y-4">
+            {/* Stack on mobile, side-by-side on md+ */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-card border border-border rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                         <span className="text-sm font-bold text-foreground">Salary Classification</span>
                         <Button onClick={() => setSalaryEditOpen(true)} variant="ghost" size="icon-xs">
                             <Pen className="w-3 h-3" />
@@ -714,9 +741,9 @@ function CompensationTab({ employee }: { employee: Employee }) {
                     </div>
                     {sgs ? (
                         <div className="divide-y divide-border">
-                            <div className="flex items-center justify-between px-5 py-3"><span className="text-sm text-muted-foreground">Salary Grade</span><span className="text-sm font-bold text-foreground">SG-{sgs.salary_grade}</span></div>
-                            <div className="flex items-center justify-between px-5 py-3"><span className="text-sm text-muted-foreground">Step Number</span><span className="text-sm font-bold text-foreground">Step {sgs.step}</span></div>
-                            <div className="flex items-center justify-between px-5 py-3"><span className="text-sm text-muted-foreground">Amount</span><span className="text-sm font-bold text-foreground">₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span></div>
+                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Salary Grade</span><span className="text-sm font-bold text-foreground">SG-{sgs.salary_grade}</span></div>
+                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Step Number</span><span className="text-sm font-bold text-foreground">Step {sgs.step}</span></div>
+                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Amount</span><span className="text-sm font-bold text-foreground">₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span></div>
                         </div>
                     ) : (
                         <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No salary data.</div>
@@ -724,13 +751,13 @@ function CompensationTab({ employee }: { employee: Employee }) {
                 </div>
 
                 <div className="bg-card border border-border rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                         <span className="text-sm font-bold text-foreground">Allowances</span>
                     </div>
                     {allowances.length > 0 ? (
                         <div className="divide-y divide-border">
                             {allowances.map((a, i) => (
-                                <div key={i} className="flex items-center justify-between px-5 py-3">
+                                <div key={i} className="flex items-center justify-between px-4 sm:px-5 py-3">
                                     <span className="text-sm text-muted-foreground">{a.allowance_type}</span>
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm font-bold text-foreground">₱{Number(a.amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
@@ -746,7 +773,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
             </div>
 
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Payroll Data</span>
                 </div>
                 <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No payroll data available.</div>
@@ -805,20 +832,14 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
     }
 
     return (
-        <div className="p-5 space-y-5">
+        <div className="p-3 sm:p-5 space-y-5">
+            {/* Leave Balances */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Leave Balances</span>
                     <button onClick={() => openBalanceDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                         <Plus className="w-4 h-4" />
                     </button>
-                </div>
-                <div className="grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30">
-                    <div className="w-5" />
-                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Type <ChevronUp className="w-3 h-3" /></span>
-                    <span className="text-xs font-semibold text-muted-foreground text-right">Remaining</span>
-                    <span className="text-xs font-semibold text-muted-foreground text-right">Used</span>
-                    <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
                 </div>
                 {balances.length === 0 ? (
                     <div className="px-5 py-8 text-center">
@@ -828,66 +849,83 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {balances.map(b => (
-                            <div key={b.id} className="grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-3 hover:bg-muted/20 transition-colors group/row">
-                                <Checkbox className="w-4 h-4" />
-                                <span className="text-sm text-muted-foreground">{b.leave_type}</span>
-                                <span className="text-sm text-foreground font-medium text-right">{b.remaining}</span>
-                                <span className="text-sm text-foreground font-medium text-right">{b.used}</span>
-                                <div className="flex items-center justify-end gap-1">
-                                    <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
-                                    <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs"><Trash2 className="w-3.5 h-3.5" /></Button>
-                                </div>
+                    /* Horizontal scroll on small screens */
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[480px]">
+                            <div className="grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30">
+                                <div className="w-5" />
+                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Type <ChevronUp className="w-3 h-3" /></span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Remaining</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Used</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
                             </div>
-                        ))}
+                            <div className="divide-y divide-border">
+                                {balances.map(b => (
+                                    <div key={b.id} className="grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-3 hover:bg-muted/20 transition-colors group/row">
+                                        <Checkbox className="w-4 h-4" />
+                                        <span className="text-sm text-muted-foreground">{b.leave_type}</span>
+                                        <span className="text-sm text-foreground font-medium text-right">{b.remaining}</span>
+                                        <span className="text-sm text-foreground font-medium text-right">{b.used}</span>
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
 
+            {/* Leave Availments */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Leave Availments</span>
                     <button className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                         <Plus className="w-4 h-4" />
                     </button>
                 </div>
-                <div className="grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30">
-                    <div className="w-5" />
-                    <div className="w-8" />
-                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Type <ChevronUp className="w-3 h-3" /></span>
-                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Date <ChevronUp className="w-3 h-3" /></span>
-                    <span className="text-xs font-semibold text-muted-foreground">Duration</span>
-                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Date Filed <ChevronUp className="w-3 h-3" /></span>
-                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Status <ChevronUp className="w-3 h-3" /></span>
-                </div>
                 {availments.length === 0 ? (
                     <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No leave availments on record.</div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {availments.map(a => (
-                            <div key={a.id} className="grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                <Checkbox className="w-4 h-4" />
-                                <div className="w-8 h-8 rounded-full overflow-hidden bg-muted border border-border shrink-0">
-                                    <img
-                                        src={a.employee_avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(a.employee_name)}&background=5854cc&color=fff&size=32`}
-                                        alt={a.employee_name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-sm text-foreground font-medium truncate">{a.employee_name}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{a.leave_type}</p>
-                                </div>
-                                <span className="text-sm text-muted-foreground">{fmtShort(a.leave_date_start)} — {fmtShort(a.leave_date_end)}</span>
-                                <span className="text-sm text-foreground font-medium">{a.duration} days</span>
-                                <span className="text-sm text-muted-foreground">{fmtShort(a.date_filed)}</span>
-                                <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
-                                    a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
-                                        "bg-destructive/10 text-destructive"
-                                    }`}>● {a.status}</Badge>
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[700px]">
+                            <div className="grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30">
+                                <div className="w-5" />
+                                <div className="w-8" />
+                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Type <ChevronUp className="w-3 h-3" /></span>
+                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Date <ChevronUp className="w-3 h-3" /></span>
+                                <span className="text-xs font-semibold text-muted-foreground">Duration</span>
+                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Date Filed <ChevronUp className="w-3 h-3" /></span>
+                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Status <ChevronUp className="w-3 h-3" /></span>
                             </div>
-                        ))}
+                            <div className="divide-y divide-border">
+                                {availments.map(a => (
+                                    <div key={a.id} className="grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                        <Checkbox className="w-4 h-4" />
+                                        <div className="w-8 h-8 rounded-full overflow-hidden bg-muted border border-border shrink-0">
+                                            <img
+                                                src={a.employee_avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(a.employee_name)}&background=5854cc&color=fff&size=32`}
+                                                alt={a.employee_name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm text-foreground font-medium truncate">{a.employee_name}</p>
+                                            <p className="text-xs text-muted-foreground truncate">{a.leave_type}</p>
+                                        </div>
+                                        <span className="text-sm text-muted-foreground">{fmtShort(a.leave_date_start)} — {fmtShort(a.leave_date_end)}</span>
+                                        <span className="text-sm text-foreground font-medium">{a.duration} days</span>
+                                        <span className="text-sm text-muted-foreground">{fmtShort(a.date_filed)}</span>
+                                        <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
+                                            a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
+                                                "bg-destructive/10 text-destructive"
+                                            }`}>● {a.status}</Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -1011,9 +1049,10 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
     }
 
     return (
-        <div className="p-5 space-y-5">
+        <div className="p-3 sm:p-5 space-y-5">
+            {/* Government IDs */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Government ID Numbers</span>
                     <button onClick={openAddCustomDialog} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                         <Plus className="w-4 h-4" />
@@ -1025,15 +1064,15 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         const account = accountMap[key]
                         const isVisible = visibleIds[key]
                         return (
-                            <div key={type} className="flex items-center gap-4 px-5 py-3">
-                                <span className="text-sm text-foreground w-28 shrink-0 font-medium">{type}</span>
-                                <span className="flex-1 text-sm text-muted-foreground font-mono tracking-widest">
+                            <div key={type} className="flex items-center gap-2 sm:gap-4 px-4 sm:px-5 py-3">
+                                <span className="text-sm text-foreground w-20 sm:w-28 shrink-0 font-medium">{type}</span>
+                                <span className="flex-1 text-sm text-muted-foreground font-mono tracking-widest min-w-0 truncate">
                                     {account
                                         ? (isVisible ? account.account_number : "•".repeat(10))
                                         : <span className="italic text-muted-foreground/40 font-sans tracking-normal text-xs">Not provided</span>
                                     }
                                 </span>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 shrink-0">
                                     {account ? (
                                         <>
                                             <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
@@ -1054,12 +1093,12 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         const key = account.account_type.toLowerCase()
                         const isVisible = visibleIds[key]
                         return (
-                            <div key={account.government_account_id} className="flex items-center gap-4 px-5 py-3">
-                                <span className="text-sm text-foreground w-28 shrink-0 font-medium">{account.account_type}</span>
-                                <span className="flex-1 text-sm text-muted-foreground font-mono tracking-widest">
+                            <div key={account.government_account_id} className="flex items-center gap-2 sm:gap-4 px-4 sm:px-5 py-3">
+                                <span className="text-sm text-foreground w-20 sm:w-28 shrink-0 font-medium">{account.account_type}</span>
+                                <span className="flex-1 text-sm text-muted-foreground font-mono tracking-widest min-w-0 truncate">
                                     {isVisible ? account.account_number : "•".repeat(10)}
                                 </span>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 shrink-0">
                                     <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                     </button>
@@ -1071,8 +1110,9 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 </div>
             </div>
 
+            {/* Eligibility */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Eligibility and Credentials</span>
                     <button onClick={() => openEligDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                         <Plus className="w-4 h-4" />
@@ -1086,15 +1126,19 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {eligibilities.map(e => (
-                            <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3">
-                                <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
-                                <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
-                                <Badge className="text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5 shrink-0">✓ Active</Badge>
-                                <Button onClick={() => openEligDialog(e)} variant={"ghost"} size={"icon-xs"}><Pencil className="w-3.5 h-3.5" /></Button>
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[480px]">
+                            <div className="divide-y divide-border">
+                                {eligibilities.map(e => (
+                                    <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3">
+                                        <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
+                                        <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
+                                        <Badge className="text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5 shrink-0">✓ Active</Badge>
+                                        <Button onClick={() => openEligDialog(e)} variant={"ghost"} size={"icon-xs"}><Pencil className="w-3.5 h-3.5" /></Button>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+                        </div>
                     </div>
                 )}
             </div>
@@ -1283,9 +1327,10 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     }
 
     return (
-        <div className="p-5 space-y-5">
+        <div className="p-3 sm:p-5 space-y-5">
+            {/* Family Information */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Family Information</span>
                     <button onClick={() => openFamilyDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                         <Plus className="w-4 h-4" />
@@ -1297,38 +1342,41 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <Button variant="outline" size="sm" onClick={() => openFamilyDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Family Member</Button>
                     </div>
                 ) : (
-                    <>
-                        <div className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
-                            <div className="w-4" />
-                            <span className="text-xs font-semibold text-muted-foreground">Full Name</span>
-                            <span className="text-xs font-semibold text-muted-foreground">Relationship</span>
-                            <span className="text-xs font-semibold text-muted-foreground">Sex</span>
-                            <span className="text-xs font-semibold text-muted-foreground">Date of Birth</span>
-                            <span className="text-xs font-semibold text-muted-foreground">Place of Birth</span>
-                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
-                        </div>
-                        <div className="divide-y divide-border">
-                            {familyMembers.map((member, i) => (
-                                <div key={i} className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                    <Checkbox className="w-4 h-4" />
-                                    <span className="text-sm text-foreground font-medium truncate">{member.full_name}</span>
-                                    <span className="text-sm text-muted-foreground">{member.relationship ?? "—"}</span>
-                                    <span className="text-sm text-muted-foreground">{member.sex !== undefined ? (member.sex ? "Male" : "Female") : "—"}</span>
-                                    <span className="text-sm text-muted-foreground">{member.date_of_birth ? fmtShort(member.date_of_birth) : "—"}</span>
-                                    <span className="text-sm text-muted-foreground truncate">{member.place_of_birth ?? "—"}</span>
-                                    <div className="flex items-center justify-end gap-1">
-                                        <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[640px]">
+                            <div className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                                <div className="w-4" />
+                                <span className="text-xs font-semibold text-muted-foreground">Full Name</span>
+                                <span className="text-xs font-semibold text-muted-foreground">Relationship</span>
+                                <span className="text-xs font-semibold text-muted-foreground">Sex</span>
+                                <span className="text-xs font-semibold text-muted-foreground">Date of Birth</span>
+                                <span className="text-xs font-semibold text-muted-foreground">Place of Birth</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                            </div>
+                            <div className="divide-y divide-border">
+                                {familyMembers.map((member, i) => (
+                                    <div key={i} className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                        <Checkbox className="w-4 h-4" />
+                                        <span className="text-sm text-foreground font-medium truncate">{member.full_name}</span>
+                                        <span className="text-sm text-muted-foreground">{member.relationship ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground">{member.sex !== undefined ? (member.sex ? "Male" : "Female") : "—"}</span>
+                                        <span className="text-sm text-muted-foreground">{member.date_of_birth ? fmtShort(member.date_of_birth) : "—"}</span>
+                                        <span className="text-sm text-muted-foreground truncate">{member.place_of_birth ?? "—"}</span>
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
 
+            {/* Educational Background */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Educational Background</span>
                     <button onClick={() => openEducDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
                 </div>
@@ -1338,34 +1386,39 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <Button variant="outline" size="sm" onClick={() => openEducDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Education</Button>
                     </div>
                 ) : (
-                    Object.entries(educByLevel).map(([level, edus]) => (
-                        <div key={level}>
-                            <div className="px-5 py-2 bg-muted/30 border-y border-border"><span className="text-xs font-semibold text-muted-foreground">{level}</span></div>
-                            <div className="divide-y divide-border">
-                                {edus.map((edu, i) => {
-                                    const globalIndex = educations.indexOf(edu)
-                                    return (
-                                        <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr_80px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                            <Checkbox className="w-4 h-4" />
-                                            <span className="text-sm text-foreground font-medium">{edu.school_name}</span>
-                                            <span className="text-sm text-muted-foreground">{edu.school_address ?? "—"}</span>
-                                            <span className="text-sm text-muted-foreground">{edu.degree ?? "—"}</span>
-                                            <span className="text-sm text-muted-foreground text-right">{edu.graduation_date ? new Date(edu.graduation_date).getFullYear() : "—"}</span>
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                                <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteEducIndex(globalIndex)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[580px]">
+                            {Object.entries(educByLevel).map(([level, edus]) => (
+                                <div key={level}>
+                                    <div className="px-5 py-2 bg-muted/30 border-y border-border"><span className="text-xs font-semibold text-muted-foreground">{level}</span></div>
+                                    <div className="divide-y divide-border">
+                                        {edus.map((edu, i) => {
+                                            const globalIndex = educations.indexOf(edu)
+                                            return (
+                                                <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr_80px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                                    <Checkbox className="w-4 h-4" />
+                                                    <span className="text-sm text-foreground font-medium">{edu.school_name}</span>
+                                                    <span className="text-sm text-muted-foreground">{edu.school_address ?? "—"}</span>
+                                                    <span className="text-sm text-muted-foreground">{edu.degree ?? "—"}</span>
+                                                    <span className="text-sm text-muted-foreground text-right">{edu.graduation_date ? new Date(edu.graduation_date).getFullYear() : "—"}</span>
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteEducIndex(globalIndex)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    ))
+                    </div>
                 )}
             </div>
 
+            {/* Seminars and Trainings */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Seminars and Trainings</span>
                     <button onClick={() => openSeminarDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
                 </div>
@@ -1375,34 +1428,37 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <Button variant="outline" size="sm" onClick={() => openSeminarDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Seminar</Button>
                     </div>
                 ) : (
-                    <>
-                        <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
-                            <div className="w-4" />
-                            <span className="text-xs font-semibold text-muted-foreground">Seminar / Training</span>
-                            <span className="text-xs font-semibold text-muted-foreground">Organizer</span>
-                            <span className="text-xs font-semibold text-muted-foreground text-right">Date Attended</span>
-                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
-                        </div>
-                        <div className="divide-y divide-border">
-                            {seminars.map(s => (
-                                <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                    <Checkbox className="w-4 h-4" />
-                                    <span className="text-sm text-foreground font-medium">{s.seminar_name}</span>
-                                    <span className="text-sm text-muted-foreground">{s.organizer ?? "—"}</span>
-                                    <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
-                                    <div className="flex items-center justify-end gap-1">
-                                        <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[520px]">
+                            <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                                <div className="w-4" />
+                                <span className="text-xs font-semibold text-muted-foreground">Seminar / Training</span>
+                                <span className="text-xs font-semibold text-muted-foreground">Organizer</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Date Attended</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                            </div>
+                            <div className="divide-y divide-border">
+                                {seminars.map(s => (
+                                    <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                        <Checkbox className="w-4 h-4" />
+                                        <span className="text-sm text-foreground font-medium">{s.seminar_name}</span>
+                                        <span className="text-sm text-muted-foreground">{s.organizer ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
 
+            {/* Service Records */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Service Records</span>
                     <button onClick={() => openServiceDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
                 </div>
@@ -1412,29 +1468,31 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <Button variant="outline" size="sm" onClick={() => openServiceDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Service Record</Button>
                     </div>
                 ) : (
-                    <>
-                        <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
-                            <div className="w-4" />
-                            <span className="text-xs font-semibold text-muted-foreground">Position</span>
-                            <span className="text-xs font-semibold text-muted-foreground">Department</span>
-                            <span className="text-xs font-semibold text-muted-foreground text-right">Duration</span>
-                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
-                        </div>
-                        <div className="divide-y divide-border">
-                            {serviceRecs.map(s => (
-                                <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                    <Checkbox className="w-4 h-4" />
-                                    <span className="text-sm text-foreground font-medium">{s.position_name}</span>
-                                    <span className="text-sm text-muted-foreground">{s.department_name ?? "—"}</span>
-                                    <span className="text-sm text-muted-foreground text-right">{s.year_start && s.year_end ? `${s.year_start}–${s.year_end}` : s.year_start ?? "—"}</span>
-                                    <div className="flex items-center justify-end gap-1">
-                                        <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[480px]">
+                            <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                                <div className="w-4" />
+                                <span className="text-xs font-semibold text-muted-foreground">Position</span>
+                                <span className="text-xs font-semibold text-muted-foreground">Department</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Duration</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                            </div>
+                            <div className="divide-y divide-border">
+                                {serviceRecs.map(s => (
+                                    <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                        <Checkbox className="w-4 h-4" />
+                                        <span className="text-sm text-foreground font-medium">{s.position_name}</span>
+                                        <span className="text-sm text-muted-foreground">{s.department_name ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground text-right">{s.year_start && s.year_end ? `${s.year_start}–${s.year_end}` : s.year_start ?? "—"}</span>
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
 
@@ -1585,9 +1643,9 @@ function DocumentsTab({ employee }: { employee: Employee }) {
     }
 
     return (
-        <div className="p-5">
+        <div className="p-3 sm:p-5">
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Uploaded Files</span>
                     <button onClick={() => fileInputRef.current?.click()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors" title="Upload file">
                         <Upload className="w-4 h-4" />
@@ -1601,33 +1659,35 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                         <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5"><Upload className="w-3.5 h-3.5" /> Upload File</Button>
                     </div>
                 ) : (
-                    <>
-                        <div className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
-                            <div className="w-4" />
-                            <span className="text-xs font-semibold text-muted-foreground">File Name</span>
-                            <span className="text-xs font-semibold text-muted-foreground text-right">Size</span>
-                            <span className="text-xs font-semibold text-muted-foreground text-right">Uploaded</span>
-                            <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
-                        </div>
-                        <div className="divide-y divide-border">
-                            {uploadedFiles.map(file => (
-                                <div key={file.id} className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                    <Checkbox className="w-4 h-4" />
-                                    <span className="text-sm text-foreground truncate">{file.file_name}</span>
-                                    <span className="text-sm text-muted-foreground text-right">{formatBytes(file.file_size)}</span>
-                                    <span className="text-sm text-muted-foreground text-right">{fmtShort(file.created_at)}</span>
-                                    <div className="flex items-center justify-end gap-1">
-                                        <a href={file.file_url} download>
-                                            <Button variant="ghost" size="icon-xs" title="Download"><Download className="w-3.5 h-3.5" /></Button>
-                                        </a>
-                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFileId(file.id)} title="Delete">
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </Button>
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[480px]">
+                            <div className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                                <div className="w-4" />
+                                <span className="text-xs font-semibold text-muted-foreground">File Name</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Size</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Uploaded</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                            </div>
+                            <div className="divide-y divide-border">
+                                {uploadedFiles.map(file => (
+                                    <div key={file.id} className="grid grid-cols-[auto_1fr_120px_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                        <Checkbox className="w-4 h-4" />
+                                        <span className="text-sm text-foreground truncate">{file.file_name}</span>
+                                        <span className="text-sm text-muted-foreground text-right">{formatBytes(file.file_size)}</span>
+                                        <span className="text-sm text-muted-foreground text-right">{fmtShort(file.created_at)}</span>
+                                        <div className="flex items-center justify-end gap-1">
+                                            <a href={file.file_url} download>
+                                                <Button variant="ghost" size="icon-xs" title="Download"><Download className="w-3.5 h-3.5" /></Button>
+                                            </a>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFileId(file.id)} title="Delete">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
 
@@ -1647,9 +1707,6 @@ function DocumentsTab({ employee }: { employee: Employee }) {
     )
 }
 
-
-
-
 // ─── Avatar Preview Dialog ────────────────────────────────────────────────────
 
 function AvatarPreviewDialog({ src, name, open, onClose }: {
@@ -1659,11 +1716,7 @@ function AvatarPreviewDialog({ src, name, open, onClose }: {
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-xs p-0 overflow-hidden rounded-2xl border border-border shadow-2xl gap-0">
                 <div className="relative flex flex-col items-center bg-card rounded-2xl overflow-hidden">
-                    <img
-                        src={src}
-                        alt={name}
-                        className="w-full aspect-square object-cover"
-                    />
+                    <img src={src} alt={name} className="w-full aspect-square object-cover" />
                     {name && (
                         <div className="w-full px-5 py-3.5 border-t border-border bg-card">
                             <p className="text-sm font-semibold text-foreground text-center">{name}</p>
@@ -1677,11 +1730,11 @@ function AvatarPreviewDialog({ src, name, open, onClose }: {
 
 // ─── Avatar file validator ────────────────────────────────────────────────────
 
-const MAX_AVATAR_SIZE = 5 * 1024 * 1024 // 5 MB
-const ALLOWED_AVATAR_TYPES = ["image/jpeg"]
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024
+const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/jpg"]
 
 function validateAvatarFile(file: File): string | null {
-    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) return "Only JPEG/JPG images are allowed."
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) return "Only JPEG, JPG, or PNG images are allowed."
     if (file.size > MAX_AVATAR_SIZE) return "File size must not exceed 5 MB."
     return null
 }
@@ -1696,9 +1749,16 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const streamRef = useRef<MediaStream | null>(null)
 
-    const [mode, setMode] = useState<"choose" | "camera">("choose")
+    const [mode, setMode] = useState<"choose" | "camera" | "crop">("choose")
     const [cameraError, setCameraError] = useState<string | null>(null)
     const [cameraReady, setCameraReady] = useState(false)
+    const [fileError, setFileError] = useState<string | null>(null)
+
+    // Crop state
+    const [rawImageSrc, setRawImageSrc] = useState<string | null>(null)
+    const [crop, setCrop] = useState({ x: 0, y: 0 })
+    const [zoom, setZoom] = useState(1)
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
 
     const stopCamera = () => {
         streamRef.current?.getTracks().forEach(t => t.stop())
@@ -1706,10 +1766,26 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
         setCameraReady(false)
     }
 
+    const goToCrop = (src: string) => {
+        stopCamera()
+        setRawImageSrc(src)
+        setCrop({ x: 0, y: 0 })
+        setZoom(1)
+        setCroppedAreaPixels(null)
+        setMode("crop")
+    }
+
     const startCamera = async () => {
         setCameraError(null)
         setCameraReady(false)
         setMode("camera")
+        try {
+            const permission = await navigator.permissions.query({ name: "camera" as PermissionName })
+            if (permission.state === "denied") {
+                setCameraError("Camera access was blocked. Please enable it in your browser or device settings, then try again.")
+                return
+            }
+        } catch { /* Permissions API not supported */ }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
             streamRef.current = stream
@@ -1720,13 +1796,12 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                     setCameraReady(true)
                 }
             }
-        } catch {
-            setCameraError("Could not access camera. Please allow camera permission or use 'Select Image' instead.")
+        } catch (err: any) {
+            if (err?.name === "NotAllowedError") setCameraError("Camera permission was denied. Please allow access when prompted, or use 'Select Image' instead.")
+            else if (err?.name === "NotFoundError") setCameraError("No camera was found on this device.")
+            else setCameraError("Could not access the camera. Please try again or use 'Select Image' instead.")
         }
     }
-
-    // WITH:
-    const [fileError, setFileError] = useState<string | null>(null)
 
     const capturePhoto = () => {
         const video = videoRef.current
@@ -1735,14 +1810,8 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
         canvas.width = video.videoWidth
         canvas.height = video.videoHeight
         canvas.getContext("2d")?.drawImage(video, 0, 0)
-        canvas.toBlob(blob => {
-            if (!blob) return
-            const file = new File([blob], "avatar-capture.jpg", { type: "image/jpeg" })
-            const error = validateAvatarFile(file)
-            if (error) { setCameraError(error); return }
-            onFileSelected(file)
-            handleClose()
-        }, "image/jpeg", 0.92)
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.92)
+        goToCrop(dataUrl)
     }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1751,9 +1820,22 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
         const error = validateAvatarFile(file)
         if (error) { setFileError(error); e.target.value = ""; return }
         setFileError(null)
-        onFileSelected(file)
-        handleClose()
+        const reader = new FileReader()
+        reader.onload = () => goToCrop(reader.result as string)
+        reader.readAsDataURL(file)
         e.target.value = ""
+    }
+
+    const applyCrop = async () => {
+        if (!rawImageSrc || !croppedAreaPixels) return
+        try {
+            const blob = await getCroppedImg(rawImageSrc, croppedAreaPixels)
+            const file = new File([blob], "avatar-cropped.jpg", { type: "image/jpeg" })
+            onFileSelected(file)
+            handleClose()
+        } catch {
+            setCameraError("Failed to crop image. Please try again.")
+        }
     }
 
     const handleClose = () => {
@@ -1761,11 +1843,13 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
         setMode("choose")
         setCameraError(null)
         setFileError(null)
+        setRawImageSrc(null)
         onClose()
     }
 
     const backToChoose = () => {
         stopCamera()
+        setRawImageSrc(null)
         setMode("choose")
         setCameraError(null)
         setFileError(null)
@@ -1776,18 +1860,16 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
             <DialogContent className="sm:max-w-sm rounded-2xl overflow-hidden p-0 gap-0">
                 <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
                     <DialogTitle className="text-base font-bold">
-                        {mode === "camera" ? "Take a Photo" : "Update Profile Photo"}
+                        {mode === "camera" ? "Take a Photo" : mode === "crop" ? "Crop Photo" : "Update Profile Photo"}
                     </DialogTitle>
                 </DialogHeader>
 
+                {/* ── Choose mode ── */}
                 {mode === "choose" && (
                     <div className="px-5 py-5 space-y-4">
                         <p className="text-sm text-muted-foreground">Choose how you'd like to update your profile photo.</p>
                         <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent/40 transition-all group cursor-pointer"
-                            >
+                            <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent/40 transition-all group cursor-pointer">
                                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                                     <Upload className="w-5 h-5 text-primary" />
                                 </div>
@@ -1796,10 +1878,7 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                                     <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">Choose from device</p>
                                 </div>
                             </button>
-                            <button
-                                onClick={startCamera}
-                                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent/40 transition-all group cursor-pointer"
-                            >
+                            <button onClick={startCamera} className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent/40 transition-all group cursor-pointer">
                                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                                     <Camera className="w-5 h-5 text-primary" />
                                 </div>
@@ -1809,18 +1888,17 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                                 </div>
                             </button>
                         </div>
-                        <input ref={fileInputRef} type="file" accept="image/jpeg" className="hidden" onChange={handleFileChange} />                        {fileError && (
+                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png" className="hidden" onChange={handleFileChange} />
+                        {fileError && (
                             <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-2.5">
                                 <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                                 <p className="text-sm text-destructive leading-snug">{fileError}</p>
                             </div>
                         )}
-                        <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground" onClick={handleClose}>
-                            Cancel
-                        </Button>
                     </div>
                 )}
 
+                {/* ── Camera mode ── */}
                 {mode === "camera" && (
                     <div className="px-5 py-5 space-y-4">
                         {cameraError ? (
@@ -1832,13 +1910,7 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                             </div>
                         ) : (
                             <div className="relative rounded-xl overflow-hidden bg-black aspect-square shadow-inner">
-                                <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                    className="w-full h-full object-cover scale-x-[-1]"
-                                />
+                                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
                                 {!cameraReady && (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted gap-2">
                                         <Camera className="w-8 h-8 text-muted-foreground/30 animate-pulse" />
@@ -1863,6 +1935,46 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                         </div>
                     </div>
                 )}
+
+                {/* ── Crop mode ── */}
+                {mode === "crop" && rawImageSrc && (
+                    <div className="px-5 py-5 space-y-4">
+                        {/* Crop area */}
+                        <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-black">
+                            <Cropper
+                                image={rawImageSrc}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={1}
+                                cropShape="round"
+                                showGrid={false}
+                                onCropChange={setCrop}
+                                onZoomChange={setZoom}
+                                onCropComplete={(_croppedArea, croppedAreaPixels) => setCroppedAreaPixels(croppedAreaPixels)}
+                            />
+                        </div>
+                        {/* Zoom slider */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground font-medium">Zoom</span>
+                                <span className="text-xs text-muted-foreground">{zoom.toFixed(1)}×</span>
+                            </div>
+                            <input
+                                type="range"
+                                min={1} max={3} step={0.05}
+                                value={zoom}
+                                onChange={e => setZoom(Number(e.target.value))}
+                                className="w-full accent-primary cursor-pointer"
+                            />
+                        </div>
+                        <div className="flex gap-2.5">
+                            <Button variant="outline" className="flex-1" onClick={backToChoose}>Back</Button>
+                            <Button className="flex-1" onClick={applyCrop}>
+                                <Save className="w-3.5 h-3.5 mr-1.5" />Apply Crop
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     )
@@ -1879,30 +1991,18 @@ export default function ShowEmployee({ employee, items }: Props) {
         : undefined
 
     const [basicEditOpen, setBasicEditOpen] = useState(false)
-
-    // ── Avatar upload ──────────────────────────────────────────────────────────
-    //   Clicking the camera button opens a hidden <input type="file" accept="image/*">.
-    //   On selection, the file is placed in a FormData object and submitted via
-    //   router.post() — Inertia automatically sends this as multipart/form-data.
-    // WITH THIS:
     const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false)
     const [avatarUploadOpen, setAvatarUploadOpen] = useState(false)
 
     const handleAvatarFileSelected = (file: File) => {
         const formData = new FormData()
         formData.append("avatar", file)
-        router.post(
-            route("employee.avatar.update", employee.employee_id),
-            formData,
-            { preserveScroll: true }
-        )
+        router.post(route("employee.avatar.update", employee.employee_id), formData, { preserveScroll: true })
     }
 
-    // Prefer the real stored URL; fall back to the initials avatar generator.
     const avatarSrc =
         employee.avatar_url ??
         `https://ui-avatars.com/api/?name=${encodeURIComponent(basic?.full_name ?? "E")}&background=5854cc&color=fff&size=96`
-    // ──────────────────────────────────────────────────────────────────────────
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: "Employee", href: route("employee.index") },
@@ -1922,10 +2022,15 @@ export default function ShowEmployee({ employee, items }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${basic?.full_name ?? "Employee"} — Profile`} />
-            <div className="flex gap-5 p-5 min-h-full bg-background">
 
-                {/* ── Left Panel ── */}
-                <div className="w-72 shrink-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
+            {/*
+             * Outer wrapper: stacks vertically on mobile, side-by-side on lg+
+             * p-3 on mobile, p-5 on sm+
+             */}
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 p-3 sm:p-5 min-h-full bg-background">
+
+                {/* ── Left Panel ── full-width on mobile, fixed 288px on lg+ */}
+                <div className="w-full lg:w-72 shrink-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
                     <div className="relative flex flex-col items-center pt-8 pb-5 px-5 bg-gradient-to-b from-accent/30 to-card border-b border-border">
                         <div className="absolute top-3 right-3">
                             <Button size={"icon-xs"} onClick={() => setBasicEditOpen(true)} variant={"ghost"}>
@@ -1938,13 +2043,8 @@ export default function ShowEmployee({ employee, items }: Props) {
                                 className="w-24 h-24 rounded-full overflow-hidden bg-muted border-4 border-card shadow-lg ring-2 ring-primary/20 hover:ring-primary/50 transition-all cursor-pointer"
                                 title="View photo"
                             >
-                                <img
-                                    src={avatarSrc}
-                                    alt={basic?.full_name}
-                                    className="w-full h-full object-cover"
-                                />
+                                <img src={avatarSrc} alt={basic?.full_name} className="w-full h-full object-cover" />
                             </button>
-
                             <button
                                 onClick={() => setAvatarUploadOpen(true)}
                                 title="Change photo"
@@ -1962,35 +2062,41 @@ export default function ShowEmployee({ employee, items }: Props) {
                         </Badge>
                     </div>
 
+                    {/*
+                     * On mobile the info rows sit below the avatar in a 2-column
+                     * grid so they don't take up too much vertical space.
+                     * On lg+ they revert to a single-column stacked list.
+                     */}
                     <div className="flex-1 px-4 py-3 overflow-y-auto">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Basic Information</p>
-                        <InfoRow icon={Mail} label="Work Email" value={employee.work_email} />
-                        <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} />
-                        <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} />
-                        <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} />
-                        <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} />
-                        <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} />
-                        <InfoRow icon={Home} label="Address" value={addressStr} />
-                    </div>
-
-                    <div className="px-4 pb-4 pt-2 border-t border-border">
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Personal Email</p>
-                        <p className="text-xs text-foreground/70 font-medium truncate">{basic?.personal_email}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-0">
+                            <InfoRow icon={Mail} label="Work Email" value={employee.work_email} />
+                            <InfoRow icon={Mail} label="Personal Email" value={basic?.personal_email} />
+                            <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} />
+                            <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} />
+                            <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} />
+                            <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} />
+                            <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} />
+                            <InfoRow icon={Home} label="Address" value={addressStr} />
+                        </div>
                     </div>
                 </div>
 
-                {/* ── Right Panel ── */}
+                {/* ── Right Panel ── takes remaining width, min-w-0 prevents overflow */}
                 <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col min-w-0">
                     <Tabs defaultValue="employment" className="flex flex-col flex-1">
-                        <div className="border-b border-border px-4 pt-1 shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+                        {/* Horizontally scrollable tab bar on all screen sizes */}
+                        <div className="border-b border-border px-2 sm:px-4 pt-1 shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                             <TabsList className="h-auto bg-transparent gap-0 p-0 flex flex-nowrap w-max min-w-full">
                                 {tabs.map(({ value, label, icon: Icon }) => (
                                     <TabsTrigger
                                         key={value}
                                         value={value}
-                                        className="relative flex items-center gap-1.5 px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap"
+                                        className="relative flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap"
                                     >
-                                        <Icon className="w-3.5 h-3.5 shrink-0" />{label}
+                                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                                        {/* Hide label text on very small screens, show icon only */}
+                                        <span className="hidden xs:inline sm:inline">{label}</span>
                                     </TabsTrigger>
                                 ))}
                             </TabsList>
@@ -2012,17 +2118,8 @@ export default function ShowEmployee({ employee, items }: Props) {
                 </div>
             </div>
 
-            <AvatarPreviewDialog
-                src={avatarSrc}
-                name={basic?.full_name}
-                open={avatarPreviewOpen}
-                onClose={() => setAvatarPreviewOpen(false)}
-            />
-            <AvatarUploadDialog
-                open={avatarUploadOpen}
-                onClose={() => setAvatarUploadOpen(false)}
-                onFileSelected={handleAvatarFileSelected}
-            />
+            <AvatarPreviewDialog src={avatarSrc} name={basic?.full_name} open={avatarPreviewOpen} onClose={() => setAvatarPreviewOpen(false)} />
+            <AvatarUploadDialog open={avatarUploadOpen} onClose={() => setAvatarUploadOpen(false)} onFileSelected={handleAvatarFileSelected} />
             <BasicInfoEditDialog employee={employee} open={basicEditOpen} onClose={() => setBasicEditOpen(false)} />
         </AppLayout>
     )

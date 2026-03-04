@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Item extends Model
 {
-    protected $table      = 'items';
+    protected $table = 'items';
     protected $primaryKey = 'item_id';
 
     protected $fillable = [
@@ -31,6 +31,11 @@ class Item extends Model
      * Employees currently holding this item.
      */
     public function employees(): HasOne
+    {
+        return $this->hasOne(Employee::class, 'item_id', 'item_id');
+    }
+
+    public function employee(): HasOne
     {
         return $this->hasOne(Employee::class, 'item_id', 'item_id');
     }
