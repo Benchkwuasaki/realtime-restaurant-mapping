@@ -128,8 +128,8 @@ export default function OrganizationalChartShow({ department }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${department.name} — Organizational Chart`} />
 
-            <div className="min-h-screen bg-background">
-                <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4">
+            <div className="min-h-screen bg-background overflow-x-hidden w-full">
+                <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 w-full max-w-full">
 
                     {/* Back link */}
                     <Link
@@ -184,35 +184,34 @@ export default function OrganizationalChartShow({ department }: Props) {
                             </div>
 
                             {/* ── Stats — full width stretched cards ─────────── */}
-                            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-3 border-t border-border">
                                 {/* Divisions */}
-                                <div className="relative overflow-hidden flex items-center gap-3
+                                <div className="relative overflow-hidden flex items-center gap-2 sm:gap-3
                                     bg-gradient-to-br from-primary/10 to-primary/5
-                                    border border-primary/20 rounded-2xl px-4 py-3.5">
-                                    <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center
-                                        justify-center shrink-0">
-                                        <Layers className="h-5 w-5 text-primary" />
+                                    border border-primary/20 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-primary/15
+                                        flex items-center justify-center shrink-0">
+                                        <Layers className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                                     </div>
-                                    <div>
-                                        <p className="text-2xl font-bold text-foreground leading-none">{divCount}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">Divisions</p>
+                                    <div className="min-w-0">
+                                        <p className="text-xl sm:text-2xl font-bold text-foreground leading-none">{divCount}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">Divisions</p>
                                     </div>
-                                    {/* Decorative circle */}
                                     <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full
                                         bg-primary/5 pointer-events-none" />
                                 </div>
 
                                 {/* Employees */}
-                                <div className="relative overflow-hidden flex items-center gap-3
+                                <div className="relative overflow-hidden flex items-center gap-2 sm:gap-3
                                     bg-gradient-to-br from-emerald-500/10 to-emerald-500/5
-                                    border border-emerald-500/20 rounded-2xl px-4 py-3.5">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center
-                                        justify-center shrink-0">
-                                        <Users className="h-5 w-5 text-emerald-500" />
+                                    border border-emerald-500/20 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-500/15
+                                        flex items-center justify-center shrink-0">
+                                        <Users className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500" />
                                     </div>
-                                    <div>
-                                        <p className="text-2xl font-bold text-foreground leading-none">{empCount}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">Employees</p>
+                                    <div className="min-w-0">
+                                        <p className="text-xl sm:text-2xl font-bold text-foreground leading-none">{empCount}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">Employees</p>
                                     </div>
                                     <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full
                                         bg-emerald-500/5 pointer-events-none" />
@@ -254,7 +253,7 @@ export default function OrganizationalChartShow({ department }: Props) {
                     {/* ── Org chart canvas ───────────────────────────────────── */}
                     <div className="bg-card text-card-foreground rounded-2xl border border-border
                         shadow-sm overflow-hidden"
-                        style={{ height: 'calc(100svh - 380px)', minHeight: '380px' }}
+                        style={{ height: 'calc(100svh - 360px)', minHeight: '320px' }}
                     >
                         {/* Toolbar — simple title + hint only */}
                         <div className="flex items-center justify-between px-3 sm:px-4 py-2.5
