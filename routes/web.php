@@ -104,6 +104,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{employee}/seminar/{seminar}', [EmployeeController::class, 'updateSeminar'])->name('seminar.update');
         Route::delete('/{employee}/seminar/{seminar}', [EmployeeController::class, 'destroySeminar'])->name('seminar.destroy');
 
+
+        Route::post('/{employee}/files', [EmployeeController::class, 'storeFile'])
+            ->name('file.store');
+        Route::delete('/{employee}/files/{file}', [EmployeeController::class, 'destroyFile'])
+            ->name('file.destroy');
+
         // Service Records
         Route::post('/{employee}/service-record', [EmployeeController::class, 'storeServiceRecord'])->name('service-record.store');
         Route::put('/{employee}/service-record/{record}', [EmployeeController::class, 'updateServiceRecord'])->name('service-record.update');
@@ -279,7 +285,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [AnnouncementController::class, 'index'])->name('index');
     });
 
-        // Organizational Chart
+    // Organizational Chart
     Route::get('/organization/organizational_chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
     Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
 
