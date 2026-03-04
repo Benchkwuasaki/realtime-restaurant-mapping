@@ -1761,38 +1761,42 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                             return (
                                 <div
                                     key={file.id}
-                                    className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-muted/20 transition-colors group cursor-pointer"
+                                    className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/20 transition-colors group cursor-pointer"
                                     onClick={() => canView ? setViewFile(file) : window.open(file.file_url, "_blank")}
                                 >
                                     {/* File type badge */}
-                                    <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                                         <span className={`text-[9px] font-black ${color} tracking-tight`}>{icon}</span>
                                     </div>
 
-                                    {/* File info */}
+                                    {/* File info — takes all remaining space */}
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-foreground truncate leading-snug">{file.file_name}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                            {formatBytes(file.file_size)} · {fmtShort(file.created_at)}
+                                        <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
+                                            <span>{formatBytes(file.file_size)}</span>
+                                            <span className="hidden sm:inline">·</span>
+                                            <span className="hidden sm:inline">{fmtShort(file.created_at)}</span>
                                         </p>
+                                        {/* Date shown below name on mobile */}
+                                        <p className="text-xs text-muted-foreground sm:hidden mt-0.5">{fmtShort(file.created_at)}</p>
                                     </div>
 
                                     {/* Actions */}
                                     <div
-                                        className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                                         onClick={e => e.stopPropagation()}
                                     >
-                                        {/* Only show download button for viewable files — non-viewable files download on row click */}
                                         {canView && (
                                             <a href={file.file_url} download={file.file_name} target="_blank" rel="noreferrer">
-                                                <Button variant="ghost" size="icon-xs" title="Download" className="text-muted-foreground hover:text-primary">
+                                                <Button variant="ghost" size="icon-xs" title="Download"
+                                                    className="text-muted-foreground hover:text-primary w-8 h-8 sm:w-7 sm:h-7">
                                                     <Download className="w-3.5 h-3.5" />
                                                 </Button>
                                             </a>
                                         )}
                                         <Button
                                             variant="ghost" size="icon-xs"
-                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-8 h-8 sm:w-7 sm:h-7"
                                             onClick={() => setDeleteFileId(file.id)}
                                             title="Delete"
                                         >
