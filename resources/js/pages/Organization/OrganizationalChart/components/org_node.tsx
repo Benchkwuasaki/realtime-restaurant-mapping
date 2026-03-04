@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ─── Collapsible Section ──────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
                     hover:opacity-80 transition-opacity"
             >
                 {open
-                    ? <ChevronDown className="h-3.5 w-3.5" />
+                    ? <ChevronUp className="h-3.5 w-3.5" />
                     : <ChevronRight className="h-3.5 w-3.5" />
                 }
                 {title}
