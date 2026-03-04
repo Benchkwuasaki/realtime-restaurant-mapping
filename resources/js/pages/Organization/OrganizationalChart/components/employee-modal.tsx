@@ -24,7 +24,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', backgroundColor: 'rgba(0,0,0,0.25)' }}>
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-96 overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4 flex items-center justify-between">
@@ -63,6 +63,10 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                                                         src={employee.profilePicture}
                                                         alt={fullName}
                                                         className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).style.display = 'none';
+                                                            (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="font-bold text-sm">${fullName.charAt(0).toUpperCase()}</span>`;
+                                                        }}
                                                     />
                                                 ) : (
                                                     <span className="font-bold text-sm">

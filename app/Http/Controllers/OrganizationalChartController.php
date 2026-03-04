@@ -135,6 +135,20 @@ class OrganizationalChartController extends Controller
             $employee = $item->employee;
             $basicInfo = $employee->basicInfo;
 
+            // Build the correct profile picture URL
+            $profilePicture = null;
+            if (!empty($employee->profile_picture)) {
+                $path = $employee->profile_picture;
+                // If it's already a full URL, use as-is
+                if (str_starts_with($path, 'http')) {
+                    $profilePicture = $path;
+                } else {
+                    // Strip any leading 'storage/' and build proper URL
+                    $cleanPath = ltrim(str_replace('storage/', '', $path), '/');
+                    $profilePicture = asset('storage/' . $cleanPath);
+                }
+            }
+
             return [
                 'id' => $employee->employee_id,
                 'firstName' => $basicInfo->first_name ?? 'Unknown',
@@ -142,7 +156,7 @@ class OrganizationalChartController extends Controller
                 'middleName' => $basicInfo->middle_name ?? '',
                 'email' => $employee->work_email ?? 'N/A',
                 'dateHired' => $employee->date_hired ?? null,
-                'profilePicture' => $employee->profile_picture ?? null,
+                'profilePicture' => $profilePicture,
             ];
         })->values()->all();
     }
