@@ -11,6 +11,7 @@ use App\Models\EmployeeEducation;
 use App\Models\FamilyInfo;
 use App\Models\GovernmentAccount;
 use App\Models\EligibilityInformation;
+use App\Models\EmployeeUploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -276,11 +277,37 @@ class EmployeeController extends Controller
             'eligibilityInformation',
             'governmentAccounts',
             'uploadedFiles',
+            'leaveBalances',
             'internalOrganizations',
         ]);
 
         return Inertia::render('Employee/Show', [
-            'employee' => $employee,
+            'employee' => [
+                'employee_id' => $employee->employee_id,
+                'work_email' => $employee->work_email,
+                'employment_classification' => $employee->employment_classification,
+                'date_applied' => $employee->date_applied,
+                'date_hired' => $employee->date_hired,
+                'work_schedule_start' => $employee->work_schedule_start,
+                'work_schedule_end' => $employee->work_schedule_end,
+                'status' => $employee->status,
+                'avatar_url' => $employee->avatar_url,
+
+                // snake_case keys — match the TypeScript interface exactly
+                'basic_info' => $employee->basicInfo,
+                'item' => $employee->item,
+                'salary_grade_step' => $employee->salaryGradeStep,
+                'allowances' => $employee->allowances,
+                'eligibility_information' => $employee->eligibilityInformation,
+                'government_accounts' => $employee->governmentAccounts,
+                'leave_balances' => $employee->leaveBalances,
+                'internal_organizations' => $employee->internalOrganizations,
+
+                // camelCase keys — match the TypeScript interface exactly
+                'uploadedFiles' => $employee->uploadedFiles,
+                'seminarsAndTrainings' => $employee->seminarsAndTrainings,
+                'serviceRecords' => $employee->serviceRecords,
+            ],
             'items' => Item::with([
                 'position.department',
                 'position.division',
@@ -290,11 +317,8 @@ class EmployeeController extends Controller
                 ->get()
                 ->map(fn(Item $item) => [
                     'item_id' => $item->item_id,
-
-                    // Occupied = has an employee that is NOT the current one
                     'is_occupied' => $item->employee !== null
                         && $item->employee->employee_id !== $employee->employee_id,
-
                     'position' => $item->position ? [
                         'position_name' => $item->position->position_name,
                         'department' => $item->position->department
@@ -812,7 +836,7 @@ class EmployeeController extends Controller
     public function storeFile(Request $request, Employee $employee)
     {
         $request->validate([
-            'file' => ['required', 'file', 'max:10240'],
+            'file' => ['required', 'file', 'max:25600'], // 25MB
         ]);
 
         $uploaded = $request->file('file');
@@ -826,9 +850,17 @@ class EmployeeController extends Controller
             'file_name' => $uploaded->getClientOriginalName(),
             'file_path' => $path,
             'file_size' => $uploaded->getSize(),
-            'file_url' => Storage::url($path),     
+            'file_url' => Storage::url($path),
         ]);
 
         return back()->with('success', 'File uploaded successfully.');
+    }
+
+    public function destroyFile(Employee $employee, EmployeeUploadedFile $file)
+    {
+        abort_if($file->employee_id !== $employee->employee_id, 403);
+        Storage::disk('public')->delete($file->file_path);
+        $file->delete();
+        return back()->with('success', 'File deleted.');
     }
 }

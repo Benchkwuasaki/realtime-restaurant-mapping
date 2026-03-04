@@ -103,7 +103,7 @@ class Employee extends Model
     {
         return $this->hasMany(GovernmentAccount::class, 'employee_id', 'employee_id');
     }
-    
+
     /**
      * Leave applications filed by this employee.
      */
@@ -134,4 +134,5 @@ class Employee extends Model
             'internal_organization_id'
         )->withTimestamps();
     }
+    
 }
