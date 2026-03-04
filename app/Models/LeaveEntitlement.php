@@ -5,14 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class LeaveTypeRequirement extends Model
+class LeaveEntitlement extends Model
 {
-    protected $primaryKey = 'leave_type_requirement_id';
+    protected $table      = 'leave_entitlements';
+    protected $primaryKey = 'leave_entitlement_id';
 
     protected $fillable = [
         'leave_type_id',
-        'requirement_name',
-        'requirement_description',
+        'leave_entitlement_description',
+        'years_of_service',
+        'days_entitled',
+    ];
+
+    protected $casts = [
+        'days_entitled' => 'decimal:1',
     ];
 
     public function leaveType(): BelongsTo

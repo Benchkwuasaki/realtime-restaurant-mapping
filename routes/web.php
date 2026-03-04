@@ -11,6 +11,7 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\AttendanceLogs;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LeaveCalendarController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
@@ -23,12 +24,8 @@ use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
-<<<<<<< HEAD
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\LeaveTypeController;
-=======
 use Illuminate\Support\Facades\Http;
->>>>>>> e5ee957358b7f4766248d4436bb0a2a9e57cd609
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -42,7 +39,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard Routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-<<<<<<< HEAD
     // Attendance Routes
     Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
         Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
@@ -53,8 +49,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
     });
 
-=======
->>>>>>> e5ee957358b7f4766248d4436bb0a2a9e57cd609
     // User Routes
     Route::prefix('users')->name('user.')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('index');
@@ -289,48 +283,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
 
 
-<<<<<<< HEAD
-    // Attendance Routes
-    Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
-        Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
-        Route::post('/', [WhereaboutSlipController::class, 'store'])->name('store');
-        Route::put('/{whereaboutSlip}', [WhereaboutSlipController::class, 'update'])->name('update');
-        Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
-        Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
-        Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
-    });
 
 
-
-    // Payroll routes
-    Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
-
-    Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
-
-    // Reports and Analytics routes
-    Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
-
-    // Announcement Routes
-    Route::prefix('announcement')->name('announcement.')->group(function () {
-        Route::get('/', [AnnouncementController::class, 'index'])->name('index');
-    });
-
-=======
-
-
->>>>>>> e5ee957358b7f4766248d4436bb0a2a9e57cd609
     // Activity Logs Routes
 
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
 
-<<<<<<< HEAD
 });
 
 require __DIR__ . '/settings.php';
-=======
-
-    require __DIR__ . '/settings.php';
-});
-
-require __DIR__ . '/settings.php';
->>>>>>> e5ee957358b7f4766248d4436bb0a2a9e57cd609

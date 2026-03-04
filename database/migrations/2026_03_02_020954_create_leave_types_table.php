@@ -17,14 +17,12 @@ return new class extends Migration {
             $table->enum('eligible_sex', ['All', 'Male', 'Female'])->default('All');
             $table->boolean('is_paid')->default(false);
             $table->boolean('is_convertible')->default(false);
+            $table->boolean('is_accrual')->default(false);
             $table->boolean('status')->default(true);
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('leave_types');

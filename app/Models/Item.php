@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+// ─── Item ─────────────────────────────────────────────────────────────────────
 
 class Item extends Model
 {
+    protected $table      = 'items';
     protected $primaryKey = 'item_id';
 
     protected $fillable = [
@@ -15,13 +18,19 @@ class Item extends Model
         'item_name',
     ];
 
+    /**
+     * Position this plantilla item belongs to.
+     */
     public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class, 'position_id', 'position_id');
     }
 
-    public function employee(): HasOne
+    /**
+     * Employees currently holding this item.
+     */
+    public function employees(): HasMany
     {
-        return $this->hasOne(Employee::class, 'item_id', 'item_id');
+        return $this->hasMany(Employee::class, 'item_id', 'item_id');
     }
 }
