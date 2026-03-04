@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { ChevronLeft, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ChevronRight, Users, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import type { Department, Division, Unit, Employee } from './data/schema';
 import { EmployeeModal } from './components/employee-modal';
 import type { BreadcrumbItem } from '@/types';
@@ -175,7 +175,7 @@ const DivisionColumn: React.FC<{
                 <div className="bg-blue-50 dark:bg-gray-800 border-t-4 border-blue-400
                     px-3 py-3 rounded-lg text-center w-full">
                     <h3 className="text-sm font-bold text-blue-600 dark:text-blue-400 leading-tight">{division.name}</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{headName}</p>
+
                     {units.length > 0 && (
                         <p className="text-xs font-semibold text-blue-500 dark:text-blue-400 mt-2">
                             {units.length} Unit{units.length !== 1 ? 's' : ''}
@@ -261,7 +261,7 @@ const MobileDivisionCard: React.FC<{
                 </div>
                 <div className="flex-1 min-w-0 text-left">
                     <h3 className="text-sm font-bold text-blue-600 dark:text-blue-400 leading-tight">{division.name}</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{headName}</p>
+
                     {units.length > 0 && (
                         <span className="inline-block mt-1 text-xs font-semibold text-blue-500 dark:text-blue-400
                             bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 rounded-full">
@@ -314,7 +314,7 @@ const MobileLayout: React.FC<{
                         : department.acronym?.substring(0, 2).toUpperCase() || 'D'}
                 </div>
                 <h1 className="text-lg font-bold text-purple-600 dark:text-purple-400 leading-tight">{department.name}</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{deptHeadName}</p>
+
                 {divisions.length > 0 && (
                     <span className="inline-block mt-2 text-xs font-semibold text-purple-600 dark:text-purple-400
                         bg-purple-100 dark:bg-purple-900/30 px-3 py-1 rounded-full">
@@ -344,6 +344,33 @@ export default function DepartmentDetail({ department }: Props) {
     const [showModal, setShowModal]       = useState(false);
     const [isDark, setIsDark]             = useState(false);
     const isMobile                        = useIsMobile(768);
+
+    // ── Zoom / Pan ──
+    const [scale, setScale]         = useState(1);
+    const [translate, setTranslate] = useState({ x: 0, y: 0 });
+    const isPanning                 = useRef(false);
+    const startPos                  = useRef({ x: 0, y: 0 });
+    const startTranslate            = useRef({ x: 0, y: 0 });
+    const MIN_SCALE = 0.2; const MAX_SCALE = 2.5; const ZOOM_STEP = 0.15;
+
+    const handleWheel = useCallback((e: React.WheelEvent) => {
+        e.preventDefault();
+        setScale(prev => Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP))));
+    }, []);
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        if (e.button !== 0) return;
+        isPanning.current = true;
+        startPos.current = { x: e.clientX, y: e.clientY };
+        startTranslate.current = { ...translate };
+    }, [translate]);
+    const handleMouseMove = useCallback((e: React.MouseEvent) => {
+        if (!isPanning.current) return;
+        setTranslate({ x: startTranslate.current.x + e.clientX - startPos.current.x, y: startTranslate.current.y + e.clientY - startPos.current.y });
+    }, []);
+    const handleMouseUp = useCallback(() => { isPanning.current = false; }, []);
+    const zoomIn    = () => setScale(p => Math.min(MAX_SCALE, p + ZOOM_STEP));
+    const zoomOut   = () => setScale(p => Math.max(MIN_SCALE, p - ZOOM_STEP));
+    const resetView = () => { setScale(1); setTranslate({ x: 0, y: 0 }); };
 
     const containerRef = useRef<HTMLDivElement>(null);
     const deptRef      = useRef<HTMLDivElement>(null);
@@ -411,7 +438,39 @@ export default function DepartmentDetail({ department }: Props) {
 
                 {/* ── DESKTOP ── */}
                 {!isMobile && (
-                    <div className="overflow-x-auto pb-8">
+                    <div
+                        className="relative overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-md"
+                        style={{ height: 'calc(100vh - 220px)' }}
+                        onWheel={handleWheel}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                    >
+                        {/* Zoom Controls */}
+                        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+                            <button onClick={zoomIn}
+                                className="w-9 h-9 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900 hover:text-purple-600 transition-colors"
+                                title="Zoom In"><ZoomIn size={16} /></button>
+                            <button onClick={zoomOut}
+                                className="w-9 h-9 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900 hover:text-purple-600 transition-colors"
+                                title="Zoom Out"><ZoomOut size={16} /></button>
+                            <button onClick={resetView}
+                                className="w-9 h-9 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900 hover:text-purple-600 transition-colors"
+                                title="Reset View"><RotateCcw size={16} /></button>
+                            <div className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow px-2 py-1 text-xs text-center text-gray-500 dark:text-gray-400 font-mono">
+                                {Math.round(scale * 100)}%
+                            </div>
+                        </div>
+
+                        {/* Pannable / Zoomable content */}
+                        <div className="w-full h-full cursor-grab active:cursor-grabbing select-none" style={{ overflow: 'hidden' }}>
+                            <div style={{
+                                transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+                                transformOrigin: 'center top',
+                                transition: isPanning.current ? 'none' : 'transform 0.1s ease',
+                                padding: '2rem',
+                            }}>
                         <div
                             ref={containerRef}
                             className="relative flex flex-col items-center"
@@ -431,7 +490,7 @@ export default function DepartmentDetail({ department }: Props) {
                                     <h1 className="text-xl font-bold text-purple-600 dark:text-purple-400 leading-tight">
                                         {department.name}
                                     </h1>
-                                    <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">{deptHeadName}</p>
+
                                     {divisions.length > 0 && (
                                         <p className="text-xs font-semibold text-purple-500 dark:text-purple-400 mt-2">
                                             {divisions.length} Division{divisions.length !== 1 ? 's' : ''}
@@ -467,6 +526,8 @@ export default function DepartmentDetail({ department }: Props) {
                                     ))}
                                 </div>
                             )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
