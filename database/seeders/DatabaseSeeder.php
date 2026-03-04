@@ -1151,6 +1151,7 @@ class DatabaseSeeder extends Seeder
             AttendanceRecordSeeder::class,
             LeaveTypeSeeder::class,
             LeaveApplicationSeeder::class,
+            // LeaveEntitlementSeeder::class,
         ]);
     }
 }

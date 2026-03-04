@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Users, Building2, Layers, ChevronDown, ChevronRight } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Users, Building2, Layers, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmployeeDetailModal, type EmployeeWithContext } from './employee_detail_card';
 import type { Department, Division, Position, Unit } from '../data/schema';
@@ -46,7 +46,7 @@ const TreeChildren: React.FC<{
                                 top: 0,
                                 height: 2,
                                 background: lineColor,
-                                left:  i === 0         ? '50%' : 0,
+                                left: i === 0 ? '50%' : 0,
                                 right: i === count - 1 ? '50%' : 0,
                             }} />
                         )}
@@ -135,9 +135,9 @@ const UnitNode: React.FC<{
     contextDiv?: string;
     highlightIds?: Set<number>;
 }> = ({ unit, onEmployeeClick, contextDept, contextDiv, highlightIds }) => {
-    const positions    = unit.positions ?? [];
+    const positions = unit.positions ?? [];
     const allEmployees = positions.flatMap(p => p.employees ?? []);
-    const empCount     = allEmployees.length;
+    const empCount = allEmployees.length;
     const isHighlighted = highlightIds && allEmployees.some(e => highlightIds.has(e.id));
 
     const handleClick = () => {
@@ -217,8 +217,8 @@ const DivisionNode: React.FC<{
     const [expanded, setExpanded] = useState(true);
 
     const divPositions = (division.positions ?? []).filter(p => (p.employees?.length ?? 0) > 0);
-    const units        = division.units ?? [];
-    const children     = [...divPositions, ...units];
+    const units = division.units ?? [];
+    const children = [...divPositions, ...units];
 
     const allEmployees = [
         ...divPositions.flatMap(p => p.employees ?? []),
@@ -275,7 +275,7 @@ const DivisionNode: React.FC<{
                     >
                         {expanded
                             ? <ChevronDown className="h-3.5 w-3.5 text-secondary-foreground" />
-                            : <ChevronRight className="h-3.5 w-3.5 text-secondary-foreground" />
+                            : <ChevronUp className="h-3.5 w-3.5 text-secondary-foreground" />
                         }
                     </button>
                 )}
@@ -367,395 +367,392 @@ interface OrgChartProps {
 
 export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
     ({ department, highlightIds }, ref) => {
-    const canvasRef             = useRef<HTMLDivElement>(null);
-    const contentRef            = useRef<HTMLDivElement>(null);
-    const [scale, setScale]     = useState(0.65);
-    const scaleRef              = useRef(0.65);
-    const [translate, setTrans] = useState({ x: 0, y: 0 });
-    const isPanning             = useRef(false);
-    const startPos              = useRef({ x: 0, y: 0 });
-    const startTrans            = useRef({ x: 0, y: 0 });
-    const lastPinchDist         = useRef<number | null>(null);
+        const canvasRef = useRef<HTMLDivElement>(null);
+        const contentRef = useRef<HTMLDivElement>(null);
+        const innerRef = useRef<HTMLDivElement>(null);
+        const [scale, setScale] = useState(0.65);
+        const scaleRef = useRef(0.65);
+        const [translate, setTrans] = useState({ x: 0, y: 0 });
+        const isPanning = useRef(false);
+        const startPos = useRef({ x: 0, y: 0 });
+        const startTrans = useRef({ x: 0, y: 0 });
+        const lastPinchDist = useRef<number | null>(null);
 
-    const [modal, setModal] = useState<{ open: boolean; title: string; employees: EmployeeWithContext[] }>(
-        { open: false, title: '', employees: [] },
-    );
-    const openModal = useCallback((employees: EmployeeWithContext[], title: string) => {
-        setModal({ open: true, title, employees });
-    }, []);
-
-    // ── Fit-to-canvas ────────────────────────────────────────────────────────
-    // Measures the actual rendered content and computes the scale that fits it
-    // inside the canvas with a small padding margin. Fully dynamic — re-runs
-    // whenever `department` changes (new divisions / units added / removed).
-    const minScaleRef = useRef(0.2);
-
-    const fitToCanvas = useCallback(() => {
-        if (!canvasRef.current || !contentRef.current) return;
-
-        const canvasW = canvasRef.current.offsetWidth;
-        const canvasH = canvasRef.current.offsetHeight;
-        const contentW = contentRef.current.scrollWidth;
-        const contentH = contentRef.current.scrollHeight;
-
-        if (contentW === 0 || contentH === 0) return;
-
-        const PADDING = 48; // px breathing room on each side
-        const fitScale = Math.min(
-            (canvasW - PADDING * 2) / contentW,
-            (canvasH - PADDING * 2) / contentH,
-            1.0,   // never auto-zoom in past 100%
+        const [modal, setModal] = useState<{ open: boolean; title: string; employees: EmployeeWithContext[] }>(
+            { open: false, title: '', employees: [] },
         );
-        const clamped = Math.max(0.1, fitScale);
+        const openModal = useCallback((employees: EmployeeWithContext[], title: string) => {
+            setModal({ open: true, title, employees });
+        }, []);
 
-        minScaleRef.current = clamped;
-        scaleRef.current    = clamped;
-        setScale(clamped);
-        setTrans({ x: 0, y: 0 }); // content is centred by the transform already
-    }, []);
+        // ── Fit-to-canvas ────────────────────────────────────────────────────────
+        // Measures the actual rendered content and computes the scale that fits it
+        // inside the canvas with a small padding margin. Fully dynamic — re-runs
+        // whenever `department` changes (new divisions / units added / removed).
+        const minScaleRef = useRef(0.2);
 
-    // Fit on first render and whenever department structure changes
-    useEffect(() => {
-        // Use rAF to wait for the DOM to finish layout after React render
-        const id = requestAnimationFrame(() => fitToCanvas());
-        return () => cancelAnimationFrame(id);
-    }, [department, fitToCanvas]);
-
-    // Re-fit on window resize
-    useEffect(() => {
-        const onResize = () => requestAnimationFrame(() => fitToCanvas());
-        window.addEventListener('resize', onResize);
-        return () => window.removeEventListener('resize', onResize);
-    }, [fitToCanvas]);
-
-    // ── Expose panToEmployee ────────────────────────────────────────────────
-    // Uses current getBoundingClientRect to find where the node is on screen RIGHT NOW,
-    // then computes the delta translate needed to move it to the canvas centre.
-    // This is transform-agnostic: it works regardless of current scale/translate.
-    useImperativeHandle(ref, () => ({
-        panToEmployee(employeeId: number) {
+        const fitToCanvas = useCallback(() => {
             if (!canvasRef.current || !contentRef.current) return;
 
-            // Find the node whose data-employee-ids contains this id
-            const allNodes = Array.from(
-                contentRef.current.querySelectorAll('[data-employee-ids]')
-            ) as HTMLElement[];
-            const node = allNodes.find(n => {
-                const ids = (n.getAttribute('data-employee-ids') ?? '').split(',').map(Number);
-                return ids.includes(employeeId);
-            }) ?? null;
-            if (!node) return;
+            const canvasW = canvasRef.current.offsetWidth;
+            const canvasH = canvasRef.current.offsetHeight;
+            const contentW = contentRef.current.scrollWidth;
+            const contentH = contentRef.current.scrollHeight;
 
-            const canvasRect = canvasRef.current.getBoundingClientRect();
-            const nodeRect   = node.getBoundingClientRect();
+            if (contentW === 0 || contentH === 0) return;
 
-            // Current node centre relative to canvas (in screen pixels)
-            const nodeCxOnScreen = nodeRect.left + nodeRect.width  / 2 - canvasRect.left;
-            const nodeCyOnScreen = nodeRect.top  + nodeRect.height / 2 - canvasRect.top;
+            const PADDING = 48; // px breathing room on each side
+            const fitScale = Math.min(
+                (canvasW - PADDING * 2) / contentW,
+                (canvasH - PADDING * 2) / contentH,
+                1.0,   // never auto-zoom in past 100%
+            );
+            const clamped = Math.max(0.1, fitScale);
 
-            // Canvas centre in canvas-local coords
-            const canvasCx = canvasRect.width  / 2;
-            const canvasCy = canvasRect.height / 2;
+            minScaleRef.current = clamped;
+            scaleRef.current = clamped;
+            setScale(clamped);
+            setTrans({ x: 0, y: 0 }); // content is centred by the transform already
+        }, []);
 
-            // Screen delta → content-space delta (divide by current scale)
-            const curScale = scaleRef.current;
-            const dx = (canvasCx - nodeCxOnScreen) / curScale;
-            const dy = (canvasCy - nodeCyOnScreen) / curScale;
+        // Fit on first render and whenever department structure changes
+        useEffect(() => {
+            // Use rAF to wait for the DOM to finish layout after React render
+            const id = requestAnimationFrame(() => fitToCanvas());
+            return () => cancelAnimationFrame(id);
+        }, [department, fitToCanvas]);
 
-            // Apply new scale=1 and compute the translate that keeps node centred.
-            // With scale 1: screenX = canvasW/2 + tx + (contentX - contentW/2)
-            // We sidestep content-width by using the delta approach:
-            // new translate = old translate + delta * newScale
-            const targetScale = 1.0;
-            setScale(targetScale);
-            setTrans(prev => ({
-                x: prev.x + dx * targetScale,
-                y: prev.y + dy * targetScale,
-            }));
-        },
-        fitToCanvas() { fitToCanvas(); },
-    }), [fitToCanvas]);
+        // Re-fit on window resize
+        useEffect(() => {
+            const onResize = () => requestAnimationFrame(() => fitToCanvas());
+            window.addEventListener('resize', onResize);
+            return () => window.removeEventListener('resize', onResize);
+        }, [fitToCanvas]);
 
-    const lineColor = 'var(--border)';
-    const MAX  = 2.5;
-    const STEP = 0.1;
+        // ── Expose panToEmployee ────────────────────────────────────────────────
+        // Uses current getBoundingClientRect to find where the node is on screen RIGHT NOW,
+        // then computes the delta translate needed to move it to the canvas centre.
+        // This is transform-agnostic: it works regardless of current scale/translate.
+        useImperativeHandle(ref, () => ({
+            panToEmployee(employeeId: number) {
+                if (!canvasRef.current || !contentRef.current) return;
 
-    // ── Pan bounds ───────────────────────────────────────────────────────────
-    // The content div sits at left:50% with transform translate(calc(-50%+tx), ty+40) scale(s).
-    // After scaling, the rendered content is:
-    //   width  = contentW * s   (centred horizontally because of -50% + tx)
-    //   height = contentH * s   (starts at top: ty+40)
-    //
-    // We allow panning until only MARGIN px of content remains visible on each edge.
-    // That gives:   -maxTx <= tx <= maxTx   and   minTy <= ty <= maxTy
-    const MARGIN = 80; // px of content that must remain visible
+                // Find the node whose data-employee-ids contains this id
+                const allNodes = Array.from(
+                    contentRef.current.querySelectorAll('[data-employee-ids]')
+                ) as HTMLElement[];
+                const node = allNodes.find(n => {
+                    const ids = (n.getAttribute('data-employee-ids') ?? '').split(',').map(Number);
+                    return ids.includes(employeeId);
+                }) ?? null;
+                if (!node) return;
 
-    const clampTranslate = useCallback((tx: number, ty: number, s: number) => {
-        if (!canvasRef.current || !contentRef.current) return { x: tx, y: ty };
+                const canvasRect = canvasRef.current.getBoundingClientRect();
+                const nodeRect = node.getBoundingClientRect();
 
-        const canvasW  = canvasRef.current.offsetWidth;
-        const canvasH  = canvasRef.current.offsetHeight;
-        const contentW = contentRef.current.scrollWidth  * s;
-        const contentH = contentRef.current.scrollHeight * s;
+                // Current node centre relative to canvas (in screen pixels)
+                const nodeCxOnScreen = nodeRect.left + nodeRect.width / 2 - canvasRect.left;
+                const nodeCyOnScreen = nodeRect.top + nodeRect.height / 2 - canvasRect.top;
 
-        // Horizontal: content is centred. The left edge of content on screen is:
-        //   canvasW/2 + tx - contentW/2
-        // We want left edge >= -(contentW - MARGIN), i.e. most of it can slide left
-        // and right edge <= canvasW + contentW - MARGIN
-        const maxTx = contentW / 2 - MARGIN;
-        const minTx = -(contentW / 2 - MARGIN);
+                // Canvas centre in canvas-local coords
+                const canvasCx = canvasRect.width / 2;
+                const canvasCy = canvasRect.height / 2;
 
-        // Vertical: content top on screen = ty + 40
-        // Allow scrolling so at least MARGIN of content remains in view vertically
-        const maxTy = MARGIN - 40;                        // top edge can move down this far
-        const minTy = canvasH - contentH - 40 - MARGIN;  // bottom edge stays visible
+                // Screen delta → content-space delta (divide by current scale)
+                const curScale = scaleRef.current;
+                const dx = (canvasCx - nodeCxOnScreen) / curScale;
+                const dy = (canvasCy - nodeCyOnScreen) / curScale;
 
-        return {
-            x: Math.min(maxTx, Math.max(minTx, tx)),
-            y: Math.min(maxTy, Math.max(minTy, ty)),
-        };
-    }, []);
+                // Apply new scale=1 and compute the translate that keeps node centred.
+                // With scale 1: screenX = canvasW/2 + tx + (contentX - contentW/2)
+                // We sidestep content-width by using the delta approach:
+                // new translate = old translate + delta * newScale
+                const targetScale = 1.0;
+                setScale(targetScale);
+                setTrans(prev => ({
+                    x: prev.x + dx * targetScale,
+                    y: prev.y + dy * targetScale,
+                }));
+            },
+            fitToCanvas() { fitToCanvas(); },
+        }), [fitToCanvas]);
 
-    // Keep scaleRef in sync and re-clamp translate when scale changes
-    // (must be after clampTranslate definition)
-    useEffect(() => {
-        scaleRef.current = scale;
-        setTrans(prev => clampTranslate(prev.x, prev.y, scale));
-    }, [scale, clampTranslate]);
+        const lineColor = 'var(--border)';
+        const MAX = 2.5;
+        const STEP = 0.1;
 
-    // ── Mouse handlers ──────────────────────────────────────────────────────
-    const handleWheel = useCallback((e: React.WheelEvent) => {
-        e.preventDefault();
-        setScale(s => Math.min(MAX, Math.max(minScaleRef.current, s + (e.deltaY < 0 ? STEP : -STEP))));
-    }, []);
-    const handleMouseDown = useCallback((e: React.MouseEvent) => {
-        if (e.button !== 0) return;
-        isPanning.current  = true;
-        startPos.current   = { x: e.clientX, y: e.clientY };
-        startTrans.current = { ...translate };
-    }, [translate]);
-    const handleMouseMove = useCallback((e: React.MouseEvent) => {
-        if (!isPanning.current) return;
-        const raw = {
-            x: startTrans.current.x + (e.clientX - startPos.current.x),
-            y: startTrans.current.y + (e.clientY - startPos.current.y),
-        };
-        setTrans(clampTranslate(raw.x, raw.y, scaleRef.current));
-    }, [clampTranslate]);
-    const handleMouseUp = useCallback(() => { isPanning.current = false; }, []);
+        // ── Pan bounds ───────────────────────────────────────────────────────────
+        // The content div sits at left:50% with transform translate(calc(-50%+tx), ty+40) scale(s).
+        // After scaling, the rendered content is:
+        //   width  = contentW * s   (centred horizontally because of -50% + tx)
+        //   height = contentH * s   (starts at top: ty+40)
+        //
+        // We allow panning until only MARGIN px of content remains visible on each edge.
+        // That gives:   -maxTx <= tx <= maxTx   and   minTy <= ty <= maxTy
+        const EDGE_BUFFER = 40; // px — how much content must stay on-screen at each edge
 
-    // ── Touch handlers ──────────────────────────────────────────────────────
-    const handleTouchStart = useCallback((e: React.TouchEvent) => {
-        if (e.touches.length === 1) {
-            isPanning.current  = true;
-            startPos.current   = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        const clampTranslate = useCallback((tx: number, ty: number, s: number) => {
+            if (!canvasRef.current || !contentRef.current) return { x: tx, y: ty };
+
+            const canvasW = canvasRef.current.offsetWidth;
+            const canvasH = canvasRef.current.offsetHeight;
+            const contentW = contentRef.current.scrollWidth * s;
+            const contentH = contentRef.current.scrollHeight * s;
+
+            // Horizontal: allow dragging until only EDGE_BUFFER px of content
+            // remains visible on either side
+            const maxTx = canvasW / 2 + contentW / 2 - EDGE_BUFFER;
+            const minTx = -(canvasW / 2 + contentW / 2 - EDGE_BUFFER);
+
+            // Vertical: allow pulling content up/down until only EDGE_BUFFER remains
+            const maxTy = canvasH - EDGE_BUFFER - 40;
+            const minTy = -(contentH - EDGE_BUFFER) - 40;
+
+            return {
+                x: Math.min(maxTx, Math.max(minTx, tx)),
+                y: Math.min(maxTy, Math.max(minTy, ty)),
+            };
+        }, []);
+        // Keep scaleRef in sync and re-clamp translate when scale changes
+        // (must be after clampTranslate definition)
+        useEffect(() => {
+            scaleRef.current = scale;
+            setTrans(prev => clampTranslate(prev.x, prev.y, scale));
+        }, [scale, clampTranslate]);
+
+        // ── Mouse handlers ──────────────────────────────────────────────────────
+        const handleWheel = useCallback((e: React.WheelEvent) => {
+            e.preventDefault();
+            setScale(s => Math.min(MAX, Math.max(minScaleRef.current, s + (e.deltaY < 0 ? STEP : -STEP))));
+        }, []);
+        const handleMouseDown = useCallback((e: React.MouseEvent) => {
+            if (e.button !== 0) return;
+            isPanning.current = true;
+            startPos.current = { x: e.clientX, y: e.clientY };
             startTrans.current = { ...translate };
-            lastPinchDist.current = null;
-        } else if (e.touches.length === 2) {
-            isPanning.current = false;
-            const dx = e.touches[0].clientX - e.touches[1].clientX;
-            const dy = e.touches[0].clientY - e.touches[1].clientY;
-            lastPinchDist.current = Math.hypot(dx, dy);
-        }
-    }, [translate]);
-    const handleTouchMove = useCallback((e: React.TouchEvent) => {
-        e.preventDefault();
-        if (e.touches.length === 1 && isPanning.current) {
+        }, [translate]);
+        const handleMouseMove = useCallback((e: React.MouseEvent) => {
+            if (!isPanning.current) return;
             const raw = {
-                x: startTrans.current.x + (e.touches[0].clientX - startPos.current.x),
-                y: startTrans.current.y + (e.touches[0].clientY - startPos.current.y),
+                x: startTrans.current.x + (e.clientX - startPos.current.x),
+                y: startTrans.current.y + (e.clientY - startPos.current.y),
             };
             setTrans(clampTranslate(raw.x, raw.y, scaleRef.current));
-        } else if (e.touches.length === 2 && lastPinchDist.current !== null) {
-            const dx   = e.touches[0].clientX - e.touches[1].clientX;
-            const dy   = e.touches[0].clientY - e.touches[1].clientY;
-            const dist = Math.hypot(dx, dy);
-            const delta = (dist - lastPinchDist.current) * 0.005;
-            lastPinchDist.current = dist;
-            setScale(s => Math.min(MAX, Math.max(minScaleRef.current, s + delta)));
-        }
-    }, [clampTranslate]);
-    const handleTouchEnd = useCallback(() => {
-        isPanning.current     = false;
-        lastPinchDist.current = null;
-    }, []);
+        }, [clampTranslate]);
+        const handleMouseUp = useCallback(() => { isPanning.current = false; }, []);
 
-    const topPositions   = (department.topPositions ?? []).filter(p => (p.employees?.length ?? 0) > 0);
-    const divisions      = department.divisions ?? [];
-    const deptHead       = topPositions[0]?.employees?.[0];
-    const deptHeadName   = deptHead ? fullName(deptHead.firstName, deptHead.middleName, deptHead.lastName) : null;
-    const allDeptEmployees = [
-        ...topPositions.flatMap(p => p.employees ?? []),
-        ...divisions.flatMap(d => (d.positions ?? []).flatMap(p => p.employees ?? [])),
-        ...divisions.flatMap(d => (d.units ?? []).flatMap(u => (u.positions ?? []).flatMap(p => p.employees ?? []))),
-    ];
-    const totalEmployees = allDeptEmployees.length;
+        // ── Touch handlers ──────────────────────────────────────────────────────
+        const handleTouchStart = useCallback((e: React.TouchEvent) => {
+            if (e.touches.length === 1) {
+                isPanning.current = true;
+                startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                startTrans.current = { ...translate };
+                lastPinchDist.current = null;
+            } else if (e.touches.length === 2) {
+                isPanning.current = false;
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastPinchDist.current = Math.hypot(dx, dy);
+            }
+        }, [translate]);
+        const handleTouchMove = useCallback((e: React.TouchEvent) => {
+            e.preventDefault();
+            if (e.touches.length === 1 && isPanning.current) {
+                const raw = {
+                    x: startTrans.current.x + (e.touches[0].clientX - startPos.current.x),
+                    y: startTrans.current.y + (e.touches[0].clientY - startPos.current.y),
+                };
+                setTrans(clampTranslate(raw.x, raw.y, scaleRef.current));
+            } else if (e.touches.length === 2 && lastPinchDist.current !== null) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.hypot(dx, dy);
+                const delta = (dist - lastPinchDist.current) * 0.005;
+                lastPinchDist.current = dist;
+                setScale(s => Math.min(MAX, Math.max(minScaleRef.current, s + delta)));
+            }
+        }, [clampTranslate]);
+        const handleTouchEnd = useCallback(() => {
+            isPanning.current = false;
+            lastPinchDist.current = null;
+        }, []);
 
-    const handleDeptClick = () => {
-        openModal(
-            topPositions.flatMap(p =>
-                (p.employees ?? []).map(e => ({ ...e, positionName: p.name, departmentName: department.name }))
-            ),
-            department.name,
-        );
-    };
+        const topPositions = (department.topPositions ?? []).filter(p => (p.employees?.length ?? 0) > 0);
+        const divisions = department.divisions ?? [];
+        const deptHead = topPositions[0]?.employees?.[0];
+        const deptHeadName = deptHead ? fullName(deptHead.firstName, deptHead.middleName, deptHead.lastName) : null;
+        const allDeptEmployees = [
+            ...topPositions.flatMap(p => p.employees ?? []),
+            ...divisions.flatMap(d => (d.positions ?? []).flatMap(p => p.employees ?? [])),
+            ...divisions.flatMap(d => (d.units ?? []).flatMap(u => (u.positions ?? []).flatMap(p => p.employees ?? []))),
+        ];
+        const totalEmployees = allDeptEmployees.length;
 
-    return (
-        <div className="relative w-full h-full overflow-hidden">
+        const handleDeptClick = () => {
+            openModal(
+                topPositions.flatMap(p =>
+                    (p.employees ?? []).map(e => ({ ...e, positionName: p.name, departmentName: department.name }))
+                ),
+                department.name,
+            );
+        };
 
-            {/* Zoom controls */}
-            <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
-                {[
-                    { icon: <ZoomIn className="h-3.5 w-3.5" />,    action: () => setScale(s => Math.min(MAX, s + STEP)), title: 'Zoom In' },
-                    { icon: <ZoomOut className="h-3.5 w-3.5" />,   action: () => setScale(s => Math.max(minScaleRef.current, s - STEP)), title: 'Zoom Out' },
-                    { icon: <RotateCcw className="h-3.5 w-3.5" />, action: () => fitToCanvas(), title: 'Reset' },
-                ].map(({ icon, action, title }) => (
-                    <button key={title} onClick={action} title={title}
-                        className="w-8 h-8 bg-card border border-border rounded-lg shadow-sm
+        return (
+            <div className="relative w-full h-full overflow-hidden">
+
+                {/* Zoom controls */}
+                <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
+                    {[
+                        { icon: <ZoomIn className="h-3.5 w-3.5" />, action: () => setScale(s => Math.min(MAX, s + STEP)), title: 'Zoom In' },
+                        { icon: <ZoomOut className="h-3.5 w-3.5" />, action: () => setScale(s => Math.max(minScaleRef.current, s - STEP)), title: 'Zoom Out' },
+                        { icon: <RotateCcw className="h-3.5 w-3.5" />, action: () => fitToCanvas(), title: 'Reset' },
+                    ].map(({ icon, action, title }) => (
+                        <button key={title} onClick={action} title={title}
+                            className="w-8 h-8 bg-card border border-border rounded-lg shadow-sm
                             flex items-center justify-center text-muted-foreground
                             hover:bg-accent hover:text-accent-foreground
                             hover:border-primary/40 transition-all">
-                        {icon}
-                    </button>
-                ))}
-                <div className="bg-card border border-border rounded-lg shadow-sm
+                            {icon}
+                        </button>
+                    ))}
+                    <div className="bg-card border border-border rounded-lg shadow-sm
                     px-2 py-1 text-center text-xs text-muted-foreground font-mono">
-                    {Math.round(scale * 100)}%
+                        {Math.round(scale * 100)}%
+                    </div>
                 </div>
-            </div>
 
-            {/* Stats overlay */}
-            <div className="absolute top-3 left-3 z-20 flex flex-row sm:flex-col gap-1.5">
-                <div className="bg-card/90 backdrop-blur-sm border border-border
+                {/* Stats overlay */}
+                <div className="absolute top-3 left-3 z-20 flex flex-row sm:flex-col gap-1.5">
+                    <div className="bg-card/90 backdrop-blur-sm border border-border
                     rounded-xl px-2.5 py-1.5 shadow-sm flex items-center gap-1.5">
-                    <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">{totalEmployees}</span>
-                    <span className="hidden sm:inline text-xs text-muted-foreground">employees</span>
-                </div>
-                <div className="bg-card/90 backdrop-blur-sm border border-border
+                        <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary shrink-0" />
+                        <span className="text-xs font-semibold text-foreground">{totalEmployees}</span>
+                        <span className="hidden sm:inline text-xs text-muted-foreground">employees</span>
+                    </div>
+                    <div className="bg-card/90 backdrop-blur-sm border border-border
                     rounded-xl px-2.5 py-1.5 shadow-sm flex items-center gap-1.5">
-                    <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">{divisions.length}</span>
-                    <span className="hidden sm:inline text-xs text-muted-foreground">divisions</span>
+                        <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary shrink-0" />
+                        <span className="text-xs font-semibold text-foreground">{divisions.length}</span>
+                        <span className="hidden sm:inline text-xs text-muted-foreground">divisions</span>
+                    </div>
                 </div>
-            </div>
 
-            {/* Canvas */}
-            <div
-                ref={canvasRef}
-                className="w-full h-full cursor-grab active:cursor-grabbing select-none overflow-hidden touch-none isolate"
-                onWheel={handleWheel}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-            >
+                {/* Canvas */}
                 <div
-                    ref={contentRef}
-                    style={{
-                        transform: `translate(calc(-50% + ${translate.x}px), ${translate.y + 40}px) scale(${scale})`,
-                        transformOrigin: 'top center',
-                        transition: isPanning.current ? 'none' : 'transform 0.15s ease',
-                        position: 'absolute',
-                        left: '50%',
-                        top: 0,
-                        paddingBottom: '5rem',
-                        // width:0 + overflow:visible means this element never contributes
-                        // to the parent's scroll/layout width — prevents mobile page blowout
-                        width: 0,
-                        overflow: 'visible',
-                    }}
+                    ref={canvasRef}
+                    className="w-full h-full cursor-grab active:cursor-grabbing select-none overflow-hidden touch-none isolate"
+                    onWheel={handleWheel}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
                 >
-                    <div className="flex flex-col items-center">
+                    <div
+                        ref={contentRef}
+                        style={{
+                            transform: `translate(calc(-50% + ${translate.x}px), ${translate.y + 40}px) scale(${scale})`,
+                            transformOrigin: 'top center',
+                            transition: isPanning.current ? 'none' : 'transform 0.15s ease',
+                            position: 'absolute',
+                            left: '50%',
+                            top: 0,
+                            paddingBottom: '5rem',
+                            // width:0 + overflow:visible means this element never contributes
+                            // to the parent's scroll/layout width — prevents mobile page blowout
+                            width: 0,
+                            overflow: 'visible',
+                        }}
+                    >
+                        <div className="flex flex-col items-center">
 
-                        {/* Department root node */}
-                        <div
-                            onClick={handleDeptClick}
-                            className="group flex flex-col items-center gap-3 p-5 rounded-2xl
+                            {/* Department root node */}
+                            <div
+                                onClick={handleDeptClick}
+                                className="group flex flex-col items-center gap-3 p-5 rounded-2xl
                                 border-2 border-primary/30 bg-card text-card-foreground
                                 shadow-md hover:shadow-lg hover:border-primary/60
                                 cursor-pointer transition-all duration-200
                                 min-w-[200px] max-w-[230px]"
-                        >
-                            <div className="relative">
-                                <SafeAvatar
-                                    src={deptHead?.avatarUrl}
-                                    alt={deptHeadName ?? department.name}
-                                    fallback={department.acronym?.substring(0, 2) || 'DP'}
-                                    className="h-20 w-20 ring-4 ring-primary/20
+                            >
+                                <div className="relative">
+                                    <SafeAvatar
+                                        src={deptHead?.avatarUrl}
+                                        alt={deptHeadName ?? department.name}
+                                        fallback={department.acronym?.substring(0, 2) || 'DP'}
+                                        className="h-20 w-20 ring-4 ring-primary/20
                                         group-hover:ring-primary/40 transition-all
                                         bg-accent text-accent-foreground font-bold text-2xl"
-                                />
-                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary
+                                    />
+                                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary
                                     rounded-full ring-2 ring-background
                                     flex items-center justify-center">
-                                    <div className="w-2 h-2 bg-primary-foreground rounded-full" />
+                                        <div className="w-2 h-2 bg-primary-foreground rounded-full" />
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-sm font-bold text-foreground leading-tight">
+                                        {department.name}
+                                    </p>
+                                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-mono font-medium
+                                    bg-accent text-accent-foreground">
+                                        {department.acronym}
+                                    </span>
+                                    {deptHeadName && (
+                                        <p className="text-xs text-primary mt-1 font-medium">{deptHeadName}</p>
+                                    )}
+                                    {topPositions[0]?.name && (
+                                        <p className="text-xs text-muted-foreground">{topPositions[0].name}</p>
+                                    )}
                                 </div>
                             </div>
-                            <div className="text-center">
-                                <p className="text-sm font-bold text-foreground leading-tight">
-                                    {department.name}
-                                </p>
-                                <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-mono font-medium
-                                    bg-accent text-accent-foreground">
-                                    {department.acronym}
-                                </span>
-                                {deptHeadName && (
-                                    <p className="text-xs text-primary mt-1 font-medium">{deptHeadName}</p>
-                                )}
-                                {topPositions[0]?.name && (
-                                    <p className="text-xs text-muted-foreground">{topPositions[0].name}</p>
-                                )}
-                            </div>
+
+                            {/* Dept → Divisions */}
+                            {divisions.length > 0 && (
+                                <TreeChildren lineColor={lineColor} gap="2.5rem">
+                                    {divisions.map(div => (
+                                        <DivisionNode
+                                            key={div.id}
+                                            division={div}
+                                            onEmployeeClick={openModal}
+                                            contextDept={department.name}
+                                            lineColor={lineColor}
+                                            highlightIds={highlightIds}
+                                        />
+                                    ))}
+                                </TreeChildren>
+                            )}
+
+                            {/* Top-level positions only */}
+                            {divisions.length === 0 && topPositions.length > 0 && (
+                                <TreeChildren lineColor={lineColor} gap="1.5rem">
+                                    {topPositions.map(pos => (
+                                        <PositionNode
+                                            key={pos.id}
+                                            position={pos}
+                                            onEmployeeClick={openModal}
+                                            contextDept={department.name}
+                                            highlightIds={highlightIds}
+                                        />
+                                    ))}
+                                </TreeChildren>
+                            )}
+
                         </div>
-
-                        {/* Dept → Divisions */}
-                        {divisions.length > 0 && (
-                            <TreeChildren lineColor={lineColor} gap="2.5rem">
-                                {divisions.map(div => (
-                                    <DivisionNode
-                                        key={div.id}
-                                        division={div}
-                                        onEmployeeClick={openModal}
-                                        contextDept={department.name}
-                                        lineColor={lineColor}
-                                        highlightIds={highlightIds}
-                                    />
-                                ))}
-                            </TreeChildren>
-                        )}
-
-                        {/* Top-level positions only */}
-                        {divisions.length === 0 && topPositions.length > 0 && (
-                            <TreeChildren lineColor={lineColor} gap="1.5rem">
-                                {topPositions.map(pos => (
-                                    <PositionNode
-                                        key={pos.id}
-                                        position={pos}
-                                        onEmployeeClick={openModal}
-                                        contextDept={department.name}
-                                        highlightIds={highlightIds}
-                                    />
-                                ))}
-                            </TreeChildren>
-                        )}
-
                     </div>
                 </div>
-            </div>
 
-            <EmployeeDetailModal
-                isOpen={modal.open}
-                onClose={() => setModal(m => ({ ...m, open: false }))}
-                title={modal.title}
-                subtitle={department.name}
-                employees={modal.employees}
-            />
-        </div>
-    );
-});
+                <EmployeeDetailModal
+                    isOpen={modal.open}
+                    onClose={() => setModal(m => ({ ...m, open: false }))}
+                    title={modal.title}
+                    subtitle={department.name}
+                    employees={modal.employees}
+                />
+            </div>
+        );
+    });
 
 OrgChart.displayName = 'OrgChart';

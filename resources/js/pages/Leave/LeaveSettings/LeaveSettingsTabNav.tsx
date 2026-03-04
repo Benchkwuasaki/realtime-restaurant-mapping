@@ -4,7 +4,7 @@ import type { BreadcrumbItem } from '@/types';
 import { route } from 'ziggy-js';
 import { LeaveTabs } from './components/tab-navigation';
 import { StatCard } from '@/components/shared/stat-card';
-import { CalendarDays, HandCoins, IterationCcw } from 'lucide-react';
+import { CalendarDays, HandCoins, IterationCcw, PackagePlus } from 'lucide-react';
 import type { LeaveType } from "./data/schema";
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -34,8 +34,9 @@ export default function LeaveSettingsTabNav({ leave_types, total_leave_types, to
         {/* stat card */}
         <section className="max-w-300 grid  grid-cols-1 lg:grid-cols-4 gap-5 mb-6">
           <StatCard title="Total Leave Types" value={total_leave_types} description="Total No. of Leave Types" icon={<CalendarDays className="size-4" />} />
-          <StatCard title="Total Paid Leave" value={total_paid} description="Total No. of Paid Leave" icon={<HandCoins className="size-4" />} />
-          <StatCard title="Total Convertible Leave" value={total_convertible} description="Total No. of Convertible Leave" icon={<IterationCcw className="size-4" />} />
+          <StatCard title="Total Paid Leave" value={total_paid} description="Total No. of Paid Leave Types" icon={<HandCoins className="size-4" />} />
+          <StatCard title="Total Convertible Leave" value={total_convertible} description="Total No. of Convertible Leave Types" icon={<IterationCcw className="size-4" />} />
+          <StatCard title="Total Cumulative Leave" value={total_convertible} description="Total No. of Cumulative Leave Types" icon={<PackagePlus className="size-4" />} />
         </section>
 
         {/* whole content area */}
