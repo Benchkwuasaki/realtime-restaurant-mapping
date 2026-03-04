@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Users, Building2, Layers, ChevronDown, ChevronRight } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Users, Building2, Layers, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmployeeDetailModal, type EmployeeWithContext } from './employee_detail_card';
 import type { Department, Division, Position, Unit } from '../data/schema';
@@ -275,7 +275,7 @@ const DivisionNode: React.FC<{
                     >
                         {expanded
                             ? <ChevronDown className="h-3.5 w-3.5 text-secondary-foreground" />
-                            : <ChevronRight className="h-3.5 w-3.5 text-secondary-foreground" />
+                            : <ChevronUp className="h-3.5 w-3.5 text-secondary-foreground" />
                         }
                     </button>
                 )}

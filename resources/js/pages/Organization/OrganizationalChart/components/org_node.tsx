@@ -29,8 +29,8 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
                     hover:opacity-80 transition-opacity"
             >
                 {open
-                    ? <ChevronUp className="h-3.5 w-3.5" />
-                    : <ChevronRight className="h-3.5 w-3.5" />
+                    ? <ChevronDown className="h-3.5 w-3.5" />
+                    : <ChevronUp className="h-3.5 w-3.5" />
                 }
                 {title}
                 {count !== undefined && (
