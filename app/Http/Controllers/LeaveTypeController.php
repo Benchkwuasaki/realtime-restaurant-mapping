@@ -16,9 +16,21 @@ class LeaveTypeController extends Controller
      */
     public function index()
     {
-        $leave_types = LeaveType::with('requirements')->get()->all();
+        // $leave_types = LeaveType::with('requirements')->get()->all();
 
-        return Inertia::render('Leave/LeaveSettings/LeaveSettingsTabNav', compact('leave_types'));
+        // return Inertia::render('Leave/LeaveSettings/LeaveSettingsTabNav', compact('leave_types'));
+
+        $leave_types = LeaveType::with('requirements')->get()->all();
+        $total_leave_types = LeaveType::count();
+        $total_paid = LeaveType::where('is_paid', true)->count();
+        $total_convertible = LeaveType::where('is_convertible', true)->count();
+
+        return Inertia::render('Leave/LeaveSettings/LeaveSettingsTabNav', compact(
+            'leave_types',
+            'total_leave_types',
+            'total_paid',
+            'total_convertible',
+        ));
     }
 
     /**
@@ -135,6 +147,26 @@ class LeaveTypeController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $leave_type = LeaveType::findOrFail($id);
+        $leave_type->requirements()->delete();
+        $leave_type->delete();
+        return back()->with('success', 'Leave type deleted successfully.');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:leave_types,leave_type_id'],
+        ]);
+
+        $leaveTypes = LeaveType::whereIn('leave_type_id', $request->ids)->get();
+
+        foreach ($leaveTypes as $leaveType) {
+            $leaveType->requirements()->delete();
+            $leaveType->delete();
+        }
+
+        return back()->with('success', count($request->ids) . ' leave type(s) deleted.');
     }
 }
