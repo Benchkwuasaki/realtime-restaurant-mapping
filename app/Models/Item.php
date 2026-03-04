@@ -30,9 +30,9 @@ class Item extends Model
     /**
      * Employees currently holding this item.
      */
-    public function employees(): HasOne
+    public function employees(): HasMany
     {
-        return $this->hasOne(Employee::class, 'item_id', 'item_id');
+        return $this->hasMany(Employee::class, 'item_id', 'item_id');
     }
 
     public function employee(): HasOne

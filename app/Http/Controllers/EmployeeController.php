@@ -304,7 +304,12 @@ class EmployeeController extends Controller
 
                 // camelCase keys — match the TypeScript interface exactly
                 'uploadedFiles' => $employee->uploadedFiles,
-                'seminarsAndTrainings' => $employee->seminarsAndTrainings,
+                'seminarsAndTrainings' => $employee->seminarsAndTrainings->map(fn($s) => [
+                    'id' => $s->employee_seminar_training_id,
+                    'seminar_name' => $s->seminar_training_name,
+                    'venue' => $s->venue,
+                    'date_attended' => $s->date_attended,
+                ]),
                 'serviceRecords' => $employee->serviceRecords,
             ],
             'items' => Item::with([
@@ -722,8 +727,8 @@ class EmployeeController extends Controller
         ]);
 
         $employee->seminarsAndTrainings()->create([
-            'seminar_name' => $request->seminar_name,
-            'organizer' => $request->filled('organizer') ? $request->organizer : null,
+            'seminar_name' => $request->seminar_training_name,
+            'organizer' => $request->filled('venue') ? $request->venue : null,
             'date_attended' => $request->filled('date_attended') ? $request->date_attended : null,
         ]);
 
@@ -741,8 +746,8 @@ class EmployeeController extends Controller
         $record = $employee->seminarsAndTrainings()->findOrFail($seminar);
 
         $record->update([
-            'seminar_name' => $request->seminar_name,
-            'organizer' => $request->filled('organizer') ? $request->organizer : null,
+            'seminar_name' => $request->seminar_training_name,
+            'organizer' => $request->filled('venue') ? $request->venue : null,
             'date_attended' => $request->filled('date_attended') ? $request->date_attended : null,
         ]);
 
