@@ -308,10 +308,14 @@ export default function UnitIndex({ units, divisions, totalUnits, totalDivisions
                         {
                             columnId: "division_name",
                             title: "Division",
-                            options: divisions.map((d) => ({
-                                value: d.division_name,
-                                label: d.division_name,
-                            })),
+                            options: Array.from(
+                                new Map(
+                                    divisions.map((d) => [
+                                        d.division_name,
+                                        { value: d.division_name, label: d.division_name },
+                                    ])
+                                ).values()
+                            ),
                         },
                     ]}
                     addButton={{

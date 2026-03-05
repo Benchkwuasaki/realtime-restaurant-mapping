@@ -1,6 +1,6 @@
 "use client"
 
-import { type ColumnDef } from "@tanstack/react-table"
+import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
 
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
@@ -16,7 +16,7 @@ const STATUS_BADGE: Record<
     approved:  "green",
     pending:   "yellow",
     rejected:  "red",
-    cancelled: "gray",
+    cancelled: "red",
     draft:     "secondary",
 }
 
@@ -28,9 +28,58 @@ const STATUS_LABEL: Record<LeaveApplication["status"], string> = {
     draft:     "Draft",
 }
 
+function formatDate(value: string) {
+    return new Date(value).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    })
+}
+
+// ─── Mobile Card ──────────────────────────────────────────────────────────────
+
+function MobileLeaveCard({ row }: { row: LeaveApplication }) {
+    const status = row.status
+    const days = row.days_requested
+
+    return (
+        <div className="flex flex-col bg-background overflow-hidden">
+            {/* ── Card Body ── */}
+            <div className="px-4 pt-4 pb-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-sm lg:text-base text-foreground">
+                        {row.employee_name}
+                    </span>
+                    <Badge variant={STATUS_BADGE[status]} className="text-xs">
+                        {STATUS_LABEL[status]}
+                    </Badge>
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                    {row.department_name}
+                </div>
+
+                <Badge variant="outline" className="text-xs">
+                    {row.leave_type_name}
+                </Badge>
+            </div>
+
+            {/* ── Card Footer ── */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
+                <span className="text-xs text-muted-foreground tabular-nums">
+                    {formatDate(row.start_date)} — {formatDate(row.end_date)}
+                </span>
+                <span className="text-xs font-medium tabular-nums">
+                    {days} {days === 1 ? "day" : "days"}
+                </span>
+            </div>
+        </div>
+    )
+}
+
 // ─── Columns ──────────────────────────────────────────────────────────────────
 
-export function getColumns(): ColumnDef<LeaveApplication>[] {
+export function getColumns(): DataTableColumnDef<LeaveApplication>[] {
     return [
         {
             id: "select",
@@ -69,6 +118,8 @@ export function getColumns(): ColumnDef<LeaveApplication>[] {
             ),
             enableSorting: true,
             enableHiding: true,
+            // ── Mobile card is registered on this column ──
+            mobileCard: (row) => <MobileLeaveCard row={row} />,
         },
         {
             accessorKey: "department_name",
@@ -107,9 +158,7 @@ export function getColumns(): ColumnDef<LeaveApplication>[] {
             ),
             cell: ({ row }) => (
                 <div className="text-sm tabular-nums">
-                    {new Date(row.getValue("start_date")).toLocaleDateString("en-US", {
-                        month: "short", day: "numeric", year: "numeric",
-                    })}
+                    {formatDate(row.getValue("start_date"))}
                 </div>
             ),
             enableSorting: true,
@@ -122,9 +171,7 @@ export function getColumns(): ColumnDef<LeaveApplication>[] {
             ),
             cell: ({ row }) => (
                 <div className="text-sm tabular-nums">
-                    {new Date(row.getValue("end_date")).toLocaleDateString("en-US", {
-                        month: "short", day: "numeric", year: "numeric",
-                    })}
+                    {formatDate(row.getValue("end_date"))}
                 </div>
             ),
             enableSorting: true,
@@ -154,7 +201,7 @@ export function getColumns(): ColumnDef<LeaveApplication>[] {
             cell: ({ row }) => {
                 const status = row.getValue("status") as LeaveApplication["status"]
                 return (
-                    <Badge variant={STATUS_BADGE[status]}>
+                    <Badge variant={STATUS_BADGE[status]} className="text-xs">
                         {STATUS_LABEL[status]}
                     </Badge>
                 )

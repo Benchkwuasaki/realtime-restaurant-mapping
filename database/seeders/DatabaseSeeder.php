@@ -1145,10 +1145,12 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             InternalOrganizationSeeder::class,
+            HolidaySeeder::class,
             FaceEmbeddingSeeder::class,
             RecognitionLogSeeder::class,
             AttendanceRecordSeeder::class,
             LeaveTypeSeeder::class,
+            LeaveApplicationSeeder::class,
             // LeaveEntitlementSeeder::class,
         ]);
     }
