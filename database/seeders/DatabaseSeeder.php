@@ -1202,10 +1202,6 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserSeeder::class,
             InternalOrganizationSeeder::class,
-            HolidaySeeder::class,
-            FaceEmbeddingSeeder::class,
-            RecognitionLogSeeder::class,
-            AttendanceRecordSeeder::class,
             LeaveTypeSeeder::class,
             LeaveBalanceSeeder::class,
             LeaveApplicationSeeder::class,
