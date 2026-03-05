@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Department;
+use App\Models\Item;
 use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -55,9 +56,10 @@ class DepartmentController extends Controller
             'department_description' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $department = Department::create($validated);
+        $trimmedName = $this->cleanDepartmentName($validated['department_name']);
+        $validated['department_name'] = $trimmedName;
 
-        // ── Auto-create a default JO position for this department ─────────────
+        $department = Department::create($validated);
         $position = Position::create([
             'department_id' => $department->department_id,
             'division_id' => null,
@@ -69,7 +71,20 @@ class DepartmentController extends Controller
         $position->items()->create([
             'item_name' => 'Job Order Item 1',
         ]);
-        // ─────────────────────────────────────────────────────────────────────
+
+        $headPosition = Position::create([
+            'department_id' => $department->department_id,
+            'division_id' => null,
+            'unit_id' => null,
+            'position_name' => 'Head of ' . $department->department_name . ' Department',
+            'position_type' => 'Regular',
+        ]);
+
+        $itemNumber = Item::where('item_name', 'like', '%Department Head%')->count();
+
+        $headPosition->items()->create([
+            'item_name' => 'Department Head Item ' . $itemNumber,
+        ]);
 
         return redirect()->route('department.index')
             ->with('success', 'Department created successfully.');
@@ -108,5 +123,16 @@ class DepartmentController extends Controller
 
         return redirect()->route('department.index')
             ->with('success', count($request->ids) . ' department(s) deleted successfully.');
+    }
+
+    public function cleanDepartmentName(string $name): string
+    {
+        if (preg_match('/^Department of\s+/i', $name)) {
+            $name = preg_replace('/^Department of\s+/i', '', $name);
+        }elseif (preg_match('/\s+Department$/i', $name)) {
+            $name = preg_replace('/\s+Department$/i', '', $name);
+        }
+
+        return trim($name);
     }
 }

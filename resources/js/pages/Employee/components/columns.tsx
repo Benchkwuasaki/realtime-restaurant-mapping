@@ -12,7 +12,6 @@ import {
 import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Switch } from "@/components/ui/switch"
 
 import { type Employee } from "../data/schema"
 
@@ -27,14 +26,17 @@ function CardField({ label, value }: { label: string; value: React.ReactNode }) 
   )
 }
 
-// ─── Toggle — extracted so it can be reused in table cell and card ─────────────
+// ─── Clickable status badge ────────────────────────────────────────────────────
 
-function EmployeeToggle({ employee }: { employee: Employee }) {
+function StatusBadge({ employee }: { employee: Employee }) {
   const [isActive, setIsActive] = React.useState(employee.status)
   const [isPending, setIsPending] = React.useState(false)
 
-  const handleChange = (checked: boolean) => {
-    setIsActive(checked)
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isPending) return
+    const next = !isActive
+    setIsActive(next)
     setIsPending(true)
     router.patch(
       route("employee.toggleStatus", employee.id),
@@ -43,7 +45,7 @@ function EmployeeToggle({ employee }: { employee: Employee }) {
         preserveScroll: true,
         onFinish: () => setIsPending(false),
         onError: () => {
-          setIsActive(!checked)
+          setIsActive(!next)
           setIsPending(false)
         },
       }
@@ -51,12 +53,15 @@ function EmployeeToggle({ employee }: { employee: Employee }) {
   }
 
   return (
-    <Switch
-      onClick={(e) => e.stopPropagation()}
-      checked={isActive}
-      onCheckedChange={handleChange}
-      disabled={isPending}
-    />
+    <Badge
+      variant={isActive ? "default" : "destructive"}
+      onClick={handleClick}
+      className={`min-w-[70px] justify-center transition-opacity ${
+        isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:opacity-80"
+      }`}
+    >
+      {isActive ? "Active" : "Inactive"}
+    </Badge>
   )
 }
 
@@ -173,39 +178,16 @@ export const columns: DataTableColumnDef<Employee>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Status" />
     ),
-    cell: ({ row }) => {
-      const isActive: boolean = row.getValue("status")
-      return (
-        <div className="flex items-center gap-2 min-w-[100px]">
-          <Badge variant={isActive ? "default" : "destructive"}>
-            {isActive ? "Active" : "Inactive"}
-          </Badge>
-        </div>
-      )
-    },
+    cell: ({ row }) => <StatusBadge employee={row.original} />,
     enableSorting: true,
     enableHiding: true,
     filterFn: (row, id, value: boolean[]) => value.includes(row.getValue(id)),
     mobileCard: (row) => (
       <div className="flex flex-col gap-1">
         <span className="text-muted-foreground text-xs ml-2">Status</span>
-        <div className="flex items-center justify-between">
-          <Badge variant={row.status ? "default" : "destructive"}>
-            {row.status ? "Active" : "Inactive"}
-          </Badge>
-          <EmployeeToggle employee={row} />
-        </div>
+        <StatusBadge employee={row} />
       </div>
     ),
-  },
-  {
-    accessorKey: "toggle",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Toggle" />
-    ),
-    cell: ({ row }) => <EmployeeToggle employee={row.original} />,
-    enableSorting: false,
-    enableHiding: false,
   },
   {
     id: "actions",
