@@ -11,9 +11,9 @@ return new class extends Migration {
         Schema::create('leave_applications', function (Blueprint $table) {
             $table->id('leave_application_id');
             $table->foreignId('employee_id')->constrained('employees', 'employee_id')->cascadeOnDelete();
-            $table->foreignId('leave_type_id')->nullable()->constrained('leave_types', 'leave_type_id')->nullOnDelete();
-            $table->foreignId('recommendation_officer')->constrained('employees', 'employee_id')->nullOnDelete();
-            $table->foreignId('approval_officer')->constrained('employees', 'employee_id')->nullOnDelete();
+            $table->foreignId('leave_type_id')->nullable()->constrained('leave_types', 'leave_type_id')->cascadeOnDelete();
+            $table->foreignId('recommendation_officer')->constrained('employees', 'employee_id')->cascadeOnDelete();
+            $table->foreignId('approval_officer')->constrained('employees', 'employee_id')->cascadeOnDelete();
             $table->string('leave_type_availed');
             $table->timestamp('date_of_filing');
             $table->date('start_date');
@@ -31,7 +31,7 @@ return new class extends Migration {
         Schema::create('leave_application_details', function (Blueprint $table) {
             $table->id('leave_application_detail_id');
             $table->foreignId('leave_application_id')->constrained('leave_applications', 'leave_application_id')->cascadeOnDelete();
-            $table->string('leave_location')->nullable();      // within PH or abroad
+            $table->string('leave_location')->nullable();
             $table->string('illness_details')->nullable();
             $table->string('study_leave_purpose')->nullable();
         });
