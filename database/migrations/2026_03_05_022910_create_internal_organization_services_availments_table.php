@@ -10,12 +10,11 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('internal_organization_services_availments', function (Blueprint $table) {
-            $table->id('internal_organization_services_availment_id');
-
+        Schema::create('int_org_services_availments', function (Blueprint $table) {
+            $table->id('int_org_services_availment_id');
             $table->unsignedBigInteger('employee_id');
             $table->unsignedBigInteger('internal_organization_id');
-            $table->foreignId('internal_organization_employee_id')->constrained('internal_organization_employees', 'internal_organization_employee_id');
+            $table->foreignId('int_org_employee_id')->constrained('internal_organization_employees', 'internal_organization_employee_id');
             $table->enum('service_type', ['Loan', 'Savings']);
             $table->timestamps();
         });

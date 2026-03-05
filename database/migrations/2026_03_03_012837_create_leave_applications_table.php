@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->foreignId('leave_type_id')->nullable()->constrained('leave_types', 'leave_type_id')->cascadeOnDelete();
             $table->foreignId('recommendation_officer')->constrained('employees', 'employee_id')->cascadeOnDelete();
             $table->foreignId('approval_officer')->constrained('employees', 'employee_id')->cascadeOnDelete();
-            $table->string('leave_type_availed');
+            $table->string('leave_type_availed')->nullable();
             $table->timestamp('date_of_filing');
             $table->date('start_date');
             $table->date('end_date');
@@ -34,6 +34,7 @@ return new class extends Migration {
             $table->string('leave_location')->nullable();
             $table->string('illness_details')->nullable();
             $table->string('study_leave_purpose')->nullable();
+            $table->timestamps();
         });
     }
 

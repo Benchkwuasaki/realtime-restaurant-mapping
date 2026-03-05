@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('employee_internal_organization', function (Blueprint $table) {
+        Schema::create('internal_organization_employees', function (Blueprint $table) {
             $table->id('internal_organization_employee_id');
             $table->foreignId('employee_id')
                 ->constrained('employees', 'employee_id')
