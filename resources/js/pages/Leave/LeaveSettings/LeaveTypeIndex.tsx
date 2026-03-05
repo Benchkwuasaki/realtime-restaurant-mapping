@@ -249,7 +249,7 @@ function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps
         e.preventDefault()
         const payload = { ...data, requirements: requirementInputs }
         if (isEdit) {
-            put(route("leave.update", editingLeaveType!.leave_type_id), {
+            put(route("leave.leave-type.update", editingLeaveType!.leave_type_id), {
                 data: payload,
                 // onSuccess: handleClose,
                 onSuccess: () => {
@@ -259,7 +259,7 @@ function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps
                 onError: () => toast.error("Failed to update leave type."),
             } as any)
         } else {
-            post(route("leave.store"), {
+            post(route("leave.leave-type.store"), {
                 data: payload,
                 // onSuccess: handleClose,
                 onSuccess: () => {
@@ -520,7 +520,7 @@ export default function LeaveTypeIndex({ leave_types }: Props) {
                     onClick: openCreate,
                 }}
                 bulkDelete={{
-                    route: route("leave.bulk-destroy"),
+                    route: route("leave.leave-type.bulk-destroy"),
                     entityName: "Leave Type",
                     getId: (row) => (row as LeaveType).leave_type_id,
                 }}

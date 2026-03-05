@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTableFacetedFilter, type FacetedFilterOption } from "./data-table-faceted-filter"
 import { DataTableViewOptions } from "./data-table-view-option"
+import { toast } from "sonner"
 
 // ─── Config types ──────────────────────────────────────────────────────────────
 
@@ -89,9 +90,11 @@ export function DataTableToolbar<TData>({
       data: { ids },
       preserveScroll: true,
       onSuccess: () => {
+        toast.success(`${entityPlural} deleted successfully.`) 
         table.resetRowSelection()
         setDeleteDialogOpen(false)
       },
+       onError: () => toast.error(`Failed to delete ${entityPlural}.`),
     })
   }
 

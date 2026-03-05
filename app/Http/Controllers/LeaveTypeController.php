@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use App\Models\LeaveType;
 use App\Models\LeaveTypeRequirement;
+use App\Models\LeaveEntitlement;
 
 
 class LeaveTypeController extends Controller
@@ -17,17 +18,6 @@ class LeaveTypeController extends Controller
     public function index()
     {
 
-        $leave_types = LeaveType::with('requirements')->get()->all();
-        $total_leave_types = LeaveType::count();
-        $total_paid = LeaveType::where('is_paid', true)->count();
-        $total_convertible = LeaveType::where('is_convertible', true)->count();
-
-        return Inertia::render('Leave/LeaveSettings/LeaveSettingsTabNav', compact(
-            'leave_types',
-            'total_leave_types',
-            'total_paid',
-            'total_convertible',
-        ));
     }
 
     /**
@@ -43,8 +33,7 @@ class LeaveTypeController extends Controller
      */
     public function store(Request $request)
     {
-
-
+        // Validate incoming request data
         $validated = $request->validate([
             'leave_type_name' => 'required|string|max:255|unique:leave_types,leave_type_name',
             'leave_type_description' => 'nullable|string',
@@ -56,14 +45,17 @@ class LeaveTypeController extends Controller
             'requirements.*.requirement_name' => 'required|string|max:255',
         ]);
 
+        // Create the leave type
         $leaveType = LeaveType::create($validated);
 
+        // Save each requirement related to the leave type
         foreach ($validated['requirements'] ?? [] as $req) {
             $leaveType->requirements()->create([
                 'requirement_name' => $req['requirement_name'],
             ]);
         }
 
+        // Redirect back with success message
         return back()->with('success', 'Leave type created successfully.');
     }
 
@@ -88,8 +80,10 @@ class LeaveTypeController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        // Find the leave type with its requirements
         $leaveType = LeaveType::with('requirements')->findOrFail($id);
 
+        // Validate request data
         $validated = $request->validate([
             'leave_type_name' => 'required|string|max:255|unique:leave_types,leave_type_name,' . $leaveType->leave_type_id . ',leave_type_id',
             'leave_type_description' => 'nullable|string',
@@ -102,28 +96,35 @@ class LeaveTypeController extends Controller
             'requirements.*.requirement_name' => 'required|string|max:255',
         ]);
 
+        // Update leave type details
         $leaveType->update($validated);
 
+        // Collect incoming requirement IDs
         $incomingIds = collect($validated['requirements'] ?? [])
             ->pluck('leave_type_requirement_id')
             ->filter()
             ->values();
 
+        // Delete requirements that were removed
         $leaveType->requirements()
             ->whereNotIn('leave_type_requirement_id', $incomingIds)
             ->delete();
 
+        // Update existing requirements or create new ones
         foreach ($validated['requirements'] ?? [] as $req) {
             if (!empty($req['leave_type_requirement_id'])) {
+                // Update existing requirement
                 LeaveTypeRequirement::where('leave_type_requirement_id', $req['leave_type_requirement_id'])
                     ->update(['requirement_name' => $req['requirement_name']]);
             } else {
+                // Create new requirement
                 $leaveType->requirements()->create([
                     'requirement_name' => $req['requirement_name'],
                 ]);
             }
         }
 
+        // Redirect back with success message
         return back()->with('success', 'Leave type updated successfully.');
     }
 
@@ -132,26 +133,37 @@ class LeaveTypeController extends Controller
      */
     public function destroy(string $id)
     {
+        // Find the leave type
         $leave_type = LeaveType::findOrFail($id);
+
+        // Delete related requirements first
         $leave_type->requirements()->delete();
+
+        // Delete the leave type
         $leave_type->delete();
+
+        // Redirect back with success message
         return back()->with('success', 'Leave type deleted successfully.');
     }
 
     public function bulkDestroy(Request $request)
     {
+        // Validate IDs to delete
         $request->validate([
             'ids' => ['required', 'array'],
             'ids.*' => ['integer', 'exists:leave_types,leave_type_id'],
         ]);
 
+        // Get all selected leave types
         $leaveTypes = LeaveType::whereIn('leave_type_id', $request->ids)->get();
 
+        // Delete each leave type with its requirements
         foreach ($leaveTypes as $leaveType) {
             $leaveType->requirements()->delete();
             $leaveType->delete();
         }
 
+        // Return success message with count
         return back()->with('success', count($request->ids) . ' leave type(s) deleted.');
     }
 }

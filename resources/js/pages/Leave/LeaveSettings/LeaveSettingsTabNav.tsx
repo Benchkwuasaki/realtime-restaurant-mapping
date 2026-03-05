@@ -5,7 +5,7 @@ import { route } from 'ziggy-js';
 import { LeaveTabs } from './components/tab-navigation';
 import { StatCard } from '@/components/shared/stat-card';
 import { CalendarDays, HandCoins, IterationCcw, PackagePlus } from 'lucide-react';
-import type { LeaveType } from "./data/schema";
+import type { LeaveType, LeaveEntitlement  } from "./data/schema";
 
 const breadcrumbs: BreadcrumbItem[] = [
   { title: 'Leave Settings', href: route('leave.leave-settings') },
@@ -15,12 +15,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 type Props = {
   leave_types: LeaveType[];
+  leave_entitlements: LeaveEntitlement[];
   total_leave_types: number
   total_paid: number
   total_convertible: number
 }
 
-export default function LeaveSettingsTabNav({ leave_types, total_leave_types, total_paid, total_convertible }: Props) {
+export default function LeaveSettingsTabNav({ leave_types, leave_entitlements, total_leave_types, total_paid, total_convertible }: Props) {
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
@@ -44,7 +45,7 @@ export default function LeaveSettingsTabNav({ leave_types, total_leave_types, to
 
           {/* nav tab */}
           <section className="">
-            <LeaveTabs leave_types={leave_types} />
+            <LeaveTabs leave_types={leave_types}  leave_entitlements={leave_entitlements}/>
           </section>
 
         </section>
