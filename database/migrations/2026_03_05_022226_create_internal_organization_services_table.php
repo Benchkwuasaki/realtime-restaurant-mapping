@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('internal_organization_services', function (Blueprint $table) {
             $table->id('internal_organization_service_id');
-            $table->foreignId('internal_organization_id')->constrained('internal_organization', 'internal_organization_id')->cascadeOnDelete();
+            $table->foreignId('internal_organization_id')->constrained('internal_organizations', 'internal_organization_id')->cascadeOnDelete();
             $table->string('internal_organization_service_name');
             $table->boolean('deductable_from_payroll')->default(false);
             $table->timestamps();

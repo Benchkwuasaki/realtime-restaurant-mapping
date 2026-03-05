@@ -19,7 +19,6 @@ class LeaveApplication extends Model
         'leave_type_id',
         'start_date',
         'end_date',
-        'days_requested',
         'reason',
         'status',
         'approved_by_supervisor',
@@ -34,7 +33,6 @@ class LeaveApplication extends Model
     protected $casts = [
         'start_date'            => 'date:Y-m-d',
         'end_date'              => 'date:Y-m-d',
-        'days_requested'        => 'decimal:1',
         'supervisor_approved_at'=> 'datetime',
         'manager_approved_at'   => 'datetime',
         'rejected_at'           => 'datetime',

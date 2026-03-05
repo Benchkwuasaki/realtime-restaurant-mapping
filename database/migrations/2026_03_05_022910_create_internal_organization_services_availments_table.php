@@ -15,12 +15,7 @@ return new class extends Migration {
 
             $table->unsignedBigInteger('employee_id');
             $table->unsignedBigInteger('internal_organization_id');
-
-            $table->foreign(['employee_id', 'internal_organization_id'])
-                ->references(['employee_id', 'internal_organization_id'])
-                ->on('employee_internal_organization')
-                ->cascadeOnDelete();
-
+            $table->foreignId('internal_organization_employee_id')->constrained('internal_organization_employees', 'internal_organization_employee_id');
             $table->enum('service_type', ['Loan', 'Savings']);
             $table->timestamps();
         });
