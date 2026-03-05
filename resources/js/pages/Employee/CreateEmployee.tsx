@@ -201,12 +201,14 @@ const REQUIRED: Record<number, { field: string; label: string }[]> = {
         { field: "sex", label: "Sex" },
         { field: "civil_status", label: "Civil Status" },
         { field: "phone_number", label: "Phone Number" },
+        
     ],
     1: [
         { field: "item_id", label: "Position" },
         { field: "salary_grade", label: "Salary Grade" },
         { field: "salary_grade_step_id", label: "Step" },
         { field: "employment_classification", label: "Employment Classification" },
+        { field: "work_id", label: "Work ID" },
         { field: "work_email", label: "Work Email" },
         { field: "password", label: "Password" },
         { field: "date_applied", label: "Date Applied" },
@@ -502,7 +504,7 @@ function PersonalStep({ data, setData, err }: {
 
 function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmentClassifications, roles }: {
     data: {
-        item_id: string; selected_position_name: string; salary_grade_step_id: string
+        item_id: string; selected_position_name: string; salary_grade_step_id: string, work_id: string,
         employment_classification: string; roles: string[]; work_email: string; password: string
         date_applied: string; date_hired: string; work_schedule_start: string
         work_schedule_end: string; status: string; salary_grade: string; step: string
@@ -754,6 +756,17 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     </Select>
                     <FieldError message={err("status")} />
                 </div>
+                {/* Work ID */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="work_id">Work ID <Req /></FieldLabel>
+                    <Input
+                        id="work_id"
+                        value={data.work_id}
+                        onChange={e => setData("work_id", e.target.value)}
+                        placeholder="e.g. EMP-2024-001"
+                    />
+                    <FieldError message={err("work_id")} />
+                </div>
 
                 {/* Work Email */}
                 <div className="space-y-2">
@@ -761,6 +774,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     <Input id="work_email" type="email" value={data.work_email} onChange={e => setData("work_email", e.target.value)} placeholder="johndoe@agency.gov.ph" />
                     <FieldError message={err("work_email")} />
                 </div>
+
 
                 {/* Password */}
                 <div className="space-y-2">
@@ -1032,7 +1046,7 @@ function EligibilityStep({ rows, setRows, err }: { rows: EligibilityRow[]; setRo
 
 function ReviewStep({ data, items, salaryGradeSteps, addresses, family, government, education, eligibility }: {
     data: {
-        first_name: string; last_name: string; middle_name: string; name_extension: string
+        first_name: string; last_name: string; middle_name: string; name_extension: string, work_id: string
         birth_date: string; sex: string; civil_status: string; place_of_birth: string
         personal_email: string; phone_number: string; item_id: string
         selected_position_name: string; salary_grade_step_id: string
@@ -1077,6 +1091,7 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
             {selectedGroup?.position?.department && <ReviewRow label="Department" value={selectedGroup.position.department.department_name} />}
             {selectedGroup?.position?.division && <ReviewRow label="Division" value={selectedGroup.position.division.division_name} />}
             {selectedGroup?.position?.unit && <ReviewRow label="Unit" value={selectedGroup.position.unit.unit_name} />}
+            <ReviewRow label="Work ID" value={data.work_id} />
             <ReviewRow label="Employment Classification" value={data.employment_classification || undefined} />
             <ReviewRow label="Roles" value={data.roles.map(formatRoleLabel).join(", ") || undefined} />
             <ReviewRow
@@ -1157,6 +1172,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
         selected_position_name: "",
         salary_grade_step_id: "",
         employment_classification: "",
+        work_id: "",
         roles: ["employee"],
         work_email: "", password: "", date_applied: "", date_hired: "",
         work_schedule_start: "", work_schedule_end: "", status: "",

@@ -16,10 +16,6 @@ return new class extends Migration
             $table->foreignId('employee_id')
                 ->constrained('employees', 'employee_id')
                 ->cascadeOnDelete();
-            $table->foreignId('embeddings_id')
-                ->nullable()
-                ->constrained('face_embeddings', 'face_embedding_id')
-                ->nullOnDelete();
             $table->foreignId('recognition_morning_in_id')
                 ->nullable()
                 ->constrained('recognition_logs', 'recognition_log_id')
