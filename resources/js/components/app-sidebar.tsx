@@ -127,10 +127,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/leave/leave-filing",
           },
           {
-            title: "Leave Approval Workflow",
-            url: "/leave/leave-approval-workflow",
-          },
-          {
             title: "Leave Adjustment Memo",
             url: "/leave/leave-adjustment-memo",
           },

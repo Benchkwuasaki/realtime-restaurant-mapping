@@ -4,111 +4,91 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class LeaveApplication extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'leave_applications';
-
     protected $primaryKey = 'leave_application_id';
 
     protected $fillable = [
         'employee_id',
         'leave_type_id',
+        'recommendation_officer',
+        'approval_officer',
+        'leave_type_availed',
+        'date_of_filing',
         'start_date',
         'end_date',
-        'days_requested',
-        'reason',
+        'is_requested',
+        'is_with_pay',
+        'approved_for_specifics',
         'status',
-        'approved_by_supervisor',
-        'approved_by_manager',
-        'supervisor_approved_at',
-        'manager_approved_at',
-        'rejection_reason',
-        'rejected_by',
-        'rejected_at',
+        'for_disapproval_reason',
+        'disapproved_reason',
     ];
 
     protected $casts = [
-        'start_date'            => 'date:Y-m-d',
-        'end_date'              => 'date:Y-m-d',
-        'days_requested'        => 'decimal:1',
-        'supervisor_approved_at'=> 'datetime',
-        'manager_approved_at'   => 'datetime',
-        'rejected_at'           => 'datetime',
+        'date_of_filing' => 'datetime',
+        'start_date'     => 'date',
+        'end_date'       => 'date',
+        'is_requested'   => 'boolean',
+        'is_with_pay'    => 'boolean',
     ];
 
-    // ─── Relationships ────────────────────────────────────────────────────────
+    // ── Relationships ─────────────────────────────────────────────────────────
 
-    /**
-     * The employee who filed this leave application.
-     */
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
     }
 
-    /**
-     * The type of leave being applied for.
-     */
     public function leaveType(): BelongsTo
     {
         return $this->belongsTo(LeaveType::class, 'leave_type_id', 'leave_type_id');
     }
 
-    /**
-     * Supervisor who approved the application (nullable).
-     */
-    public function supervisor(): BelongsTo
+    public function recommendationOfficer(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'approved_by_supervisor', 'employee_id');
+        return $this->belongsTo(Employee::class, 'recommendation_officer', 'employee_id');
     }
 
-    /**
-     * Manager who approved the application (nullable).
-     */
-    public function manager(): BelongsTo
+    public function approvalOfficer(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'approved_by_manager', 'employee_id');
+        return $this->belongsTo(Employee::class, 'approval_officer', 'employee_id');
     }
 
-    /**
-     * Employee who rejected the application (nullable).
-     */
-    public function rejectedBy(): BelongsTo
+    public function detail(): HasOne
     {
-        return $this->belongsTo(Employee::class, 'rejected_by', 'employee_id');
+        return $this->hasOne(LeaveApplicationDetail::class, 'leave_application_id', 'leave_application_id');
     }
 
-    // ─── Scopes ───────────────────────────────────────────────────────────────
+    // ── Scopes ────────────────────────────────────────────────────────────────
 
-    /**
-     * Scope: only approved leaves.
-     */
-    public function scopeApproved($query)
-    {
-        return $query->where('status', 'approved');
-    }
-
-    /**
-     * Scope: only pending leaves.
-     */
     public function scopePending($query)
     {
-        return $query->where('status', 'pending');
+        return $query->where('status', 'Pending');
     }
 
-    /**
-     * Scope: leaves active on a given date.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @param  string|\DateTimeInterface              $date  YYYY-MM-DD
-     */
-    public function scopeActiveOn($query, $date)
+    public function scopeForApproval($query)
     {
-        return $query->where('start_date', '<=', $date)
-                     ->where('end_date', '>=', $date);
+        return $query->where('status', 'For Approval');
+    }
+
+    public function scopeForDisapproval($query)
+    {
+        return $query->where('status', 'For Disapproval');
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'Approval');
+    }
+
+    public function scopeDisapproved($query)
+    {
+        return $query->where('status', 'Disapproved');
     }
 }
