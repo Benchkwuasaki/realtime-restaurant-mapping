@@ -27,6 +27,9 @@ use App\Http\Controllers\EmploymentClassificationController;
 use App\Http\Controllers\LeaveTypeController;
 use Illuminate\Support\Facades\Http;
 
+
+
+
 Route::get('/', function () {
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
@@ -292,7 +295,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/organization/organizational_chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
     Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
 
-
+    Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
+        Route::get('/', [AttendanceController::class, 'index'])->name('index');
+    });
 
 
     // Activity Logs Routes

@@ -1,377 +1,529 @@
-import AppLayout from "@/layouts/app-layout"
-import { BreadcrumbItem } from "@/types"
-import { Head, router, usePage } from "@inertiajs/react"
-import React from "react"
-import Webcam from "react-webcam"
-import { route } from "ziggy-js"
-
-// shadcn/ui components (adjust paths if yours differ)
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Head, router } from "@inertiajs/react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+    Search, CalendarDays, Clock, ShieldCheck, ShieldX,
+    ShieldQuestion, Users, Wifi, WifiOff, Loader2, Radio
+} from "lucide-react"
+import { route } from "ziggy-js"
+import AppLayout from "@/layouts/app-layout"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import type { BreadcrumbItem } from "@/types"
 
-type EmployeeOption = {
-    id: string | number
-    name: string
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface BasicInfo {
+    first_name: string
+    last_name: string
+    middle_name?: string
 }
 
-// Flash payloads returned by back()->with(...)
-type DetectFlash = {
-    success: boolean
-    data?: any
-    message?: string
+interface Employee {
+    employee_id: number
+    work_id: string
+    basic_info?: BasicInfo
 }
 
-type ClockInFlash =
-    | {
-        success: true
-        employee_id: string
-        confidence: number
-        attendance_id?: number | null
-        recognition_log_id?: string | null
-        message: string
-    }
-    | {
-        success: false
-        message: string
-        candidates?: any[]
-        similarity?: number
-        threshold?: number
-    }
-
-type EnrollFlash =
-    | {
-        success: true
-        employee_id: string
-        embeddings_id?: string | null
-        enrollment_session_id?: string | null
-        message: string
-        saved_image_path?: string
-    }
-    | {
-        success: false
-        message: string
-    }
-
-type PageProps = {
-    employees?: EmployeeOption[]
-    flash?: {
-        kiosk_detect?: DetectFlash
-        kiosk_identify?: ClockInFlash
-        kiosk_enroll?: EnrollFlash
-    }
+interface AttendanceRecord {
+    id: number
+    work_id: string | null
+    verification_status: "verified" | "unknown" | "blacklisted"
+    similarity: number | null
+    device_id: string | null
+    snapshot_path: string | null
+    captured_at: string
+    employee?: Employee | null
 }
 
-function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
-    return fetch(dataUrl)
-        .then((r) => r.blob())
-        .then((blob) => new File([blob], filename, { type: "image/jpeg" }))
+interface PaginationLink {
+    url: string | null
+    label: string
+    active: boolean
 }
 
-export default function Kiosk() {
-    const webcamRef = React.useRef<Webcam>(null)
+interface Paginated<T> {
+    data: T[]
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+    links: PaginationLink[]
+}
 
-    const { props } = usePage<PageProps>()
-    const employees = props.employees ?? []
-    const breadcrumbs: BreadcrumbItem[] = [{ title: "Attendance Logs", href: route("recognition-logs.index") }]
+interface Props {
+    attendances: Paginated<AttendanceRecord>
+    filters: { search: string; date: string }
+}
 
-    // UI state
-    const [tab, setTab] = React.useState<"attendance" | "enroll">("attendance")
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-    // Shared status panel
-    const [status, setStatus] = React.useState("Ready.")
-    const [busy, setBusy] = React.useState(false)
+function formatTime(iso: string) {
+    return new Date(iso).toLocaleTimeString("en-PH", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+    })
+}
 
-    // Attendance scanning state
-    const [running, setRunning] = React.useState(false)
-    const [cooldownUntil, setCooldownUntil] = React.useState(0)
+function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString("en-PH", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    })
+}
 
-    // Enrollment state
-    const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string>("")
-
-    // Tunables
-    const DETECT_INTERVAL_MS = 900
-    const IDENTIFY_COOLDOWN_MS = 8000
-    const MIN_FACES = 1
-    const MIN_FACE_SCORE = 0.5
-
-    // Inertia helper: post image (and optional extra fields) and return flash from onSuccess(page)
-    const inertiaPost = (routeName: string, formData: FormData): Promise<PageProps["flash"]> => {
-        return new Promise((resolve, reject) => {
-            router.post(route(routeName), formData, {
-                forceFormData: true,
-                preserveScroll: true,
-                preserveState: true,
-                only: ["flash"],
-
-                onError: (errors) => {
-                    setStatus(`❌ Validation error: ${JSON.stringify(errors)}`)
-                    reject(errors)
-                },
-
-                onSuccess: (page) => {
-                    resolve((page.props as any).flash ?? {})
-                },
-            })
-        })
+function getEmployeeName(record: AttendanceRecord): string {
+    if (record.employee?.basic_info) {
+        const { first_name, last_name } = record.employee.basic_info
+        return `${first_name} ${last_name}`
     }
+    return "Unknown"
+}
 
-    const captureFrameFile = async (): Promise<File | null> => {
-        const cam = webcamRef.current
-        if (!cam) return null
-        const dataUrl = cam.getScreenshot()
-        if (!dataUrl) return null
-        return await dataUrlToFile(dataUrl, "frame.jpg")
-    }
+function getWorkId(record: AttendanceRecord): string {
+    return record.employee?.work_id ?? record.work_id ?? "—"
+}
 
-    // ─────────────────────────────────────────────────────────────
-    // Attendance flow: detect → clock-in
-    // ─────────────────────────────────────────────────────────────
-    const detectThenClockIn = async () => {
-        if (busy) return
-        if (Date.now() < cooldownUntil) return
+// ─── CCTV Stream (WebRTC/WHEP) ────────────────────────────────────────────────
 
-        const file = await captureFrameFile()
-        if (!file) {
-            setStatus("No frame captured (allow camera permission).")
-            return
+function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) {
+    const videoRef = useRef<HTMLVideoElement>(null)
+    const pcRef = useRef<RTCPeerConnection | null>(null)
+    const [status, setStatus] = useState<"connecting" | "live" | "error">("connecting")
+
+    useEffect(() => {
+        let pc: RTCPeerConnection
+        let cancelled = false
+
+        async function connect() {
+            setStatus("connecting")
+            try {
+                pc = new RTCPeerConnection({
+                    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+                })
+                pcRef.current = pc
+
+                pc.addTransceiver("video", { direction: "recvonly" })
+                pc.addTransceiver("audio", { direction: "recvonly" })
+
+                pc.ontrack = (e) => {
+                    if (videoRef.current && e.streams[0] && !cancelled) {
+                        videoRef.current.srcObject = e.streams[0]
+                        setStatus("live")
+                    }
+                }
+
+                pc.onconnectionstatechange = () => {
+                    if (
+                        (pc.connectionState === "failed" || pc.connectionState === "disconnected")
+                        && !cancelled
+                    ) {
+                        setStatus("error")
+                    }
+                }
+
+                const offer = await pc.createOffer()
+                await pc.setLocalDescription(offer)
+
+                const res = await fetch(`${src}/whep`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/sdp" },
+                    body: offer.sdp,
+                })
+
+                if (!res.ok) throw new Error("WHEP request failed")
+
+                const answerSdp = await res.text()
+                await pc.setRemoteDescription({ type: "answer", sdp: answerSdp })
+            } catch (err) {
+                if (!cancelled) {
+                    console.error("CCTV error:", err)
+                    setStatus("error")
+                }
+            }
         }
 
-        setBusy(true)
-        try {
-            // 1) Detect
-            const fdDetect = new FormData()
-            fdDetect.append("image", file)
-
-            const flashDetect = await inertiaPost("attendance.detect", fdDetect)
-            const detect = flashDetect?.kiosk_detect
-
-            if (!detect || !detect.success) {
-                setStatus(`Detect error: ${detect?.message ?? "unknown"}`)
-                return
-            }
-
-            // Your dd() showed: data.status, data.faces, etc.
-            // Your detect response from FastAPI: { status: "success", faces: [...] }
-            const faces = detect.data?.faces ?? detect.data?.detected_faces ?? detect.data?.results ?? []
-            if (!Array.isArray(faces) || faces.length < MIN_FACES) {
-                setStatus("No face detected.")
-                return
-            }
-
-            const bestScore =
-                Math.max(...faces.map((f: any) => Number(f.confidence ?? f.score ?? f.det_score ?? 0))) || 0
-
-            if (bestScore < MIN_FACE_SCORE) {
-                setStatus(`Face detected but low confidence (${bestScore.toFixed(2)}).`)
-                return
-            }
-
-            setStatus(`Face detected ✅ (score ${bestScore.toFixed(2)}). Identifying…`)
-
-            // 2) Clock-in (identify)
-            const fdClock = new FormData()
-            fdClock.append("image", file)
-
-            const flashClock = await inertiaPost("attendance.clock-in", fdClock)
-            const identify = flashClock?.kiosk_identify as ClockInFlash | undefined
-
-            if (!identify) {
-                setStatus("❌ Clock-in error: unknown")
-                return
-            }
-
-            if ((identify as any).success) {
-                const ok = identify as Extract<ClockInFlash, { success: true }>
-                setStatus(`✅ ${ok.message} (ID ${ok.employee_id}, conf ${Number(ok.confidence).toFixed(3)})`)
-                setCooldownUntil(Date.now() + IDENTIFY_COOLDOWN_MS)
-            } else {
-                const bad = identify as Extract<ClockInFlash, { success: false }>
-                setStatus(`❌ ${bad.message}`)
-            }
-        } catch (e: any) {
-            setStatus(`❌ Failed: ${e?.message ?? "unknown error"}`)
-        } finally {
-            setBusy(false)
+        connect()
+        return () => {
+            cancelled = true
+            pc?.close()
         }
-    }
+    }, [src])
 
-    React.useEffect(() => {
-        if (!running || tab !== "attendance") return
-        const id = window.setInterval(detectThenClockIn, DETECT_INTERVAL_MS)
-        return () => window.clearInterval(id)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [running, tab, busy, cooldownUntil])
-
-    // ─────────────────────────────────────────────────────────────
-    // Enrollment flow
-    // ─────────────────────────────────────────────────────────────
-    const enrollSelectedEmployee = async () => {
-        if (busy) return
-
-        if (!selectedEmployeeId) {
-            setStatus("❌ Please select an employee first.")
-            return
-        }
-
-        const file = await captureFrameFile()
-        if (!file) {
-            setStatus("No frame captured (allow camera permission).")
-            return
-        }
-
-        setBusy(true)
-        try {
-            const fd = new FormData()
-            fd.append("image", file)
-            fd.append("employee_id", selectedEmployeeId)
-
-            const flashEnroll = await inertiaPost("attendance.enroll", fd)
-            const enroll = flashEnroll?.kiosk_enroll as EnrollFlash | undefined
-
-            if (!enroll) {
-                setStatus("❌ Enrollment error: unknown")
-                return
-            }
-
-            if ((enroll as any).success) {
-                const ok = enroll as Extract<EnrollFlash, { success: true }>
-                setStatus(`✅ ${ok.message} (Employee ID ${ok.employee_id})`)
-            } else {
-                const bad = enroll as Extract<EnrollFlash, { success: false }>
-                setStatus(`❌ ${bad.message}`)
-            }
-        } catch (e: any) {
-            setStatus(`❌ Failed: ${e?.message ?? "unknown error"}`)
-        } finally {
-            setBusy(false)
-        }
+    const retry = () => {
+        pcRef.current?.close()
+        setStatus("connecting")
     }
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Attendance Kiosk" />
+        <div className="relative w-full h-full bg-black rounded-xl overflow-hidden group">
+            {/* Video */}
+            <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+            />
 
-            <div className="p-6 space-y-6">
-                <div className="flex items-center justify-between gap-4">
-                    <h1 className="text-xl font-semibold">Attendance Kiosk</h1>
+            {/* Overlay when not live */}
+            {status !== "live" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 gap-3">
+                    {status === "connecting" ? (
+                        <>
+                            <Loader2 className="w-10 h-10 text-white/30 animate-spin" />
+                            <p className="text-xs text-white/30 tracking-widest uppercase">Connecting…</p>
+                        </>
+                    ) : (
+                        <>
+                            <WifiOff className="w-10 h-10 text-white/20" />
+                            <p className="text-xs text-white/30 tracking-widest uppercase">Stream Offline</p>
+                            <button
+                                onClick={retry}
+                                className="mt-1 text-xs text-white/50 hover:text-white/80 underline underline-offset-2 transition-colors"
+                            >
+                                Retry
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Top-left: label + live badge */}
+            <div className="absolute top-3 left-3 flex items-center gap-2">
+                <span className="text-xs font-semibold text-white bg-black/50 backdrop-blur px-2.5 py-1 rounded-md tracking-wide">
+                    {label}
+                </span>
+                {status === "live" && (
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-black/50 backdrop-blur px-2.5 py-1 rounded-md">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        </span>
+                        LIVE
+                    </span>
+                )}
+            </div>
+
+            {/* Bottom-right: timestamp */}
+            <LiveClock />
+        </div>
+    )
+}
+
+function LiveClock() {
+    const [time, setTime] = useState("")
+    useEffect(() => {
+        const tick = () => setTime(new Date().toLocaleTimeString("en-PH", {
+            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true
+        }))
+        tick()
+        const id = setInterval(tick, 1000)
+        return () => clearInterval(id)
+    }, [])
+    return (
+        <div className="absolute bottom-3 right-3 text-xs font-mono text-white/60 bg-black/50 backdrop-blur px-2.5 py-1 rounded-md tabular-nums">
+            {time}
+        </div>
+    )
+}
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: AttendanceRecord["verification_status"] }) {
+    if (status === "verified") {
+        return (
+            <Badge className="gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:border-emerald-800 dark:text-emerald-400 text-[10px] font-semibold">
+                <ShieldCheck className="w-2.5 h-2.5" /> Verified
+            </Badge>
+        )
+    }
+    if (status === "blacklisted") {
+        return (
+            <Badge className="gap-1 bg-red-500/10 text-red-600 border-red-200 dark:border-red-800 dark:text-red-400 text-[10px] font-semibold">
+                <ShieldX className="w-2.5 h-2.5" /> Blacklisted
+            </Badge>
+        )
+    }
+    return (
+        <Badge className="gap-1 bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-800 dark:text-amber-400 text-[10px] font-semibold">
+            <ShieldQuestion className="w-2.5 h-2.5" /> Unknown
+        </Badge>
+    )
+}
+
+// ─── Similarity Bar ───────────────────────────────────────────────────────────
+
+function SimilarityBar({ value }: { value: number | null }) {
+    if (value === null) return <span className="text-muted-foreground text-xs">—</span>
+    const color = value >= 80 ? "bg-emerald-500" : value >= 60 ? "bg-amber-500" : "bg-red-500"
+    return (
+        <div className="flex items-center gap-2">
+            <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${color}`} style={{ width: `${value}%` }} />
+            </div>
+            <span className="text-[10px] font-mono tabular-nums text-muted-foreground w-7 text-right">
+                {value}%
+            </span>
+        </div>
+    )
+}
+
+// ─── Snapshot Avatar ──────────────────────────────────────────────────────────
+
+function Avatar({ path, name, size = "md" }: { path: string | null; name: string; size?: "sm" | "md" }) {
+    const dim = size === "sm" ? "w-8 h-8 text-[10px]" : "w-10 h-10 text-xs"
+    const initials = name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
+
+    if (!path) {
+        return (
+            <div className={`${dim} rounded-lg bg-muted flex items-center justify-center shrink-0 font-semibold text-muted-foreground`}>
+                {initials}
+            </div>
+        )
+    }
+    return (
+        <img
+            src={`/storage/${path}`}
+            alt={name}
+            className={`${dim} rounded-lg object-cover shrink-0 border border-border`}
+        />
+    )
+}
+
+// ─── Log Card ─────────────────────────────────────────────────────────────────
+
+function LogCard({ record }: { record: AttendanceRecord }) {
+    const name = getEmployeeName(record)
+    const workId = getWorkId(record)
+
+    const borderColor =
+        record.verification_status === "verified"
+            ? "border-l-emerald-500"
+            : record.verification_status === "blacklisted"
+                ? "border-l-red-500"
+                : "border-l-amber-400"
+
+    return (
+        <div className={`flex items-start gap-3 p-3 rounded-lg border border-l-2 ${borderColor} bg-card hover:bg-muted/30 transition-colors`}>
+            <Avatar path={record.snapshot_path} name={name} />
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-semibold text-sm text-foreground truncate">{name}</p>
+                    <StatusBadge status={record.verification_status} />
+                </div>
+                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{workId}</p>
+                <div className="mt-1.5">
+                    <SimilarityBar value={record.similarity} />
+                </div>
+            </div>
+            <div className="text-right shrink-0">
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {formatTime(record.captured_at)}
+                </span>
+            </div>
+        </div>
+    )
+}
+
+// ─── Stat Chip ────────────────────────────────────────────────────────────────
+
+function StatChip({ icon: Icon, label, value, color }: {
+    icon: React.ElementType; label: string; value: number; color: string
+}) {
+    return (
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border bg-card`}>
+            <Icon className={`w-3.5 h-3.5 ${color}`} />
+            <span className="text-xs text-muted-foreground">{label}</span>
+            <span className="text-sm font-bold tabular-nums ml-auto">{value}</span>
+        </div>
+    )
+}
+
+// ─── Breadcrumbs ──────────────────────────────────────────────────────────────
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: "Attendance", href: "/attendance" },
+]
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function AttendanceIndex({
+    attendances = { data: [], current_page: 1, last_page: 1, per_page: 20, total: 0, links: [] },
+    filters = { search: "", date: new Date().toISOString().split("T")[0] },
+}: Props) {
+    const [search, setSearch] = useState(filters.search ?? "")
+    const [date, setDate] = useState(filters.date)
+
+    const applyFilters = useCallback((overrides: { search?: string; date?: string }) => {
+        router.get(
+            route("attendance.index"),
+            { search: overrides.search ?? search, date: overrides.date ?? date },
+            { preserveScroll: true, replace: true }
+        )
+    }, [search, date])
+
+    const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") applyFilters({ search })
+    }
+
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setDate(e.target.value)
+        applyFilters({ date: e.target.value })
+    }
+
+    const setToday = () => {
+        const today = new Date().toISOString().split("T")[0]
+        setDate(today)
+        applyFilters({ date: today })
+    }
+
+    const records = attendances.data
+    const verifiedCount = records.filter(r => r.verification_status === "verified").length
+    const unknownCount = records.filter(r => r.verification_status === "unknown").length
+    const blacklistedCount = records.filter(r => r.verification_status === "blacklisted").length
+    const isToday = date === new Date().toISOString().split("T")[0]
+
+    // ── MediaMTX WHEP source — change to your server IP ──
+    const CCTV_SRC = "http://192.168.0.114:8889/cam"
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Attendance" />
+
+            <div className="px-6 pt-5 pb-10 space-y-5">
+
+                {/* ── Header ── */}
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div>
+                        <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+                            <Radio className="w-4 h-4 text-emerald-500" />
+                            Attendance Monitor
+                        </h1>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                            {isToday ? "Today — " : ""}{formatDate(date)}
+                            {" · "}{attendances.total} record{attendances.total !== 1 ? "s" : ""}
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Input
+                            type="date"
+                            value={date}
+                            onChange={handleDateChange}
+                            className="w-40"
+                        />
+                        {!isToday && (
+                            <Button variant="outline" size="sm" onClick={setToday} className="gap-1.5">
+                                <CalendarDays className="w-3.5 h-3.5" /> Today
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    {/* Camera */}
-                    <Card className="xl:col-span-2">
-                        <CardHeader>
-                            <CardTitle>Camera</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="rounded-xl overflow-hidden border">
-                                <Webcam
-                                    ref={webcamRef}
-                                    audio={false}
-                                    screenshotFormat="image/jpeg"
-                                    screenshotQuality={0.9}
-                                    videoConstraints={{ facingMode: "user", width: 1280, height: 720 }}
-                                    className="w-full h-auto"
-                                />
+                {/* ── Main Layout: CCTV + Logs ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 items-start">
+
+                    {/* ── Left: CCTV Feed ── */}
+                    <div className="space-y-3">
+                        {/* Stream */}
+                        <div className="w-full aspect-video rounded-xl overflow-hidden border shadow-sm">
+                            <CctvStream src={CCTV_SRC} label="Entrance — CAM 01" />
+                        </div>
+
+                        {/* Stats below the stream */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <StatChip icon={Users} label="Total" value={attendances.total} color="text-blue-500" />
+                            <StatChip icon={ShieldCheck} label="Verified" value={verifiedCount} color="text-emerald-500" />
+                            <StatChip icon={ShieldQuestion} label="Unknown" value={unknownCount} color="text-amber-500" />
+                            <StatChip icon={ShieldX} label="Blacklisted" value={blacklistedCount} color="text-red-500" />
+                        </div>
+                    </div>
+
+                    {/* ── Right: Logs Panel ── */}
+                    <div className="flex flex-col border rounded-xl overflow-hidden bg-card shadow-sm"
+                        style={{ maxHeight: "calc(100vh - 220px)" }}>
+
+                        {/* Panel header + search */}
+                        <div className="px-4 py-3 border-b bg-muted/30 space-y-2.5 shrink-0">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-sm font-semibold flex items-center gap-1.5">
+                                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                                    Attendance Log
+                                </h2>
+                                <span className="text-xs text-muted-foreground tabular-nums">
+                                    {records.length} shown
+                                </span>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-2">
-                                {tab === "attendance" ? (
-                                    <>
-                                        <Button
-                                            variant={running ? "default" : "outline"}
-                                            onClick={() => setRunning((v) => !v)}
-                                            disabled={busy}
-                                        >
-                                            {running ? "Stop Auto Scan" : "Start Auto Scan"}
-                                        </Button>
-
-                                        <Button variant="outline" onClick={detectThenClockIn} disabled={busy}>
-                                            Scan Now
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Button onClick={enrollSelectedEmployee} disabled={busy}>
-                                            Enroll Selected Employee
-                                        </Button>
-                                    </>
+                            {/* Search */}
+                            <div className="flex gap-1.5">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                                    <Input
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                        onKeyDown={handleSearchKey}
+                                        placeholder="Name or work ID…"
+                                        className="pl-8 h-8 text-sm"
+                                    />
+                                </div>
+                                <Button size="sm" className="h-8 px-3" onClick={() => applyFilters({ search })}>
+                                    Search
+                                </Button>
+                                {search && (
+                                    <Button size="sm" variant="ghost" className="h-8 px-2"
+                                        onClick={() => { setSearch(""); applyFilters({ search: "" }) }}>
+                                        ✕
+                                    </Button>
                                 )}
                             </div>
+                        </div>
 
-                            {cooldownUntil > Date.now() && tab === "attendance" && (
-                                <div className="text-sm text-muted-foreground">
-                                    Cooldown: {Math.ceil((cooldownUntil - Date.now()) / 1000)}s
+                        {/* Scrollable log list */}
+                        <div className="flex-1 overflow-y-auto">
+                            {records.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+                                    <CalendarDays className="w-8 h-8 opacity-20" />
+                                    <p className="text-sm">No records for this date.</p>
+                                </div>
+                            ) : (
+                                <div className="p-3 space-y-2">
+                                    {records.map(record => (
+                                        <LogCard key={record.id} record={record} />
+                                    ))}
                                 </div>
                             )}
+                        </div>
 
-                            {busy && <div className="text-sm text-muted-foreground">Processing…</div>}
-                        </CardContent>
-                    </Card>
-
-                    {/* Right panel: Tabs + controls + status */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Controls</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
-                                <TabsList className="grid grid-cols-2 w-full">
-                                    <TabsTrigger value="attendance">Attendance</TabsTrigger>
-                                    <TabsTrigger value="enroll">Enroll</TabsTrigger>
-                                </TabsList>
-
-                                <TabsContent value="attendance" className="space-y-3">
-                                    <div className="text-sm text-muted-foreground">
-                                        Auto scan runs: <span className="font-medium">{running ? "ON" : "OFF"}</span>
+                        {/* Pagination */}
+                        {attendances.last_page > 1 && (
+                            <div className="px-4 py-3 border-t bg-muted/20 shrink-0">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-xs text-muted-foreground">
+                                        Page {attendances.current_page} of {attendances.last_page}
+                                    </p>
+                                    <div className="flex gap-1">
+                                        {attendances.links.map((link, idx) => (
+                                            <Button
+                                                key={idx}
+                                                variant={link.active ? "default" : "outline"}
+                                                size="sm"
+                                                disabled={!link.url}
+                                                onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true })}
+                                                dangerouslySetInnerHTML={{ __html: link.label }}
+                                                className="min-w-7 h-7 text-xs"
+                                            />
+                                        ))}
                                     </div>
-                                    <div className="text-sm text-muted-foreground">
-                                        Flow: detect → clock-in when face quality passes threshold.
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="enroll" className="space-y-3">
-                                    <div className="space-y-2">
-                                        <Label>Employee</Label>
-                                        <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select employee..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {employees.length === 0 ? (
-                                                    <SelectItem value="__none" disabled>
-                                                        No employees loaded
-                                                    </SelectItem>
-                                                ) : (
-                                                    employees.map((e) => (
-                                                        <SelectItem key={String(e.id)} value={String(e.id)}>
-                                                            {e.name}
-                                                        </SelectItem>
-                                                    ))
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        <div className="text-xs text-muted-foreground">
-                                            Select an employee, then click “Enroll Selected Employee”.
-                                        </div>
-                                    </div>
-                                </TabsContent>
-                            </Tabs>
-
-                            <div className="pt-2 border-t space-y-2">
-                                <div className="text-sm text-muted-foreground">Status</div>
-                                <div className="text-sm whitespace-pre-wrap">{status}</div>
+                                </div>
                             </div>
-                        </CardContent>
-                    </Card>
+                        )}
+                    </div>
                 </div>
             </div>
         </AppLayout>

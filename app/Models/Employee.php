@@ -29,6 +29,7 @@ class Employee extends Model
         'salary_grade_step_id',
         'employment_classification',
         'work_email',
+        'work_id',
         'password',
         'date_applied',
         'date_hired',
