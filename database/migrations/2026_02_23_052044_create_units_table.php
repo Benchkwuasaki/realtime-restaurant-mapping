@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('units', function (Blueprint $table) {
             $table->id('unit_id');
             $table->foreignId('division_id')->constrained('divisions', 'division_id')->onDelete('cascade');
-            $table->string('unit_name');
+            $table->string('unit_name')->unique();
             $table->string('unit_acronym')->nullable();
             $table->string('unit_description')->nullable();
             $table->timestamps();

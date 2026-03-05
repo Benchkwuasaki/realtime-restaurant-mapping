@@ -24,11 +24,12 @@ use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
-use App\Http\Controllers\LeaveTypeController;
 use Illuminate\Support\Facades\Http;
 
-
-
+// Leave
+use App\Http\Controllers\LeaveSettingsController;
+use App\Http\Controllers\LeaveTypeController;
+use App\Http\Controllers\LeaveEntitlementController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -257,11 +258,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
     */
     Route::prefix('leave')->name('leave.')->group(function () {
         Route::get('/leave-calendar', [LeaveCalendarController::class, 'index'])->name('leave-calendar');
-        Route::get('/leave-settings', [LeaveTypeController::class, 'index'])->name('leave-settings');
-        Route::post('/', [LeaveTypeController::class, 'store'])->name('store');
-        Route::put('/{leave}', [LeaveTypeController::class, 'update'])->name('update');
-        Route::delete('/{leave}', [LeaveTypeController::class, 'destroy'])->name('destroy');
-        Route::delete('/', [LeaveTypeController::class, 'bulkDestroy'])->name('bulk-destroy');
+
+
+        // leave setting
+        Route::get('/leave-settings', [LeaveSettingsController::class, 'index'])->name('leave-settings');
+
+        // leave types
+        Route::prefix('leave-type')->name('leave-type.')->group(function () {
+            Route::post('/', [LeaveTypeController::class, 'store'])->name('store');
+            Route::put('/{leave}', [LeaveTypeController::class, 'update'])->name('update');
+            Route::delete('/{leave}', [LeaveTypeController::class, 'destroy'])->name('destroy');
+            Route::delete('/', [LeaveTypeController::class, 'bulkDestroy'])->name('bulk-destroy');
+        });
+
+        // leave entitlement
+        Route::prefix('leave-entitlement')->name('leave-entitlement.')->group(function () {
+            Route::post('/', [LeaveEntitlementController::class, 'store'])->name('store');
+            Route::put('/{entitlement}', [LeaveEntitlementController::class, 'update'])->name('update');
+            Route::delete('/{entitlement}', [LeaveEntitlementController::class, 'destroy'])->name('destroy');
+            Route::delete('/', [LeaveEntitlementController::class, 'bulkDestroy'])->name('bulk-destroy');
+        });
+
     });
 
 

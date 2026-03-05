@@ -1,5 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react'
-import { CalendarDays, Check, Pencil, Plus, PlusCircle, Repeat, Trash2, ArrowUpDown, X } from 'lucide-react'
+import { CalendarDays, Check, Pencil, Plus, PlusCircle, Repeat, Trash2, ArrowUpDown, X, CalendarCheck, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { route } from 'ziggy-js'
 import {
@@ -36,6 +36,8 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import AppLayout from '@/layouts/app-layout'
+import { StatCard } from '@/components/shared/stat-card'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { cn } from '@/lib/utils'
 import type { BreadcrumbItem } from '@/types'
 
@@ -140,8 +142,6 @@ function HolidayModal({ open, editingHoliday, onClose }: HolidayModalProps) {
     return (
         <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
             <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-lg">
-
-                {/* Header */}
                 <DialogHeader className="px-5 py-4 border-b border-border">
                     <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <CalendarDays className="w-4 h-4 text-primary" />
@@ -149,11 +149,8 @@ function HolidayModal({ open, editingHoliday, onClose }: HolidayModalProps) {
                     </DialogTitle>
                 </DialogHeader>
 
-                {/* Body */}
                 <form onSubmit={handleSubmit}>
                     <div className="px-5 py-5 space-y-4">
-
-                        {/* Name */}
                         <div>
                             <label htmlFor="name" className="block text-xs font-medium text-foreground mb-1.5">
                                 Holiday Name <span className="text-destructive">*</span>
@@ -168,7 +165,6 @@ function HolidayModal({ open, editingHoliday, onClose }: HolidayModalProps) {
                             <FieldError message={errors.name} />
                         </div>
 
-                        {/* Date + Type */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label htmlFor="date" className="block text-xs font-medium text-foreground mb-1.5">
@@ -207,7 +203,6 @@ function HolidayModal({ open, editingHoliday, onClose }: HolidayModalProps) {
                             </div>
                         </div>
 
-                        {/* Description */}
                         <div>
                             <label htmlFor="description" className="block text-xs font-medium text-foreground mb-1.5">
                                 Description
@@ -223,7 +218,6 @@ function HolidayModal({ open, editingHoliday, onClose }: HolidayModalProps) {
                             <FieldError message={errors.description} />
                         </div>
 
-                        {/* Recurring */}
                         <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-4">
                             <Checkbox
                                 id="is_recurring"
@@ -242,15 +236,8 @@ function HolidayModal({ open, editingHoliday, onClose }: HolidayModalProps) {
                         </div>
                     </div>
 
-                    {/* Footer */}
-                    <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleClose}
-                            className="text-xs"
-                        >
+                    <DialogFooter className="px-5 py-4 border-t border-border xs:flex xs:flex-row xs:justify-between bg-muted/30">
+                        <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
                             Cancel
                         </Button>
                         <Button type="submit" size="sm" disabled={processing} className="text-xs">
@@ -258,7 +245,6 @@ function HolidayModal({ open, editingHoliday, onClose }: HolidayModalProps) {
                         </Button>
                     </DialogFooter>
                 </form>
-
             </DialogContent>
         </Dialog>
     )
@@ -302,7 +288,7 @@ function DeleteAlertDialog({ holiday, onClose }: DeleteDialogProps) {
     )
 }
 
-// ─── Type Filter (adapted from data-table-faceted-filter) ─────────────────────
+// ─── Type Filter ──────────────────────────────────────────────────────────────
 
 interface TypeFilterProps {
     selectedTypes: Set<string>
@@ -312,16 +298,9 @@ interface TypeFilterProps {
 function TypeFilter({ selectedTypes, onChange }: TypeFilterProps) {
     function handleSelect(type: string) {
         const updated = new Set(selectedTypes)
-        if (updated.has(type)) {
-            updated.delete(type)
-        } else {
-            updated.add(type)
-        }
+        if (updated.has(type)) updated.delete(type)
+        else updated.add(type)
         onChange(updated)
-    }
-
-    function handleClear() {
-        onChange(new Set())
     }
 
     return (
@@ -342,17 +321,11 @@ function TypeFilter({ selectedTypes, onChange }: TypeFilterProps) {
                                         {selectedTypes.size} selected
                                     </Badge>
                                 ) : (
-                                    HOLIDAY_TYPES
-                                        .filter((t) => selectedTypes.has(t))
-                                        .map((t) => (
-                                            <Badge
-                                                key={t}
-                                                variant="secondary"
-                                                className="rounded-sm px-1 font-normal"
-                                            >
-                                                {t}
-                                            </Badge>
-                                        ))
+                                    HOLIDAY_TYPES.filter((t) => selectedTypes.has(t)).map((t) => (
+                                        <Badge key={t} variant="secondary" className="rounded-sm px-1 font-normal">
+                                            {t}
+                                        </Badge>
+                                    ))
                                 )}
                             </div>
                         </>
@@ -365,20 +338,13 @@ function TypeFilter({ selectedTypes, onChange }: TypeFilterProps) {
                     return (
                         <DropdownMenuItem
                             key={type}
-                            onSelect={(e) => {
-                                e.preventDefault()
-                                handleSelect(type)
-                            }}
+                            onSelect={(e) => { e.preventDefault(); handleSelect(type) }}
                             className="flex items-center gap-2 text-xs"
                         >
-                            <div
-                                className={cn(
-                                    'flex size-4 shrink-0 items-center justify-center rounded-[4px] border',
-                                    isSelected
-                                        ? 'bg-primary border-primary text-primary-foreground'
-                                        : 'border-input'
-                                )}
-                            >
+                            <div className={cn(
+                                'flex size-4 shrink-0 items-center justify-center rounded-[4px] border',
+                                isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-input'
+                            )}>
                                 {isSelected && <Check className="size-3 stroke-primary-foreground" />}
                             </div>
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TYPE_DOT[type]}`} />
@@ -390,7 +356,7 @@ function TypeFilter({ selectedTypes, onChange }: TypeFilterProps) {
                     <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            onSelect={handleClear}
+                            onSelect={() => onChange(new Set())}
                             className="justify-center text-center text-xs"
                         >
                             Clear filters
@@ -402,6 +368,79 @@ function TypeFilter({ selectedTypes, onChange }: TypeFilterProps) {
     )
 }
 
+// ─── Holiday Mobile Card ──────────────────────────────────────────────────────
+
+interface HolidayMobileCardProps {
+    holiday: Holiday
+    onEdit: (holiday: Holiday) => void
+    onDelete: (holiday: Holiday) => void
+    isLast: boolean
+}
+
+function HolidayMobileCard({ holiday, onEdit, onDelete, isLast }: HolidayMobileCardProps) {
+    return (
+        <div className={cn("bg-background", !isLast && "border-b border-border")}>
+            {/* ── Card Body ── */}
+            <div className="px-4 pt-3.5 pb-3 space-y-1.5">
+                {/* Name + type pill */}
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${TYPE_DOT[holiday.type] ?? 'bg-muted-foreground'}`} />
+                        <span className="font-semibold text-sm text-foreground truncate">
+                            {holiday.name}
+                        </span>
+                        {holiday.is_recurring && (
+                            <Repeat className="w-3.5 h-3.5 text-muted-foreground shrink-0" title="Recurring yearly" />
+                        )}
+                    </div>
+                    <span className={`inline-block shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full ${TYPE_PILL[holiday.type] ?? 'bg-muted text-muted-foreground'}`}>
+                        {holiday.type}
+                    </span>
+                </div>
+
+                {/* Date + day of week */}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-3.5">
+                    <span>{getFormattedDate(holiday.date)}</span>
+                    <span className="text-muted-foreground/40">·</span>
+                    <span>{getDayOfWeek(holiday.date)}</span>
+                </div>
+
+                {/* Description */}
+                {holiday.description && (
+                    <p className="text-xs text-muted-foreground pl-3.5 line-clamp-2">
+                        {holiday.description}
+                    </p>
+                )}
+            </div>
+
+            {/* ── Card Footer ── */}
+            <div className="flex items-center justify-between px-4 py-2 bg-muted/30">
+                <span className="text-xs text-muted-foreground">
+                    {holiday.is_recurring ? 'Repeats every year' : 'One-time holiday'}
+                </span>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                        onClick={() => onEdit(holiday)}
+                    >
+                        <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => onDelete(holiday)}
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 // ─── Month Card ───────────────────────────────────────────────────────────────
 
 interface MonthCardProps {
@@ -410,9 +449,10 @@ interface MonthCardProps {
     holidays: Holiday[]
     onEdit: (holiday: Holiday) => void
     onDelete: (holiday: Holiday) => void
+    isMobile: boolean
 }
 
-function MonthCard({ monthName, year, holidays, onEdit, onDelete }: MonthCardProps) {
+function MonthCard({ monthName, year, holidays, onEdit, onDelete, isMobile }: MonthCardProps) {
     return (
         <div className="bg-card text-card-foreground border border-border rounded-lg overflow-hidden shadow-sm">
 
@@ -426,93 +466,105 @@ function MonthCard({ monthName, year, holidays, onEdit, onDelete }: MonthCardPro
                 )}
             </div>
 
-            {/* Table */}
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="border-b border-border bg-muted/40">
-                        <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                                Holiday Name
-                                <ArrowUpDown className="w-3 h-3 text-muted-foreground/60" />
-                            </div>
-                        </th>
-                        <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">Date</th>
-                        <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">Day</th>
-                        <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">Type</th>
-                        <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
+            {/* ── Mobile: card list ── */}
+            {isMobile ? (
+                <div>
                     {holidays.length === 0 ? (
-                        <tr>
-                            <td colSpan={5} className="px-4 py-6 text-center text-xs text-muted-foreground">
-                                No holidays this month
-                            </td>
-                        </tr>
+                        <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                            No holidays this month
+                        </div>
                     ) : (
                         holidays.map((h, idx) => (
-                            <tr
+                            <HolidayMobileCard
                                 key={h.holiday_id}
-                                className={[
-                                    'transition-colors hover:bg-muted/30',
-                                    idx !== holidays.length - 1 ? 'border-b border-border' : '',
-                                ].join(' ')}
-                            >
-                                {/* Name */}
-                                <td className="px-3 py-3">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TYPE_DOT[h.type] ?? 'bg-muted-foreground'}`} />
-                                        <span className="font-medium text-foreground text-xs">{h.name}</span>
-                                        {h.is_recurring && (
-                                            <Repeat className="w-3 h-3 text-muted-foreground shrink-0" title="Recurring yearly" />
-                                        )}
-                                    </div>
-                                    {h.description && (
-                                        <p className="text-[11px] text-muted-foreground mt-0.5 pl-3 truncate max-w-[160px]">
-                                            {h.description}
-                                        </p>
-                                    )}
-                                </td>
-
-                                {/* Date */}
-                                <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                                    {getFormattedDate(h.date)}
-                                </td>
-
-                                {/* Day */}
-                                <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                                    {getDayOfWeek(h.date)}
-                                </td>
-
-                                {/* Type */}
-                                <td className="px-3 py-3 whitespace-nowrap">
-                                    <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${TYPE_PILL[h.type] ?? 'bg-muted text-muted-foreground'}`}>
-                                        {h.type}
-                                    </span>
-                                </td>
-
-                                {/* Actions */}
-                                <td className="px-4 py-3">
-                                    <div className="flex items-center justify-end gap-1">
-                                        <button
-                                            onClick={() => onEdit(h)}
-                                            className="p-1.5 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-accent-foreground"
-                                        >
-                                            <Pencil className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                            onClick={() => onDelete(h)}
-                                            className="p-1.5 rounded hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
+                                holiday={h}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                                isLast={idx === holidays.length - 1}
+                            />
                         ))
                     )}
-                </tbody>
-            </table>
+                </div>
+            ) : (
+                /* ── Desktop: table ── */
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-border bg-muted/40">
+                            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                    Holiday Name
+                                    <ArrowUpDown className="w-3 h-3 text-muted-foreground/60" />
+                                </div>
+                            </th>
+                            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">Date</th>
+                            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">Day</th>
+                            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">Type</th>
+                            <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {holidays.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-4 py-6 text-center text-xs text-muted-foreground">
+                                    No holidays this month
+                                </td>
+                            </tr>
+                        ) : (
+                            holidays.map((h, idx) => (
+                                <tr
+                                    key={h.holiday_id}
+                                    className={cn(
+                                        'transition-colors hover:bg-muted/30',
+                                        idx !== holidays.length - 1 && 'border-b border-border'
+                                    )}
+                                >
+                                    <td className="px-3 py-3">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TYPE_DOT[h.type] ?? 'bg-muted-foreground'}`} />
+                                            <span className="font-medium text-foreground text-xs">{h.name}</span>
+                                            {h.is_recurring && (
+                                                <Repeat className="w-3 h-3 text-muted-foreground shrink-0" title="Recurring yearly" />
+                                            )}
+                                        </div>
+                                        {h.description && (
+                                            <p className="text-[11px] text-muted-foreground mt-0.5 pl-3 truncate max-w-[160px]">
+                                                {h.description}
+                                            </p>
+                                        )}
+                                    </td>
+                                    <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                                        {getFormattedDate(h.date)}
+                                    </td>
+                                    <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                                        {getDayOfWeek(h.date)}
+                                    </td>
+                                    <td className="px-3 py-3 whitespace-nowrap">
+                                        <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${TYPE_PILL[h.type] ?? 'bg-muted text-muted-foreground'}`}>
+                                            {h.type}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <button
+                                                onClick={() => onEdit(h)}
+                                                className="p-1.5 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-accent-foreground"
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                onClick={() => onDelete(h)}
+                                                className="p-1.5 rounded hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            )}
         </div>
     )
 }
@@ -521,23 +573,20 @@ function MonthCard({ monthName, year, holidays, onEdit, onDelete }: MonthCardPro
 
 export default function HolidayIndex({ holidays, currentYear }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
+    const isMobile = useIsMobile()
 
     const [modalOpen, setModalOpen]             = useState(false)
     const [editingHoliday, setEditingHoliday]   = useState<Holiday | null>(null)
     const [deletingHoliday, setDeletingHoliday] = useState<Holiday | null>(null)
 
-    // ── Filter state ──────────────────────────────────────────────────────────
     const [search, setSearch]               = useState('')
     const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
 
     const isFiltered = search !== '' || selectedTypes.size > 0
 
-    // Apply filters before grouping into months
     const filteredHolidays = holidays.filter((h) => {
-        const matchesSearch = search === '' ||
-            h.name.toLowerCase().includes(search.toLowerCase())
-        const matchesType = selectedTypes.size === 0 ||
-            selectedTypes.has(h.type)
+        const matchesSearch = search === '' || h.name.toLowerCase().includes(search.toLowerCase())
+        const matchesType   = selectedTypes.size === 0 || selectedTypes.has(h.type)
         return matchesSearch && matchesType
     })
 
@@ -548,56 +597,37 @@ export default function HolidayIndex({ holidays, currentYear }: Props) {
         byMonth[month].push(h)
     })
 
-    function openCreate() {
-        setEditingHoliday(null)
-        setModalOpen(true)
-    }
-
-    function openEdit(holiday: Holiday) {
-        setEditingHoliday(holiday)
-        setModalOpen(true)
-    }
-
-    function closeModal() {
-        setModalOpen(false)
-        setEditingHoliday(null)
-    }
-
-    function resetFilters() {
-        setSearch('')
-        setSelectedTypes(new Set())
-    }
+    function openCreate() { setEditingHoliday(null); setModalOpen(true) }
+    function openEdit(holiday: Holiday) { setEditingHoliday(holiday); setModalOpen(true) }
+    function closeModal() { setModalOpen(false); setEditingHoliday(null) }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Holiday Management" />
 
             <div className="px-6 py-6 space-y-5">
-
-                {/* Header — unchanged */}
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                            <CalendarDays className="w-5 h-5 text-primary" />
-                            Holiday Management
-                        </h1>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {currentYear} &middot; {holidays.length} holiday{holidays.length !== 1 ? 's' : ''} &middot; {holidays.filter(h => h.is_recurring).length} recurring
-                        </p>
-                    </div>
-                    <Button size="sm" className="gap-1.5 text-xs" onClick={openCreate}>
-                        <Plus className="w-3.5 h-3.5" /> Add Holiday
-                    </Button>
+                {/* ── Stat Cards ── */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 max-w-200">
+                    <StatCard
+                        title="Total Holidays"
+                        value={holidays.length}
+                        description={`Holidays in ${currentYear}`}
+                        icon={<CalendarDays className="size-4" />}
+                    />
+                    <StatCard
+                        title="Recurring"
+                        value={holidays.filter(h => h.is_recurring).length}
+                        description="Repeat automatically every year"
+                        icon={<RefreshCw className="size-4" />}
+                    />
                 </div>
 
-                {/* Flash — unchanged */}
                 {props.flash?.success && (
                     <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
                         {props.flash.success}
                     </div>
                 )}
 
-                {/* ── NEW: Search + Type filter toolbar ── */}
                 <div className="flex items-center gap-2">
                     <Input
                         placeholder="Search holidays..."
@@ -605,29 +635,27 @@ export default function HolidayIndex({ holidays, currentYear }: Props) {
                         onChange={(e) => setSearch(e.target.value)}
                         className="h-8 w-[180px] lg:w-[250px] text-xs"
                     />
-                    <TypeFilter
-                        selectedTypes={selectedTypes}
-                        onChange={setSelectedTypes}
-                    />
+                    <TypeFilter selectedTypes={selectedTypes} onChange={setSelectedTypes} />
                     {isFiltered && (
                         <>
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={resetFilters}
+                                onClick={() => { setSearch(''); setSelectedTypes(new Set()) }}
                                 className="h-8 text-xs"
                             >
-                                Reset
-                                <X className="w-3.5 h-3.5" />
+                                Reset <X className="w-3.5 h-3.5" />
                             </Button>
                             <span className="text-xs text-muted-foreground">
                                 {filteredHolidays.length} of {holidays.length} shown
                             </span>
                         </>
                     )}
+                    <Button size="sm" className="gap-1.5 text-xs ml-auto" onClick={openCreate}>
+                        <Plus className="w-3.5 h-3.5" /> Add Holiday
+                    </Button>
                 </div>
 
-                {/* 2-column month grid — unchanged */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {MONTHS.map((monthName, monthIdx) => (
                         <MonthCard
@@ -637,19 +665,18 @@ export default function HolidayIndex({ holidays, currentYear }: Props) {
                             holidays={byMonth[monthIdx] ?? []}
                             onEdit={openEdit}
                             onDelete={setDeletingHoliday}
+                            isMobile={isMobile}
                         />
                     ))}
                 </div>
             </div>
 
-            {/* Holiday create/edit modal — unchanged */}
             <HolidayModal
                 open={modalOpen}
                 editingHoliday={editingHoliday}
                 onClose={closeModal}
             />
 
-            {/* Delete confirmation — unchanged */}
             <DeleteAlertDialog
                 holiday={deletingHoliday}
                 onClose={() => setDeletingHoliday(null)}

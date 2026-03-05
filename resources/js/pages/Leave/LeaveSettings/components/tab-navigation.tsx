@@ -1,47 +1,17 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-    Icon, Pencil, Mail, Phone, Calendar, MapPin, User, Heart, Home,
-    Briefcase, Clock, FileText, Landmark, Camera, XCircle,
-    Eye, EyeOff, Plus, Trash2, Save, ChevronUp,
-    Pen, Upload, Download, FolderOpen,
-} from "lucide-react"
+import { CalendarRange, Calendar1 } from "lucide-react"
 import LeaveTypeIndex from '../LeaveTypeIndex';
-import type { LeaveType } from '../data/schema';
+import LeaveEntitlementIndex from '../LeaveEntitlementIndex';
+import type { LeaveType, LeaveEntitlement } from '../data/schema';
 
-// type LeaveType = {
-//     leave_type_id: number;
-//     leave_type_name: string;
-//     leave_type_description: string;
-//     eligible_sex: string;
-//     is_paid: boolean;
-//     is_convertible: boolean;
-//     status: string;
-//     requirements: string;
-// }
 
 type LeaveTabsProps = {
     leave_types: LeaveType[];
-}
-
-export function TabsLine() {
-    return (
-        <Tabs defaultValue="leave-types">
-            <TabsList variant="line">
-                <TabsTrigger value="leave-types">Leave Types</TabsTrigger>
-                <TabsTrigger value="leave-entitlements">Leave Entitlements</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="leave-types">
-            </TabsContent>
-            <TabsContent value="leave-entitlements">
-            </TabsContent>
-        </Tabs>
-    )
+    leave_entitlements: LeaveEntitlement[];
 }
 
 
-
-export function LeaveTabs({ leave_types }: LeaveTabsProps) {
+export function LeaveTabs({ leave_types, leave_entitlements }: LeaveTabsProps) {
     return (
 
         <Tabs defaultValue="leave-types" className="flex flex-col flex-1">
@@ -51,12 +21,12 @@ export function LeaveTabs({ leave_types }: LeaveTabsProps) {
                     <TabsTrigger
                         value="leave-types"
                         className="relative flex items-center gap-1.5 px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap">
-                        {/* <Icon className="w-3.5 h-3.5 shrink-0" />  */} Leave Types
+                        <CalendarRange className="w-3.5 h-3.5 shrink-0" />  Leave Types 
                     </TabsTrigger>
                     <TabsTrigger
                         value="leave-entitlements"
                         className="relative flex items-center gap-1.5 px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap">
-                        {/* <Icon className="w-3.5 h-3.5 shrink-0" /> */} Leave Entitlement
+                        <Calendar1 className="w-3.5 h-3.5 shrink-0" /> Leave Entitlement
                     </TabsTrigger>
 
                 </TabsList>
@@ -66,7 +36,9 @@ export function LeaveTabs({ leave_types }: LeaveTabsProps) {
                 <TabsContent value="leave-types" className="flex-1 mt-0 overflow-y-auto">
                     <LeaveTypeIndex leave_types={leave_types} />
                 </TabsContent>
-                <TabsContent value="leave-entitlements" className="flex-1 mt-0 overflow-y-auto">Entitlement</TabsContent>
+                <TabsContent value="leave-entitlements" className="flex-1 mt-0 overflow-y-auto">
+                    <LeaveEntitlementIndex leave_entitlements={leave_entitlements} leave_types={leave_types} />
+                </TabsContent>
             </section>
 
         </Tabs>

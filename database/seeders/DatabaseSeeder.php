@@ -65,6 +65,7 @@ class DatabaseSeeder extends Seeder
             'updated_at' => now(),
         ]);
 
+<<<<<<< HEAD
         // Department #2 (NEW)
         $deptOpsId = DB::table('departments')->insertGetId([
             'department_name' => 'Operations and Services Department',
@@ -82,6 +83,8 @@ class DatabaseSeeder extends Seeder
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+=======
+>>>>>>> main
 
         // ── 3. Divisions ───────────────────────────────────────────
         // Dept #1 divisions (existing)
@@ -1146,6 +1149,10 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             InternalOrganizationSeeder::class,
+            HolidaySeeder::class,
+            LeaveTypeSeeder::class,
+            LeaveApplicationSeeder::class,
+            // LeaveEntitlementSeeder::class,
         ]);
     }
 }

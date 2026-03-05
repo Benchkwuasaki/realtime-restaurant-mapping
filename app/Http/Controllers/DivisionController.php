@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Department;
 use App\Models\Division;
+use App\Models\Item;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use App\Models\Position;
@@ -79,9 +80,11 @@ class DivisionController extends Controller
             'division_description' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $trimmedName = $this->cleanDivisionName($validated['division_name']);
+        $validated['division_name'] = $trimmedName;
+
         $division = Division::create($validated);
 
-        // ── Auto-create a default JO position for this division ───────────────
         $position = Position::create([
             'department_id' => $division->department_id,
             'division_id' => $division->division_id,
@@ -93,7 +96,20 @@ class DivisionController extends Controller
         $position->items()->create([
             'item_name' => 'Job Order Item 1',
         ]);
-        // ─────────────────────────────────────────────────────────────────────
+
+        $headPosition = Position::create([
+            'department_id' => $division->department_id,
+            'division_id' => $division->division_id,
+            'unit_id' => null,
+            'position_name' => 'Head of ' . $division->division_name . ' Division',
+            'position_type' => 'Regular'
+        ]);
+
+        $itemNumber = Item::where('item_name', 'like', '%Division Head%')->count();
+
+        $headPosition->items()->create([
+            'item_name' => 'Division Head Item ' . $itemNumber,
+        ]);
 
         return redirect()->route('division.index')
             ->with('success', 'Division created successfully.');
@@ -133,5 +149,16 @@ class DivisionController extends Controller
 
         return redirect()->route('division.index')
             ->with('success', count($request->ids) . ' division(s) deleted successfully.');
+    }
+
+    public function cleanDivisionName(string $name): string
+    {
+        if (preg_match('/^Division of\s+/i', $name)) {
+            $name = preg_replace('/^Division of\s+/i', '', $name);
+        }elseif (preg_match('/\s+Division$/i', $name)) {
+            $name = preg_replace('/\s+Division$/i', '', $name);
+        }
+
+        return trim($name);
     }
 }
