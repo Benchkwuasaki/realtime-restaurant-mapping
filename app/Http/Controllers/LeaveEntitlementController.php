@@ -13,9 +13,7 @@ class LeaveEntitlementController extends Controller
      */
     public function index()
     {
-        $leave_entitlements = LeaveEntitlement::all();
 
-        return Inertia::render('Leave/LeaveSettings/LeaveEntitlementIndex', compact('leave_entitlements'));
     }
 
     /**
@@ -31,7 +29,19 @@ class LeaveEntitlementController extends Controller
      */
     public function store(Request $request)
     {
-        //
+         // Validate the incoming request data
+        $validated = $request->validate([
+            'leave_type_id' => 'required|integer|exists:leave_types,leave_type_id',
+            'leave_entitlement_description' => 'nullable|string',
+            'years_of_service' => 'required|integer|min:0',
+            'days_entitled' => 'required|numeric|min:0',
+        ]);
+
+        // Create a new leave entitlement record in the database
+        LeaveEntitlement::create($validated);
+
+        // Redirect back with a success message
+        return back()->with('success', 'Leave entitlement created successfully.');
     }
 
     /**
@@ -55,7 +65,22 @@ class LeaveEntitlementController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        // Find the leave entitlement by ID
+        $entitlement = LeaveEntitlement::findOrFail($id);
+
+        // Validate the incoming request data
+        $validated = $request->validate([
+            'leave_type_id' => 'required|integer|exists:leave_types,leave_type_id',
+            'leave_entitlement_description' => 'nullable|string',
+            'years_of_service' => 'required|integer|min:0',
+            'days_entitled' => 'required|numeric|min:0',
+        ]);
+
+        // Update the leave entitlement record with validated data
+        $entitlement->update($validated);
+
+        // Redirect back with a success message
+        return back()->with('success', 'Leave entitlement updated successfully.');
     }
 
     /**
@@ -63,6 +88,33 @@ class LeaveEntitlementController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+          // Find the leave entitlement by ID
+        $entitlement = LeaveEntitlement::findOrFail($id);
+
+        // Delete the leave entitlement from the database
+        $entitlement->delete();
+
+        // Redirect back with a success message
+        return back()->with('success', 'Leave entitlement deleted successfully.');
+    }
+
+
+    /**
+     * Delete multiple leave entitlements at once.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        // Validate that IDs are provided and exist in the database
+        $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:leave_entitlements,leave_entitlement_id'],
+        ]);
+
+        // Delete all targeted entitlements in one query instead of looping
+        LeaveEntitlement::whereIn('leave_entitlement_id', $request->ids)->delete();
+
+        // Redirect back with success message and number of records deleted
+        return back()->with('success', count($request->ids) . ' leave entitlement(s) deleted.');
+
     }
 }

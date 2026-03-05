@@ -1,15 +1,17 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarRange, Calendar1 } from "lucide-react"
 import LeaveTypeIndex from '../LeaveTypeIndex';
-import type { LeaveType } from '../data/schema';
+import LeaveEntitlementIndex from '../LeaveEntitlementIndex';
+import type { LeaveType, LeaveEntitlement } from '../data/schema';
 
 
 type LeaveTabsProps = {
     leave_types: LeaveType[];
+    leave_entitlements: LeaveEntitlement[];
 }
 
 
-export function LeaveTabs({ leave_types }: LeaveTabsProps) {
+export function LeaveTabs({ leave_types, leave_entitlements }: LeaveTabsProps) {
     return (
 
         <Tabs defaultValue="leave-types" className="flex flex-col flex-1">
@@ -34,7 +36,9 @@ export function LeaveTabs({ leave_types }: LeaveTabsProps) {
                 <TabsContent value="leave-types" className="flex-1 mt-0 overflow-y-auto">
                     <LeaveTypeIndex leave_types={leave_types} />
                 </TabsContent>
-                <TabsContent value="leave-entitlements" className="flex-1 mt-0 overflow-y-auto">Entitlement</TabsContent>
+                <TabsContent value="leave-entitlements" className="flex-1 mt-0 overflow-y-auto">
+                    <LeaveEntitlementIndex leave_entitlements={leave_entitlements} leave_types={leave_types} />
+                </TabsContent>
             </section>
 
         </Tabs>
