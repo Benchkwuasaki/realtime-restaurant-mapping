@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class EmployeeInternalOrganization extends Pivot
 {
-    protected $table = 'employee_internal_organization';
+    protected $table = 'internal_organization_employees';
 
     public $incrementing = false;
 

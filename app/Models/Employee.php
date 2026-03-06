@@ -127,7 +127,7 @@ class Employee extends Model
     {
         return $this->belongsToMany(
             InternalOrganization::class,
-            'employee_internal_organization',
+            'internal_organization_employees',
             'employee_id',
             'internal_organization_id',
             'employee_id',

@@ -263,6 +263,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // leave setting
         Route::get('/leave-settings', [LeaveSettingsController::class, 'index'])->name('leave-settings');
 
+        Route::get('/monthly-earned-leave', [LeaveSettingsController::class, 'index'])->name('leave-settings');
+
+
         // leave types
         Route::prefix('leave-type')->name('leave-type.')->group(function () {
             Route::post('/', [LeaveTypeController::class, 'store'])->name('store');
@@ -278,6 +281,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/{entitlement}', [LeaveEntitlementController::class, 'destroy'])->name('destroy');
             Route::delete('/', [LeaveEntitlementController::class, 'bulkDestroy'])->name('bulk-destroy');
         });
+
+        Route::prefix('monthly-earned-leave')->name('monthly-earned-leave.')->group( function (){
+            Route::get('/')
+        })
 
     });
 
