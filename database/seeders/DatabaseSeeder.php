@@ -972,6 +972,7 @@ class DatabaseSeeder extends Seeder
             InternalOrganizationSeeder::class,
             LeaveTypeSeeder::class,
             LeaveApplicationSeeder::class,
+            AttendanceSeeder::class,
             // LeaveEntitlementSeeder::class,
         ]);
     }
