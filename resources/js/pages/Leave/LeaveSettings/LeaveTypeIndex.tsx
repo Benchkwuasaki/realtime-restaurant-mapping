@@ -123,6 +123,14 @@ function MobileDetailModal({ leaveType, onClose, onEdit, onDeleted }: MobileDeta
                             }
                         />
                         <DetailRow
+                            label="Accrual"
+                            value={
+                                <Badge variant={leaveType.is_accrual ? "default" : "secondary"}>
+                                    {leaveType.is_accrual ? "Accrual" : "Non-Accrual"}
+                                </Badge>
+                            }
+                        />
+                        <DetailRow
                             label="Status"
                             value={
                                 <Badge variant={leaveType.status ? "default" : "secondary"}>
@@ -216,6 +224,7 @@ function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps
         eligible_sex: editingLeaveType?.eligible_sex ?? "",
         is_paid: editingLeaveType ? (editingLeaveType.is_paid ? "1" : "0") : "",
         is_convertible: editingLeaveType ? (editingLeaveType.is_convertible ? "1" : "0") : "",
+        is_accrual: editingLeaveType ? (editingLeaveType.is_accrual ? "1" : "0") : "",
         status: editingLeaveType ? (editingLeaveType.status ? "1" : "0") : "",
         requirements: editingLeaveType?.requirements ?? [],
     })
@@ -363,6 +372,24 @@ function LeaveTypeModal({ open, editingLeaveType, onClose }: LeaveTypeModalProps
                                 <FieldError message={errors.is_convertible} />
                             </div>
 
+                            <div>
+                                <label className="text-xs font-medium">
+                                    Accrual <span className="text-red-600">*</span>
+                                </label>
+                                <Select value={data.is_accrual} onValueChange={(v) => setData("is_accrual", v)}>
+                                    <SelectTrigger className="mt-1">
+                                        <SelectValue placeholder="Select accrual status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">Accrual</SelectItem>
+                                        <SelectItem value="0">Non-Accrual</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FieldError message={errors.is_accrual} />
+                            </div>
+                        </section>
+
+                        <section className="grid grid-cols-2 gap-5">
                             <div>
                                 <label className="text-xs font-medium">
                                     Status <span className="text-red-600">*</span>

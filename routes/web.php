@@ -286,9 +286,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/preview', [LeaveAccrualController::class, 'preview'])->name('preview');
             Route::post('/confirm', [LeaveAccrualController::class, 'confirm'])->name('confirm');
             Route::post('/post', [LeaveAccrualController::class, 'post'])->name('post');
+            Route::get('/posted', [LeaveAccrualController::class, 'posted'])->name('posted');
             Route::get('/history', [LeaveAccrualController::class, 'history'])->name('history');
+            Route::get('/balances', [LeaveAccrualController::class, 'balances'])->name('balances');
         });
-
     });
 
 

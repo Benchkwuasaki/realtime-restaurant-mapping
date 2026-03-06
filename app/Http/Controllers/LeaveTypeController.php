@@ -40,6 +40,7 @@ class LeaveTypeController extends Controller
             'eligible_sex' => 'required|in:All,Male,Female',
             'is_paid' => 'required|boolean',
             'is_convertible' => 'required|boolean',
+            'is_accrual' => 'required|boolean',
             'status' => 'required|boolean',
             'requirements' => 'nullable|array',
             'requirements.*.requirement_name' => 'required|string|max:255',
