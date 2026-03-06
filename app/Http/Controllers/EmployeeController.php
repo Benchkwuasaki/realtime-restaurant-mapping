@@ -12,6 +12,7 @@ use App\Models\FamilyInfo;
 use App\Models\GovernmentAccount;
 use App\Models\EligibilityInformation;
 use App\Models\EmployeeUploadedFile;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+
+use function Symfony\Component\Clock\now;
 
 class EmployeeController extends Controller
 {
@@ -244,6 +247,13 @@ class EmployeeController extends Controller
                     'year_passed' => $eligibility['year_passed'],
                 ]);
             }
+
+            User::create([
+                'employee_id' => $employee->id,
+                'email' => $employee->work_email,
+                'email_verified_at' => now(),,
+                'password' => bcrypt($employee->password),
+            ]);
         });
 
         $this->activityLogService->createLog([

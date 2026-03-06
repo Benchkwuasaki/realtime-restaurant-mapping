@@ -2,14 +2,21 @@
 
 namespace Database\Seeders;
 
+use App\Models\Employee;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+
+use function Symfony\Component\Clock\now;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call([
+            RoleSeeder::class,
+        ]);
         // TODO: refactor to separate seeder files
 
         // ── 1. Salary Grade Steps ──────────────────────────────────
@@ -758,6 +765,17 @@ class DatabaseSeeder extends Seeder
                 'updated_at' => now(),
             ]);
 
+            $employeeUser = Employee::findOrFail($employeeId);
+
+            $user = User::firstOrCreate([
+                'employee_id' => $employeeId,
+                'email' => $employeeUser->work_email,
+                'email_verified_at' => now(),
+                'password' => $employeeUser->password,
+            ]);
+
+            $user->syncRoles('employee');
+
             $createdEmployeeIds[] = $employeeId;
 
             // Address
@@ -964,7 +982,6 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call([
-            RoleSeeder::class,
             UserSeeder::class,
             InternalOrganizationSeeder::class,
             HolidaySeeder::class,
