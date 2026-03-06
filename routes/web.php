@@ -9,7 +9,8 @@ use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\RecognitionLogController;
-use App\Http\Controllers\AttendanceLogs;
+use App\Http\Controllers\AttendanceRecordController;
+use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaveCalendarController;
 use App\Http\Controllers\LeaveAccrualController;
@@ -333,6 +334,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [AttendanceController::class, 'index'])->name('index');
     });
 
+
+    /*
+|--------------------------------------------------------------------------
+| Attendance - Records (computed daily attendance)
+|--------------------------------------------------------------------------
+*/
+    // Attendance Records (read-only — computed on the fly)
+    Route::get('attendance/records', [AttendanceRecordController::class, 'index'])
+        ->name('attendance-record.index');
+
+    // Attendance Settings (full CRUD)
+    Route::get('attendance/settings', [AttendanceSettingController::class, 'index'])
+        ->name('attendance-settings.index');
+
+    Route::post('attendance/settings', [AttendanceSettingController::class, 'store'])
+        ->name('attendance-settings.store');
+
+    Route::put('attendance/settings/{attendanceSetting}', [AttendanceSettingController::class, 'update'])
+        ->name('attendance-settings.update');
+
+    Route::delete('attendance/settings/{attendanceSetting}', [AttendanceSettingController::class, 'destroy'])
+        ->name('attendance-settings.destroy');
 
     // Activity Logs Routes
 

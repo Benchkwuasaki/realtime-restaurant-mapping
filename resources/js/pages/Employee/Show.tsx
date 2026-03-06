@@ -231,6 +231,11 @@ function toInputDate(date?: string) {
     return date.slice(0, 10)
 }
 
+function toInputTime(t?: string): string {
+    if (!t) return ""
+    return t.slice(0, 5)   // "08:30:00" → "08:30"
+}
+
 async function getCroppedImg(imageSrc: string, croppedAreaPixels: { x: number; y: number; width: number; height: number }): Promise<Blob> {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image()
@@ -477,10 +482,10 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         date_hired: toInputDate(employee.date_hired),
         date_applied: toInputDate(employee.date_applied),
         employment_classification: employee.employment_classification ?? "",
-        work_schedule_start: employee.work_schedule_start ?? "",
-        work_schedule_end: employee.work_schedule_end ?? "",
-        break_start: employee.break_start ?? "",
-        break_end: employee.break_end ?? "",
+        work_schedule_start: toInputTime(employee.work_schedule_start),
+        work_schedule_end: toInputTime(employee.work_schedule_end),
+        break_start: toInputTime(employee.break_start),
+        break_end: toInputTime(employee.break_end),
     })
 
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
@@ -1588,7 +1593,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, venue: e.target.value }))} /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label><Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
                     </div>
                     <DialogFooter>
