@@ -4,22 +4,17 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up(): void
     {
-        Schema::create('employee_internal_organization', function (Blueprint $table) {
-            $table->unsignedBigInteger('employee_id');
-            $table->foreign('employee_id')
-                  ->references('employee_id')
-                  ->on('employees')
-                  ->cascadeOnDelete();
-            $table->unsignedBigInteger('internal_organization_id');
-            $table->foreign('internal_organization_id')
-                  ->references('internal_organization_id')
-                  ->on('internal_organizations')
-                  ->cascadeOnDelete();
-            $table->primary(['employee_id', 'internal_organization_id']);
+        Schema::create('internal_organization_employees', function (Blueprint $table) {
+            $table->id('internal_organization_employee_id');
+            $table->foreignId('employee_id')
+                ->constrained('employees', 'employee_id')
+                ->cascadeOnDelete();
+            $table->foreignId('internal_organization_id')
+                ->constrained('internal_organizations', 'internal_organization_id')
+                ->cascadeOnDelete();
             $table->timestamps();
         });
     }

@@ -1,12 +1,13 @@
-import React, { useRef, useState, useMemo, useLayoutEffect, useCallback } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChevronLeft, Building2, Layers, Users, FileText, Smartphone, Search, X } from 'lucide-react';
+import React, { useRef, useState, useMemo, useLayoutEffect, useCallback } from 'react';
+import { StatCard } from '@/components/shared/stat-card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 import { OrgChart, type OrgChartHandle } from './components/org_chart';
 import type { Department, Employee } from './data/schema';
-import type { BreadcrumbItem } from '@/types';
 
 interface Props { department?: Department }
 
@@ -66,8 +67,6 @@ function countEmployees(dept: Department): number {
 }
 
 export default function OrganizationalChartShow({ department }: Props) {
-    if (!department) return null;
-
     const chartRef   = useRef<OrgChartHandle>(null);
     const inputRef   = useRef<HTMLInputElement>(null);
     const searchWrap = useRef<HTMLDivElement>(null);
@@ -88,18 +87,18 @@ export default function OrganizationalChartShow({ department }: Props) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Organization', href: '#' },
         { title: 'Organizational Chart', href: '/organization/organizational_chart' },
-        { title: department.name, href: '#' },
+        { title: department?.name ?? '', href: '#' },
     ];
 
-    const head     = department.topPositions?.[0]?.employees?.[0];
+    const head     = department?.topPositions?.[0]?.employees?.[0];
     const headName = head ? [head.firstName, head.middleName, head.lastName].filter(Boolean).join(' ') : null;
-    const headPos  = department.topPositions?.[0]?.name;
-    const divCount = department.divisions?.length ?? 0;
-    const empCount = countEmployees(department);
-    const acronym  = department.acronym?.substring(0, 2) || 'DP';
-    const hasData  = (department.divisions?.length ?? 0) > 0 || (department.topPositions?.length ?? 0) > 0;
+    const headPos  = department?.topPositions?.[0]?.name;
+    const divCount = department?.divisions?.length ?? 0;
+    const empCount = department ? countEmployees(department) : 0;
+    const acronym  = department?.acronym?.substring(0, 2) || 'DP';
+    const hasData  = (department?.divisions?.length ?? 0) > 0 || (department?.topPositions?.length ?? 0) > 0;
 
-    const allEmployees = useMemo(() => collectEmployees(department), [department]);
+    const allEmployees = useMemo(() => department ? collectEmployees(department) : [], [department]);
 
     const results = useMemo(() => {
         if (query.trim().length < 2) return [];
@@ -123,6 +122,8 @@ export default function OrganizationalChartShow({ department }: Props) {
         setHighlight(new Set());
         setDropdown(false);
     };
+
+    if (!department) return null;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -184,38 +185,17 @@ export default function OrganizationalChartShow({ department }: Props) {
                             </div>
 
                             {/* ── Stats — full width stretched cards ─────────── */}
-                            <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-3 border-t border-border">
-                                {/* Divisions */}
-                                <div className="relative overflow-hidden flex items-center gap-2 sm:gap-3
-                                    bg-gradient-to-br from-primary/10 to-primary/5
-                                    border border-primary/20 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-primary/15
-                                        flex items-center justify-center shrink-0">
-                                        <Layers className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-xl sm:text-2xl font-bold text-foreground leading-none">{divCount}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">Divisions</p>
-                                    </div>
-                                    <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full
-                                        bg-primary/5 pointer-events-none" />
-                                </div>
-
-                                {/* Employees */}
-                                <div className="relative overflow-hidden flex items-center gap-2 sm:gap-3
-                                    bg-gradient-to-br from-emerald-500/10 to-emerald-500/5
-                                    border border-emerald-500/20 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-500/15
-                                        flex items-center justify-center shrink-0">
-                                        <Users className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-xl sm:text-2xl font-bold text-foreground leading-none">{empCount}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">Employees</p>
-                                    </div>
-                                    <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full
-                                        bg-emerald-500/5 pointer-events-none" />
-                                </div>
+                            <div className="grid grid-cols-2 gap-2 max-w-200 sm:gap-3 pt-3 border-t border-border">
+                                <StatCard
+                                    title="Divisions"
+                                    value={divCount}
+                                    icon={<Layers className="h-4 w-4" />}
+                                />
+                                <StatCard
+                                    title="Employees"
+                                    value={empCount}
+                                    icon={<Users className="h-4 w-4" />}
+                                />
                             </div>
 
                             {/* ── Search bar ──────────────────────────────── */}

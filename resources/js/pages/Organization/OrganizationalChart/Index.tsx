@@ -1,9 +1,10 @@
 import { Head, Link } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { Badge } from '@/components/ui/badge';
 import { Building2, Layers, Users, ChevronRight, Network } from 'lucide-react';
-import type { Department } from './data/schema';
+import { StatCard } from '@/components/shared/stat-card';
+import { Badge } from '@/components/ui/badge';
+import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import type { Department } from './data/schema';
 
 interface Props {
     organizationalChart: Department[];
@@ -64,28 +65,22 @@ export default function OrganizationalChartIndex({ organizationalChart }: Props)
                         </p>
                     </div>
 
-                    {/* Summary stats — 3 cols always */}
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                        {[
-                            { icon: Building2, label: 'Departments', value: departments.length },
-                            { icon: Layers,    label: 'Divisions',   value: totalDivisions },
-                            { icon: Users,     label: 'Employees',   value: totalEmployees },
-                        ].map(({ icon: Icon, label, value }) => (
-                            <div key={label}
-                                className="bg-card border border-border rounded-xl sm:rounded-2xl
-                                    px-3 py-2.5 sm:px-4 sm:py-3 flex items-center gap-2 sm:gap-3 shadow-sm">
-                                <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl
-                                    bg-secondary flex items-center justify-center shrink-0">
-                                    <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-base sm:text-lg font-bold text-foreground leading-none">
-                                        {value}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground truncate">{label}</p>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="grid grid-cols-3 gap-2 max-w-300 sm:gap-3">
+                        <StatCard
+                            title="Departments"
+                            value={departments.length}
+                            icon={<Building2 className="h-4 w-4" />}
+                        />
+                        <StatCard
+                            title="Divisions"
+                            value={totalDivisions}
+                            icon={<Layers className="h-4 w-4" />}
+                        />
+                        <StatCard
+                            title="Employees"
+                            value={totalEmployees}
+                            icon={<Users className="h-4 w-4" />}
+                        />
                     </div>
 
                     {/* Department grid */}
