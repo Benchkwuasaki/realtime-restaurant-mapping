@@ -91,7 +91,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
         items: [
           {
-            title: "Recognition Logs",
+            title: "Attendance Logs",
             url: route('recognition-logs.index'),
           },
           {
