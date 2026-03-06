@@ -132,7 +132,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
           {
             title: "Monthly Earned Leave Posting",
-            url: "/leave/monthly-earned-leave-posting",
+            url: route("leave.accrual.index")
           },
           {
             title: "Leave Settings",
