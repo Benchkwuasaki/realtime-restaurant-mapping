@@ -24,7 +24,7 @@ class LeaveApplicationSeeder extends Seeder
         // Helper: pick a random item from a collection
         $pick = fn($collection) => $collection->random();
 
-        // ── Approved (status: 'Approval') ─────────────────────────────────────
+        // ── Approved ──────────────────────────────────────────────────────────
         // Past leaves that have been fully approved
         $approvedLeaves = [
             ['start' => '2026-01-06', 'end' => '2026-01-10', 'filing' => '2025-12-20'],
@@ -38,21 +38,21 @@ class LeaveApplicationSeeder extends Seeder
         ];
 
         foreach ($approvedLeaves as $leave) {
-            $leaveType = $pick($leaveTypes);
+            $leaveType = $pick($leaveTypes); // pick randomly from whatever leave types exist
 
             $application = LeaveApplication::create([
-                'employee_id'             => $pick($employees)->employee_id,
-                'leave_type_id'           => $leaveType->leave_type_id,
-                'recommendation_officer'  => $pick($employees)->employee_id,
-                'approval_officer'        => $pick($employees)->employee_id,
-                'leave_type_availed'      => $leaveType->name,
-                'date_of_filing'          => $leave['filing'],
-                'start_date'              => $leave['start'],
-                'end_date'                => $leave['end'],
-                'is_requested'            => true,
-                'is_with_pay'             => true,
-                'approved_for_specifics'  => null,
-                'status'                  => 'Approval',
+                'employee_id'            => $pick($employees)->employee_id,
+                'leave_type_id'          => $leaveType->leave_type_id,
+                'recommendation_officer' => $pick($employees)->employee_id,
+                'approval_officer'       => $pick($employees)->employee_id,
+                'leave_type_availed'     => $leaveType->leave_type_name,
+                'date_of_filing'         => $leave['filing'],
+                'start_date'             => $leave['start'],
+                'end_date'               => $leave['end'],
+                'is_requested'           => true,
+                'is_with_pay'            => true,
+                'approved_for_specifics' => null,
+                'status'                 => 'Approved',
             ]);
 
             LeaveApplicationDetail::create([
@@ -81,7 +81,7 @@ class LeaveApplicationSeeder extends Seeder
                 'leave_type_id'          => $leaveType->leave_type_id,
                 'recommendation_officer' => $pick($employees)->employee_id,
                 'approval_officer'       => $pick($employees)->employee_id,
-                'leave_type_availed'     => $leaveType->name,
+                'leave_type_availed'     => $leaveType->leave_type_name,
                 'date_of_filing'         => $leave['filing'],
                 'start_date'             => $leave['start'],
                 'end_date'               => $leave['end'],
@@ -113,7 +113,7 @@ class LeaveApplicationSeeder extends Seeder
                 'leave_type_id'          => $leaveType->leave_type_id,
                 'recommendation_officer' => $pick($employees)->employee_id,
                 'approval_officer'       => $pick($employees)->employee_id,
-                'leave_type_availed'     => $leaveType->name,
+                'leave_type_availed'     => $leaveType->leave_type_name,
                 'date_of_filing'         => $leave['filing'],
                 'start_date'             => $leave['start'],
                 'end_date'               => $leave['end'],
@@ -141,18 +141,18 @@ class LeaveApplicationSeeder extends Seeder
             $leaveType = $pick($leaveTypes);
 
             $application = LeaveApplication::create([
-                'employee_id'              => $pick($employees)->employee_id,
-                'leave_type_id'            => $leaveType->leave_type_id,
-                'recommendation_officer'   => $pick($employees)->employee_id,
-                'approval_officer'         => $pick($employees)->employee_id,
-                'leave_type_availed'       => $leaveType->name,
-                'date_of_filing'           => $leave['filing'],
-                'start_date'               => $leave['start'],
-                'end_date'                 => $leave['end'],
-                'is_requested'             => true,
-                'is_with_pay'              => false,
-                'status'                   => 'For Disapproval',
-                'for_disapproval_reason'   => 'Insufficient leave balance / operational requirements.',
+                'employee_id'            => $pick($employees)->employee_id,
+                'leave_type_id'          => $leaveType->leave_type_id,
+                'recommendation_officer' => $pick($employees)->employee_id,
+                'approval_officer'       => $pick($employees)->employee_id,
+                'leave_type_availed'     => $leaveType->leave_type_name,
+                'date_of_filing'         => $leave['filing'],
+                'start_date'             => $leave['start'],
+                'end_date'               => $leave['end'],
+                'is_requested'           => true,
+                'is_with_pay'            => false,
+                'status'                 => 'For Disapproval',
+                'for_disapproval_reason' => 'Insufficient leave balance / operational requirements.',
             ]);
 
             LeaveApplicationDetail::create([
@@ -178,7 +178,7 @@ class LeaveApplicationSeeder extends Seeder
                 'leave_type_id'          => $leaveType->leave_type_id,
                 'recommendation_officer' => $pick($employees)->employee_id,
                 'approval_officer'       => $pick($employees)->employee_id,
-                'leave_type_availed'     => $leaveType->name,
+                'leave_type_availed'     => $leaveType->leave_type_name,
                 'date_of_filing'         => $leave['filing'],
                 'start_date'             => $leave['start'],
                 'end_date'               => $leave['end'],
