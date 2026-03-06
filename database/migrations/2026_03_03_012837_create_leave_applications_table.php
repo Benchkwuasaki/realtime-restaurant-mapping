@@ -21,7 +21,7 @@ return new class extends Migration {
             $table->boolean('is_requested');
             $table->boolean('is_with_pay');
             $table->string('approved_for_specifics')->nullable();
-            $table->enum('status', ['Pending', 'For Approval', 'For Disapproval', 'Approval', 'Disapproved']);
+            $table->enum('status', ['Pending', 'For Approval', 'For Disapproval', 'Approved', 'Disapproved']);
             $table->text('for_disapproval_reason')->nullable();
             $table->text('disapproved_reason')->nullable();
             $table->timestamps();

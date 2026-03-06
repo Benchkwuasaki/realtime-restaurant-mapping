@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\LeaveSettingsController;
 use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\LeaveEntitlementController;
+use App\Http\Controllers\LeaveApplicationController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -290,6 +291,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/history', [LeaveAccrualController::class, 'history'])->name('history');
             Route::get('/balances', [LeaveAccrualController::class, 'balances'])->name('balances');
         });
+
+
+        Route::get('/leave-application', [LeaveApplicationController::class, 'index'])->name('leave-application.index');
+
     });
 
 

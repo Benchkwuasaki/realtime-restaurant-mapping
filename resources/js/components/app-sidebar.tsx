@@ -123,8 +123,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: route("leave.leave-calendar")
           },
           {
-            title: "Leave Filing",
-            url: "/leave/leave-filing",
+            title: "Leave Application",
+            url: route("leave.leave-application.index"),
           },
           {
             title: "Leave Adjustment Memo",
