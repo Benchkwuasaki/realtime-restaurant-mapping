@@ -12,6 +12,7 @@ use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\AttendanceLogs;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaveCalendarController;
+use App\Http\Controllers\LeaveAccrualController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
@@ -263,8 +264,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // leave setting
         Route::get('/leave-settings', [LeaveSettingsController::class, 'index'])->name('leave-settings');
 
-        Route::get('/monthly-earned-leave', [LeaveSettingsController::class, 'index'])->name('leave-settings');
-
 
         // leave types
         Route::prefix('leave-type')->name('leave-type.')->group(function () {
@@ -282,9 +281,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/', [LeaveEntitlementController::class, 'bulkDestroy'])->name('bulk-destroy');
         });
 
-        Route::prefix('monthly-earned-leave')->name('monthly-earned-leave.')->group( function (){
-            Route::get('/')
-        })
+        Route::prefix('accrual')->name('accrual.')->group(function () {
+            Route::get('/', [LeaveAccrualController::class, 'index'])->name('index');
+            Route::get('/preview', [LeaveAccrualController::class, 'preview'])->name('preview');
+            Route::post('/confirm', [LeaveAccrualController::class, 'confirm'])->name('confirm');
+            Route::post('/post', [LeaveAccrualController::class, 'post'])->name('post');
+            Route::get('/history', [LeaveAccrualController::class, 'history'])->name('history');
+        });
 
     });
 
