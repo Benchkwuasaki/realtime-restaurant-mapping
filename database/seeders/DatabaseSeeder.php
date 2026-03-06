@@ -113,7 +113,7 @@ class DatabaseSeeder extends Seeder
             'updated_at' => now(),
         ]);
 
-    
+
         // Dept #2 divisions (NEW) — 3 divisions
         $divOpsFieldId = DB::table('divisions')->insertGetId([
             'department_id' => $deptOpsId,
@@ -754,6 +754,8 @@ class DatabaseSeeder extends Seeder
                 'date_hired' => $hiredDate,
                 'work_schedule_start' => '08:00:00',
                 'work_schedule_end' => '17:00:00',
+                'break_start' => '12:00:00',
+                'break_end' => '13:00:00',
                 'status' => $status,
                 'created_at' => now(),
                 'updated_at' => now(),

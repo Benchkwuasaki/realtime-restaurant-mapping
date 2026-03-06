@@ -23,7 +23,9 @@ use Inertia\Inertia;
 
 class EmployeeController extends Controller
 {
-    public function __construct(protected ActivityLogService $activityLogService) {}
+    public function __construct(protected ActivityLogService $activityLogService)
+    {
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Index
@@ -122,6 +124,8 @@ class EmployeeController extends Controller
             'date_hired' => ['required', 'date', 'after_or_equal:date_applied'],
             'work_schedule_start' => ['required', 'date_format:H:i'],
             'work_schedule_end' => ['required', 'date_format:H:i', 'different:work_schedule_start'],
+            'break_start' => ['nullable', 'date_format:H:i'],
+            'break_end' => ['nullable', 'date_format:H:i', 'different:break_start'],
             'status' => ['required', 'boolean'],
 
             // ── Addresses ─────────────────────────────────────────────────────────
@@ -193,6 +197,8 @@ class EmployeeController extends Controller
                 'date_hired' => $request->date_hired,
                 'work_schedule_start' => $request->work_schedule_start,
                 'work_schedule_end' => $request->work_schedule_end,
+                'break_start' => $request->break_start ?? null,
+                'break_end' => $request->break_end ?? null,
                 'status' => $request->status,
             ]);
 
@@ -284,11 +290,14 @@ class EmployeeController extends Controller
             'employee' => [
                 'employee_id' => $employee->employee_id,
                 'work_email' => $employee->work_email,
+                'work_id'     => $employee->work_id,
                 'employment_classification' => $employee->employment_classification,
                 'date_applied' => $employee->date_applied,
                 'date_hired' => $employee->date_hired,
                 'work_schedule_start' => $employee->work_schedule_start,
                 'work_schedule_end' => $employee->work_schedule_end,
+                'break_start' => $employee->break_start,
+                'break_end' => $employee->break_end,
                 'status' => $employee->status,
                 'avatar_url' => $employee->avatar_url,
 
@@ -378,6 +387,8 @@ class EmployeeController extends Controller
             'date_hired' => 'sometimes|required|date',
             'work_schedule_start' => 'sometimes|required|date_format:H:i',
             'work_schedule_end' => 'sometimes|required|date_format:H:i',
+            'break_start' => 'nullable|date_format:H:i',
+            'break_end' => 'nullable|date_format:H:i',
             'status' => 'sometimes|required|boolean',
         ]);
 
@@ -403,6 +414,8 @@ class EmployeeController extends Controller
             'date_hired',
             'work_schedule_start',
             'work_schedule_end',
+            'break_start',
+            'break_end',
         ]);
 
         if ($request->has('status')) {
