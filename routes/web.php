@@ -297,7 +297,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     });
 
-
     // Payroll routes
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
 

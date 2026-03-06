@@ -16,8 +16,7 @@ class RoleSeeder extends Seeder
         $superAdminRole = Role::firstOrCreate(['name' => 'super_admin']);
         $adminRole = Role::firstOrCreate(['name' => 'hr_admin']);
         $adminRole = Role::firstOrCreate(['name' => 'ogm']);
-        $org = Role::firstOrCreate(['name' => 'org']);
-        $inventoryRole = Role::firstOrCreate(['name' => 'inventory']);
         $employee = Role::firstOrCreate(['name' => 'employee']);
+        $org = Role::firstOrCreate(['name' => 'document_tracking_operator']);
     }
 }

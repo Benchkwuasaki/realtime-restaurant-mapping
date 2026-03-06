@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
 
 use function Symfony\Component\Clock\now;
 
@@ -88,6 +89,7 @@ class EmployeeController extends Controller
                 ]),
             'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),
             'employmentClassifications' => \App\Models\EmploymentClassification::orderBy('name')->get(['id', 'name', 'description']),
+            'roles' => Role::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -114,6 +116,8 @@ class EmployeeController extends Controller
             'item_id' => ['required', 'exists:items,item_id'],
             'salary_grade_step_id' => ['required', 'exists:salary_grade_steps,salary_grade_step_id'],
             'employment_classification' => ['required', 'string', 'exists:employment_classifications,name'],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['string', 'exists:roles,name'],
             'work_email' => ['required', 'email', 'max:255', Rule::unique('employees', 'work_email')->whereNull('deleted_at')],
             'password' => [
                 'required',
@@ -248,12 +252,14 @@ class EmployeeController extends Controller
                 ]);
             }
 
-            User::create([
-                'employee_id' => $employee->id,
+            $user = User::create([
+                'employee_id' => $employee->employee_id,
                 'email' => $employee->work_email,
-                'email_verified_at' => now(),,
-                'password' => bcrypt($employee->password),
+                'email_verified_at' => now(),
+                'password' => $employee->password,
             ]);
+
+            $user->syncRoles($request->roles);
         });
 
         $this->activityLogService->createLog([

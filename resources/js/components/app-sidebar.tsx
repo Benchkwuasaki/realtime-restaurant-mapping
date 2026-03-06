@@ -180,7 +180,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Document Tracking",
         url: route("document_tracking.index"),
         icon: File,
-        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("org") || hasRole("inventory"),
+        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("document_tracking_operator"),
       },
       {
         title: "Reports and Analytics",

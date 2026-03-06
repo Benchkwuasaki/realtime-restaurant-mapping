@@ -375,6 +375,10 @@ class DatabaseSeeder extends Seeder
             ['dept' => $deptId, 'div' => $divHrId, 'unit' => $unitPayrollId, 'name' => 'Benefits Administrator', 'sg_idx' => 3],  // SG11
             ['dept' => $deptId, 'div' => $divHrId, 'unit' => null, 'name' => 'HR Division Chief', 'sg_idx' => 9],  // SG18
             ['dept' => $deptId, 'div' => $divHrId, 'unit' => null, 'name' => 'HR Manager', 'sg_idx' => 9],  // SG18
+            // Operations and Services Department
+            ['dept' => $deptOpsId, 'div' => $divOpsFieldId, 'unit' => $unitDispatchId, 'name' => 'Operations Coordinator', 'sg_idx' => 5], // SG13
+            // Governance and Public Affairs Department
+            ['dept' => $deptGovId, 'div' => $divPublicAffairsId, 'unit' => $unitCommsId, 'name' => 'Public Affairs Officer', 'sg_idx' => 5], // SG13
             // IT
             ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitDevId, 'name' => 'Software Developer', 'sg_idx' => 4],  // SG12
             ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitDevId, 'name' => 'Senior Developer', 'sg_idx' => 6],  // SG14
@@ -682,6 +686,7 @@ class DatabaseSeeder extends Seeder
 
         // ── 8. Insert 100 employees ────────────────────────────────
         $createdEmployeeIds = [];
+        $docTrackAssignedByDepartment = [];
         srand(42); // reproducible randomness
 
         for ($i = 0; $i < 100; $i++) {
@@ -775,6 +780,11 @@ class DatabaseSeeder extends Seeder
             ]);
 
             $user->syncRoles('employee');
+            $departmentId = $positions[$posIdx]['dept'] ?? null;
+            if ($departmentId !== null && !isset($docTrackAssignedByDepartment[$departmentId])) {
+                $user->syncRoles(['employee', 'document_tracking_operator']);
+                $docTrackAssignedByDepartment[$departmentId] = $employeeId;
+            }
 
             $createdEmployeeIds[] = $employeeId;
 
