@@ -35,6 +35,8 @@ class Employee extends Model
         'date_hired',
         'work_schedule_start',
         'work_schedule_end',
+        'break_start',
+        'break_end',
         'avatar_path',
         'avatar_url',
         'status',

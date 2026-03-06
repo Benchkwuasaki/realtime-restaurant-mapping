@@ -389,7 +389,7 @@ export default function AttendanceIndex({
     const isToday = date === new Date().toISOString().split("T")[0]
 
     // ── MediaMTX WHEP source — change to your server IP ──
-    const CCTV_SRC = "http://192.168.0.114:8889/cam"
+    const CCTV_SRC = "http://192.168.0.104:8889/cam"
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
