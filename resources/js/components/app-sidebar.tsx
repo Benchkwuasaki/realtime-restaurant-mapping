@@ -135,10 +135,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/leave/monthly-earned-leave-posting",
           },
           {
-            title: "Leave History",
-            url: "/leave/leave-history",
-          },
-          {
             title: "Leave Settings",
             url: route("leave.leave-settings"),
           }
