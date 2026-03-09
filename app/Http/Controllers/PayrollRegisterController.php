@@ -76,7 +76,7 @@ class PayrollRegisterController extends Controller
                 'pera' => (float) ($r->pera ?? 0),
                 'rice_allowance' => (float) ($r->rice_allowance ?? 0),
                 'uniform_allowance' => (float) ($r->uniform_allowance ?? 0),
-                'gross_pay' => $r->gross_pay, // computed accessor
+                'gross_pay' => $r->gross_pay,
 
                 // Mandatory deductions
                 'gsis_premium' => (float) ($r->gsis_premium ?? 0),

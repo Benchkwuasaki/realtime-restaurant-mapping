@@ -3352,7 +3352,6 @@ export default function Index({
                                 </div>
                             ) : (
                                 <>
-                                    {/* Summary meta */}
                                     <div className="mb-6 rounded-lg border bg-muted/20 p-4">
                                         <div className="grid grid-cols-4 gap-4 text-sm">
                                             <div>
@@ -3395,7 +3394,6 @@ export default function Index({
                                         </div>
                                     </div>
 
-                                    {/* Totals */}
                                     <div className="mb-6 grid grid-cols-4 gap-4">
                                         <Card className="text-center">
                                             <CardContent className="pt-4">
@@ -3516,9 +3514,19 @@ export default function Index({
                                         </Button>
 
                                         {/* CHANGE THIS TO Create Another Payroll Process Transaction?? Purpose is that to make payroll for other Employment Classification */}
-                                        <Button variant="outline">
+                                        {/* <Button variant="outline">
                                             <Download className="mr-2 h-4 w-4" />
                                             Export Payroll
+                                        </Button> */}
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                (window.location.href =
+                                                    route('payroll.index'))
+                                            }
+                                        >
+                                            Do Another Payroll Processing
+                                            <ChevronRight />
                                         </Button>
                                     </div>
                                 )}
