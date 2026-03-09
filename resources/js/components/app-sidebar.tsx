@@ -44,12 +44,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       },
       // TODO: implement user management, admin, super admin
       {
-        title: "Users",
-        url: route("user.index"),
-        icon: UserCog,
-        show: hasRole('super_admin'),
-      },
-      {
         title: "Employee",
         url: route("employee.index"),
         icon: User,

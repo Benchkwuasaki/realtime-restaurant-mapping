@@ -55,11 +55,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
     });
 
-    // User Routes
-    Route::prefix('users')->name('user.')->group(function () {
-        Route::get('/', [UserController::class, 'index'])->name('index');
-    });
-
     /*
     |--------------------------------------------------------------------------
     | Employee
