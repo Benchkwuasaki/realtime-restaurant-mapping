@@ -30,6 +30,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/use-auth"
+import { url } from "node_modules/zod/v4/classic/external.cjs"
+import { title } from "process"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { hasRole } = useAuth()
@@ -177,11 +179,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("document_tracking_operator"),
       },
       {
-        title: "Reports and Analytics",
-        url: route("reports_and_analytics.index"),
-        icon: FileBarChart,
-        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
-      },
+          title: "Reports and Analytics",
+          url: route("reports_and_analytics.index"),
+          icon: FileBarChart,
+          show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
+          items: [
+            {
+              title: "Employee Reports",
+              url: "/reports_and_analytics/employees",
+            },
+            {
+              title: "Attendance Reports",
+              url: "/reports_and_analytics/attendance",
+            },
+            {
+              title: "Leave Reports",
+              url: "/reports_and_analytics/leave",
+            },
+            {
+              title: "Payroll Reports",
+              url: "/reports_and_analytics/payroll",
+            },
+            {
+              title: "Government Reports",
+              url: "/reports_and_analytics/government",
+            },
+          ],
+        },
       {
         title: "Announcements",
         url: route("announcement.index"),
