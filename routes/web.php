@@ -316,7 +316,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
         // Government Remittance Report
         Route::get('/governmentremittancereport', [GovernmentRemittanceReportController::class, 'index'])
-            ->name('payroll.outputs.governmentremittancereport');
+            ->name('governmentremittancereport.index');
 
         // Pay Slip Generation
         Route::get('/payslip-generation', [PaySlipGenerationController::class, 'index'])

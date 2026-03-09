@@ -399,6 +399,8 @@ class PayrollProcessingController extends Controller
                         // check-in time from whatever MySQL's session timezone is (UTC,
                         // local, etc.) to Manila (+08:00), then we diff against 08:00 AM
                         // of that day in Manila time. This is timezone-proof.
+
+                        // Unnecessary???
                         DB::raw("GREATEST(0, TIMESTAMPDIFF(MINUTE, DATE_FORMAT(CONVERT_TZ(rl.created_at, @@session.time_zone, '+08:00'), '%Y-%m-%d 08:00:00'), CONVERT_TZ(rl.created_at, @@session.time_zone, '+08:00'))) as late_mins_sql")
                     )
                     ->get()
@@ -512,22 +514,14 @@ class PayrollProcessingController extends Controller
             'attendance.*.absent_days' => 'required|integer|min:0|max:31',
             'attendance.*.late_minutes' => 'required|integer|min:0',
         ]);
-
-        // Index attendance by employee_id for O(1) lookup
         $attendanceMap = collect($validated['attendance'] ?? [])
             ->keyBy('employee_id');
-
-        // Load settings once — computation engine uses these
         $settings = PayrollDeductionSetting::getSettings();
-
-        // Load mandatory allowances once
         $mandatoryAllowances = Allowance::where('mandatory', true)->get();
-
-        // Load all active employees with required relationships
         $employees = Employee::with([
             'basicInfo',
             'salaryGradeStep',
-            'allowances',        // EmployeeAllowance records
+            'allowances',
             'waterBill',
         ])
             ->where('status', true)

@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import Heading from '@/components/heading';
 import {
     Select,
     SelectContent,
@@ -314,6 +315,11 @@ export default function Index({ allowances = [] }: Props) {
             <Head title="Allowance Management" />
 
             <div className="flex h-full flex-1 flex-col gap-8 p-8">
+                <Heading
+                    title="Allowance Management"
+                    description="Manage allowances for employees here"
+                />
+
                 <DataTable
                     data={allowances}
                     columns={columns}

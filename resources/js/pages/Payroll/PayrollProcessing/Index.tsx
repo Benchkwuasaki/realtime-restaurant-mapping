@@ -8,6 +8,9 @@ import { route } from 'ziggy-js';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DataTable } from '@/components/shared/data-table/data-table';
+import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
+import { type DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
 import {
     Dialog,
     DialogContent,
@@ -31,8 +34,16 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Stepper } from '@/components/ui/stepper';
+import Heading from '@/components/heading';
+import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
+import {
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    InputGroupText,
+} from '@/components/ui/input-group';
 import {
     Tooltip,
     TooltipContent,
@@ -45,13 +56,12 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
     Download,
     PlayCircle,
     ChevronLeft,
     ChevronRight,
-    Check,
     RefreshCw,
     Plus,
     AlertCircle,
@@ -693,7 +703,7 @@ export default function Index({
         setValidationError('');
         setReviewedIds([]);
         const initWaivers: Record<number, string[]> = {};
-        const initItemWaivers: Record<number, number[]> = {};
+        const initItemWaivers: Record<number, string[]> = {};
         flaggedEmployees.forEach((e) => {
             initWaivers[e.id] = [];
             initItemWaivers[e.id] = [];
@@ -890,11 +900,328 @@ export default function Index({
     // ── Wizard step config ─────────────────────────────────────────────────────
 
     const steps = [
-        { label: 'Selected Period', icon: CalendarIcon },
-        { label: 'Load Employees', icon: Users },
-        { label: 'Compute', icon: PlayCircle },
-        { label: 'Floor Check', icon: AlertTriangle },
-        { label: 'Post and Finalize', icon: FileText },
+        { title: 'Selected Period', description: 'Step 1', icon: CalendarIcon },
+        { title: 'Load Employees', description: 'Step 2', icon: Users },
+        { title: 'Compute', description: 'Step 3', icon: PlayCircle },
+        { title: 'Floor Check', description: 'Step 4', icon: AlertTriangle },
+        { title: 'Post and Finalize', description: 'Step 5', icon: FileText },
+    ];
+
+    // ── Step 5 column definitions ──────────────────────────────────────────────
+
+    type FinalizedEmployee = (typeof finalizedEmployeesWithStatus)[number];
+
+    const finalizedColumns: DataTableColumnDef<FinalizedEmployee>[] = [
+        {
+            id: 'index',
+            header: '#',
+            cell: ({ row }) => (
+                <span className="text-sm text-muted-foreground tabular-nums">
+                    {row.index + 1}
+                </span>
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        },
+        {
+            accessorKey: 'name',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Employee Name" />
+            ),
+            cell: ({ row }) => (
+                <span className="font-medium">{row.original.name}</span>
+            ),
+        },
+        {
+            accessorKey: 'grossPay',
+            header: ({ column }) => (
+                <DataTableColumnHeader
+                    column={column}
+                    title="Gross Pay"
+                    className="justify-end"
+                />
+            ),
+            cell: ({ row }) => (
+                <span className="block text-right tabular-nums">
+                    {peso(row.original.grossPay)}
+                </span>
+            ),
+        },
+        {
+            accessorKey: 'totalDeductions',
+            header: ({ column }) => (
+                <DataTableColumnHeader
+                    column={column}
+                    title="Total Deductions"
+                    className="justify-end"
+                />
+            ),
+            cell: ({ row }) => (
+                <span className="block text-right text-red-600 tabular-nums">
+                    {peso(row.original.totalDeductions)}
+                </span>
+            ),
+        },
+        {
+            accessorKey: 'netPay',
+            header: ({ column }) => (
+                <DataTableColumnHeader
+                    column={column}
+                    title="Net Pay"
+                    className="justify-end"
+                />
+            ),
+            cell: ({ row }) => (
+                <span
+                    className={`block text-right font-semibold tabular-nums ${row.original.status === 'low' ? 'text-red-600' : 'text-green-700'}`}
+                >
+                    {peso(row.original.netPay)}
+                </span>
+            ),
+        },
+        {
+            accessorKey: 'status',
+            header: 'Status',
+            cell: ({ row }) => (
+                <div className="flex justify-center">
+                    <Badge
+                        variant={
+                            row.original.status === 'ok'
+                                ? 'secondary'
+                                : 'destructive'
+                        }
+                        className={
+                            row.original.status === 'ok'
+                                ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300'
+                                : ''
+                        }
+                    >
+                        {row.original.status === 'ok' ? 'OK' : 'Low'}
+                    </Badge>
+                </div>
+            ),
+            filterFn: (row, _id, filterValues: string[]) =>
+                filterValues.length === 0 ||
+                filterValues.includes(row.original.status),
+        },
+    ];
+
+    // ── Step 2 column definitions ──────────────────────────────────────────────
+    //
+    // DataTable is applicable here because:
+    //  - The table is a flat list of employees (no grouped headers)
+    //  - Each row has simple cell content: text, badge, and number inputs
+    //  - Search + filter from the shared toolbar is a genuine UX improvement
+    //
+    // NOTE: We do NOT use DataTable's built-in TanStack row selection for the
+    // include/exclude checkboxes, because the "included" state is external
+    // (`includedEmployeeIds`) and must persist across re-renders and filter
+    // changes. Instead, we define a custom checkbox column that directly
+    // reads/writes the existing state. DataTable's built-in mobile-card
+    // checkbox (select-all) is intentionally left unused for this step.
+
+    type LoadEmployee = (typeof filteredEmployees)[number];
+
+    const loadEmployeeColumns: DataTableColumnDef<LoadEmployee>[] = [
+        {
+            id: 'included',
+            header: () => (
+                <div className="flex justify-center">
+                    <Checkbox
+                        checked={
+                            includedEmployeeIds.length ===
+                                filteredEmployees.length &&
+                            filteredEmployees.length > 0
+                                ? true
+                                : includedEmployeeIds.length === 0
+                                  ? false
+                                  : 'indeterminate'
+                        }
+                        onCheckedChange={(checked) =>
+                            setAllIncluded(
+                                checked === true || checked === 'indeterminate',
+                            )
+                        }
+                    />
+                </div>
+            ),
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                return (
+                    <div className="flex justify-center">
+                        <Checkbox
+                            checked={included}
+                            onCheckedChange={(checked) =>
+                                setEmployeeIncluded(
+                                    row.original.id,
+                                    checked === true,
+                                )
+                            }
+                        />
+                    </div>
+                );
+            },
+            enableSorting: false,
+            enableHiding: false,
+        },
+        {
+            id: 'index',
+            header: '#',
+            cell: ({ row }) => (
+                <span className="text-muted-foreground tabular-nums">
+                    {row.index + 1}
+                </span>
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        },
+        {
+            accessorKey: 'name',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Employee Name" />
+            ),
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                return (
+                    <span
+                        className={`font-medium ${!included ? 'opacity-40' : ''}`}
+                    >
+                        {row.original.name}
+                    </span>
+                );
+            },
+        },
+        {
+            accessorKey: 'position',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Position Title" />
+            ),
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                return (
+                    <span
+                        className={`text-sm text-muted-foreground ${!included ? 'opacity-40' : ''}`}
+                    >
+                        {row.original.position}
+                    </span>
+                );
+            },
+        },
+        {
+            accessorKey: 'salary_grade',
+            header: ({ column }) => (
+                <DataTableColumnHeader
+                    column={column}
+                    title="Salary Grade & Step"
+                    className="justify-center"
+                />
+            ),
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                return (
+                    <div
+                        className={`flex justify-center ${!included ? 'opacity-40' : ''}`}
+                    >
+                        {row.original.salary_grade ? (
+                            <Badge
+                                variant="secondary"
+                                className="bg-green-100 text-green-700 hover:bg-green-100"
+                            >
+                                SG {row.original.salary_grade} – Step{' '}
+                                {row.original.salary_step ?? 1}
+                            </Badge>
+                        ) : (
+                            <span className="text-xs text-muted-foreground italic">
+                                —
+                            </span>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: 'basic_pay',
+            header: ({ column }) => (
+                <DataTableColumnHeader
+                    column={column}
+                    title="Basic Pay (Semi-Mo.)"
+                    className="justify-center"
+                />
+            ),
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                return (
+                    <span
+                        className={`block text-center font-medium tabular-nums ${!included ? 'opacity-40' : ''}`}
+                    >
+                        {peso(row.original.basic_pay)}
+                    </span>
+                );
+            },
+        },
+        {
+            id: 'absent_days',
+            header: 'Absent Days',
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                return (
+                    <InputGroup className="mx-auto w-28">
+                        <InputGroupInput
+                            type="number"
+                            min={0}
+                            max={31}
+                            value={
+                                attendance[row.original.id]?.absent_days ?? 0
+                            }
+                            onChange={(e) =>
+                                updateAttendance(
+                                    row.original.id,
+                                    'absent_days',
+                                    e.target.value,
+                                )
+                            }
+                            disabled={!included}
+                            className="text-center"
+                        />
+                        <InputGroupAddon align="inline-end">
+                            <InputGroupText>days</InputGroupText>
+                        </InputGroupAddon>
+                    </InputGroup>
+                );
+            },
+            enableSorting: false,
+        },
+        {
+            id: 'late_minutes',
+            header: 'Late (mins)',
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                return (
+                    <InputGroup className="mx-auto w-28">
+                        <InputGroupInput
+                            type="number"
+                            min={0}
+                            value={
+                                attendance[row.original.id]?.late_minutes ?? 0
+                            }
+                            onChange={(e) =>
+                                updateAttendance(
+                                    row.original.id,
+                                    'late_minutes',
+                                    e.target.value,
+                                )
+                            }
+                            disabled={!included}
+                            className="text-center"
+                        />
+                        <InputGroupAddon align="inline-end">
+                            <InputGroupText>min</InputGroupText>
+                        </InputGroupAddon>
+                    </InputGroup>
+                );
+            },
+            enableSorting: false,
+        },
     ];
 
     // ── Render ─────────────────────────────────────────────────────────────────
@@ -904,31 +1231,23 @@ export default function Index({
             <Head title="Payroll Processing" />
 
             <div className="flex flex-1 flex-col gap-6 p-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-semibold">
-                        Payroll Processing
-                    </h1>
-                </div>
+                <Heading title="Payroll Processing" />
 
                 {validationError && (
-                    <Alert
-                        variant="destructive"
-                        className="border-red-400 bg-red-50 text-red-800"
-                    >
+                    <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
                         <AlertDescription>{validationError}</AlertDescription>
                     </Alert>
                 )}
 
                 {/* Processing errors from backend */}
                 {processingErrors.length > 0 && (
-                    <Alert className="border-amber-400 bg-amber-50 text-amber-800">
+                    <Alert>
                         <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Some employees had errors</AlertTitle>
                         <AlertDescription>
-                            <p className="mb-1 font-semibold">
-                                Some employees had errors:
-                            </p>
-                            <ul className="space-y-0.5 text-xs">
+                            <ul className="mt-1 space-y-0.5 text-xs">
                                 {processingErrors.map((err, i) => (
                                     <li key={i}>{err}</li>
                                 ))}
@@ -938,41 +1257,11 @@ export default function Index({
                 )}
 
                 {/* ── Step indicator ── */}
-                <div className="flex items-stretch overflow-hidden rounded-xl border border-muted/30">
-                    {steps.map((step, index) => {
-                        const stepNumber = index + 1;
-                        const isCompleted = stepNumber < currentStep;
-                        const isCurrent = stepNumber === currentStep;
-                        return (
-                            <div
-                                key={index}
-                                className={`flex flex-1 items-center gap-3 px-5 py-4 transition-colors ${isCompleted ? 'bg-green-500/15' : ''} ${isCurrent ? 'bg-blue-500/15' : ''} ${!isCompleted && !isCurrent ? 'bg-muted/10' : ''}`}
-                            >
-                                <div
-                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${isCompleted ? 'bg-green-500 text-white' : ''} ${isCurrent ? 'bg-blue-600 text-white' : ''} ${!isCompleted && !isCurrent ? 'bg-muted text-muted-foreground' : ''}`}
-                                >
-                                    {isCompleted ? (
-                                        <Check className="h-4 w-4" />
-                                    ) : (
-                                        stepNumber
-                                    )}
-                                </div>
-                                <div className="flex flex-col">
-                                    <span
-                                        className={`text-xs font-medium ${isCompleted ? 'text-green-400' : ''} ${isCurrent ? 'text-blue-400' : ''} ${!isCompleted && !isCurrent ? 'text-muted-foreground' : ''}`}
-                                    >
-                                        Step {stepNumber}
-                                    </span>
-                                    <span
-                                        className={`text-sm font-semibold ${isCompleted ? 'text-green-300' : ''} ${isCurrent ? 'text-blue-300' : ''} ${!isCompleted && !isCurrent ? 'text-muted-foreground' : ''}`}
-                                    >
-                                        {step.label}
-                                    </span>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                <Stepper
+                    steps={steps}
+                    currentStep={currentStep - 1}
+                    onStepChange={() => {}}
+                />
 
                 {/* ════════════════════════════════════════════════════════════ */}
                 {/* STEP 1 — Period Setup                                       */}
@@ -980,27 +1269,19 @@ export default function Index({
                 {currentStep === 1 && (
                     <Card>
                         <CardContent className="pt-6">
-                            <div className="mb-6">
-                                <h3 className="text-lg font-semibold">
-                                    Payroll Period Setup
-                                </h3>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    Configure the payroll period, employee type,
-                                    working days, and pay date before
-                                    proceeding.
-                                </p>
-                            </div>
+                            <Heading
+                                title="Payroll Period Setup"
+                                description="Configure the payroll period, employee type, working days, and pay date before proceeding."
+                            />
 
                             <div className="grid grid-cols-4 gap-6">
-                                <div className="flex flex-col gap-2">
-                                    <Label className="text-sm font-medium">
-                                        Payroll Period
-                                    </Label>
+                                <Field>
+                                    <FieldLabel>Payroll Period</FieldLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
-                                                className={`w-full justify-start text-left font-normal ${!dateRange?.from ? 'text-muted-foreground' : ''} ${(!dateRange?.from || !dateRange?.to) && validationError ? 'border-red-400' : ''}`}
+                                                className={`w-full justify-start text-left font-normal ${!dateRange?.from ? 'text-muted-foreground' : ''} ${(!dateRange?.from || !dateRange?.to) && validationError ? 'border-destructive' : ''}`}
                                             >
                                                 <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                                                 {dateRange?.from ? (
@@ -1043,12 +1324,10 @@ export default function Index({
                                             />
                                         </PopoverContent>
                                     </Popover>
-                                </div>
+                                </Field>
 
-                                <div className="flex flex-col gap-2">
-                                    <Label className="text-sm font-medium">
-                                        Employee Type
-                                    </Label>
+                                <Field>
+                                    <FieldLabel>Employee Type</FieldLabel>
                                     <Select
                                         value={employeeType}
                                         onValueChange={(v) => {
@@ -1057,7 +1336,7 @@ export default function Index({
                                         }}
                                     >
                                         <SelectTrigger
-                                            className={`w-full ${!employeeType && validationError ? 'border-red-400' : ''}`}
+                                            className={`w-full ${!employeeType && validationError ? 'border-destructive' : ''}`}
                                         >
                                             <SelectValue placeholder="Select Type" />
                                         </SelectTrigger>
@@ -1074,17 +1353,18 @@ export default function Index({
                                             )}
                                         </SelectContent>
                                     </Select>
-                                </div>
+                                </Field>
 
-                                <div className="flex flex-col gap-2">
-                                    <Label className="text-sm font-medium">
+                                <Field>
+                                    <FieldLabel>
                                         Working days this period
-                                        {computedDays && (
-                                            <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                                (max {computedDays} days)
-                                            </span>
-                                        )}
-                                    </Label>
+                                    </FieldLabel>
+                                    {computedDays && (
+                                        <FieldDescription>
+                                            Maximum {computedDays} working days
+                                            in this range
+                                        </FieldDescription>
+                                    )}
                                     {isTypingCustom ? (
                                         <Input
                                             type="number"
@@ -1139,17 +1419,15 @@ export default function Index({
                                             </SelectContent>
                                         </Select>
                                     )}
-                                </div>
+                                </Field>
 
-                                <div className="flex flex-col gap-2">
-                                    <Label className="text-sm font-medium">
-                                        Pay Date
-                                    </Label>
+                                <Field>
+                                    <FieldLabel>Pay Date</FieldLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
-                                                className={`w-full justify-start text-left font-normal ${!payDate ? 'text-muted-foreground' : ''} ${!payDate && validationError ? 'border-red-400' : ''}`}
+                                                className={`w-full justify-start text-left font-normal ${!payDate ? 'text-muted-foreground' : ''} ${!payDate && validationError ? 'border-destructive' : ''}`}
                                             >
                                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                                 {payDate
@@ -1177,43 +1455,43 @@ export default function Index({
                                             />
                                         </PopoverContent>
                                     </Popover>
-                                </div>
+                                </Field>
                             </div>
 
                             <div className="mt-6 grid grid-cols-4 gap-6">
-                                <div className="flex flex-col gap-2">
-                                    <Label className="text-sm font-medium">
-                                        HR Officer Name{' '}
-                                        <span className="text-xs text-muted-foreground">
-                                            (optional)
-                                        </span>
-                                    </Label>
-                                    <Input
-                                        placeholder="HR Officer Name"
-                                        value={hrOfficerName}
-                                        onChange={(e) =>
-                                            setHrOfficerName(e.target.value)
-                                        }
-                                    />
-                                </div>
+                                <Field>
+                                    <FieldLabel>HR Officer Name</FieldLabel>
+                                    <FieldDescription>
+                                        Optional — appears on printed payslips
+                                    </FieldDescription>
+                                    <InputGroup className="w-full">
+                                        <InputGroupInput
+                                            placeholder="e.g. Maria Santos"
+                                            value={hrOfficerName}
+                                            onChange={(e) =>
+                                                setHrOfficerName(e.target.value)
+                                            }
+                                        />
+                                    </InputGroup>
+                                </Field>
                             </div>
 
                             {/* Summary card. Need adjusting*/}
                             {canProceedStep1 && (
                                 <div className="mt-8 animate-in duration-500 fade-in slide-in-from-bottom-2">
-                                    <Card className="relative overflow-hidden border-blue-100 bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-950/20">
-                                        <div className="absolute inset-y-0 left-0 w-1 bg-blue-500" />
+                                    <Card className="relative overflow-hidden border-primary/20 bg-primary/5">
+                                        <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
                                         <CardContent className="p-6">
                                             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                                                 <div className="flex items-start gap-4">
-                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                                                         <CheckCircle2 className="h-6 w-6" />
                                                     </div>
                                                     <div>
-                                                        <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                                                        <h4 className="text-sm font-semibold">
                                                             Ready for Processing
                                                         </h4>
-                                                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-blue-700/80 dark:text-blue-300/80">
+                                                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                                                             <span className="flex items-center gap-1.5 font-medium">
                                                                 <CalendarIcon className="h-3.5 w-3.5" />
                                                                 {format(
@@ -1228,38 +1506,36 @@ export default function Index({
                                                                     'MMM dd, yyyy',
                                                                 )}
                                                             </span>
-                                                            <span className="hidden text-blue-200 lg:inline">
-                                                                |
-                                                            </span>
-                                                            <Badge
-                                                                variant="secondary"
-                                                                className="bg-blue-100/80 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/40 dark:text-blue-300"
-                                                            >
+                                                            <Separator
+                                                                orientation="vertical"
+                                                                className="hidden h-4 lg:block"
+                                                            />
+                                                            <Badge variant="secondary">
                                                                 {employeeType}
                                                             </Badge>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-8 border-t border-blue-100 pt-6 lg:flex lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10">
+                                                <div className="grid grid-cols-2 gap-8 border-t pt-6 lg:flex lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10">
                                                     <div className="space-y-1.5">
-                                                        <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-tight text-blue-500/80 uppercase">
+                                                        <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-tight text-muted-foreground uppercase">
                                                             <RefreshCw className="h-3 w-3" />{' '}
                                                             Working Days
                                                         </span>
-                                                        <p className="text-lg leading-none font-bold text-blue-900 dark:text-blue-50">
+                                                        <p className="text-lg leading-none font-bold">
                                                             {workingDays}{' '}
-                                                            <span className="text-xs font-normal text-blue-600/60">
+                                                            <span className="text-xs font-normal text-muted-foreground">
                                                                 Days
                                                             </span>
                                                         </p>
                                                     </div>
                                                     <div className="space-y-1.5">
-                                                        <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-tight text-blue-500/80 uppercase">
+                                                        <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-tight text-muted-foreground uppercase">
                                                             <FileText className="h-3 w-3" />{' '}
                                                             Pay Date
                                                         </span>
-                                                        <p className="text-lg leading-none font-bold text-blue-900 dark:text-blue-50">
+                                                        <p className="text-lg leading-none font-bold">
                                                             {format(
                                                                 payDate!,
                                                                 'MMM dd, yyyy',
@@ -1267,15 +1543,15 @@ export default function Index({
                                                         </p>
                                                     </div>
                                                     <div className="space-y-1.5">
-                                                        <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-tight text-blue-500/80 uppercase">
+                                                        <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-tight text-muted-foreground uppercase">
                                                             <Users className="h-3 w-3" />{' '}
                                                             Employees
                                                         </span>
-                                                        <p className="text-lg leading-none font-bold text-blue-900 dark:text-blue-50">
+                                                        <p className="text-lg leading-none font-bold">
                                                             {
                                                                 filteredEmployees.length
                                                             }{' '}
-                                                            <span className="text-xs font-normal text-blue-600/60">
+                                                            <span className="text-xs font-normal text-muted-foreground">
                                                                 found
                                                             </span>
                                                         </p>
@@ -1294,7 +1570,7 @@ export default function Index({
                                             <span>
                                                 <Button
                                                     onClick={handleNextStep1}
-                                                    className={`text-white ${canProceedStep1 ? 'bg-blue-600 hover:bg-blue-700' : 'cursor-not-allowed bg-blue-400 opacity-60'}`}
+                                                    disabled={!canProceedStep1}
                                                 >
                                                     Next: Load Employees
                                                     <ChevronRight className="ml-2 h-4 w-4" />
@@ -1330,78 +1606,78 @@ export default function Index({
                     <Card>
                         <CardContent className="pt-6">
                             <div className="mb-4 flex items-start justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold">
-                                        Load Employees
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Review employees and enter attendance.
-                                        Uncheck any to exclude them.
-                                    </p>
-                                </div>
+                                <Heading
+                                    variant="small"
+                                    title="Load Employees"
+                                    description="Review employees and enter attendance. Uncheck any to exclude them."
+                                />
                                 <div className="flex items-center gap-2">
-                                    <Badge
-                                        variant="secondary"
-                                        className="bg-blue-100 px-3 py-1 text-blue-700 hover:bg-blue-100"
-                                    >
+                                    <Badge variant="secondary">
                                         {employeeType}
                                     </Badge>
-                                    <Badge
-                                        variant="secondary"
-                                        className="bg-muted px-3 py-1 text-muted-foreground hover:bg-muted"
-                                    >
+                                    <Badge variant="outline">
                                         {includedEmployeeIds.length} /{' '}
                                         {filteredEmployees.length} selected
                                     </Badge>
                                 </div>
                             </div>
 
-                            <div className="mb-4 flex items-center justify-between rounded-lg border bg-slate-50 px-4 py-2.5">
-                                <div className="flex items-center gap-2 text-sm text-slate-600">
-                                    {isLoadingAttendance ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                            <div className="mb-4">
+                                {isLoadingAttendance ? (
+                                    <Alert>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <AlertDescription className="flex items-center justify-between">
                                             <span>
                                                 Loading attendance data…
                                             </span>
-                                        </>
-                                    ) : attendanceSource === 'auto' ? (
-                                        <>
-                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                        </AlertDescription>
+                                    </Alert>
+                                ) : attendanceSource === 'auto' ? (
+                                    <Alert>
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        <AlertDescription className="flex items-center justify-between">
                                             <span>
                                                 Absent days &amp; late minutes
                                                 pre-filled from attendance
                                                 records.{' '}
-                                                <span className="text-slate-400">
+                                                <span className="text-muted-foreground">
                                                     Values are editable.
                                                 </span>
                                             </span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <AlertCircle className="h-4 w-4 text-amber-500" />
-                                            <span className="text-slate-500">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={fetchAttendanceSummary}
+                                                disabled={isLoadingAttendance}
+                                                className="ml-4 shrink-0 gap-1.5 text-xs"
+                                            >
+                                                <RefreshCw className="h-3.5 w-3.5" />
+                                                Reload from Attendance
+                                            </Button>
+                                        </AlertDescription>
+                                    </Alert>
+                                ) : (
+                                    <Alert variant="destructive">
+                                        <AlertCircle className="h-4 w-4" />
+                                        <AlertDescription className="flex items-center justify-between">
+                                            <span>
                                                 Enter absent days &amp; late
                                                 minutes manually, or reload from
                                                 the attendance system.
                                             </span>
-                                        </>
-                                    )}
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={fetchAttendanceSummary}
-                                    disabled={isLoadingAttendance}
-                                    className="ml-4 shrink-0 gap-1.5 text-xs"
-                                >
-                                    {isLoadingAttendance ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                        <RefreshCw className="h-3.5 w-3.5" />
-                                    )}
-                                    Reload from Attendance
-                                </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={fetchAttendanceSummary}
+                                                disabled={isLoadingAttendance}
+                                                className="ml-4 shrink-0 gap-1.5 text-xs"
+                                            >
+                                                <RefreshCw className="h-3.5 w-3.5" />
+                                                Reload from Attendance
+                                            </Button>
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
                             </div>
 
                             {filteredEmployees.length === 0 ? (
@@ -1413,194 +1689,14 @@ export default function Index({
                                     </p>
                                 </div>
                             ) : (
-                                <div className="overflow-hidden rounded-lg border">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow className="bg-muted/50">
-                                                <TableHead className="w-12 text-center">
-                                                    <div className="flex justify-center">
-                                                        <Checkbox
-                                                            checked={
-                                                                includedEmployeeIds.length ===
-                                                                filteredEmployees.length
-                                                                    ? true
-                                                                    : includedEmployeeIds.length ===
-                                                                        0
-                                                                      ? false
-                                                                      : 'indeterminate'
-                                                            }
-                                                            onCheckedChange={(
-                                                                checked,
-                                                            ) =>
-                                                                setAllIncluded(
-                                                                    checked ===
-                                                                        true ||
-                                                                        checked ===
-                                                                            'indeterminate',
-                                                                )
-                                                            }
-                                                        />
-                                                    </div>
-                                                </TableHead>
-                                                <TableHead className="w-10 text-center">
-                                                    #
-                                                </TableHead>
-                                                <TableHead>
-                                                    Employee Name
-                                                </TableHead>
-                                                <TableHead>
-                                                    Position Title
-                                                </TableHead>
-                                                <TableHead className="text-center">
-                                                    Salary Grade & Step
-                                                </TableHead>
-                                                <TableHead className="text-center">
-                                                    Basic Pay (Semi-Mo.)
-                                                </TableHead>
-                                                <TableHead className="w-28 text-center">
-                                                    Absent Days
-                                                </TableHead>
-                                                <TableHead className="w-32 text-center">
-                                                    Late (mins)
-                                                </TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {filteredEmployees.map(
-                                                (employee, index) => {
-                                                    const included =
-                                                        includedEmployeeIds.includes(
-                                                            employee.id,
-                                                        );
-                                                    return (
-                                                        <TableRow
-                                                            key={employee.id}
-                                                            className={
-                                                                !included
-                                                                    ? 'opacity-40'
-                                                                    : ''
-                                                            }
-                                                        >
-                                                            <TableCell className="text-center">
-                                                                <div className="flex justify-center">
-                                                                    <Checkbox
-                                                                        checked={
-                                                                            included
-                                                                        }
-                                                                        onCheckedChange={(
-                                                                            checked,
-                                                                        ) =>
-                                                                            setEmployeeIncluded(
-                                                                                employee.id,
-                                                                                checked ===
-                                                                                    true,
-                                                                            )
-                                                                        }
-                                                                    />
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="text-center font-medium text-muted-foreground">
-                                                                {index + 1}
-                                                            </TableCell>
-                                                            <TableCell className="font-medium">
-                                                                {employee.name}
-                                                            </TableCell>
-                                                            <TableCell className="text-sm text-muted-foreground">
-                                                                {
-                                                                    employee.position
-                                                                }
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                {employee.salary_grade ? (
-                                                                    <Badge
-                                                                        variant="secondary"
-                                                                        className="bg-green-100 text-green-700 hover:bg-green-100"
-                                                                    >
-                                                                        SG{' '}
-                                                                        {
-                                                                            employee.salary_grade
-                                                                        }{' '}
-                                                                        – Step{' '}
-                                                                        {employee.salary_step ??
-                                                                            1}
-                                                                    </Badge>
-                                                                ) : (
-                                                                    <span className="text-xs text-muted-foreground italic">
-                                                                        —
-                                                                    </span>
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell className="text-center font-medium">
-                                                                {peso(
-                                                                    employee.basic_pay,
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <Input
-                                                                    type="number"
-                                                                    min={0}
-                                                                    max={31}
-                                                                    value={
-                                                                        attendance[
-                                                                            employee
-                                                                                .id
-                                                                        ]
-                                                                            ?.absent_days ??
-                                                                        0
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) =>
-                                                                        updateAttendance(
-                                                                            employee.id,
-                                                                            'absent_days',
-                                                                            e
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        !included
-                                                                    }
-                                                                    className="mx-auto h-8 w-20 text-center"
-                                                                />
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <Input
-                                                                    type="number"
-                                                                    min={0}
-                                                                    value={
-                                                                        attendance[
-                                                                            employee
-                                                                                .id
-                                                                        ]
-                                                                            ?.late_minutes ??
-                                                                        0
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) =>
-                                                                        updateAttendance(
-                                                                            employee.id,
-                                                                            'late_minutes',
-                                                                            e
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        !included
-                                                                    }
-                                                                    className="mx-auto h-8 w-24 text-center"
-                                                                />
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    );
-                                                },
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
+                                <DataTable
+                                    columns={loadEmployeeColumns}
+                                    data={filteredEmployees}
+                                    getRowId={(row) => String(row.id)}
+                                    searchColumnId="name"
+                                    searchPlaceholder="Search employee..."
+                                    defaultPageSize={25}
+                                />
                             )}
 
                             <div className="mt-6 flex justify-between border-t pt-6">
@@ -1608,10 +1704,7 @@ export default function Index({
                                     <ChevronLeft className="mr-2 h-4 w-4" />{' '}
                                     Back
                                 </Button>
-                                <Button
-                                    onClick={handleNextStep2}
-                                    className="bg-blue-600 text-white hover:bg-blue-700"
-                                >
+                                <Button onClick={handleNextStep2}>
                                     Load & Continue to Compute
                                     <ChevronRight className="ml-2 h-4 w-4" />
                                 </Button>
@@ -1623,38 +1716,63 @@ export default function Index({
                 {/* ════════════════════════════════════════════════════════════ */}
                 {/* STEP 3 — Compute                                            */}
                 {/* ════════════════════════════════════════════════════════════ */}
+                {/*
+                 * WHY THIS STEP DOES NOT USE THE SHARED <DataTable> COMPONENT
+                 * ─────────────────────────────────────────────────────────────
+                 * The shared DataTable renders a single flat header row.
+                 * This step requires a two-row grouped header:
+                 *
+                 *   Row 1 (group labels):  #  | Employee | ── Earnings ──── | ──────────────── Deductions ──────────────── | Net Pay | Remarks
+                 *   Row 2 (sub-columns):             | Basic Pay | Allowances | Gross | Absent | Tardy | GSIS | PH | PI | Tax | Org | Other | Total |
+                 *
+                 * These groups use colSpan/rowSpan with distinct background
+                 * colour bands (blue for Earnings, red for Deductions, green
+                 * for Net Pay) that are critical for readability of the
+                 * payroll ledger.
+                 *
+                 * TanStack Table supports column grouping via parent column
+                 * definitions, but the shared DataTable component would need
+                 * to be enhanced to iterate multiple header groups and apply
+                 * the colour-band styling — a non-trivial change that risks
+                 * breaking other tables that use it.
+                 *
+                 * Additionally, Step 3 has a custom <tfoot> totals row that
+                 * is page-aware (sums only the current page slice), which
+                 * DataTable also does not currently support.
+                 *
+                 * Decision: keep the native <table> here and revisit if/when
+                 * DataTable is extended to support grouped headers and footer
+                 * aggregation rows.
+                 */}
                 {currentStep === 3 && (
                     <Card>
                         <CardContent className="pt-6">
                             <div className="mb-6 flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold">
-                                        Employee Computation
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        {hasComputed
+                                <Heading
+                                    variant="small"
+                                    title="Employee Computation"
+                                    description={
+                                        hasComputed
                                             ? 'Payroll computed. Review results before proceeding to Floor Check.'
-                                            : 'Click "Run Payroll" to compute deductions and net pay for all included employees.'}
-                                    </p>
-                                </div>
+                                            : 'Click "Run Payroll" to compute deductions and net pay for all included employees.'
+                                    }
+                                />
                                 <div className="flex items-center gap-2">
-                                    <Badge
-                                        variant="secondary"
-                                        className="bg-blue-100 px-3 py-1 text-blue-700 hover:bg-blue-100"
-                                    >
+                                    <Badge variant="secondary">
                                         {employeeType}
                                     </Badge>
-                                    <Badge
-                                        variant="secondary"
-                                        className="bg-muted px-3 py-1 text-muted-foreground hover:bg-muted"
-                                    >
+                                    <Badge variant="outline">
                                         {includedEmployeeIds.length} employees
                                     </Badge>
                                     <Button
                                         size="sm"
                                         onClick={handleCompute}
                                         disabled={isProcessing}
-                                        className={`text-white ${hasComputed ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                        variant={
+                                            hasComputed
+                                                ? 'secondary'
+                                                : 'default'
+                                        }
                                     >
                                         {isProcessing ? (
                                             <>
@@ -1923,14 +2041,25 @@ export default function Index({
                                                             </td>
                                                             <td className="px-3 py-2.5 text-center">
                                                                 <div className="flex flex-col items-center gap-1">
-                                                                    <span
-                                                                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${employee.status === 'ok' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}
+                                                                    <Badge
+                                                                        variant={
+                                                                            employee.status ===
+                                                                            'ok'
+                                                                                ? 'secondary'
+                                                                                : 'destructive'
+                                                                        }
+                                                                        className={
+                                                                            employee.status ===
+                                                                            'ok'
+                                                                                ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300'
+                                                                                : ''
+                                                                        }
                                                                     >
                                                                         {employee.status ===
                                                                         'ok'
                                                                             ? 'OK'
                                                                             : 'Low'}
-                                                                    </span>
+                                                                    </Badge>
                                                                     {employee.floorCutAmount >
                                                                         0 && (
                                                                         <TooltipProvider>
@@ -2225,7 +2354,6 @@ export default function Index({
                                 <Button
                                     onClick={handleNextStep3}
                                     disabled={!hasComputed}
-                                    className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                                 >
                                     Next: Floor Check
                                     <ChevronRight className="ml-2 h-4 w-4" />
@@ -2242,31 +2370,19 @@ export default function Index({
                     <Card>
                         <CardContent className="pt-6">
                             <div className="mb-6 flex items-start justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold">
-                                        Floor Check
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Employees below the ₱
-                                        {NET_PAY_THRESHOLD.toLocaleString()}{' '}
-                                        minimum take-home are listed below.
-                                        Uncheck deductions to waive them for
-                                        this period — waived amounts will carry
-                                        forward to the next payroll
-                                        automatically.
-                                    </p>
-                                </div>
+                                <Heading
+                                    variant="small"
+                                    title="Floor Check"
+                                    description={`Employees below the ₱${NET_PAY_THRESHOLD.toLocaleString()} minimum take-home are listed below. Uncheck deductions to waive them for this period — waived amounts will carry forward to the next payroll automatically.`}
+                                />
                                 <div className="ml-4 flex shrink-0 items-center gap-2">
-                                    <Badge
-                                        variant="secondary"
-                                        className="bg-red-100 text-red-700 hover:bg-red-100"
-                                    >
+                                    <Badge variant="destructive">
                                         {originallyFlaggedEmployees.length}{' '}
                                         flagged
                                     </Badge>
                                     <Badge
                                         variant="secondary"
-                                        className="bg-green-100 text-green-700 hover:bg-green-100"
+                                        className="bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300"
                                     >
                                         {originallyPassedCount} passed
                                     </Badge>
@@ -2735,7 +2851,7 @@ export default function Index({
                                                                                             const itemWaived =
                                                                                                 isWaived ||
                                                                                                 waivedItems.includes(
-                                                                                                    item.id,
+                                                                                                    `org:${item.id}`,
                                                                                                 );
                                                                                             return (
                                                                                                 <tr
@@ -2753,7 +2869,7 @@ export default function Index({
                                                                                                             onCheckedChange={() =>
                                                                                                                 toggleItemWaiver(
                                                                                                                     employee.id,
-                                                                                                                    item.id,
+                                                                                                                    `org:${item.id}`,
                                                                                                                 )
                                                                                                             }
                                                                                                             className="h-3.5 w-3.5 disabled:opacity-30"
@@ -3176,7 +3292,6 @@ export default function Index({
                                         !allFlaggedResolved &&
                                         originallyFlaggedEmployees.length > 0
                                     }
-                                    className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                                 >
                                     Next: Post and Finalize
                                     <ChevronRight className="ml-2 h-4 w-4" />
@@ -3192,27 +3307,23 @@ export default function Index({
                 {currentStep === 5 && (
                     <Card>
                         <CardContent className="pt-6">
-                            <div className="mb-6">
-                                <h3 className="text-lg font-semibold">
-                                    Post and Finalize
-                                </h3>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    Review the payroll summary below. Once
-                                    finalized, this payroll run will be posted
-                                    and locked.
-                                </p>
-                            </div>
+                            <Heading
+                                title="Post and Finalize"
+                                description="Review the payroll summary below. Once finalized, this payroll run will be posted and locked."
+                            />
 
                             {isFinalized ? (
-                                <div className="flex flex-col items-center justify-center rounded-lg border border-green-200 bg-green-50 py-16 text-center">
-                                    <CheckCircle2 className="mb-3 h-14 w-14 text-green-500" />
-                                    <p className="text-lg font-semibold text-green-800">
-                                        Payroll Posted!
-                                    </p>
-                                    <p className="mt-1 text-sm text-green-700">
-                                        Period #{processedPeriodId} has been
-                                        posted successfully.
-                                    </p>
+                                <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-green-200 bg-green-50 py-16 text-center dark:bg-green-950/20">
+                                    <CheckCircle2 className="h-16 w-16 text-green-500" />
+                                    <div className="space-y-1">
+                                        <p className="text-xl font-semibold text-green-800 dark:text-green-200">
+                                            Payroll Posted!
+                                        </p>
+                                        <p className="text-sm text-green-700 dark:text-green-300">
+                                            Period #{processedPeriodId} has been
+                                            posted successfully.
+                                        </p>
+                                    </div>
                                 </div>
                             ) : (
                                 <>
@@ -3264,126 +3375,80 @@ export default function Index({
 
                                     {/* Totals */}
                                     <div className="mb-6 grid grid-cols-4 gap-4">
-                                        <div className="rounded-lg border p-4 text-center">
-                                            <p className="text-2xl font-bold">
-                                                {employeesWithStatus.length}
-                                            </p>
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                Total Employees
-                                            </p>
-                                        </div>
-                                        <div className="rounded-lg border p-4 text-center">
-                                            <p className="text-2xl font-bold text-blue-600">
-                                                {peso(totalGross)}
-                                            </p>
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                Total Gross Pay
-                                            </p>
-                                        </div>
-                                        <div className="rounded-lg border p-4 text-center">
-                                            <p className="text-2xl font-bold text-red-600">
-                                                {peso(finalizedTotalDeductions)}
-                                            </p>
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                Total Deductions
-                                            </p>
-                                        </div>
-                                        <div className="rounded-lg border bg-green-50 p-4 text-center">
-                                            <p className="text-2xl font-bold text-green-700">
-                                                {peso(finalizedTotalNetPay)}
-                                            </p>
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                Total Net Pay
-                                            </p>
-                                        </div>
+                                        <Card className="text-center">
+                                            <CardContent className="pt-4">
+                                                <p className="text-2xl font-bold">
+                                                    {employeesWithStatus.length}
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    Total Employees
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                        <Card className="text-center">
+                                            <CardContent className="pt-4">
+                                                <p className="text-2xl font-bold text-primary">
+                                                    {peso(totalGross)}
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    Total Gross Pay
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                        <Card className="text-center">
+                                            <CardContent className="pt-4">
+                                                <p className="text-2xl font-bold text-destructive">
+                                                    {peso(
+                                                        finalizedTotalDeductions,
+                                                    )}
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    Total Deductions
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                        <Card className="border-green-200 bg-green-50 text-center dark:bg-green-950/20">
+                                            <CardContent className="pt-4">
+                                                <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                                    {peso(finalizedTotalNetPay)}
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    Total Net Pay
+                                                </p>
+                                            </CardContent>
+                                        </Card>
                                     </div>
 
                                     {/* Summary table */}
-                                    <div className="overflow-hidden rounded-lg border">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow className="bg-muted/50">
-                                                    <TableHead className="w-10 text-center">
-                                                        #
-                                                    </TableHead>
-                                                    <TableHead>
-                                                        Employee Name
-                                                        <span className="ml-1.5 text-[10px] font-normal text-muted-foreground/60">
-                                                            (click for
-                                                            breakdown)
-                                                        </span>
-                                                    </TableHead>
-                                                    <TableHead className="text-right">
-                                                        Gross Pay
-                                                    </TableHead>
-                                                    <TableHead className="text-right">
-                                                        Total Deductions
-                                                    </TableHead>
-                                                    <TableHead className="text-right">
-                                                        Net Pay
-                                                    </TableHead>
-                                                    <TableHead className="text-center">
-                                                        Status
-                                                    </TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {finalizedEmployeesWithStatus.map(
-                                                    (employee, index) => (
-                                                        <TableRow
-                                                            key={employee.id}
-                                                            className="cursor-pointer hover:bg-muted/40"
-                                                            onClick={() =>
-                                                                setSelectedBreakdownId(
-                                                                    employee.id,
-                                                                )
-                                                            }
-                                                        >
-                                                            <TableCell className="text-center text-muted-foreground">
-                                                                {index + 1}
-                                                            </TableCell>
-                                                            <TableCell className="font-medium">
-                                                                {employee.name}
-                                                            </TableCell>
-                                                            <TableCell className="text-right">
-                                                                {peso(
-                                                                    employee.grossPay,
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell className="text-right">
-                                                                {peso(
-                                                                    employee.totalDeductions,
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell
-                                                                className={`text-right font-semibold ${employee.status === 'low' ? 'text-red-600' : 'text-green-700'}`}
-                                                            >
-                                                                {peso(
-                                                                    employee.netPay,
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <Badge
-                                                                    variant="secondary"
-                                                                    className={
-                                                                        employee.status ===
-                                                                        'ok'
-                                                                            ? 'bg-green-100 text-green-700 hover:bg-green-100'
-                                                                            : 'bg-red-100 text-red-600 hover:bg-red-100'
-                                                                    }
-                                                                >
-                                                                    {employee.status ===
-                                                                    'ok'
-                                                                        ? 'OK'
-                                                                        : 'Low'}
-                                                                </Badge>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ),
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
+                                    <DataTable
+                                        columns={finalizedColumns}
+                                        data={finalizedEmployeesWithStatus}
+                                        getRowId={(row) => String(row.id)}
+                                        onRowClick={(row) =>
+                                            setSelectedBreakdownId(
+                                                row.original.id,
+                                            )
+                                        }
+                                        searchColumnId="name"
+                                        searchPlaceholder="Search employee..."
+                                        filters={[
+                                            {
+                                                columnId: 'status',
+                                                title: 'Status',
+                                                options: [
+                                                    {
+                                                        label: 'OK',
+                                                        value: 'ok',
+                                                    },
+                                                    {
+                                                        label: 'Low',
+                                                        value: 'low',
+                                                    },
+                                                ],
+                                            },
+                                        ]}
+                                        defaultPageSize={25}
+                                    />
                                 </>
                             )}
 
@@ -3399,7 +3464,6 @@ export default function Index({
                                         </Button>
                                         {/* FIXED BUTTON - removed !processedPeriodId condition */}
                                         <Button
-                                            className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                                             onClick={handleFinalize}
                                             disabled={isFinalizing}
                                         >

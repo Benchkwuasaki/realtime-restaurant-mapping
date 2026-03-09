@@ -967,7 +967,7 @@ export default function Show({ period, records, summary }: Props) {
                                 <polyline points="14 2 14 8 20 8" />
                             </svg>
                             <span>
-                                📄 Please print on{' '}
+                                Please print on{' '}
                                 <strong>
                                     Legal / Long Bond Paper (8.5" × 14")
                                 </strong>{' '}

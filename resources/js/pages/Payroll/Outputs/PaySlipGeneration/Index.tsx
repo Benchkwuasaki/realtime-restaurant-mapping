@@ -40,8 +40,6 @@ import type {
     PayslipData,
 } from '@/components/Payroll/Outputs/PaySlipGeneration/data/schema';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 interface Props {
     employees: EmployeeOption[];
     payroll_periods: PayrollPeriod[];
@@ -52,15 +50,11 @@ interface Props {
     is_bulk: boolean;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Payroll', href: route('payroll.index') },
     { title: 'Outputs', href: '#' },
     { title: 'Pay Slip Generation', href: route('payslipgeneration.index') },
 ];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function peso(amount: number): string {
     return new Intl.NumberFormat('en-PH', {
@@ -68,8 +62,6 @@ function peso(amount: number): string {
         maximumFractionDigits: 2,
     }).format(Math.abs(amount));
 }
-
-// ── PaySlip Document ──────────────────────────────────────────────────────────
 
 function PayslipDocument({
     data,
@@ -157,11 +149,8 @@ function PayslipDocument({
                 </div>
             </div>
 
-            {/* ── Body ── */}
             <div className="grid grid-cols-2 gap-0 divide-x divide-border/50 px-0">
-                {/* Left column — Earnings */}
                 <div className="space-y-4 px-8 py-5">
-                    {/* Earnings */}
                     <div>
                         <p className="mb-2 border-b border-blue-200 pb-1 text-[9px] font-bold tracking-widest text-blue-700 uppercase">
                             Earnings
@@ -186,7 +175,6 @@ function PayslipDocument({
                         </div>
                     </div>
 
-                    {/* Attendance */}
                     <div>
                         <p className="mb-2 border-b border-purple-200 pb-1 text-[9px] font-bold tracking-widest text-purple-700 uppercase">
                             Attendance Deductions
@@ -223,9 +211,7 @@ function PayslipDocument({
                     </div>
                 </div>
 
-                {/* Right column — Deductions */}
                 <div className="space-y-4 px-8 py-5">
-                    {/* Mandatory */}
                     <div>
                         <p className="mb-2 border-b border-orange-200 pb-1 text-[9px] font-bold tracking-widest text-orange-700 uppercase">
                             Mandatory Deductions
@@ -315,7 +301,6 @@ function PayslipDocument({
                 </div>
             </div>
 
-            {/* ── Net Pay banner ── */}
             <div className="mx-8 mb-0 rounded-lg border-2 border-foreground/10 bg-muted/30 px-6 py-3">
                 <div className="flex items-center justify-between">
                     <div>
@@ -337,18 +322,15 @@ function PayslipDocument({
                 </div>
             </div>
 
-            {/* ── Footer ── */}
             <div className="px-8 py-5">
-                {/* Paper note */}
                 <div className="mb-4 flex items-center justify-center gap-1.5 rounded border border-dashed border-amber-400 bg-amber-50/60 px-3 py-1 text-[9px] font-medium text-amber-700 print:border-amber-300 print:bg-transparent">
-                    📄 Print on{' '}
+                    Print on{' '}
                     <strong className="mx-0.5">
                         Short Bond Paper (8.5" × 11")
                     </strong>{' '}
                     — Portrait orientation
                 </div>
 
-                {/* Signature lines */}
                 <div className="flex justify-between gap-6">
                     <div className="flex-1 text-center">
                         <div className="mb-6 border-b border-dashed border-muted-foreground/50" />
@@ -372,7 +354,6 @@ function PayslipDocument({
                     </div>
                 </div>
 
-                {/* Meta info */}
                 <div className="mt-3 flex items-center justify-between border-t border-border/30 pt-2 text-[8.5px] text-muted-foreground">
                     <span>Posted: {data.posted_date}</span>
                     <span>Metro Kidapawan Water District — Payroll System</span>
@@ -382,8 +363,6 @@ function PayslipDocument({
         </div>
     );
 }
-
-// ── Row helper ────────────────────────────────────────────────────────────────
 
 function Row({
     label,
@@ -409,8 +388,6 @@ function Row({
     );
 }
 
-// ── Empty State ───────────────────────────────────────────────────────────────
-
 function EmptyPreview() {
     return (
         <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-xl border border-dashed">
@@ -432,8 +409,6 @@ function EmptyPreview() {
         </div>
     );
 }
-
-// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function Index({
     employees,
@@ -460,11 +435,9 @@ export default function Index({
     );
     const [isLoading, setIsLoading] = useState(false);
 
-    // Bulk print state
     const [bulkPeriodId, setBulkPeriodId] = useState<string>('');
     const [bulkClassification, setBulkClassification] = useState<string>('All');
 
-    // Derive unique classifications from employees list
     const classifications = [
         'All',
         ...Array.from(
@@ -490,7 +463,6 @@ export default function Index({
         setEmployeeId('');
     }
 
-    // Auto-trigger print when the page loads in bulk mode
     useEffect(() => {
         if (is_bulk && bulk_payslips.length > 0) {
             const timer = setTimeout(() => window.print(), 600);
@@ -519,7 +491,6 @@ export default function Index({
             <Head title="Pay Slip Generation" />
 
             <div className="flex flex-1 flex-col gap-6 p-6">
-                {/* Page heading */}
                 <div>
                     <h1 className="text-2xl font-semibold">
                         Pay Slip Generation
@@ -531,7 +502,6 @@ export default function Index({
                 </div>
 
                 <Tabs defaultValue={is_bulk ? 'bulk' : 'generate'}>
-                    {/* ── Tab nav ── */}
                     <div className="w-full border-b border-border">
                         <TabsList className="inline-flex h-auto gap-0 rounded-none bg-transparent p-0">
                             {[
@@ -552,10 +522,8 @@ export default function Index({
                         </TabsList>
                     </div>
 
-                    {/* ── Generate tab ── */}
                     <TabsContent value="generate" className="mt-6">
                         <div className="flex items-start gap-6">
-                            {/* Sidebar controls */}
                             <Card className="w-72 shrink-0">
                                 <CardHeader className="pb-3">
                                     <CardTitle className="flex items-center gap-2 text-base">
@@ -687,7 +655,6 @@ export default function Index({
                                         </Button>
                                     )}
 
-                                    {/* Floor check badge */}
                                     {payslip && (
                                         <div className="flex justify-center">
                                             {payslip.floor_check_passed ? (
@@ -723,7 +690,6 @@ export default function Index({
                                 </CardContent>
                             </Card>
 
-                            {/* Payslip preview area */}
                             <div className="min-w-0 flex-1">
                                 {payslip ? (
                                     <>
@@ -761,10 +727,8 @@ export default function Index({
                         </div>
                     </TabsContent>
 
-                    {/* ── Bulk Print tab ── */}
                     <TabsContent value="bulk" className="mt-6">
                         <div className="flex items-start gap-6">
-                            {/* Bulk controls */}
                             <Card className="w-72 shrink-0">
                                 <CardHeader className="pb-3">
                                     <CardTitle className="flex items-center gap-2 text-base">
@@ -849,8 +813,6 @@ export default function Index({
                                             bulkEmployees.length === 0
                                         }
                                         onClick={() => {
-                                            // Navigate to the bulk print URL with params,
-                                            // which will load all payslips and trigger print
                                             router.get(
                                                 route(
                                                     'payslipgeneration.index',
@@ -873,13 +835,12 @@ export default function Index({
                                     </Button>
 
                                     <p className="text-center text-[10px] text-muted-foreground">
-                                        📄 Use Short Bond Paper (8.5" × 11") —
+                                        Use Short Bond Paper (8.5" × 11") —
                                         Portrait
                                     </p>
                                 </CardContent>
                             </Card>
 
-                            {/* Bulk info panel */}
                             <div className="min-w-0 flex-1">
                                 {!bulkPeriodId ? (
                                     <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-xl border border-dashed">
@@ -934,7 +895,6 @@ export default function Index({
                 </Tabs>
             </div>
 
-            {/* ── Print styles ── */}
             <style>{`
                 @media print {
                     @page {
@@ -985,7 +945,6 @@ export default function Index({
                 }
             `}</style>
 
-            {/* ── Hidden bulk print area — rendered off-screen, printed on demand ── */}
             {bulk_payslips.length > 0 && (
                 <div
                     id="bulk-print-area"

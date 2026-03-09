@@ -1,7 +1,15 @@
-import { useState, useMemo } from "react";
-import { router, usePage } from "@inertiajs/react";
-import { CheckCircle, Plus, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import AppLayout from "@/layouts/app-layout";
+import { useState, useMemo } from 'react';
+import { router, usePage } from '@inertiajs/react';
+import {
+    CheckCircle,
+    Plus,
+    Search,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
+} from 'lucide-react';
+import AppLayout from '@/layouts/app-layout';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,7 +25,7 @@ interface PreviewRow {
     accrual_earned: number;
     balance_before: number;
     balance_after: number;
-    credit_status: "full_credit" | "prorated" | "ineligible";
+    credit_status: 'full_credit' | 'prorated' | 'ineligible';
 }
 
 interface HistoryRow {
@@ -72,8 +80,18 @@ interface PageProps {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MONTHS = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
 ];
 
 const currentYear = new Date().getFullYear();
@@ -81,48 +99,73 @@ const YEARS = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i);
 
 // ─── Small shared components ──────────────────────────────────────────────────
 
-function StepBadge({ number, label, state }: {
+function StepBadge({
+    number,
+    label,
+    state,
+}: {
     number: number;
     label: string;
-    state: "done" | "active" | "pending";
+    state: 'done' | 'active' | 'pending';
 }) {
     return (
-        <div className={`flex items-center gap-3 flex-1 px-5 py-4 ${state === "done" ? "bg-green-50" :
-                state === "active" ? "bg-blue-50" : "bg-white"
-            }`}>
-            {state === "done" ? (
-                <span className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+        <div
+            className={`flex flex-1 items-center gap-3 px-5 py-4 ${
+                state === 'done'
+                    ? 'bg-green-50'
+                    : state === 'active'
+                      ? 'bg-blue-50'
+                      : 'bg-white'
+            }`}
+        >
+            {state === 'done' ? (
+                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-500">
                     <CheckCircle size={18} className="text-white" />
                 </span>
             ) : (
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold ${state === "active"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-500"
-                    }`}>{number}</span>
+                <span
+                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                        state === 'active'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-500'
+                    }`}
+                >
+                    {number}
+                </span>
             )}
             <div>
                 <p className="text-xs text-gray-400">Step {number}</p>
-                <p className={`text-sm font-medium ${state === "done" ? "text-green-700" :
-                        state === "active" ? "text-blue-700" : "text-gray-500"
-                    }`}>{label}</p>
+                <p
+                    className={`text-sm font-medium ${
+                        state === 'done'
+                            ? 'text-green-700'
+                            : state === 'active'
+                              ? 'text-blue-700'
+                              : 'text-gray-500'
+                    }`}
+                >
+                    {label}
+                </p>
             </div>
         </div>
     );
 }
 
-function CreditBadge({ status }: { status: PreviewRow["credit_status"] }) {
+function CreditBadge({ status }: { status: PreviewRow['credit_status'] }) {
     const map = {
-        full_credit: "bg-green-100 text-green-700",
-        prorated: "bg-yellow-100 text-yellow-700",
-        ineligible: "bg-red-100 text-red-600",
+        full_credit: 'bg-green-100 text-green-700',
+        prorated: 'bg-yellow-100 text-yellow-700',
+        ineligible: 'bg-red-100 text-red-600',
     };
     const label = {
-        full_credit: "Full Credit",
-        prorated: "Prorated",
-        ineligible: "Ineligible",
+        full_credit: 'Full Credit',
+        prorated: 'Prorated',
+        ineligible: 'Ineligible',
     };
     return (
-        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${map[status]}`}>
+        <span
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${map[status]}`}
+        >
             {label[status]}
         </span>
     );
@@ -130,10 +173,19 @@ function CreditBadge({ status }: { status: PreviewRow["credit_status"] }) {
 
 function Avatar({ url, name }: { url: string | null; name: string }) {
     return url ? (
-        <img src={url} alt={name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+        <img
+            src={url}
+            alt={name}
+            className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
+        />
     ) : (
-        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-semibold flex-shrink-0">
-            {name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600">
+            {name
+                .split(' ')
+                .map((n) => n[0])
+                .join('')
+                .slice(0, 2)
+                .toUpperCase()}
         </div>
     );
 }
@@ -157,55 +209,71 @@ function StepSelectPeriod() {
     function handleNext() {
         setLoading(true);
         router.get(
-            route("leave.accrual.preview"),
+            route('leave.accrual.preview'),
             { month, year },
-            { preserveState: false, onFinish: () => setLoading(false) }
+            { preserveState: false, onFinish: () => setLoading(false) },
         );
     }
 
     return (
         <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-5">Select Posting Period</h2>
-            <div className="grid grid-cols-2 gap-4 max-w-2xl">
+            <h2 className="mb-5 text-lg font-semibold text-gray-800">
+                Select Posting Period
+            </h2>
+            <div className="grid max-w-2xl grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-xs text-gray-500 mb-1">Month</label>
+                    <label className="mb-1 block text-xs text-gray-500">
+                        Month
+                    </label>
                     <div className="relative">
                         <select
                             value={month}
-                            onChange={e => setMonth(Number(e.target.value))}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm appearance-none bg-white pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onChange={(e) => setMonth(Number(e.target.value))}
+                            className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         >
                             {MONTHS.map((m, i) => (
-                                <option key={i} value={i + 1}>{m}</option>
+                                <option key={i} value={i + 1}>
+                                    {m}
+                                </option>
                             ))}
                         </select>
-                        <ChevronRight size={14} className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-gray-400 pointer-events-none" />
+                        <ChevronRight
+                            size={14}
+                            className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rotate-90 text-gray-400"
+                        />
                     </div>
                 </div>
                 <div>
-                    <label className="block text-xs text-gray-500 mb-1">Year</label>
+                    <label className="mb-1 block text-xs text-gray-500">
+                        Year
+                    </label>
                     <div className="relative">
                         <select
                             value={year}
-                            onChange={e => setYear(Number(e.target.value))}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm appearance-none bg-white pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onChange={(e) => setYear(Number(e.target.value))}
+                            className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         >
-                            {YEARS.map(y => (
-                                <option key={y} value={y}>{y}</option>
+                            {YEARS.map((y) => (
+                                <option key={y} value={y}>
+                                    {y}
+                                </option>
                             ))}
                         </select>
-                        <ChevronRight size={14} className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-gray-400 pointer-events-none" />
+                        <ChevronRight
+                            size={14}
+                            className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rotate-90 text-gray-400"
+                        />
                     </div>
                 </div>
             </div>
-            <div className="flex justify-end mt-6">
+            <div className="mt-6 flex justify-end">
                 <button
                     onClick={handleNext}
                     disabled={loading}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition disabled:opacity-60"
+                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
                 >
                     <Plus size={15} />
-                    {loading ? "Loading…" : "Next"}
+                    {loading ? 'Loading…' : 'Next'}
                 </button>
             </div>
         </div>
@@ -223,20 +291,26 @@ function StepPreviewCredits({
     leaveTypes: LeaveType[];
     period: { month: number; year: number };
 }) {
-    const [search, setSearch] = useState("");
+    const [search, setSearch] = useState('');
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
     // Group previews by employee then pivot leave types as columns
     const employeeMap = useMemo(() => {
-        const map = new Map<number, {
-            employee_id: number;
-            name: string;
-            department: string;
-            employment_classification: string;
-            avatar_url: string | null;
-            credit_status: PreviewRow["credit_status"];
-            leaves: Record<number, { before: number; credit: number; after: number }>;
-        }>();
+        const map = new Map<
+            number,
+            {
+                employee_id: number;
+                name: string;
+                department: string;
+                employment_classification: string;
+                avatar_url: string | null;
+                credit_status: PreviewRow['credit_status'];
+                leaves: Record<
+                    number,
+                    { before: number; credit: number; after: number }
+                >;
+            }
+        >();
 
         for (const row of previews) {
             if (!map.has(row.employee_id)) {
@@ -262,14 +336,18 @@ function StepPreviewCredits({
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return employeeMap.filter(e =>
-            e.name.toLowerCase().includes(q) ||
-            e.department.toLowerCase().includes(q) ||
-            e.employment_classification.toLowerCase().includes(q)
+        return employeeMap.filter(
+            (e) =>
+                e.name.toLowerCase().includes(q) ||
+                e.department.toLowerCase().includes(q) ||
+                e.employment_classification.toLowerCase().includes(q),
         );
     }, [employeeMap, search]);
 
-    const { page, setPage, totalPages, paginated, total } = usePagination(filtered, rowsPerPage);
+    const { page, setPage, totalPages, paginated, total } = usePagination(
+        filtered,
+        rowsPerPage,
+    );
 
     const [selected, setSelected] = useState<Set<number>>(new Set());
 
@@ -277,12 +355,12 @@ function StepPreviewCredits({
         if (selected.size === paginated.length) {
             setSelected(new Set());
         } else {
-            setSelected(new Set(paginated.map(e => e.employee_id)));
+            setSelected(new Set(paginated.map((e) => e.employee_id)));
         }
     }
 
     function toggle(id: number) {
-        setSelected(prev => {
+        setSelected((prev) => {
             const next = new Set(prev);
             next.has(id) ? next.delete(id) : next.add(id);
             return next;
@@ -294,32 +372,38 @@ function StepPreviewCredits({
     function handleNext() {
         setLoading(true);
         router.post(
-            route("leave.accrual.confirm"),
+            route('leave.accrual.confirm'),
             { month: period.month, year: period.year },
-            { preserveState: false, onFinish: () => setLoading(false) }
+            { preserveState: false, onFinish: () => setLoading(false) },
         );
     }
 
     function handleBack() {
-        router.get(route("leave.accrual.index"));
+        router.get(route('leave.accrual.index'));
     }
 
     const monthLabel = MONTHS[period.month - 1];
 
     return (
         <div className="p-6">
-            <div className="flex items-center justify-between mb-5">
+            <div className="mb-5 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-800">
                     Preview Earned Leave Credits — {monthLabel} {period.year}
                 </h2>
                 <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Search
+                        size={14}
+                        className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400"
+                    />
                     <input
                         type="text"
                         placeholder="Search..."
                         value={search}
-                        onChange={e => { setSearch(e.target.value); setPage(1); }}
-                        className="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
+                        onChange={(e) => {
+                            setSearch(e.target.value);
+                            setPage(1);
+                        }}
+                        className="w-56 rounded-lg border border-gray-200 py-2 pr-3 pl-8 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
                 </div>
             </div>
@@ -328,74 +412,138 @@ function StepPreviewCredits({
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-gray-100">
-                            <th className="text-left py-3 px-3 w-10">
+                            <th className="w-10 px-3 py-3 text-left">
                                 <input
                                     type="checkbox"
-                                    checked={selected.size === paginated.length && paginated.length > 0}
+                                    checked={
+                                        selected.size === paginated.length &&
+                                        paginated.length > 0
+                                    }
                                     onChange={toggleAll}
                                     className="rounded border-gray-300"
                                 />
                             </th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Employee Name</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Department</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Employment Type</th>
-                            {leaveTypes.map(lt => (
-                                <th key={lt.leave_type_id} colSpan={3} className="text-center py-3 px-3 font-medium text-gray-600 border-l border-gray-100">
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                Employee Name
+                            </th>
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                Department
+                            </th>
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                Employment Type
+                            </th>
+                            {leaveTypes.map((lt) => (
+                                <th
+                                    key={lt.leave_type_id}
+                                    colSpan={3}
+                                    className="border-l border-gray-100 px-3 py-3 text-center font-medium text-gray-600"
+                                >
                                     {lt.leave_type_name}
                                 </th>
                             ))}
-                            <th className="text-center py-3 px-3 font-medium text-gray-600">Status</th>
+                            <th className="px-3 py-3 text-center font-medium text-gray-600">
+                                Status
+                            </th>
                         </tr>
                         {/* Sub-header for Balance / Credit / New Balance */}
                         <tr className="border-b border-gray-100 bg-gray-50">
                             <th colSpan={4} />
-                            {leaveTypes.map(lt => (
+                            {leaveTypes.map((lt) => (
                                 <>
-                                    <th key={`${lt.leave_type_id}-b`} className="text-center py-2 px-2 text-xs font-normal text-gray-400 border-l border-gray-100">Balance</th>
-                                    <th key={`${lt.leave_type_id}-c`} className="text-center py-2 px-2 text-xs font-normal text-gray-400">Credit</th>
-                                    <th key={`${lt.leave_type_id}-n`} className="text-center py-2 px-2 text-xs font-normal text-gray-400">New Balance</th>
+                                    <th
+                                        key={`${lt.leave_type_id}-b`}
+                                        className="border-l border-gray-100 px-2 py-2 text-center text-xs font-normal text-gray-400"
+                                    >
+                                        Balance
+                                    </th>
+                                    <th
+                                        key={`${lt.leave_type_id}-c`}
+                                        className="px-2 py-2 text-center text-xs font-normal text-gray-400"
+                                    >
+                                        Credit
+                                    </th>
+                                    <th
+                                        key={`${lt.leave_type_id}-n`}
+                                        className="px-2 py-2 text-center text-xs font-normal text-gray-400"
+                                    >
+                                        New Balance
+                                    </th>
                                 </>
                             ))}
                             <th />
                         </tr>
                     </thead>
                     <tbody>
-                        {paginated.map(employee => (
-                            <tr key={employee.employee_id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                                <td className="py-3 px-3">
+                        {paginated.map((employee) => (
+                            <tr
+                                key={employee.employee_id}
+                                className="border-b border-gray-50 hover:bg-gray-50/50"
+                            >
+                                <td className="px-3 py-3">
                                     <input
                                         type="checkbox"
-                                        checked={selected.has(employee.employee_id)}
-                                        onChange={() => toggle(employee.employee_id)}
+                                        checked={selected.has(
+                                            employee.employee_id,
+                                        )}
+                                        onChange={() =>
+                                            toggle(employee.employee_id)
+                                        }
                                         className="rounded border-gray-300"
                                     />
                                 </td>
-                                <td className="py-3 px-3">
+                                <td className="px-3 py-3">
                                     <div className="flex items-center gap-2">
-                                        <Avatar url={employee.avatar_url} name={employee.name} />
-                                        <span className="text-gray-700">{employee.name}</span>
+                                        <Avatar
+                                            url={employee.avatar_url}
+                                            name={employee.name}
+                                        />
+                                        <span className="text-gray-700">
+                                            {employee.name}
+                                        </span>
                                     </div>
                                 </td>
-                                <td className="py-3 px-3 text-gray-500">{employee.department}</td>
-                                <td className="py-3 px-3 text-gray-500">{employee.employment_classification}</td>
-                                {leaveTypes.map(lt => {
-                                    const data = employee.leaves[lt.leave_type_id];
+                                <td className="px-3 py-3 text-gray-500">
+                                    {employee.department}
+                                </td>
+                                <td className="px-3 py-3 text-gray-500">
+                                    {employee.employment_classification}
+                                </td>
+                                {leaveTypes.map((lt) => {
+                                    const data =
+                                        employee.leaves[lt.leave_type_id];
                                     return (
                                         <>
-                                            <td key={`${employee.employee_id}-${lt.leave_type_id}-b`} className="py-3 px-2 text-center text-gray-400 border-l border-gray-100">
-                                                {data ? data.before.toFixed(2) : "0.00"}
+                                            <td
+                                                key={`${employee.employee_id}-${lt.leave_type_id}-b`}
+                                                className="border-l border-gray-100 px-2 py-3 text-center text-gray-400"
+                                            >
+                                                {data
+                                                    ? data.before.toFixed(2)
+                                                    : '0.00'}
                                             </td>
-                                            <td key={`${employee.employee_id}-${lt.leave_type_id}-c`} className="py-3 px-2 text-center text-green-500 font-medium">
-                                                {data ? `+${data.credit.toFixed(2)}` : "+0.00"}
+                                            <td
+                                                key={`${employee.employee_id}-${lt.leave_type_id}-c`}
+                                                className="px-2 py-3 text-center font-medium text-green-500"
+                                            >
+                                                {data
+                                                    ? `+${data.credit.toFixed(2)}`
+                                                    : '+0.00'}
                                             </td>
-                                            <td key={`${employee.employee_id}-${lt.leave_type_id}-n`} className="py-3 px-2 text-center text-blue-500 font-medium">
-                                                {data ? data.after.toFixed(2) : "0.00"}
+                                            <td
+                                                key={`${employee.employee_id}-${lt.leave_type_id}-n`}
+                                                className="px-2 py-3 text-center font-medium text-blue-500"
+                                            >
+                                                {data
+                                                    ? data.after.toFixed(2)
+                                                    : '0.00'}
                                             </td>
                                         </>
                                     );
                                 })}
-                                <td className="py-3 px-3 text-center">
-                                    <CreditBadge status={employee.credit_status} />
+                                <td className="px-3 py-3 text-center">
+                                    <CreditBadge
+                                        status={employee.credit_status}
+                                    />
                                 </td>
                             </tr>
                         ))}
@@ -404,42 +552,79 @@ function StepPreviewCredits({
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
-                <span>{selected.size} of {total} row(s) selected.</span>
+            <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+                <span>
+                    {selected.size} of {total} row(s) selected.
+                </span>
                 <div className="flex items-center gap-3">
                     <span>Rows per page</span>
                     <select
                         value={rowsPerPage}
-                        onChange={e => { setRowsPerPage(Number(e.target.value)); setPage(1); }}
-                        className="border border-gray-200 rounded px-2 py-1 text-sm"
+                        onChange={(e) => {
+                            setRowsPerPage(Number(e.target.value));
+                            setPage(1);
+                        }}
+                        className="rounded border border-gray-200 px-2 py-1 text-sm"
                     >
-                        {[10, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
+                        {[10, 25, 50].map((n) => (
+                            <option key={n} value={n}>
+                                {n}
+                            </option>
+                        ))}
                     </select>
-                    <span>Page {page} of {totalPages}</span>
+                    <span>
+                        Page {page} of {totalPages}
+                    </span>
                     <div className="flex gap-1">
-                        <button onClick={() => setPage(1)} disabled={page === 1} className="p-1 disabled:opacity-30"><ChevronsLeft size={15} /></button>
-                        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1 disabled:opacity-30"><ChevronLeft size={15} /></button>
-                        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1 disabled:opacity-30"><ChevronRight size={15} /></button>
-                        <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="p-1 disabled:opacity-30"><ChevronsRight size={15} /></button>
+                        <button
+                            onClick={() => setPage(1)}
+                            disabled={page === 1}
+                            className="p-1 disabled:opacity-30"
+                        >
+                            <ChevronsLeft size={15} />
+                        </button>
+                        <button
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="p-1 disabled:opacity-30"
+                        >
+                            <ChevronLeft size={15} />
+                        </button>
+                        <button
+                            onClick={() =>
+                                setPage((p) => Math.min(totalPages, p + 1))
+                            }
+                            disabled={page === totalPages}
+                            className="p-1 disabled:opacity-30"
+                        >
+                            <ChevronRight size={15} />
+                        </button>
+                        <button
+                            onClick={() => setPage(totalPages)}
+                            disabled={page === totalPages}
+                            className="p-1 disabled:opacity-30"
+                        >
+                            <ChevronsRight size={15} />
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-between mt-6">
+            <div className="mt-6 flex items-center justify-between">
                 <button
                     onClick={handleBack}
-                    className="flex items-center gap-2 text-sm text-gray-500 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition"
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-500 transition hover:bg-gray-50"
                 >
                     <Plus size={14} className="rotate-45" /> Back
                 </button>
                 <button
                     onClick={handleNext}
                     disabled={loading}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition disabled:opacity-60"
+                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
                 >
                     <Plus size={15} />
-                    {loading ? "Loading…" : "Next"}
+                    {loading ? 'Loading…' : 'Next'}
                 </button>
             </div>
         </div>
@@ -461,71 +646,94 @@ function StepConfirmPosting({
     const monthLabel = MONTHS[period.month - 1];
 
     function handleBack() {
-        router.get(route("leave.accrual.preview"), { month: period.month, year: period.year });
+        router.get(route('leave.accrual.preview'), {
+            month: period.month,
+            year: period.year,
+        });
     }
 
     function handleConfirm() {
         setLoading(true);
         router.post(
-            route("leave.accrual.post"),
+            route('leave.accrual.post'),
             { month: period.month, year: period.year },
-            { preserveState: false, onFinish: () => setLoading(false) }
+            { preserveState: false, onFinish: () => setLoading(false) },
         );
     }
 
     return (
         <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-5">Confirm Posting</h2>
+            <h2 className="mb-5 text-lg font-semibold text-gray-800">
+                Confirm Posting
+            </h2>
             <div className="grid grid-cols-2 gap-5">
                 {/* Posting Summary */}
-                <div className="border border-gray-200 rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-4">Posting Summary</h3>
+                <div className="rounded-xl border border-gray-200 p-5">
+                    <h3 className="mb-4 text-sm font-semibold text-gray-700">
+                        Posting Summary
+                    </h3>
                     {[
-                        ["Posting Period", `${monthLabel} ${period.year}`],
-                        ["Total Eligible", summary.total_eligible],
-                        ["Full Credit Employees", summary.full_credit],
-                        ["Prorated", summary.prorated],
-                        ["Ineligible", summary.ineligible],
+                        ['Posting Period', `${monthLabel} ${period.year}`],
+                        ['Total Eligible', summary.total_eligible],
+                        ['Full Credit Employees', summary.full_credit],
+                        ['Prorated', summary.prorated],
+                        ['Ineligible', summary.ineligible],
                     ].map(([label, value]) => (
-                        <div key={String(label)} className="flex justify-between py-2.5 border-b border-gray-100 last:border-0">
-                            <span className="text-sm text-gray-400">{label}</span>
-                            <span className="text-sm font-semibold text-gray-800">{value}</span>
+                        <div
+                            key={String(label)}
+                            className="flex justify-between border-b border-gray-100 py-2.5 last:border-0"
+                        >
+                            <span className="text-sm text-gray-400">
+                                {label}
+                            </span>
+                            <span className="text-sm font-semibold text-gray-800">
+                                {value}
+                            </span>
                         </div>
                     ))}
                 </div>
 
                 {/* Post Details */}
-                <div className="border border-gray-200 rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-4">Post Details</h3>
+                <div className="rounded-xl border border-gray-200 p-5">
+                    <h3 className="mb-4 text-sm font-semibold text-gray-700">
+                        Post Details
+                    </h3>
                     {[
-                        ["Posted By", postDetails.posted_by],
-                        ["Role", postDetails.role],
-                        ["User ID", postDetails.user_id_str],
-                        ["Posting Date", postDetails.posting_date],
-                        ["Reference No.", postDetails.reference_no],
+                        ['Posted By', postDetails.posted_by],
+                        ['Role', postDetails.role],
+                        ['User ID', postDetails.user_id_str],
+                        ['Posting Date', postDetails.posting_date],
+                        ['Reference No.', postDetails.reference_no],
                     ].map(([label, value]) => (
-                        <div key={String(label)} className="flex justify-between py-2.5 border-b border-gray-100 last:border-0">
-                            <span className="text-sm text-gray-400">{label}</span>
-                            <span className="text-sm font-semibold text-gray-800">{value}</span>
+                        <div
+                            key={String(label)}
+                            className="flex justify-between border-b border-gray-100 py-2.5 last:border-0"
+                        >
+                            <span className="text-sm text-gray-400">
+                                {label}
+                            </span>
+                            <span className="text-sm font-semibold text-gray-800">
+                                {value}
+                            </span>
                         </div>
                     ))}
                 </div>
             </div>
 
-            <div className="flex items-center justify-between mt-6">
+            <div className="mt-6 flex items-center justify-between">
                 <button
                     onClick={handleBack}
-                    className="flex items-center gap-2 text-sm text-gray-500 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition"
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-500 transition hover:bg-gray-50"
                 >
                     <Plus size={14} className="rotate-45" /> Back
                 </button>
                 <button
                     onClick={handleConfirm}
                     disabled={loading}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition disabled:opacity-60"
+                    className="flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
                 >
                     <Plus size={15} />
-                    {loading ? "Posting…" : "Confirm"}
+                    {loading ? 'Posting…' : 'Confirm'}
                 </button>
             </div>
         </div>
@@ -535,23 +743,29 @@ function StepConfirmPosting({
 // ─── Step 4 – Posted / Transaction History ────────────────────────────────────
 
 function StepPosted({ history }: { history: HistoryRow[] }) {
-    const [search, setSearch] = useState("");
+    const [search, setSearch] = useState('');
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return history.filter(h =>
-            h.name.toLowerCase().includes(q) ||
-            h.department.toLowerCase().includes(q) ||
-            h.employment_classification.toLowerCase().includes(q)
+        return history.filter(
+            (h) =>
+                h.name.toLowerCase().includes(q) ||
+                h.department.toLowerCase().includes(q) ||
+                h.employment_classification.toLowerCase().includes(q),
         );
     }, [history, search]);
 
-    const { page, setPage, totalPages, paginated, total } = usePagination(filtered, rowsPerPage);
+    const { page, setPage, totalPages, paginated, total } = usePagination(
+        filtered,
+        rowsPerPage,
+    );
     const [selected, setSelected] = useState<Set<string>>(new Set());
 
     function toggleAll() {
-        const keys = paginated.map(h => `${h.posting_id}-${h.employee_id}-${h.leave_type_name}`);
+        const keys = paginated.map(
+            (h) => `${h.posting_id}-${h.employee_id}-${h.leave_type_name}`,
+        );
         if (selected.size === keys.length) {
             setSelected(new Set());
         } else {
@@ -560,7 +774,7 @@ function StepPosted({ history }: { history: HistoryRow[] }) {
     }
 
     function toggle(key: string) {
-        setSelected(prev => {
+        setSelected((prev) => {
             const next = new Set(prev);
             next.has(key) ? next.delete(key) : next.add(key);
             return next;
@@ -569,11 +783,13 @@ function StepPosted({ history }: { history: HistoryRow[] }) {
 
     return (
         <div className="p-6">
-            <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-semibold text-gray-800">Transaction History</h2>
+            <div className="mb-5 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-800">
+                    Transaction History
+                </h2>
                 <button
-                    onClick={() => router.get(route("leave.accrual.index"))}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
+                    onClick={() => router.get(route('leave.accrual.index'))}
+                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
                 >
                     <Plus size={14} /> New Posting
                 </button>
@@ -583,41 +799,90 @@ function StepPosted({ history }: { history: HistoryRow[] }) {
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-gray-100">
-                            <th className="text-left py-3 px-3 w-10">
-                                <input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={toggleAll} className="rounded border-gray-300" />
+                            <th className="w-10 px-3 py-3 text-left">
+                                <input
+                                    type="checkbox"
+                                    checked={
+                                        selected.size === paginated.length &&
+                                        paginated.length > 0
+                                    }
+                                    onChange={toggleAll}
+                                    className="rounded border-gray-300"
+                                />
                             </th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Employee Name</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Department</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Employment Type</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Leave Type</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">New Balance</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Posted By</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Date Posted</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Status</th>
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                Employee Name
+                            </th>
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                Department
+                            </th>
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                Employment Type
+                            </th>
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                Leave Type
+                            </th>
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                New Balance
+                            </th>
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                Posted By
+                            </th>
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                Date Posted
+                            </th>
+                            <th className="px-3 py-3 text-left font-medium text-gray-600">
+                                Status
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        {paginated.map(h => {
+                        {paginated.map((h) => {
                             const key = `${h.posting_id}-${h.employee_id}-${h.leave_type_name}`;
                             return (
-                                <tr key={key} className="border-b border-gray-50 hover:bg-gray-50/50">
-                                    <td className="py-3 px-3">
-                                        <input type="checkbox" checked={selected.has(key)} onChange={() => toggle(key)} className="rounded border-gray-300" />
+                                <tr
+                                    key={key}
+                                    className="border-b border-gray-50 hover:bg-gray-50/50"
+                                >
+                                    <td className="px-3 py-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={selected.has(key)}
+                                            onChange={() => toggle(key)}
+                                            className="rounded border-gray-300"
+                                        />
                                     </td>
-                                    <td className="py-3 px-3">
+                                    <td className="px-3 py-3">
                                         <div className="flex items-center gap-2">
-                                            <Avatar url={h.avatar_url} name={h.name} />
-                                            <span className="text-gray-700">{h.name}</span>
+                                            <Avatar
+                                                url={h.avatar_url}
+                                                name={h.name}
+                                            />
+                                            <span className="text-gray-700">
+                                                {h.name}
+                                            </span>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-3 text-gray-500">{h.department}</td>
-                                    <td className="py-3 px-3 text-gray-500">{h.employment_classification}</td>
-                                    <td className="py-3 px-3 text-gray-500">{h.leave_type_name}</td>
-                                    <td className="py-3 px-3 text-blue-500 font-medium">{Number(h.balance_after).toFixed(2)}</td>
-                                    <td className="py-3 px-3 text-gray-500">Admin ({h.reference_no})</td>
-                                    <td className="py-3 px-3 text-gray-500">{h.posting_date}</td>
-                                    <td className="py-3 px-3">
-                                        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+                                    <td className="px-3 py-3 text-gray-500">
+                                        {h.department}
+                                    </td>
+                                    <td className="px-3 py-3 text-gray-500">
+                                        {h.employment_classification}
+                                    </td>
+                                    <td className="px-3 py-3 text-gray-500">
+                                        {h.leave_type_name}
+                                    </td>
+                                    <td className="px-3 py-3 font-medium text-blue-500">
+                                        {Number(h.balance_after).toFixed(2)}
+                                    </td>
+                                    <td className="px-3 py-3 text-gray-500">
+                                        Admin ({h.reference_no})
+                                    </td>
+                                    <td className="px-3 py-3 text-gray-500">
+                                        {h.posting_date}
+                                    </td>
+                                    <td className="px-3 py-3">
+                                        <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
                                             ✓ Posted
                                         </span>
                                     </td>
@@ -626,7 +891,10 @@ function StepPosted({ history }: { history: HistoryRow[] }) {
                         })}
                         {paginated.length === 0 && (
                             <tr>
-                                <td colSpan={9} className="py-10 text-center text-gray-400 text-sm">
+                                <td
+                                    colSpan={9}
+                                    className="py-10 text-center text-sm text-gray-400"
+                                >
                                     No posted transactions yet.
                                 </td>
                             </tr>
@@ -636,19 +904,60 @@ function StepPosted({ history }: { history: HistoryRow[] }) {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
-                <span>{selected.size} of {total} row(s) selected.</span>
+            <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+                <span>
+                    {selected.size} of {total} row(s) selected.
+                </span>
                 <div className="flex items-center gap-3">
                     <span>Rows per page</span>
-                    <select value={rowsPerPage} onChange={e => { setRowsPerPage(Number(e.target.value)); setPage(1); }} className="border border-gray-200 rounded px-2 py-1 text-sm">
-                        {[10, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
+                    <select
+                        value={rowsPerPage}
+                        onChange={(e) => {
+                            setRowsPerPage(Number(e.target.value));
+                            setPage(1);
+                        }}
+                        className="rounded border border-gray-200 px-2 py-1 text-sm"
+                    >
+                        {[10, 25, 50].map((n) => (
+                            <option key={n} value={n}>
+                                {n}
+                            </option>
+                        ))}
                     </select>
-                    <span>Page {page} of {totalPages}</span>
+                    <span>
+                        Page {page} of {totalPages}
+                    </span>
                     <div className="flex gap-1">
-                        <button onClick={() => setPage(1)} disabled={page === 1} className="p-1 disabled:opacity-30"><ChevronsLeft size={15} /></button>
-                        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1 disabled:opacity-30"><ChevronLeft size={15} /></button>
-                        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1 disabled:opacity-30"><ChevronRight size={15} /></button>
-                        <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="p-1 disabled:opacity-30"><ChevronsRight size={15} /></button>
+                        <button
+                            onClick={() => setPage(1)}
+                            disabled={page === 1}
+                            className="p-1 disabled:opacity-30"
+                        >
+                            <ChevronsLeft size={15} />
+                        </button>
+                        <button
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="p-1 disabled:opacity-30"
+                        >
+                            <ChevronLeft size={15} />
+                        </button>
+                        <button
+                            onClick={() =>
+                                setPage((p) => Math.min(totalPages, p + 1))
+                            }
+                            disabled={page === totalPages}
+                            className="p-1 disabled:opacity-30"
+                        >
+                            <ChevronRight size={15} />
+                        </button>
+                        <button
+                            onClick={() => setPage(totalPages)}
+                            disabled={page === totalPages}
+                            className="p-1 disabled:opacity-30"
+                        >
+                            <ChevronsRight size={15} />
+                        </button>
                     </div>
                 </div>
             </div>
@@ -670,10 +979,10 @@ export default function MonthlyEarnedLeave() {
     } = usePage<{ props: PageProps }>().props as unknown as PageProps;
 
     // Determine stepper states
-    function stepState(s: number): "done" | "active" | "pending" {
-        if (step > s) return "done";
-        if (step === s) return "active";
-        return "pending";
+    function stepState(s: number): 'done' | 'active' | 'pending' {
+        if (step > s) return 'done';
+        if (step === s) return 'active';
+        return 'pending';
     }
 
     // Steps: 1 = Select Period, 2 = Identify Employees, 4 = Confirm Posting, 5 = Posted
@@ -683,13 +992,14 @@ export default function MonthlyEarnedLeave() {
     return (
         <AppLayout>
             <div className="min-h-screen bg-gray-50">
-                <div className="max-w-screen-xl mx-auto px-6 py-6">
-
+                <div className="mx-auto max-w-screen-xl px-6 py-6">
                     {/* Top bar */}
-                    <div className="flex justify-end mb-4">
+                    <div className="mb-4 flex justify-end">
                         <button
-                            onClick={() => router.get(route("leave.accrual.history"))}
-                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
+                            onClick={() =>
+                                router.get(route('leave.accrual.history'))
+                            }
+                            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
                         >
                             <Plus size={14} /> View Transaction History
                         </button>
@@ -697,27 +1007,63 @@ export default function MonthlyEarnedLeave() {
 
                     {/* Stepper */}
                     {!isHistory && (
-                        <div className="flex border border-gray-200 rounded-xl overflow-hidden mb-6 bg-white shadow-sm divide-x divide-gray-200">
-                            <StepBadge number={1} label="Selected Period" state={stepState(1)} />
-                            <StepBadge number={2} label="Identify Employees" state={stepState(2)} />
-                            <StepBadge number={4} label="Confirm Posting" state={stepState(4)} />
-                            <StepBadge number={5} label="Posted" state={stepState(5)} />
+                        <div className="mb-6 flex divide-x divide-gray-200 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                            <StepBadge
+                                number={1}
+                                label="Selected Period"
+                                state={stepState(1)}
+                            />
+                            <StepBadge
+                                number={2}
+                                label="Identify Employees"
+                                state={stepState(2)}
+                            />
+                            <StepBadge
+                                number={4}
+                                label="Confirm Posting"
+                                state={stepState(4)}
+                            />
+                            <StepBadge
+                                number={5}
+                                label="Posted"
+                                state={stepState(5)}
+                            />
                         </div>
                     )}
 
                     {/* Full step history stepper */}
                     {isHistory && (
-                        <div className="flex border border-gray-200 rounded-xl overflow-hidden mb-6 bg-white shadow-sm divide-x divide-gray-200">
-                            <StepBadge number={1} label="Selected Period" state="done" />
-                            <StepBadge number={2} label="Identify Employees" state="done" />
-                            <StepBadge number={3} label="Preview Credits" state="done" />
-                            <StepBadge number={4} label="Confirm Posting" state="done" />
-                            <StepBadge number={5} label="Posted" state="active" />
+                        <div className="mb-6 flex divide-x divide-gray-200 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                            <StepBadge
+                                number={1}
+                                label="Selected Period"
+                                state="done"
+                            />
+                            <StepBadge
+                                number={2}
+                                label="Identify Employees"
+                                state="done"
+                            />
+                            <StepBadge
+                                number={3}
+                                label="Preview Credits"
+                                state="done"
+                            />
+                            <StepBadge
+                                number={4}
+                                label="Confirm Posting"
+                                state="done"
+                            />
+                            <StepBadge
+                                number={5}
+                                label="Posted"
+                                state="active"
+                            />
                         </div>
                     )}
 
                     {/* Card body */}
-                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
                         {step === 1 && <StepSelectPeriod />}
 
                         {step === 2 && period && (

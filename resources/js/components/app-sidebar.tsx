@@ -158,9 +158,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     },
                     {
                         title: 'Government Remittance Report',
-                        url: route(
-                            'payroll.outputs.governmentremittancereport',
-                        ),
+                        url: route('governmentremittancereport.index'),
                     },
                 ],
             },
