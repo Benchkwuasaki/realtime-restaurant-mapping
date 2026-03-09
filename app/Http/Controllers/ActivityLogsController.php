@@ -30,12 +30,11 @@ class ActivityLogsController extends Controller
             ->count('user_id');
 
         $activityLogs = ActivityLog::query()
-            ->with(['user:id,name'])
             ->latest('created_at')
             ->get()
             ->map(function (ActivityLog $log) {
                 return [
-                    'user' => $this->activityLogService->formatUserName(optional($log->user)->name ?? 'System'),
+                    'user' => $log->user->getFullName(),
                     'module' => $this->activityLogService->formatModuleName($log->module),
                     'description' => $log->description,
                     'device' => $log->device,

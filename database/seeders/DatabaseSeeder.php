@@ -416,12 +416,16 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // ── 6. Items — 100 slots distributed across positions ──────
-        // Distribution: spread 100 items across 25 positions (4 each)
+        // ── 6. Items — include vacant slots for selected positions ──────
+        // Base: 4 slots per position; selected positions get a 5th slot that stays vacant.
+        $positionsWithVacantSlot = [1, 4, 7, 10, 13, 16, 19, 21, 23, 24];
         $itemIds = [];
         foreach ($positionIds as $idx => $posId) {
             $posName = $positions[$idx]['name'];
-            for ($slot = 1; $slot <= 4; $slot++) {
+            $hasVacantExtraSlot = in_array($idx, $positionsWithVacantSlot, true);
+            $slotLimit = $hasVacantExtraSlot ? 5 : 4;
+
+            for ($slot = 1; $slot <= $slotLimit; $slot++) {
                 $itemIds[] = [
                     'id' => DB::table('items')->insertGetId([
                         'position_id' => $posId,
@@ -430,11 +434,15 @@ class DatabaseSeeder extends Seeder
                         'updated_at' => now(),
                     ]),
                     'pos_idx' => $idx,
+                    'is_vacant_slot' => $hasVacantExtraSlot && $slot === 5,
                 ];
             }
         }
-        // $itemIds now has 100 entries
 
+        $fillableItemIds = array_values(array_filter(
+            $itemIds,
+            fn(array $item): bool => !$item['is_vacant_slot']
+        ));
         // ── 7. Reference data pools ────────────────────────────────
         $firstNamesMale = [
             'Ramon',
@@ -725,7 +733,7 @@ class DatabaseSeeder extends Seeder
             $status = ($i % 10 !== 0); // 10% inactive
 
             // item slot
-            $itemEntry = $itemIds[$i];
+            $itemEntry = $fillableItemIds[$i];
             $itemId = $itemEntry['id'];
             $posIdx = $itemEntry['pos_idx'];
             $sgIdx = $positions[$posIdx]['sg_idx'];

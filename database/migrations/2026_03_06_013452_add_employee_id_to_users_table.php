@@ -18,7 +18,10 @@ return new class extends Migration
                 ->constrained('employees', 'employee_id')
                 ->cascadeOnDelete();
 
+
             $table->dropColumn('name');
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
         });
     }
 
@@ -31,6 +34,8 @@ return new class extends Migration
             $table->string('name');
             $table->dropForeign(['employee_id']);
             $table->dropColumn('employee_id');
+            $table->dropColumn('first_name');
+            $table->dropColumn('last_name');
         });
     }
 };

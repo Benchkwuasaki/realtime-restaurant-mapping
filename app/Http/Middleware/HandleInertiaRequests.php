@@ -37,16 +37,15 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user()?->loadMissing('employee.basicInfo');
 
+        // dd($user);
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
                 'user' => $user ? [
                     'id' => $user->id,
-                    'name' => trim(
-                        ($user->employee?->basicInfo?->first_name ?? '') . ' ' .
-                            ($user->employee?->basicInfo?->last_name ?? '')
-                    ),
+                    'name' => $user->getFullName(),
                     'email' => $user->email,
                     'roles' => $user->getRoleNames()->values()->all(),
                 ] : null,

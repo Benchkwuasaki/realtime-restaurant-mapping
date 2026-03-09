@@ -15,52 +15,13 @@ class UserSeeder extends Seeder
     {
         // super admin
         $superAdmin = User::create([
+            'first_name' => 'Super',
+            'last_name' => 'Admin',
             'email' => 'superadmin@gmail.com',
             'email_verified_at' => now(),
             'password' => bcrypt('password'),
         ]);
 
-        // admin
-        $admin1 = User::create([
-            'email' => 'admin@gmail.com',
-            'email_verified_at' => now(),
-            'password' => bcrypt('password'),
-        ]);
-
-        // ogm
-        $ogm = User::create([
-            'email' => 'ogm@gmail.com',
-            'email_verified_at' => now(),
-            'password' => bcrypt('password'),
-        ]);
-
-        // org
-        $org = User::create([
-            'email' => 'org@gmail.com',
-            'email_verified_at' => now(),
-            'password' => bcrypt('password'),
-        ]);
-
-        // inventory
-        $inventory = User::create([
-            'email' => 'inventory@gmail.com',
-            'email_verified_at' => now(),
-            'password' => bcrypt('password'),
-        ]);
-
-        // employee
-        $employee = User::create([
-            'email' => 'employee@gmail.com',
-            'email_verified_at' => now(),
-            'password' => bcrypt('password'),
-        ]);
-
-
         $superAdmin->assignRole('super_admin');
-        // $admin1->assignRole('hr_admin');
-        // $ogm->assignRole('ogm');
-        // $org->assignRole('org');
-        // $inventory->assignRole('inventory');
-        // $employee->assignRole('employee');
     }
 }
