@@ -1,23 +1,21 @@
-// resources/js/pages/Leave/Accrual/Index.tsx
-
-import React, { useMemo, useState } from "react"
 import { router, usePage } from "@inertiajs/react"
-import { Plus } from "lucide-react"
 import { useReactTable, getCoreRowModel, getPaginationRowModel, type RowSelectionState } from "@tanstack/react-table"
+import { Plus, TrendingUp, CalendarDays, Hash, User, Briefcase } from "lucide-react"
+import React, { useMemo, useState } from "react"
 
-import AppLayout from "@/layouts/app-layout"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Stepper } from "@/components/ui/stepper"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-
+import { route } from "ziggy-js"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { DataTablePagination } from "@/components/shared/data-table/data-table-pagination"
-
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Stepper } from "@/components/ui/stepper"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import AppLayout from "@/layouts/app-layout"
 import { getHistoryColumns, CreditBadge, EmployeeAvatar } from "./components/history-columns"
 import {
     type LeaveType,
@@ -528,21 +526,32 @@ function HistoryTab({
     history: HistoryRow[]
     historyFilter: { year: number | null; month: number | null }
 }) {
-    // Mirror of the server-applied period filter — updated whenever the
-    // faceted filter selection changes, so both year and month are always
-    // sent together in a single router.get() call.
     const [activeYear, setActiveYear] = useState<string>(String(historyFilter.year ?? ""))
     const [activeMonth, setActiveMonth] = useState<string>(String(historyFilter.month ?? ""))
+
+    // ── Dialog state ──────────────────────────────────────────────────────────
+    const [selectedRow, setSelectedRow] = useState<HistoryTableRow | null>(null)
+    const [dialogOpen, setDialogOpen] = useState(false)
+
+    function handleViewRow(row: HistoryTableRow) {
+        setSelectedRow(row)
+        setDialogOpen(true)
+    }
+
+    function handleDialogClose() {
+        setDialogOpen(false)
+        // Keep selectedRow mounted until dialog finishes closing to avoid
+        // content flicker during the exit animation.
+        setTimeout(() => setSelectedRow(null), 200)
+    }
 
     const tableData: HistoryTableRow[] = useMemo(
         () => history.map((h) => ({ ...h, _key: `${h.posting_id}-${h.employee_id}-${h.leave_type_name}` })),
         [history]
     )
 
-    const columns = useMemo(() => getHistoryColumns(), [])
+    const columns = useMemo(() => getHistoryColumns(handleViewRow), [])
 
-    // Derive year and month options from the loaded dataset — only values
-    // that exist appear, sorted for a predictable order.
     const yearOptions = useMemo(() => {
         const years = [...new Set(history.map((h) => h.posting_year))].sort((a, b) => b - a)
         return years.map((y) => ({ value: String(y), label: String(y) }))
@@ -553,9 +562,6 @@ function HistoryTab({
         return months.map((m) => ({ value: String(m), label: MONTHS[m - 1] }))
     }, [history])
 
-    // Called by DataTable whenever any column filter changes.
-    // We pick out the year and month filter values and fire a server visit
-    // only when either of them has actually changed.
     function handleColumnFiltersChange(filters: { id: string; value: unknown }[]) {
         const yearValues = (filters.find((f) => f.id === "posting_year")?.value as string[] | undefined) ?? []
         const monthValues = (filters.find((f) => f.id === "posting_month")?.value as string[] | undefined) ?? []
@@ -576,36 +582,155 @@ function HistoryTab({
     }
 
     return (
-        <DataTable
-            columns={columns}
-            data={tableData}
-            getRowId={(row) => row._key}
-            searchColumnId="name"
-            searchPlaceholder="Search employee, leave type, ref..."
-            defaultPageSize={10}
-            onColumnFiltersChange={handleColumnFiltersChange}
-            filters={[
-                {
-                    columnId: "posting_year",
-                    title: "Year",
-                    options: yearOptions,
-                },
-                {
-                    columnId: "posting_month",
-                    title: "Month",
-                    options: monthOptions,
-                },
-                {
-                    columnId: "credit_status",
-                    title: "Status",
-                    options: [
-                        { value: "full_credit", label: "Full Credit" },
-                        { value: "prorated", label: "Prorated" },
-                        { value: "ineligible", label: "Ineligible" },
-                    ],
-                },
-            ]}
-        />
+        <>
+            <DataTable
+                columns={columns}
+                data={tableData}
+                getRowId={(row) => row._key}
+                searchColumnId="name"
+                searchPlaceholder="Search employee, leave type, ref..."
+                defaultPageSize={10}
+                onColumnFiltersChange={handleColumnFiltersChange}
+                onRowClick={(row) => handleViewRow(row.original)}
+                rowClassName="cursor-pointer"
+                filters={[
+                    {
+                        columnId: "posting_year",
+                        title: "Year",
+                        options: yearOptions,
+                    },
+                    {
+                        columnId: "posting_month",
+                        title: "Month",
+                        options: monthOptions,
+                    },
+                    {
+                        columnId: "credit_status",
+                        title: "Status",
+                        options: [
+                            { value: "full_credit", label: "Full Credit" },
+                            { value: "prorated", label: "Prorated" },
+                            { value: "ineligible", label: "Ineligible" },
+                        ],
+                    },
+                ]}
+            />
+
+            {/* ── Accrual Transaction Detail Dialog ───────────────────────────── */}
+            <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) handleDialogClose() }}>
+                <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-md">
+
+                    <DialogHeader className="px-5 py-4 border-b border-border">
+                        <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <TrendingUp className="size-4 text-primary shrink-0" />
+                            Accrual Transaction Detail
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    {selectedRow && (
+                        <div className="px-5 py-5 flex flex-col gap-5">
+
+                            {/* Employee card */}
+                            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+                                <EmployeeAvatar url={selectedRow.avatar_url} name={selectedRow.name} />
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-semibold text-foreground truncate">{selectedRow.name}</span>
+                                    <span className="text-xs text-muted-foreground truncate">{selectedRow.department}</span>
+                                </div>
+                                <div className="ml-auto shrink-0">
+                                    <CreditBadge status={selectedRow.credit_status} />
+                                </div>
+                            </div>
+
+                            {/* Posting meta tiles */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {(
+                                    [
+                                        { icon: <CalendarDays className="size-3.5" />, label: "Period",       value: `${MONTHS[selectedRow.posting_month - 1]} ${selectedRow.posting_year}`, mono: false },
+                                        { icon: <Hash        className="size-3.5" />, label: "Reference",    value: selectedRow.reference_no,                mono: true  },
+                                        { icon: <User        className="size-3.5" />, label: "Employment",   value: selectedRow.employment_classification,   mono: false },
+                                        { icon: <Briefcase   className="size-3.5" />, label: "Posted On",    value: selectedRow.posting_date,                mono: false },
+                                    ] as const
+                                ).map(({ icon, label, value, mono }) => (
+                                    <div key={label} className="flex flex-col gap-1 rounded-md border border-border px-3 py-2.5">
+                                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                                            {icon}
+                                            <span className="text-xs">{label}</span>
+                                        </div>
+                                        <span className={`text-sm font-medium text-foreground truncate ${mono ? "font-mono" : ""}`}>
+                                            {value}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Leave credit breakdown */}
+                            <div>
+                                <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">
+                                    Leave Credit Breakdown
+                                </p>
+                                <div className="rounded-lg border border-border divide-y divide-border overflow-hidden">
+                                    {/* Column headers */}
+                                    <div className="grid grid-cols-4 bg-muted/40 px-4 py-2">
+                                        <span className="text-xs font-medium text-muted-foreground col-span-2">Leave Type</span>
+                                        <span className="text-xs font-medium text-muted-foreground text-right">Credit Earned</span>
+                                        <span className="text-xs font-medium text-muted-foreground text-right">New Balance</span>
+                                    </div>
+
+                                    {/* One row per leave type with its own accurate values */}
+                                    {(selectedRow.leave_credits ?? []).map((lc) => (
+                                        <div key={lc.leave_type_id} className="grid grid-cols-4 items-center px-4 py-3">
+                                            <span className="text-sm text-foreground col-span-2">{lc.leave_type_name}</span>
+                                            <span className="text-sm font-semibold text-green-600 dark:text-green-400 text-right">
+                                                +{lc.accrual_earned.toFixed(4)}
+                                            </span>
+                                            <span className="text-sm font-semibold text-primary text-right">
+                                                {lc.balance_after.toFixed(4)}
+                                            </span>
+                                        </div>
+                                    ))}
+
+                                    {/* Balance before per leave type footer */}
+                                    {(selectedRow.leave_credits ?? []).map((lc) => (
+                                        <div key={`before-${lc.leave_type_id}`} className="grid grid-cols-4 items-center px-4 py-2.5 bg-muted/20">
+                                            <span className="text-xs text-muted-foreground col-span-2">
+                                                {lc.leave_type_name} — before
+                                            </span>
+                                            <span className="text-xs text-muted-foreground text-right col-span-2">
+                                                {lc.balance_before.toFixed(4)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Contextual status note */}
+                            {selectedRow.credit_status === "ineligible" && (
+                                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+                                    This employee had no recorded attendance for this period and received no credit.
+                                </div>
+                            )}
+                            {selectedRow.credit_status === "prorated" && (
+                                <div className="rounded-md border border-yellow-400/30 bg-yellow-400/10 px-4 py-3 text-xs text-yellow-700 dark:text-yellow-400">
+                                    Credit was prorated based on actual minutes worked relative to the expected work hours for the period.
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30" showCloseButton>
+                        {selectedRow && (
+                            <div className="flex items-center gap-2 mr-auto">
+                                <Badge variant="outline" className="text-xs font-mono">
+                                    {selectedRow.reference_no}
+                                </Badge>
+                            </div>
+                        )}
+                    </DialogFooter>
+
+                </DialogContent>
+            </Dialog>
+        </>
     )
 }
 

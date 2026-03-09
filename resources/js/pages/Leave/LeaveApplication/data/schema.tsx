@@ -57,9 +57,6 @@ export const leaveFilingSchema = z.object({
 
 export type LeaveFiling = z.infer<typeof leaveFilingSchema>
 
-
-/* Extended Schema When Using with('details') in Laravel */
-
 export const leaveFilingWithDetailsSchema = leaveFilingSchema.extend({
     details: leaveFilingDetailSchema.optional(),
 })

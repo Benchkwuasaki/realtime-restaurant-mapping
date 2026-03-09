@@ -43,7 +43,7 @@ return new class extends Migration
                 ->cascadeOnDelete();
             $table->foreignId('leave_type_id')
                 ->constrained('leave_types', 'leave_type_id');
-            $table->unsignedTinyInteger('attendance_days');
+            $table->unsignedSmallInteger('attendance_days');
             $table->decimal('accrual_earned', 8, 4);
 
             $table->decimal('balance_before', 8, 4)->default(0);

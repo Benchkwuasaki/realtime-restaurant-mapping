@@ -24,6 +24,14 @@ export const previewRowSchema = z.object({
     credit_status:            creditStatusSchema,
 })
 
+export const leaveCreditSchema = z.object({
+    leave_type_id:   z.number(),
+    leave_type_name: z.string(),
+    accrual_earned:  z.number(),
+    balance_before:  z.number(),
+    balance_after:   z.number(),
+})
+
 export const historyRowSchema = z.object({
     posting_id:               z.number(),
     posting_month:            z.number(),
@@ -34,13 +42,11 @@ export const historyRowSchema = z.object({
     employment_classification: z.string(),
     avatar_url:               z.string().nullable(),
     leave_type_name:          z.string(),
-    accrual_earned:           z.number(),
-    balance_before:           z.number(),
-    balance_after:            z.number(),
     credit_status:            creditStatusSchema,
     reference_no:             z.string(),
     posting_date:             z.string(),
     status:                   z.string(),
+    leave_credits:            z.array(leaveCreditSchema).optional().default([]),
 })
 
 // Augmented row used inside the table (stable composite key)
@@ -75,6 +81,7 @@ export const postingMetaSchema = z.object({
 
 export type LeaveType       = z.infer<typeof leaveTypeSchema>
 export type CreditStatus    = z.infer<typeof creditStatusSchema>
+export type LeaveCredit     = z.infer<typeof leaveCreditSchema>
 export type PreviewRow      = z.infer<typeof previewRowSchema>
 export type HistoryRow      = z.infer<typeof historyRowSchema>
 export type HistoryTableRow = z.infer<typeof historyTableRowSchema>

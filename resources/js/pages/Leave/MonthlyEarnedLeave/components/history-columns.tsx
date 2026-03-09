@@ -55,7 +55,9 @@ export function EmployeeAvatar({ url, name }: { url: string | null; name: string
 
 // ─── Columns ──────────────────────────────────────────────────────────────────
 
-export function getHistoryColumns(): DataTableColumnDef<HistoryTableRow>[] {
+export function getHistoryColumns(
+    onViewRow: (row: HistoryTableRow) => void
+): DataTableColumnDef<HistoryTableRow>[] {
     return [
         {
             id: "select",
@@ -145,10 +147,7 @@ export function getHistoryColumns(): DataTableColumnDef<HistoryTableRow>[] {
             ),
             enableHiding: true,
         },
-        // ── Hidden filter-only columns for year and month ──────────────────────
-        // No visible cell — exist solely so DataTableFacetedFilter can call
-        // column.setFilterValue() on them, and onColumnFiltersChange in
-        // DataTable can observe the selected values and fire a server visit.
+        // ── Hidden filter-only columns ─────────────────────────────────────────
         {
             id: "posting_year",
             accessorFn: (row) => String(row.posting_year),
@@ -168,46 +167,6 @@ export function getHistoryColumns(): DataTableColumnDef<HistoryTableRow>[] {
                 value.includes(String(row.original.posting_month)),
             enableSorting: false,
             enableHiding: false,
-        },
-        {
-            accessorKey: "balance_before",
-            header: "Balance Before",
-            cell: ({ row }) => (
-                <span className="text-muted-foreground text-sm">
-                    {Number(row.original.balance_before).toFixed(2)}
-                </span>
-            ),
-            enableSorting: true,
-            enableHiding: true,
-        },
-        {
-            accessorKey: "accrual_earned",
-            header: "Credit",
-            cell: ({ row }) => (
-                <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                    +{Number(row.original.accrual_earned).toFixed(2)}
-                </span>
-            ),
-            mobileCard: (row) => (
-                <span className="text-xs font-medium text-green-600 dark:text-green-400">
-                    +{Number(row.accrual_earned).toFixed(2)} credit
-                </span>
-            ),
-            enableSorting: true,
-            enableHiding: true,
-        },
-        {
-            accessorKey: "balance_after",
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="New Balance" />
-            ),
-            cell: ({ row }) => (
-                <span className="text-primary font-medium text-sm">
-                    {Number(row.original.balance_after).toFixed(2)}
-                </span>
-            ),
-            enableSorting: true,
-            enableHiding: true,
         },
         {
             accessorKey: "credit_status",
