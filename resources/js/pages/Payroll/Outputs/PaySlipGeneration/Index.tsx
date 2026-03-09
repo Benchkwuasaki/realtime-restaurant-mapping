@@ -3,7 +3,9 @@
 import { Head, router } from '@inertiajs/react';
 import {
     AlertTriangle,
+    Check,
     CheckCircle2,
+    ChevronsUpDown,
     Loader2,
     Printer,
     User,
@@ -16,6 +18,19 @@ import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import {
     Select,
     SelectContent,
@@ -434,6 +449,7 @@ export default function Index({
         selected_period_id ? String(selected_period_id) : '',
     );
     const [isLoading, setIsLoading] = useState(false);
+    const [employeeOpen, setEmployeeOpen] = useState(false);
 
     const [bulkPeriodId, setBulkPeriodId] = useState<string>('');
     const [bulkClassification, setBulkClassification] = useState<string>('All');
@@ -461,6 +477,7 @@ export default function Index({
     function handleClassificationChange(value: string) {
         setClassification(value);
         setEmployeeId('');
+        setEmployeeOpen(false);
     }
 
     useEffect(() => {
@@ -564,36 +581,98 @@ export default function Index({
                                         <label className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                                             Employee
                                         </label>
-                                        <Select
-                                            value={employeeId}
-                                            onValueChange={setEmployeeId}
-                                            disabled={
-                                                filteredEmployees.length === 0
-                                            }
+                                        <Popover
+                                            open={employeeOpen}
+                                            onOpenChange={setEmployeeOpen}
                                         >
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue
-                                                    placeholder={
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={employeeOpen}
+                                                    disabled={
                                                         filteredEmployees.length ===
                                                         0
-                                                            ? 'No employees found'
-                                                            : 'Select employee'
                                                     }
-                                                />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {filteredEmployees.map((e) => (
-                                                    <SelectItem
-                                                        key={e.employee_id}
-                                                        value={String(
-                                                            e.employee_id,
-                                                        )}
-                                                    >
-                                                        {e.full_name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                                    className="w-full justify-between font-normal"
+                                                >
+                                                    <span className="truncate">
+                                                        {employeeId
+                                                            ? (filteredEmployees.find(
+                                                                  (e) =>
+                                                                      String(
+                                                                          e.employee_id,
+                                                                      ) ===
+                                                                      employeeId,
+                                                              )?.full_name ??
+                                                              employees.find(
+                                                                  (e) =>
+                                                                      String(
+                                                                          e.employee_id,
+                                                                      ) ===
+                                                                      employeeId,
+                                                              )?.full_name ??
+                                                              'Select employee')
+                                                            : filteredEmployees.length ===
+                                                                0
+                                                              ? 'No employees found'
+                                                              : 'Select employee'}
+                                                    </span>
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent
+                                                className="w-[--radix-popover-trigger-width] p-0"
+                                                align="start"
+                                            >
+                                                <Command>
+                                                    <CommandInput placeholder="Search employee…" />
+                                                    <CommandList>
+                                                        <CommandEmpty>
+                                                            No employee found.
+                                                        </CommandEmpty>
+                                                        <CommandGroup>
+                                                            {filteredEmployees.map(
+                                                                (e) => (
+                                                                    <CommandItem
+                                                                        key={
+                                                                            e.employee_id
+                                                                        }
+                                                                        value={
+                                                                            e.full_name
+                                                                        }
+                                                                        onSelect={() => {
+                                                                            setEmployeeId(
+                                                                                String(
+                                                                                    e.employee_id,
+                                                                                ),
+                                                                            );
+                                                                            setEmployeeOpen(
+                                                                                false,
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={`mr-2 h-4 w-4 ${
+                                                                                String(
+                                                                                    e.employee_id,
+                                                                                ) ===
+                                                                                employeeId
+                                                                                    ? 'opacity-100'
+                                                                                    : 'opacity-0'
+                                                                            }`}
+                                                                        />
+                                                                        {
+                                                                            e.full_name
+                                                                        }
+                                                                    </CommandItem>
+                                                                ),
+                                                            )}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
 
                                     <div className="space-y-1.5">
