@@ -16,7 +16,7 @@ class DashboardController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'general',
-            'description' => 'Viewed dashboard',
+            'activity' => 'Viewed dashboard',
         ]);
 
         return Inertia::render('dashboard');

@@ -55,11 +55,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
     });
 
-    // User Routes
-    Route::prefix('users')->name('user.')->group(function () {
-        Route::get('/', [UserController::class, 'index'])->name('index');
-    });
-
     /*
     |--------------------------------------------------------------------------
     | Employee
@@ -296,7 +291,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/leave-application', [LeaveApplicationController::class, 'index'])->name('leave-application.index');
 
     });
-
 
     // Payroll routes
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
