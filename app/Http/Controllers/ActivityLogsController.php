@@ -30,6 +30,9 @@ class ActivityLogsController extends Controller
             ->count('user_id');
 
         $activityLogs = ActivityLog::query()
+            ->when(!Auth::user()->hasRole('super_admin'), function ($query) {
+                $query->where('user_id', Auth::id());
+            })
             ->latest('created_at')
             ->get()
             ->map(function (ActivityLog $log) {

@@ -192,7 +192,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Activity Logs",
         url: route("activity_logs.index"),
         icon: Logs,
-        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
+        show: true,
       },
     ],
     // navSecondary: [
