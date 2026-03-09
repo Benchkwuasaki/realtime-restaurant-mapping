@@ -15,6 +15,9 @@ import { Button } from "@/components/ui/button"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
+import {
+    DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -57,10 +60,16 @@ export interface EmploymentClassification {
     description?: string
 }
 
+export interface Role {
+    id: number
+    name: string
+}
+
 export interface CreateEmployeeProps {
     items: Item[]
     salaryGradeSteps: SalaryGradeStep[]
     employmentClassifications: EmploymentClassification[]
+    roles: Role[]
 }
 
 // ─── Collection row types ─────────────────────────────────────────────────────
@@ -90,6 +99,15 @@ interface PositionGroup {
     totalSlots: number
     availableSlots: number
     isFull: boolean
+}
+
+function formatRoleLabel(roleName: string): string {
+    if (roleName === "document_tracking_operator") return "Document Tracking Operator"
+    return roleName
+        .split("_")
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ")
 }
 
 function buildPositionGroups(items: Item[]): PositionGroup[] {
@@ -200,7 +218,7 @@ const REQUIRED: Record<number, { field: string; label: string }[]> = {
 }
 
 type ErrFn = (field: string) => string | undefined
-type SetDataFn = (field: string, value: string) => void
+type SetDataFn = (field: string, value: string | string[]) => void
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 
@@ -482,15 +500,15 @@ function PersonalStep({ data, setData, err }: {
 
 // ─── EmploymentStep ───────────────────────────────────────────────────────────
 
-function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmentClassifications }: {
+function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmentClassifications, roles }: {
     data: {
         item_id: string; selected_position_name: string; salary_grade_step_id: string
-        employment_classification: string; work_email: string; password: string
+        employment_classification: string; roles: string[]; work_email: string; password: string
         date_applied: string; date_hired: string; work_schedule_start: string
         work_schedule_end: string; status: string; salary_grade: string; step: string
     }
     setData: SetDataFn; err: ErrFn
-    items: Item[]; salaryGradeSteps: SalaryGradeStep[]; employmentClassifications: EmploymentClassification[]
+    items: Item[]; salaryGradeSteps: SalaryGradeStep[]; employmentClassifications: EmploymentClassification[]; roles: Role[]
 }) {
     const [manageOpen, setManageOpen] = useState(false)
     const [pendingSelection, setPendingSelection] = useState<string | null>(null)
@@ -539,6 +557,18 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
     }
 
     const positionDisabled = !data.employment_classification
+    const selectedRolesLabel = data.roles.length === 0
+        ? "Select role(s)"
+        : data.roles.length === 1
+            ? formatRoleLabel(data.roles[0])
+            : `${data.roles.length} roles selected`
+
+    const toggleRole = (roleName: string, checked: boolean) => {
+        const nextRoles = checked
+            ? Array.from(new Set([...data.roles, roleName]))
+            : data.roles.filter(role => role !== roleName)
+        setData("roles", nextRoles)
+    }
 
     const positionHint = useMemo(() => {
         if (!data.employment_classification) return null
@@ -577,7 +607,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                 </div>
 
                 {/* Position */}
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2">
                     <FieldLabel htmlFor="position">Position <Req /></FieldLabel>
                     <Select value={data.selected_position_name} onValueChange={handlePositionSelect} disabled={positionDisabled}>
                         <SelectTrigger id="position">
@@ -646,6 +676,34 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                             )}
                         </div>
                     )}
+                </div>
+
+                {/* Roles */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="roles">Roles <Req /></FieldLabel>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button id="roles" type="button" variant="outline" className="w-full justify-between">
+                                <span className="truncate">{selectedRolesLabel}</span>
+                                <List className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-[260px] max-h-72 overflow-auto">
+                            <DropdownMenuLabel>Select one or more roles</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {roles.map(role => (
+                                <DropdownMenuCheckboxItem
+                                    key={role.id}
+                                    checked={data.roles.includes(role.name)}
+                                    onCheckedChange={checked => toggleRole(role.name, checked === true)}
+                                    onSelect={event => event.preventDefault()}
+                                >
+                                    {formatRoleLabel(role.name)}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <FieldError message={err("roles")} />
                 </div>
 
                 {/* Salary Grade */}
@@ -978,7 +1036,7 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
         birth_date: string; sex: string; civil_status: string; place_of_birth: string
         personal_email: string; phone_number: string; item_id: string
         selected_position_name: string; salary_grade_step_id: string
-        employment_classification: string; work_email: string
+        employment_classification: string; roles: string[]; work_email: string
         date_applied: string; date_hired: string
         work_schedule_start: string; work_schedule_end: string; status: string
     }
@@ -1020,6 +1078,7 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
             {selectedGroup?.position?.division && <ReviewRow label="Division" value={selectedGroup.position.division.division_name} />}
             {selectedGroup?.position?.unit && <ReviewRow label="Unit" value={selectedGroup.position.unit.unit_name} />}
             <ReviewRow label="Employment Classification" value={data.employment_classification || undefined} />
+            <ReviewRow label="Roles" value={data.roles.map(formatRoleLabel).join(", ") || undefined} />
             <ReviewRow
                 label="Salary Grade & Step"
                 value={selectedSGS
@@ -1076,7 +1135,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function CreateEmployee({ items, salaryGradeSteps, employmentClassifications }: CreateEmployeeProps) {
+export default function CreateEmployee({ items, salaryGradeSteps, employmentClassifications, roles }: CreateEmployeeProps) {
     const [currentStep, setCurrentStep] = useState(0)
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
     const [processing, setProcessing] = useState(false)
@@ -1098,6 +1157,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
         selected_position_name: "",
         salary_grade_step_id: "",
         employment_classification: "",
+        roles: ["employee"],
         work_email: "", password: "", date_applied: "", date_hired: "",
         work_schedule_start: "", work_schedule_end: "", status: "",
         salary_grade: "", step: "",
@@ -1133,6 +1193,10 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
 
         // ── Step 1: Employment Details ────────────────────────────────────────
         if (step === 1) {
+            if (!data.roles || data.roles.length === 0) {
+                newErrors["roles"] = "At least one role is required."
+            }
+
             // Work email format
             if (data.work_email && !validateEmail(data.work_email)) {
                 newErrors["work_email"] = "Please enter a valid email address."
@@ -1251,7 +1315,10 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
         e.preventDefault()
 
         // Strip frontend-only fields before sending to the backend
-        const { selected_position_name, salary_grade, step, ...payload } = data
+        const payload = { ...data }
+        delete payload.selected_position_name
+        delete payload.salary_grade
+        delete payload.step
 
         router.post(
             route("employee.store"),
@@ -1303,6 +1370,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
                                 items={items}
                                 salaryGradeSteps={salaryGradeSteps}
                                 employmentClassifications={employmentClassifications}
+                                roles={roles}
                             />
                         )}
                         {currentStep === 2 && <AddressStep rows={addresses} setRows={setAddresses} err={err} />}

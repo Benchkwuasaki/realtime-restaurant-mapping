@@ -1,72 +1,68 @@
-import { useState, useMemo } from "react";
-import { router, usePage } from "@inertiajs/react";
-import { CheckCircle, Plus, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import AppLayout from "@/layouts/app-layout";
+import { router, usePage } from "@inertiajs/react"
+import { useReactTable, getCoreRowModel, getPaginationRowModel, type RowSelectionState } from "@tanstack/react-table"
+import { Plus, TrendingUp, CalendarDays, Hash, User, Briefcase } from "lucide-react"
+import React, { useMemo, useState } from "react"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { route } from "ziggy-js"
+import { DataTable } from "@/components/shared/data-table/data-table"
+import { DataTablePagination } from "@/components/shared/data-table/data-table-pagination"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Stepper } from "@/components/ui/stepper"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import AppLayout from "@/layouts/app-layout"
+import { getHistoryColumns, CreditBadge, EmployeeAvatar } from "./components/history-columns"
+import {
+    type LeaveType,
+    type PreviewRow,
+    type HistoryRow,
+    type HistoryTableRow,
+    type PostDetails,
+    type Summary,
+    type PostingMeta,
+} from "./data/schema"
 
-interface PreviewRow {
-    employee_id: number;
-    name: string;
-    department: string;
-    employment_classification: string;
-    avatar_url: string | null;
-    leave_type_id: number;
-    leave_type_name: string;
-    attendance_days: number;
-    accrual_earned: number;
-    balance_before: number;
-    balance_after: number;
-    credit_status: "full_credit" | "prorated" | "ineligible";
-}
-
-interface HistoryRow {
-    posting_id: number;
-    employee_id: number;
-    name: string;
-    department: string;
-    employment_classification: string;
-    avatar_url: string | null;
-    leave_type_name: string;
-    balance_after: number;
-    reference_no: string;
-    posting_date: string;
-    status: string;
-}
-
-interface LeaveType {
-    leave_type_id: number;
-    leave_type_name: string;
-}
-
-interface PostDetails {
-    posted_by: string;
-    role: string;
-    user_id_str: string;
-    posting_date: string;
-    reference_no: string;
-}
-
-interface Summary {
-    total_eligible: number;
-    full_credit: number;
-    prorated: number;
-    ineligible: number;
-}
+// ─── Page props ───────────────────────────────────────────────────────────────
 
 interface PageProps {
-    history: HistoryRow[];
-    step?: number;
-    period?: { month: number; year: number };
-    work_days?: number;
-    total_days?: number;
-    total_sundays?: number;
-    total_holidays?: number;
-    previews?: PreviewRow[];
-    leave_types?: LeaveType[];
-    summary?: Summary;
-    post_details?: PostDetails;
-    flash?: { success?: string };
+    tab?: "posting" | "history"
+    step?: number
+    period?: { month: number; year: number }
+    previews?: PreviewRow[]
+    leave_types?: LeaveType[]
+    leave_type_ids?: number[]
+    available_leave_types?: LeaveType[]
+    summary?: Summary
+    post_details?: PostDetails
+    posting_meta?: PostingMeta
+    history?: HistoryRow[]
+    history_filter?: { year: number | null; month: number | null }
+    balances_data?: BalanceEmployeeRow[]
+    balances_leave_types?: LeaveType[]
+    balances_cycle_year?: number
+    balances_cycle_years?: number[]
+}
+
+interface LeaveBalanceEntry {
+    leave_type_id: number
+    leave_type_name: string
+    total_days: number
+    used_days: number
+    balance: number
+}
+
+interface BalanceEmployeeRow {
+    employee_id: number
+    name: string
+    avatar_url: string | null
+    department: string
+    employment_classification: string
+    leave_balances: LeaveBalanceEntry[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -74,674 +70,875 @@ interface PageProps {
 const MONTHS = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
-];
+]
+const currentYear = new Date().getFullYear()
+const YEARS = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i)
 
-const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i);
+const breadcrumbs = [
+    { title: "Leave", href: "#" },
+    { title: "Monthly Earned Leave", href: route("leave.accrual.index") },
+]
 
-// ─── Small shared components ──────────────────────────────────────────────────
+const WIZARD_STEPS = [
+    { title: "Select Period", description: "Step 1" },
+    { title: "Preview Credits", description: "Step 2" },
+    { title: "Confirm Posting", description: "Step 3" },
+    { title: "Posted", description: "Step 4" },
+]
 
-function StepBadge({ number, label, state }: {
-    number: number;
-    label: string;
-    state: "done" | "active" | "pending";
-}) {
-    return (
-        <div className={`flex items-center gap-3 flex-1 px-5 py-4 ${state === "done" ? "bg-green-50" :
-                state === "active" ? "bg-blue-50" : "bg-white"
-            }`}>
-            {state === "done" ? (
-                <span className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle size={18} className="text-white" />
-                </span>
-            ) : (
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold ${state === "active"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-500"
-                    }`}>{number}</span>
-            )}
-            <div>
-                <p className="text-xs text-gray-400">Step {number}</p>
-                <p className={`text-sm font-medium ${state === "done" ? "text-green-700" :
-                        state === "active" ? "text-blue-700" : "text-gray-500"
-                    }`}>{label}</p>
-            </div>
-        </div>
-    );
-}
+// ─── Pivoted table ────────────────────────────────────────────────────────────
+// Uses a custom multi-level header (one column group per leave type ×
+// Balance / Credit / New Balance). This layout cannot be expressed through
+// DataTable's flat ColumnDef API, so we keep raw <Table> here and reuse
+// only DataTablePagination for consistent UI.
 
-function CreditBadge({ status }: { status: PreviewRow["credit_status"] }) {
-    const map = {
-        full_credit: "bg-green-100 text-green-700",
-        prorated: "bg-yellow-100 text-yellow-700",
-        ineligible: "bg-red-100 text-red-600",
-    };
-    const label = {
-        full_credit: "Full Credit",
-        prorated: "Prorated",
-        ineligible: "Ineligible",
-    };
-    return (
-        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${map[status]}`}>
-            {label[status]}
-        </span>
-    );
-}
-
-function Avatar({ url, name }: { url: string | null; name: string }) {
-    return url ? (
-        <img src={url} alt={name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-    ) : (
-        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-semibold flex-shrink-0">
-            {name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-        </div>
-    );
-}
-
-// ─── Pagination hook ──────────────────────────────────────────────────────────
-
-function usePagination<T>(items: T[], rowsPerPage = 10) {
-    const [page, setPage] = useState(1);
-    const totalPages = Math.max(1, Math.ceil(items.length / rowsPerPage));
-    const paginated = items.slice((page - 1) * rowsPerPage, page * rowsPerPage);
-    return { page, setPage, totalPages, paginated, total: items.length };
-}
-
-// ─── Step 1 – Select Period ───────────────────────────────────────────────────
-
-function StepSelectPeriod() {
-    const [month, setMonth] = useState(new Date().getMonth() + 1);
-    const [year, setYear] = useState(currentYear);
-    const [loading, setLoading] = useState(false);
-
-    function handleNext() {
-        setLoading(true);
-        router.get(
-            route("leave.accrual.preview"),
-            { month, year },
-            { preserveState: false, onFinish: () => setLoading(false) }
-        );
-    }
-
-    return (
-        <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-5">Select Posting Period</h2>
-            <div className="grid grid-cols-2 gap-4 max-w-2xl">
-                <div>
-                    <label className="block text-xs text-gray-500 mb-1">Month</label>
-                    <div className="relative">
-                        <select
-                            value={month}
-                            onChange={e => setMonth(Number(e.target.value))}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm appearance-none bg-white pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            {MONTHS.map((m, i) => (
-                                <option key={i} value={i + 1}>{m}</option>
-                            ))}
-                        </select>
-                        <ChevronRight size={14} className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-gray-400 pointer-events-none" />
-                    </div>
-                </div>
-                <div>
-                    <label className="block text-xs text-gray-500 mb-1">Year</label>
-                    <div className="relative">
-                        <select
-                            value={year}
-                            onChange={e => setYear(Number(e.target.value))}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm appearance-none bg-white pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            {YEARS.map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
-                        <ChevronRight size={14} className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-gray-400 pointer-events-none" />
-                    </div>
-                </div>
-            </div>
-            <div className="flex justify-end mt-6">
-                <button
-                    onClick={handleNext}
-                    disabled={loading}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition disabled:opacity-60"
-                >
-                    <Plus size={15} />
-                    {loading ? "Loading…" : "Next"}
-                </button>
-            </div>
-        </div>
-    );
-}
-
-// ─── Step 2 – Preview Credits ─────────────────────────────────────────────────
-
-function StepPreviewCredits({
-    previews,
+function PivotedTable({
+    rows,
     leaveTypes,
-    period,
+    selectable = false,
 }: {
-    previews: PreviewRow[];
-    leaveTypes: LeaveType[];
-    period: { month: number; year: number };
+    rows: PreviewRow[]
+    leaveTypes: LeaveType[]
+    selectable?: boolean
 }) {
-    const [search, setSearch] = useState("");
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [search, setSearch] = useState("")
+    const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
 
-    // Group previews by employee then pivot leave types as columns
-    const employeeMap = useMemo(() => {
+    const employeeRows = useMemo(() => {
         const map = new Map<number, {
-            employee_id: number;
-            name: string;
-            department: string;
-            employment_classification: string;
-            avatar_url: string | null;
-            credit_status: PreviewRow["credit_status"];
-            leaves: Record<number, { before: number; credit: number; after: number }>;
-        }>();
+            employee_id: number; name: string; department: string
+            employment_classification: string; avatar_url: string | null
+            credit_status: PreviewRow["credit_status"]; attendance_days: number
+            leaves: Record<number, { before: number; credit: number; after: number }>
+        }>()
 
-        for (const row of previews) {
+        for (const row of rows) {
             if (!map.has(row.employee_id)) {
                 map.set(row.employee_id, {
-                    employee_id: row.employee_id,
-                    name: row.name,
+                    employee_id: row.employee_id, name: row.name,
                     department: row.department,
                     employment_classification: row.employment_classification,
-                    avatar_url: row.avatar_url,
-                    credit_status: row.credit_status,
-                    leaves: {},
-                });
+                    avatar_url: row.avatar_url, credit_status: row.credit_status,
+                    attendance_days: row.attendance_days, leaves: {},
+                })
             }
             map.get(row.employee_id)!.leaves[row.leave_type_id] = {
                 before: row.balance_before,
                 credit: row.accrual_earned,
                 after: row.balance_after,
-            };
+            }
         }
-
-        return Array.from(map.values());
-    }, [previews]);
+        return Array.from(map.values())
+    }, [rows])
 
     const filtered = useMemo(() => {
-        const q = search.toLowerCase();
-        return employeeMap.filter(e =>
+        const q = search.toLowerCase()
+        return employeeRows.filter((e) =>
             e.name.toLowerCase().includes(q) ||
             e.department.toLowerCase().includes(q) ||
             e.employment_classification.toLowerCase().includes(q)
-        );
-    }, [employeeMap, search]);
+        )
+    }, [employeeRows, search])
 
-    const { page, setPage, totalPages, paginated, total } = usePagination(filtered, rowsPerPage);
+    // Minimal table instance — only to drive DataTablePagination + select-all
+    const table = useReactTable({
+        data: filtered,
+        columns: [{ id: "select", header: "", cell: () => null }],
+        getRowId: (row) => String(row.employee_id),
+        enableRowSelection: selectable,
+        state: { rowSelection, pagination },
+        onRowSelectionChange: setRowSelection,
+        onPaginationChange: setPagination,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        manualFiltering: true,
+    })
 
-    const [selected, setSelected] = useState<Set<number>>(new Set());
+    const pageRows = filtered.slice(pagination.pageIndex * pagination.pageSize, (pagination.pageIndex + 1) * pagination.pageSize)
+    const totalFiltered = filtered.length
+    const pageCount = Math.max(1, Math.ceil(totalFiltered / pagination.pageSize))
+    const colSpan = (selectable ? 1 : 0) + 5 + leaveTypes.length * 3 + 1
 
-    function toggleAll() {
-        if (selected.size === paginated.length) {
-            setSelected(new Set());
-        } else {
-            setSelected(new Set(paginated.map(e => e.employee_id)));
-        }
+    return (
+        <div className="flex flex-col gap-4">
+            <Input
+                placeholder="Search employee..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPagination((p) => ({ ...p, pageIndex: 0 })) }}
+                className="h-8 w-56"
+            />
+
+            <div className="rounded-md border border-border overflow-x-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            {selectable && (
+                                <TableHead className="w-10">
+                                    <Checkbox
+                                        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+                                        onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+                                        aria-label="Select all"
+                                    />
+                                </TableHead>
+                            )}
+                            <TableHead>Employee</TableHead>
+                            <TableHead>Department</TableHead>
+                            <TableHead>Employment Type</TableHead>
+                            <TableHead className="text-center">Attendance</TableHead>
+                            {leaveTypes.map((lt) => (
+                                <TableHead key={lt.leave_type_id} colSpan={3} className="text-center border-l border-border">
+                                    {lt.leave_type_name}
+                                </TableHead>
+                            ))}
+                            <TableHead className="text-center">Status</TableHead>
+                        </TableRow>
+                        <TableRow className="bg-muted/40">
+                            {selectable && <TableHead />}
+                            <TableHead colSpan={4} />
+                            {leaveTypes.map((lt) => (
+                                <React.Fragment key={lt.leave_type_id}>
+                                    <TableHead className="text-center text-xs font-normal text-muted-foreground border-l border-border">Balance</TableHead>
+                                    <TableHead className="text-center text-xs font-normal text-muted-foreground">Credit</TableHead>
+                                    <TableHead className="text-center text-xs font-normal text-muted-foreground">New Balance</TableHead>
+                                </React.Fragment>
+                            ))}
+                            <TableHead />
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {pageRows.length ? pageRows.map((emp) => {
+                            const rowId = String(emp.employee_id)
+                            const isSelected = !!rowSelection[rowId]
+                            return (
+                                <TableRow key={emp.employee_id} data-state={isSelected ? "selected" : undefined}>
+                                    {selectable && (
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={isSelected}
+                                                onCheckedChange={(v) =>
+                                                    setRowSelection((prev) => {
+                                                        const next = { ...prev }
+                                                        v ? (next[rowId] = true) : delete next[rowId]
+                                                        return next
+                                                    })
+                                                }
+                                            />
+                                        </TableCell>
+                                    )}
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <EmployeeAvatar url={emp.avatar_url} name={emp.name} />
+                                            <span className="text-sm">{emp.name}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">{emp.department}</TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">{emp.employment_classification}</TableCell>
+                                    <TableCell className="text-center text-muted-foreground text-sm">{emp.attendance_days}d</TableCell>
+                                    {leaveTypes.map((lt) => {
+                                        const d = emp.leaves[lt.leave_type_id]
+                                        return (
+                                            <React.Fragment key={lt.leave_type_id}>
+                                                <TableCell className="text-center text-muted-foreground text-sm border-l border-border">{d ? d.before.toFixed(2) : "0.00"}</TableCell>
+                                                <TableCell className="text-center text-sm font-medium text-green-600 dark:text-green-400">{d ? `+${d.credit.toFixed(2)}` : "+0.00"}</TableCell>
+                                                <TableCell className="text-center text-sm font-medium text-primary">{d ? d.after.toFixed(2) : "0.00"}</TableCell>
+                                            </React.Fragment>
+                                        )
+                                    })}
+                                    <TableCell className="text-center">
+                                        <CreditBadge status={emp.credit_status} />
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        }) : (
+                            <TableRow>
+                                <TableCell colSpan={colSpan} className="h-24 text-center text-muted-foreground">
+                                    No results.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+
+            <DataTablePagination
+                table={table}
+                rowSelection={rowSelection}
+                pageIndex={pagination.pageIndex}
+                pageSize={pagination.pageSize}
+                pageCount={pageCount}
+                totalFiltered={totalFiltered}
+                onPageIndexChange={(i) => setPagination((p) => ({ ...p, pageIndex: i }))}
+                onPageSizeChange={(s) => setPagination({ pageIndex: 0, pageSize: s })}
+            />
+        </div>
+    )
+}
+
+// ─── Step 1 ───────────────────────────────────────────────────────────────────
+
+function StepSelectPeriod({ availableLeaveTypes }: { availableLeaveTypes: LeaveType[] }) {
+    const [month, setMonth] = useState(new Date().getMonth() + 1)
+    const [year, setYear] = useState(currentYear)
+    const [loading, setLoading] = useState(false)
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(
+        new Set(availableLeaveTypes.map((lt) => lt.leave_type_id))
+    )
+    const { errors } = usePage().props as { errors?: Record<string, string> }
+
+    function toggleLeaveType(id: number) {
+        setSelectedIds((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
     }
-
-    function toggle(id: number) {
-        setSelected(prev => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
-    }
-
-    const [loading, setLoading] = useState(false);
 
     function handleNext() {
-        setLoading(true);
-        router.post(
-            route("leave.accrual.confirm"),
-            { month: period.month, year: period.year },
+        if (selectedIds.size === 0) return
+        setLoading(true)
+        router.get(
+            route("leave.accrual.preview"),
+            { month, year, leave_type_ids: Array.from(selectedIds) },
             { preserveState: false, onFinish: () => setLoading(false) }
-        );
+        )
     }
-
-    function handleBack() {
-        router.get(route("leave.accrual.index"));
-    }
-
-    const monthLabel = MONTHS[period.month - 1];
 
     return (
-        <div className="p-6">
-            <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-semibold text-gray-800">
-                    Preview Earned Leave Credits — {monthLabel} {period.year}
-                </h2>
-                <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        value={search}
-                        onChange={e => { setSearch(e.target.value); setPage(1); }}
-                        className="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
-                    />
+        <div className="p-6 flex flex-col gap-6">
+            <div>
+                <h2 className="text-base font-semibold text-foreground mb-1">Select Posting Period</h2>
+                <p className="text-sm text-muted-foreground">Choose the month, year, and leave types to compute accruals for.</p>
+            </div>
+
+            {errors?.period && (
+                <div className="max-w-xl rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    {errors.period}
+                </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 max-w-xl">
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium">Month</label>
+                    <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {MONTHS.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium">Year</label>
+                    <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="border-b border-gray-100">
-                            <th className="text-left py-3 px-3 w-10">
-                                <input
-                                    type="checkbox"
-                                    checked={selected.size === paginated.length && paginated.length > 0}
-                                    onChange={toggleAll}
-                                    className="rounded border-gray-300"
-                                />
-                            </th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Employee Name</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Department</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Employment Type</th>
-                            {leaveTypes.map(lt => (
-                                <th key={lt.leave_type_id} colSpan={3} className="text-center py-3 px-3 font-medium text-gray-600 border-l border-gray-100">
-                                    {lt.leave_type_name}
-                                </th>
-                            ))}
-                            <th className="text-center py-3 px-3 font-medium text-gray-600">Status</th>
-                        </tr>
-                        {/* Sub-header for Balance / Credit / New Balance */}
-                        <tr className="border-b border-gray-100 bg-gray-50">
-                            <th colSpan={4} />
-                            {leaveTypes.map(lt => (
-                                <>
-                                    <th key={`${lt.leave_type_id}-b`} className="text-center py-2 px-2 text-xs font-normal text-gray-400 border-l border-gray-100">Balance</th>
-                                    <th key={`${lt.leave_type_id}-c`} className="text-center py-2 px-2 text-xs font-normal text-gray-400">Credit</th>
-                                    <th key={`${lt.leave_type_id}-n`} className="text-center py-2 px-2 text-xs font-normal text-gray-400">New Balance</th>
-                                </>
-                            ))}
-                            <th />
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {paginated.map(employee => (
-                            <tr key={employee.employee_id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                                <td className="py-3 px-3">
-                                    <input
-                                        type="checkbox"
-                                        checked={selected.has(employee.employee_id)}
-                                        onChange={() => toggle(employee.employee_id)}
-                                        className="rounded border-gray-300"
-                                    />
-                                </td>
-                                <td className="py-3 px-3">
-                                    <div className="flex items-center gap-2">
-                                        <Avatar url={employee.avatar_url} name={employee.name} />
-                                        <span className="text-gray-700">{employee.name}</span>
-                                    </div>
-                                </td>
-                                <td className="py-3 px-3 text-gray-500">{employee.department}</td>
-                                <td className="py-3 px-3 text-gray-500">{employee.employment_classification}</td>
-                                {leaveTypes.map(lt => {
-                                    const data = employee.leaves[lt.leave_type_id];
-                                    return (
-                                        <>
-                                            <td key={`${employee.employee_id}-${lt.leave_type_id}-b`} className="py-3 px-2 text-center text-gray-400 border-l border-gray-100">
-                                                {data ? data.before.toFixed(2) : "0.00"}
-                                            </td>
-                                            <td key={`${employee.employee_id}-${lt.leave_type_id}-c`} className="py-3 px-2 text-center text-green-500 font-medium">
-                                                {data ? `+${data.credit.toFixed(2)}` : "+0.00"}
-                                            </td>
-                                            <td key={`${employee.employee_id}-${lt.leave_type_id}-n`} className="py-3 px-2 text-center text-blue-500 font-medium">
-                                                {data ? data.after.toFixed(2) : "0.00"}
-                                            </td>
-                                        </>
-                                    );
-                                })}
-                                <td className="py-3 px-3 text-center">
-                                    <CreditBadge status={employee.credit_status} />
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Pagination */}
-            <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
-                <span>{selected.size} of {total} row(s) selected.</span>
-                <div className="flex items-center gap-3">
-                    <span>Rows per page</span>
-                    <select
-                        value={rowsPerPage}
-                        onChange={e => { setRowsPerPage(Number(e.target.value)); setPage(1); }}
-                        className="border border-gray-200 rounded px-2 py-1 text-sm"
-                    >
-                        {[10, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                    <span>Page {page} of {totalPages}</span>
-                    <div className="flex gap-1">
-                        <button onClick={() => setPage(1)} disabled={page === 1} className="p-1 disabled:opacity-30"><ChevronsLeft size={15} /></button>
-                        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1 disabled:opacity-30"><ChevronLeft size={15} /></button>
-                        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1 disabled:opacity-30"><ChevronRight size={15} /></button>
-                        <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="p-1 disabled:opacity-30"><ChevronsRight size={15} /></button>
-                    </div>
+            <div className="flex flex-col gap-3 max-w-xl">
+                <div>
+                    <p className="text-sm font-medium">Leave Types to Accrue</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        All accrual-eligible types are selected. Deselect any that should not be processed this period.
+                    </p>
                 </div>
+                <div className="rounded-md border border-border divide-y divide-border">
+                    {availableLeaveTypes.length ? availableLeaveTypes.map((lt) => (
+                        <label key={lt.leave_type_id} className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors">
+                            <Checkbox checked={selectedIds.has(lt.leave_type_id)} onCheckedChange={() => toggleLeaveType(lt.leave_type_id)} />
+                            <span className="text-sm">{lt.leave_type_name}</span>
+                        </label>
+                    )) : (
+                        <p className="px-4 py-3 text-sm text-muted-foreground">No accrual-eligible leave types configured.</p>
+                    )}
+                </div>
+                {selectedIds.size === 0 && (
+                    <p className="text-xs text-destructive">Select at least one leave type to proceed.</p>
+                )}
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-between mt-6">
-                <button
-                    onClick={handleBack}
-                    className="flex items-center gap-2 text-sm text-gray-500 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition"
-                >
-                    <Plus size={14} className="rotate-45" /> Back
-                </button>
-                <button
-                    onClick={handleNext}
-                    disabled={loading}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition disabled:opacity-60"
-                >
-                    <Plus size={15} />
-                    {loading ? "Loading…" : "Next"}
-                </button>
+            <div className="flex justify-end">
+                <Button onClick={handleNext} disabled={loading || selectedIds.size === 0} size="sm">
+                    <Plus /> {loading ? "Loading…" : "Next"}
+                </Button>
             </div>
         </div>
-    );
+    )
 }
 
-// ─── Step 3 – Confirm Posting ─────────────────────────────────────────────────
+// ─── Step 2 ───────────────────────────────────────────────────────────────────
+
+function StepPreviewCredits({
+    previews, leaveTypes, period, leaveTypeIds,
+}: {
+    previews: PreviewRow[]; leaveTypes: LeaveType[]
+    period: { month: number; year: number }; leaveTypeIds: number[]
+}) {
+    const [loading, setLoading] = useState(false)
+
+    return (
+        <div className="p-6 flex flex-col gap-4">
+            <div>
+                <h2 className="text-base font-semibold text-foreground">Preview Earned Leave Credits</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                    {MONTHS[period.month - 1]} {period.year} · {leaveTypes.length} leave type{leaveTypes.length !== 1 ? "s" : ""}
+                </p>
+            </div>
+            <PivotedTable rows={previews} leaveTypes={leaveTypes} selectable />
+            <div className="flex items-center justify-between pt-2">
+                <Button variant="outline" size="sm" onClick={() => router.get(route("leave.accrual.index"))}>Back</Button>
+                <Button
+                    size="sm"
+                    disabled={loading}
+                    onClick={() => {
+                        setLoading(true)
+                        router.post(
+                            route("leave.accrual.confirm"),
+                            { month: period.month, year: period.year, leave_type_ids: leaveTypeIds },
+                            { preserveState: false, onFinish: () => setLoading(false) }
+                        )
+                    }}
+                >
+                    <Plus /> {loading ? "Loading…" : "Next"}
+                </Button>
+            </div>
+        </div>
+    )
+}
+
+// ─── Step 3 ───────────────────────────────────────────────────────────────────
 
 function StepConfirmPosting({
-    summary,
-    postDetails,
-    period,
+    summary, postDetails, period, leaveTypeIds,
 }: {
-    summary: Summary;
-    postDetails: PostDetails;
-    period: { month: number; year: number };
+    summary: Summary; postDetails: PostDetails
+    period: { month: number; year: number }; leaveTypeIds: number[]
 }) {
-    const [loading, setLoading] = useState(false);
-    const monthLabel = MONTHS[period.month - 1];
+    const [loading, setLoading] = useState(false)
 
-    function handleBack() {
-        router.get(route("leave.accrual.preview"), { month: period.month, year: period.year });
+    const summaryRows: [string, string | number][] = [
+        ["Posting Period", `${MONTHS[period.month - 1]} ${period.year}`],
+        ["Working Days", summary.work_days],
+        ["Total Days", summary.total_days],
+        ["Total Sundays", summary.total_sundays],
+        ["Total Holidays", summary.total_holidays],
+        ["Total Eligible", summary.total_eligible],
+        ["Full Credit", summary.full_credit],
+        ["Prorated", summary.prorated],
+        ["Ineligible", summary.ineligible],
+    ]
+
+    const detailRows: [string, string][] = [
+        ["Posted By", postDetails.posted_by],
+        ["Role", postDetails.role],
+        ["User ID", postDetails.user_id_str],
+        ["Posting Date", postDetails.posting_date],
+        ["Reference No", postDetails.reference_no],
+    ]
+
+    return (
+        <div className="p-6 flex flex-col gap-6">
+            <div>
+                <h2 className="text-base font-semibold text-foreground">Confirm Posting</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Review the summary before finalising.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border border-border p-5">
+                    <p className="text-sm font-semibold mb-4">Posting Summary</p>
+                    {summaryRows.map(([l, v]) => (
+                        <div key={l} className="flex justify-between py-2.5 border-b border-border last:border-0">
+                            <span className="text-sm text-muted-foreground">{l}</span>
+                            <span className="text-sm font-semibold">{v}</span>
+                        </div>
+                    ))}
+                </div>
+                <div className="rounded-lg border border-border p-5">
+                    <p className="text-sm font-semibold mb-4">Post Details</p>
+                    {detailRows.map(([l, v]) => (
+                        <div key={l} className="flex justify-between py-2.5 border-b border-border last:border-0">
+                            <span className="text-sm text-muted-foreground">{l}</span>
+                            <span className="text-sm font-semibold">{v}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="flex items-center justify-between">
+                <Button
+                    variant="outline" size="sm"
+                    onClick={() => router.get(route("leave.accrual.preview"), { month: period.month, year: period.year, leave_type_ids: leaveTypeIds })}
+                >
+                    Back
+                </Button>
+                <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    disabled={loading}
+                    onClick={() => {
+                        setLoading(true)
+                        router.post(
+                            route("leave.accrual.post"),
+                            { month: period.month, year: period.year, leave_type_ids: leaveTypeIds },
+                            { preserveState: false, onFinish: () => setLoading(false) }
+                        )
+                    }}
+                >
+                    <Plus /> {loading ? "Posting…" : "Confirm & Post"}
+                </Button>
+            </div>
+        </div>
+    )
+}
+
+// ─── Step 4 ───────────────────────────────────────────────────────────────────
+
+function StepPostedReview({
+    previews, leaveTypes, period, postingMeta,
+}: {
+    previews: PreviewRow[]; leaveTypes: LeaveType[]
+    period: { month: number; year: number }; postingMeta: PostingMeta
+}) {
+    return (
+        <div className="p-6 flex flex-col gap-4">
+            <div className="flex items-start justify-between">
+                <div>
+                    <h2 className="text-base font-semibold text-foreground">Posted Credits</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                        {MONTHS[period.month - 1]} {period.year} · Ref: {postingMeta.reference_no} · {postingMeta.posted_date}
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Badge variant="green">Posted</Badge>
+                    <Button variant="outline" size="sm" onClick={() => router.get(route("leave.accrual.index"))}>
+                        <Plus /> New Posting
+                    </Button>
+                </div>
+            </div>
+            <PivotedTable rows={previews} leaveTypes={leaveTypes} selectable={false} />
+        </div>
+    )
+}
+
+// ─── History tab ────────────────────────────────────────────────────────────────────────────
+
+function HistoryTab({
+    history,
+    historyFilter,
+}: {
+    history: HistoryRow[]
+    historyFilter: { year: number | null; month: number | null }
+}) {
+    const [activeYear, setActiveYear] = useState<string>(String(historyFilter.year ?? ""))
+    const [activeMonth, setActiveMonth] = useState<string>(String(historyFilter.month ?? ""))
+
+    // ── Dialog state ──────────────────────────────────────────────────────────
+    const [selectedRow, setSelectedRow] = useState<HistoryTableRow | null>(null)
+    const [dialogOpen, setDialogOpen] = useState(false)
+
+    function handleViewRow(row: HistoryTableRow) {
+        setSelectedRow(row)
+        setDialogOpen(true)
     }
 
-    function handleConfirm() {
-        setLoading(true);
-        router.post(
-            route("leave.accrual.post"),
-            { month: period.month, year: period.year },
-            { preserveState: false, onFinish: () => setLoading(false) }
-        );
+    function handleDialogClose() {
+        setDialogOpen(false)
+        // Keep selectedRow mounted until dialog finishes closing to avoid
+        // content flicker during the exit animation.
+        setTimeout(() => setSelectedRow(null), 200)
+    }
+
+    const tableData: HistoryTableRow[] = useMemo(
+        () => history.map((h) => ({ ...h, _key: `${h.posting_id}-${h.employee_id}-${h.leave_type_name}` })),
+        [history]
+    )
+
+    const columns = useMemo(() => getHistoryColumns(handleViewRow), [])
+
+    const yearOptions = useMemo(() => {
+        const years = [...new Set(history.map((h) => h.posting_year))].sort((a, b) => b - a)
+        return years.map((y) => ({ value: String(y), label: String(y) }))
+    }, [history])
+
+    const monthOptions = useMemo(() => {
+        const months = [...new Set(history.map((h) => h.posting_month))].sort((a, b) => a - b)
+        return months.map((m) => ({ value: String(m), label: MONTHS[m - 1] }))
+    }, [history])
+
+    function handleColumnFiltersChange(filters: { id: string; value: unknown }[]) {
+        const yearValues = (filters.find((f) => f.id === "posting_year")?.value as string[] | undefined) ?? []
+        const monthValues = (filters.find((f) => f.id === "posting_month")?.value as string[] | undefined) ?? []
+
+        const newYear = yearValues[0] ?? ""
+        const newMonth = monthValues[0] ?? ""
+
+        if (newYear === activeYear && newMonth === activeMonth) return
+
+        setActiveYear(newYear)
+        setActiveMonth(newMonth)
+
+        router.get(
+            route("leave.accrual.history"),
+            { year: newYear || undefined, month: newMonth || undefined },
+            { preserveState: true, preserveScroll: true }
+        )
     }
 
     return (
-        <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-5">Confirm Posting</h2>
-            <div className="grid grid-cols-2 gap-5">
-                {/* Posting Summary */}
-                <div className="border border-gray-200 rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-4">Posting Summary</h3>
-                    {[
-                        ["Posting Period", `${monthLabel} ${period.year}`],
-                        ["Total Eligible", summary.total_eligible],
-                        ["Full Credit Employees", summary.full_credit],
-                        ["Prorated", summary.prorated],
-                        ["Ineligible", summary.ineligible],
-                    ].map(([label, value]) => (
-                        <div key={String(label)} className="flex justify-between py-2.5 border-b border-gray-100 last:border-0">
-                            <span className="text-sm text-gray-400">{label}</span>
-                            <span className="text-sm font-semibold text-gray-800">{value}</span>
-                        </div>
-                    ))}
-                </div>
+        <>
+            <DataTable
+                columns={columns}
+                data={tableData}
+                getRowId={(row) => row._key}
+                searchColumnId="name"
+                searchPlaceholder="Search employee, leave type, ref..."
+                defaultPageSize={10}
+                onColumnFiltersChange={handleColumnFiltersChange}
+                onRowClick={(row) => handleViewRow(row.original)}
+                rowClassName="cursor-pointer"
+                filters={[
+                    {
+                        columnId: "posting_year",
+                        title: "Year",
+                        options: yearOptions,
+                    },
+                    {
+                        columnId: "posting_month",
+                        title: "Month",
+                        options: monthOptions,
+                    },
+                    {
+                        columnId: "credit_status",
+                        title: "Status",
+                        options: [
+                            { value: "full_credit", label: "Full Credit" },
+                            { value: "prorated", label: "Prorated" },
+                            { value: "ineligible", label: "Ineligible" },
+                        ],
+                    },
+                ]}
+            />
 
-                {/* Post Details */}
-                <div className="border border-gray-200 rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-4">Post Details</h3>
-                    {[
-                        ["Posted By", postDetails.posted_by],
-                        ["Role", postDetails.role],
-                        ["User ID", postDetails.user_id_str],
-                        ["Posting Date", postDetails.posting_date],
-                        ["Reference No.", postDetails.reference_no],
-                    ].map(([label, value]) => (
-                        <div key={String(label)} className="flex justify-between py-2.5 border-b border-gray-100 last:border-0">
-                            <span className="text-sm text-gray-400">{label}</span>
-                            <span className="text-sm font-semibold text-gray-800">{value}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            {/* ── Accrual Transaction Detail Dialog ───────────────────────────── */}
+            <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) handleDialogClose() }}>
+                <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-md">
 
-            <div className="flex items-center justify-between mt-6">
-                <button
-                    onClick={handleBack}
-                    className="flex items-center gap-2 text-sm text-gray-500 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition"
-                >
-                    <Plus size={14} className="rotate-45" /> Back
-                </button>
-                <button
-                    onClick={handleConfirm}
-                    disabled={loading}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition disabled:opacity-60"
-                >
-                    <Plus size={15} />
-                    {loading ? "Posting…" : "Confirm"}
-                </button>
-            </div>
-        </div>
-    );
+                    <DialogHeader className="px-5 py-4 border-b border-border">
+                        <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <TrendingUp className="size-4 text-primary shrink-0" />
+                            Accrual Transaction Detail
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    {selectedRow && (
+                        <div className="px-5 py-5 flex flex-col gap-5">
+
+                            {/* Employee card */}
+                            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+                                <EmployeeAvatar url={selectedRow.avatar_url} name={selectedRow.name} />
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-semibold text-foreground truncate">{selectedRow.name}</span>
+                                    <span className="text-xs text-muted-foreground truncate">{selectedRow.department}</span>
+                                </div>
+                                <div className="ml-auto shrink-0">
+                                    <CreditBadge status={selectedRow.credit_status} />
+                                </div>
+                            </div>
+
+                            {/* Posting meta tiles */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {(
+                                    [
+                                        { icon: <CalendarDays className="size-3.5" />, label: "Period",       value: `${MONTHS[selectedRow.posting_month - 1]} ${selectedRow.posting_year}`, mono: false },
+                                        { icon: <Hash        className="size-3.5" />, label: "Reference",    value: selectedRow.reference_no,                mono: true  },
+                                        { icon: <User        className="size-3.5" />, label: "Employment",   value: selectedRow.employment_classification,   mono: false },
+                                        { icon: <Briefcase   className="size-3.5" />, label: "Posted On",    value: selectedRow.posting_date,                mono: false },
+                                    ] as const
+                                ).map(({ icon, label, value, mono }) => (
+                                    <div key={label} className="flex flex-col gap-1 rounded-md border border-border px-3 py-2.5">
+                                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                                            {icon}
+                                            <span className="text-xs">{label}</span>
+                                        </div>
+                                        <span className={`text-sm font-medium text-foreground truncate ${mono ? "font-mono" : ""}`}>
+                                            {value}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Leave credit breakdown */}
+                            <div>
+                                <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">
+                                    Leave Credit Breakdown
+                                </p>
+                                <div className="rounded-lg border border-border divide-y divide-border overflow-hidden">
+                                    {/* Column headers */}
+                                    <div className="grid grid-cols-4 bg-muted/40 px-4 py-2">
+                                        <span className="text-xs font-medium text-muted-foreground col-span-2">Leave Type</span>
+                                        <span className="text-xs font-medium text-muted-foreground text-right">Credit Earned</span>
+                                        <span className="text-xs font-medium text-muted-foreground text-right">New Balance</span>
+                                    </div>
+
+                                    {/* One row per leave type with its own accurate values */}
+                                    {(selectedRow.leave_credits ?? []).map((lc) => (
+                                        <div key={lc.leave_type_id} className="grid grid-cols-4 items-center px-4 py-3">
+                                            <span className="text-sm text-foreground col-span-2">{lc.leave_type_name}</span>
+                                            <span className="text-sm font-semibold text-green-600 dark:text-green-400 text-right">
+                                                +{lc.accrual_earned.toFixed(4)}
+                                            </span>
+                                            <span className="text-sm font-semibold text-primary text-right">
+                                                {lc.balance_after.toFixed(4)}
+                                            </span>
+                                        </div>
+                                    ))}
+
+                                    {/* Balance before per leave type footer */}
+                                    {(selectedRow.leave_credits ?? []).map((lc) => (
+                                        <div key={`before-${lc.leave_type_id}`} className="grid grid-cols-4 items-center px-4 py-2.5 bg-muted/20">
+                                            <span className="text-xs text-muted-foreground col-span-2">
+                                                {lc.leave_type_name} — before
+                                            </span>
+                                            <span className="text-xs text-muted-foreground text-right col-span-2">
+                                                {lc.balance_before.toFixed(4)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Contextual status note */}
+                            {selectedRow.credit_status === "ineligible" && (
+                                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+                                    This employee had no recorded attendance for this period and received no credit.
+                                </div>
+                            )}
+                            {selectedRow.credit_status === "prorated" && (
+                                <div className="rounded-md border border-yellow-400/30 bg-yellow-400/10 px-4 py-3 text-xs text-yellow-700 dark:text-yellow-400">
+                                    Credit was prorated based on actual minutes worked relative to the expected work hours for the period.
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30" showCloseButton>
+                        {selectedRow && (
+                            <div className="flex items-center gap-2 mr-auto">
+                                <Badge variant="outline" className="text-xs font-mono">
+                                    {selectedRow.reference_no}
+                                </Badge>
+                            </div>
+                        )}
+                    </DialogFooter>
+
+                </DialogContent>
+            </Dialog>
+        </>
+    )
 }
 
-// ─── Step 4 – Posted / Transaction History ────────────────────────────────────
-
-function StepPosted({ history }: { history: HistoryRow[] }) {
-    const [search, setSearch] = useState("");
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+function BalancesTab({
+    data,
+    leaveTypes,
+    cycleYear,
+    cycleyears = [],
+}: {
+    data: BalanceEmployeeRow[]
+    leaveTypes: LeaveType[]
+    cycleYear: number
+    cycleYears?: number[] 
+}) {
+    const [search, setSearch] = useState("")
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
 
     const filtered = useMemo(() => {
-        const q = search.toLowerCase();
-        return history.filter(h =>
-            h.name.toLowerCase().includes(q) ||
-            h.department.toLowerCase().includes(q) ||
-            h.employment_classification.toLowerCase().includes(q)
-        );
-    }, [history, search]);
+        const q = search.toLowerCase()
+        return data.filter((e) =>
+            e.name.toLowerCase().includes(q) ||
+            e.department.toLowerCase().includes(q) ||
+            e.employment_classification.toLowerCase().includes(q)
+        )
+    }, [data, search])
 
-    const { page, setPage, totalPages, paginated, total } = usePagination(filtered, rowsPerPage);
-    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const table = useReactTable({
+        data: filtered,
+        columns: [{ id: "select", header: "", cell: () => null }],
+        getRowId: (row) => String(row.employee_id),
+        state: { pagination },
+        onPaginationChange: setPagination,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        manualFiltering: true,
+    })
 
-    function toggleAll() {
-        const keys = paginated.map(h => `${h.posting_id}-${h.employee_id}-${h.leave_type_name}`);
-        if (selected.size === keys.length) {
-            setSelected(new Set());
-        } else {
-            setSelected(new Set(keys));
-        }
-    }
-
-    function toggle(key: string) {
-        setSelected(prev => {
-            const next = new Set(prev);
-            next.has(key) ? next.delete(key) : next.add(key);
-            return next;
-        });
-    }
+    const pageRows = filtered.slice(
+        pagination.pageIndex * pagination.pageSize,
+        (pagination.pageIndex + 1) * pagination.pageSize
+    )
+    const pageCount = Math.max(1, Math.ceil(filtered.length / pagination.pageSize))
+    const colSpan = 3 + leaveTypes.length
 
     return (
-        <div className="p-6">
-            <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-semibold text-gray-800">Transaction History</h2>
-                <button
-                    onClick={() => router.get(route("leave.accrual.index"))}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
-                >
-                    <Plus size={14} /> New Posting
-                </button>
-            </div>
+        <div className="flex flex-col gap-4">
+            <Input
+                placeholder="Search employee..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPagination((p) => ({ ...p, pageIndex: 0 })) }}
+                className="h-8 w-56"
+            />
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="border-b border-gray-100">
-                            <th className="text-left py-3 px-3 w-10">
-                                <input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={toggleAll} className="rounded border-gray-300" />
-                            </th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Employee Name</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Department</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Employment Type</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Leave Type</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">New Balance</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Posted By</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Date Posted</th>
-                            <th className="text-left py-3 px-3 font-medium text-gray-600">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {paginated.map(h => {
-                            const key = `${h.posting_id}-${h.employee_id}-${h.leave_type_name}`;
+            <div className="rounded-md border border-border overflow-x-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Employee</TableHead>
+                            <TableHead>Department</TableHead>
+                            <TableHead>Employment Type</TableHead>
+                            {leaveTypes.map((lt) => (
+                                <TableHead key={lt.leave_type_id} className="text-center border-l border-border">
+                                    {lt.leave_type_name}
+                                </TableHead>
+                            ))}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {pageRows.length ? pageRows.map((emp) => {
+                            const balanceMap = Object.fromEntries(
+                                emp.leave_balances.map((b) => [b.leave_type_id, b])
+                            )
                             return (
-                                <tr key={key} className="border-b border-gray-50 hover:bg-gray-50/50">
-                                    <td className="py-3 px-3">
-                                        <input type="checkbox" checked={selected.has(key)} onChange={() => toggle(key)} className="rounded border-gray-300" />
-                                    </td>
-                                    <td className="py-3 px-3">
+                                <TableRow key={emp.employee_id}>
+                                    <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <Avatar url={h.avatar_url} name={h.name} />
-                                            <span className="text-gray-700">{h.name}</span>
+                                            <EmployeeAvatar url={emp.avatar_url} name={emp.name} />
+                                            <span className="text-sm">{emp.name}</span>
                                         </div>
-                                    </td>
-                                    <td className="py-3 px-3 text-gray-500">{h.department}</td>
-                                    <td className="py-3 px-3 text-gray-500">{h.employment_classification}</td>
-                                    <td className="py-3 px-3 text-gray-500">{h.leave_type_name}</td>
-                                    <td className="py-3 px-3 text-blue-500 font-medium">{Number(h.balance_after).toFixed(2)}</td>
-                                    <td className="py-3 px-3 text-gray-500">Admin ({h.reference_no})</td>
-                                    <td className="py-3 px-3 text-gray-500">{h.posting_date}</td>
-                                    <td className="py-3 px-3">
-                                        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700">
-                                            ✓ Posted
-                                        </span>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                        {paginated.length === 0 && (
-                            <tr>
-                                <td colSpan={9} className="py-10 text-center text-gray-400 text-sm">
-                                    No posted transactions yet.
-                                </td>
-                            </tr>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">{emp.department}</TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">{emp.employment_classification}</TableCell>
+                                    {leaveTypes.map((lt) => {
+                                        const b = balanceMap[lt.leave_type_id]
+                                        return (
+                                            <TableCell key={lt.leave_type_id} className="text-center text-sm font-semibold text-primary border-l border-border">
+                                                {b ? b.balance.toFixed(2) : <span className="text-destructive">N/A</span>}
+                                            </TableCell>
+                                        )
+                                    })}
+                                </TableRow>
+                            )
+                        }) : (
+                            <TableRow>
+                                <TableCell colSpan={colSpan} className="h-24 text-center text-muted-foreground">
+                                    No balance records found for {cycleYear}.
+                                </TableCell>
+                            </TableRow>
                         )}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </div>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
-                <span>{selected.size} of {total} row(s) selected.</span>
-                <div className="flex items-center gap-3">
-                    <span>Rows per page</span>
-                    <select value={rowsPerPage} onChange={e => { setRowsPerPage(Number(e.target.value)); setPage(1); }} className="border border-gray-200 rounded px-2 py-1 text-sm">
-                        {[10, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                    <span>Page {page} of {totalPages}</span>
-                    <div className="flex gap-1">
-                        <button onClick={() => setPage(1)} disabled={page === 1} className="p-1 disabled:opacity-30"><ChevronsLeft size={15} /></button>
-                        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1 disabled:opacity-30"><ChevronLeft size={15} /></button>
-                        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1 disabled:opacity-30"><ChevronRight size={15} /></button>
-                        <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="p-1 disabled:opacity-30"><ChevronsRight size={15} /></button>
-                    </div>
-                </div>
-            </div>
+            <DataTablePagination
+                table={table}
+                rowSelection={{}}
+                pageIndex={pagination.pageIndex}
+                pageSize={pagination.pageSize}
+                pageCount={pageCount}
+                totalFiltered={filtered.length}
+                onPageIndexChange={(i) => setPagination((p) => ({ ...p, pageIndex: i }))}
+                onPageSizeChange={(s) => setPagination({ pageIndex: 0, pageSize: s })}
+            />
         </div>
-    );
+    )
 }
 
-// ─── Root component ───────────────────────────────────────────────────────────
+// ─── Root ─────────────────────────────────────────────────────────────────────
 
 export default function MonthlyEarnedLeave() {
     const {
-        step = 1,
-        history = [],
-        period,
-        previews = [],
-        leave_types = [],
-        summary,
-        post_details,
-    } = usePage<{ props: PageProps }>().props as unknown as PageProps;
+        tab = "posting", step = 1, period,
+        previews = [], leave_types = [], leave_type_ids = [],
+        available_leave_types = [], summary, post_details,
+        posting_meta, history = [],
+        history_filter = { year: null, month: null },
+        balances_data = [],
+        balances_leave_types = [],
+        balances_cycle_year = new Date().getFullYear(),
+        balances_cycle_years = [],
+    } = usePage<{ props: PageProps }>().props as unknown as PageProps
 
-    // Determine stepper states
-    function stepState(s: number): "done" | "active" | "pending" {
-        if (step > s) return "done";
-        if (step === s) return "active";
-        return "pending";
-    }
-
-    // Steps: 1 = Select Period, 2 = Identify Employees, 4 = Confirm Posting, 5 = Posted
-    // (matching Figma numbering — step 3 was "Preview Credits" shown inline in step 2)
-    const isHistory = step === 5;
+    const activeTab = tab === "history" ? "history" : tab === "balances" ? "balances" : "posting"
 
     return (
-        <AppLayout>
-            <div className="min-h-screen bg-gray-50">
-                <div className="max-w-screen-xl mx-auto px-6 py-6">
-
-                    {/* Top bar */}
-                    <div className="flex justify-end mb-4">
-                        <button
-                            onClick={() => router.get(route("leave.accrual.history"))}
-                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
-                        >
-                            <Plus size={14} /> View Transaction History
-                        </button>
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <div className="flex flex-col gap-4 p-4 md:p-6">
+                <Tabs
+                    value={activeTab}
+                    onValueChange={(v) => {
+                        if (v === "history") router.get(route("leave.accrual.history"))
+                        else if (v === "balances") router.get(route("leave.accrual.balances"))
+                        else router.get(route("leave.accrual.index"))
+                    }}
+                >
+                    <div className="border-b border-border max-w-100 pt-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+                        <TabsList className="h-auto bg-transparent gap-0 p-0 flex flex-nowrap w-max min-w-full">
+                            <TabsTrigger
+                                value="posting"
+                                className="relative flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap"
+                            >
+                                Monthly Posting
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="history"
+                                className="relative flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap"
+                            >
+                                Transaction History
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="balances"
+                                className="relative flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap"
+                            >
+                                Leave Balances
+                            </TabsTrigger>
+                        </TabsList>
                     </div>
 
-                    {/* Stepper */}
-                    {!isHistory && (
-                        <div className="flex border border-gray-200 rounded-xl overflow-hidden mb-6 bg-white shadow-sm divide-x divide-gray-200">
-                            <StepBadge number={1} label="Selected Period" state={stepState(1)} />
-                            <StepBadge number={2} label="Identify Employees" state={stepState(2)} />
-                            <StepBadge number={4} label="Confirm Posting" state={stepState(4)} />
-                            <StepBadge number={5} label="Posted" state={stepState(5)} />
+                    <TabsContent value="posting" className="flex flex-col gap-4 mt-4">
+                        <div className="rounded-lg border border-border bg-card px-6 pt-4 shadow-sm">
+                            <Stepper steps={WIZARD_STEPS} currentStep={step - 1} onStepChange={() => { }} />
                         </div>
-                    )}
-
-                    {/* Full step history stepper */}
-                    {isHistory && (
-                        <div className="flex border border-gray-200 rounded-xl overflow-hidden mb-6 bg-white shadow-sm divide-x divide-gray-200">
-                            <StepBadge number={1} label="Selected Period" state="done" />
-                            <StepBadge number={2} label="Identify Employees" state="done" />
-                            <StepBadge number={3} label="Preview Credits" state="done" />
-                            <StepBadge number={4} label="Confirm Posting" state="done" />
-                            <StepBadge number={5} label="Posted" state="active" />
+                        <div className="rounded-lg border border-border bg-card shadow-sm">
+                            {step === 1 && <StepSelectPeriod availableLeaveTypes={available_leave_types} />}
+                            {step === 2 && period && <StepPreviewCredits previews={previews} leaveTypes={leave_types} period={period} leaveTypeIds={leave_type_ids} />}
+                            {step === 3 && summary && post_details && period && <StepConfirmPosting summary={summary} postDetails={post_details} period={period} leaveTypeIds={leave_type_ids} />}
+                            {step === 4 && period && posting_meta && <StepPostedReview previews={previews} leaveTypes={leave_types} period={period} postingMeta={posting_meta} />}
                         </div>
-                    )}
+                    </TabsContent>
 
-                    {/* Card body */}
-                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-                        {step === 1 && <StepSelectPeriod />}
-
-                        {step === 2 && period && (
-                            <StepPreviewCredits
-                                previews={previews}
-                                leaveTypes={leave_types}
-                                period={period}
+                    <TabsContent value="history" className="mt-4">
+                        <div className="rounded-lg border border-border bg-card shadow-sm p-6">
+                            <div className="mb-4">
+                                <h2 className="text-base font-semibold text-foreground">Transaction History</h2>
+                                <p className="text-sm text-muted-foreground mt-0.5">
+                                    All posted leave accrual credits across all periods.
+                                </p>
+                            </div>
+                            <HistoryTab history={history} historyFilter={history_filter} />
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="balances" className="mt-4">
+                        <div className="rounded-lg border border-border bg-card shadow-sm p-6">
+                            <div className="mb-4">
+                                <h2 className="text-base font-semibold text-foreground">Leave Balances</h2>
+                                <p className="text-sm text-muted-foreground mt-0.5">
+                                    Current leave balances per employee for FY {balances_cycle_year}–{balances_cycle_year + 1}.
+                                </p>
+                            </div>
+                            <BalancesTab
+                                data={balances_data}
+                                leaveTypes={balances_leave_types}
+                                cycleYear={balances_cycle_year}
                             />
-                        )}
-
-                        {step === 4 && summary && post_details && period && (
-                            <StepConfirmPosting
-                                summary={summary}
-                                postDetails={post_details}
-                                period={period}
-                            />
-                        )}
-
-                        {(step === 5 || isHistory) && (
-                            <StepPosted history={history} />
-                        )}
-                    </div>
-                </div>
+                        </div>
+                    </TabsContent>
+                </Tabs>
             </div>
         </AppLayout>
-    );
+    )
 }

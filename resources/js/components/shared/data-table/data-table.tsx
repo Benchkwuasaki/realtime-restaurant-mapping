@@ -63,6 +63,13 @@ interface DataTableProps<TData, TValue> {
     filters?: ToolbarFilterConfig[]
     addButton?: ToolbarAddButtonConfig
     bulkDelete?: ToolbarBulkDeleteConfig
+
+    /**
+     * Optional observer called whenever the column filters state changes.
+     * Receives the new filters array — use this to react to filter changes
+     * (e.g. triggering a server-side Inertia visit) without owning the state.
+     */
+    onColumnFiltersChange?: (filters: ColumnFiltersState) => void
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -78,6 +85,7 @@ export function DataTable<TData, TValue>({
     filters,
     addButton,
     bulkDelete,
+    onColumnFiltersChange: onColumnFiltersChangeProp,
 }: DataTableProps<TData, TValue>) {
     const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -110,6 +118,8 @@ export function DataTable<TData, TValue>({
         onColumnFiltersChange: (updater) => {
             setColumnFilters(updater)
             setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+            const next = typeof updater === "function" ? updater(columnFilters) : updater
+            onColumnFiltersChangeProp?.(next)
         },
         onColumnVisibilityChange: setColumnVisibility,
         onPaginationChange: setPagination,

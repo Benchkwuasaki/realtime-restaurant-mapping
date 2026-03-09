@@ -2,14 +2,21 @@
 
 namespace Database\Seeders;
 
+use App\Models\Employee;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+
+use function Symfony\Component\Clock\now;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call([
+            RoleSeeder::class,
+        ]);
         // TODO: refactor to separate seeder files
 
         // ── 1. Salary Grade Steps ──────────────────────────────────
@@ -368,6 +375,10 @@ class DatabaseSeeder extends Seeder
             ['dept' => $deptId, 'div' => $divHrId, 'unit' => $unitPayrollId, 'name' => 'Benefits Administrator', 'sg_idx' => 3],  // SG11
             ['dept' => $deptId, 'div' => $divHrId, 'unit' => null, 'name' => 'HR Division Chief', 'sg_idx' => 9],  // SG18
             ['dept' => $deptId, 'div' => $divHrId, 'unit' => null, 'name' => 'HR Manager', 'sg_idx' => 9],  // SG18
+            // Operations and Services Department
+            ['dept' => $deptOpsId, 'div' => $divOpsFieldId, 'unit' => $unitDispatchId, 'name' => 'Operations Coordinator', 'sg_idx' => 5], // SG13
+            // Governance and Public Affairs Department
+            ['dept' => $deptGovId, 'div' => $divPublicAffairsId, 'unit' => $unitCommsId, 'name' => 'Public Affairs Officer', 'sg_idx' => 5], // SG13
             // IT
             ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitDevId, 'name' => 'Software Developer', 'sg_idx' => 4],  // SG12
             ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitDevId, 'name' => 'Senior Developer', 'sg_idx' => 6],  // SG14
@@ -405,12 +416,16 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // ── 6. Items — 100 slots distributed across positions ──────
-        // Distribution: spread 100 items across 25 positions (4 each)
+        // ── 6. Items — include vacant slots for selected positions ──────
+        // Base: 4 slots per position; selected positions get a 5th slot that stays vacant.
+        $positionsWithVacantSlot = [1, 4, 7, 10, 13, 16, 19, 21, 23, 24];
         $itemIds = [];
         foreach ($positionIds as $idx => $posId) {
             $posName = $positions[$idx]['name'];
-            for ($slot = 1; $slot <= 4; $slot++) {
+            $hasVacantExtraSlot = in_array($idx, $positionsWithVacantSlot, true);
+            $slotLimit = $hasVacantExtraSlot ? 5 : 4;
+
+            for ($slot = 1; $slot <= $slotLimit; $slot++) {
                 $itemIds[] = [
                     'id' => DB::table('items')->insertGetId([
                         'position_id' => $posId,
@@ -419,11 +434,15 @@ class DatabaseSeeder extends Seeder
                         'updated_at' => now(),
                     ]),
                     'pos_idx' => $idx,
+                    'is_vacant_slot' => $hasVacantExtraSlot && $slot === 5,
                 ];
             }
         }
-        // $itemIds now has 100 entries
 
+        $fillableItemIds = array_values(array_filter(
+            $itemIds,
+            fn(array $item): bool => !$item['is_vacant_slot']
+        ));
         // ── 7. Reference data pools ────────────────────────────────
         $firstNamesMale = [
             'Ramon',
@@ -675,6 +694,16 @@ class DatabaseSeeder extends Seeder
 
         // ── 8. Insert 100 employees ────────────────────────────────
         $createdEmployeeIds = [];
+        $docTrackTargetPositionByDepartment = [
+            $deptId => 5,
+            $deptOpsId => 6,
+            $deptGovId => 7,
+        ];
+        $roleTargetPosition = [
+            'hr_admin' => 5,
+            'ogm' => 7,
+        ];
+        $positionSeenCount = [];
         srand(42); // reproducible randomness
 
         for ($i = 0; $i < 100; $i++) {
@@ -713,9 +742,11 @@ class DatabaseSeeder extends Seeder
             $status = ($i % 10 !== 0); // 10% inactive
 
             // item slot
-            $itemEntry = $itemIds[$i];
+            $itemEntry = $fillableItemIds[$i];
             $itemId = $itemEntry['id'];
             $posIdx = $itemEntry['pos_idx'];
+            $positionSeenCount[$posIdx] = ($positionSeenCount[$posIdx] ?? 0) + 1;
+            $positionOccurrence = $positionSeenCount[$posIdx];
             $sgIdx = $positions[$posIdx]['sg_idx'];
 
             $workEmail = strtolower(
@@ -757,6 +788,31 @@ class DatabaseSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            $employeeUser = Employee::findOrFail($employeeId);
+
+            $user = User::firstOrCreate([
+                'employee_id' => $employeeId,
+                'email' => $employeeUser->work_email,
+                'email_verified_at' => now(),
+                'password' => $employeeUser->password,
+            ]);
+
+            $user->assignRole('employee');
+            $departmentId = $positions[$posIdx]['dept'] ?? null;
+            $isDocTrackTarget = $departmentId !== null
+                && isset($docTrackTargetPositionByDepartment[$departmentId])
+                && $docTrackTargetPositionByDepartment[$departmentId] === $posIdx
+                && $positionOccurrence === 1;
+            if ($isDocTrackTarget) {
+                $user->assignRole('document_tracking_operator');
+            }
+            if ($posIdx === $roleTargetPosition['hr_admin'] && $positionOccurrence === 1) {
+                $user->assignRole('hr_admin');
+            }
+            if ($posIdx === $roleTargetPosition['ogm'] && $positionOccurrence === 1) {
+                $user->assignRole('ogm');
+            }
 
             $createdEmployeeIds[] = $employeeId;
 
@@ -964,7 +1020,6 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call([
-            RoleSeeder::class,
             UserSeeder::class,
             InternalOrganizationSeeder::class,
             HolidaySeeder::class,
@@ -972,6 +1027,7 @@ class DatabaseSeeder extends Seeder
             RecognitionLogSeeder::class,
             AttendanceRecordSeeder::class,
             LeaveTypeSeeder::class,
+            LeaveBalanceSeeder::class,
             LeaveApplicationSeeder::class,
             // LeaveEntitlementSeeder::class,
         ]);
