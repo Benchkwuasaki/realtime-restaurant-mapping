@@ -142,23 +142,7 @@ function matchesSearch(r: AttendanceLog, q: string): boolean {
     return getName(r).toLowerCase().includes(lower) || getWorkId(r).toLowerCase().includes(lower)
 }
 
-// ─── Live Dot ─────────────────────────────────────────────────────────────────
 
-function LiveDot({ connected }: { connected: boolean }) {
-    return (
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-normal">
-            {connected ? (
-                <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                </span>
-            ) : (
-                <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-            )}
-            {connected ? "Live" : "Offline"}
-        </span>
-    )
-}
 
 // ─── CCTV Stream (WebRTC/WHEP) ────────────────────────────────────────────────
 
@@ -319,7 +303,7 @@ function AttendanceCard({ record, isNew, onClick }: {
                     name={name}
                     className="w-full h-full group-hover:scale-105 transition-transform duration-300"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
                 {isNew && (
                     <div className="absolute top-2 right-2 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
                         NEW
@@ -328,16 +312,16 @@ function AttendanceCard({ record, isNew, onClick }: {
             </div>
 
             {/* Info */}
-            <div className="flex flex-col gap-0.5 px-2.5 py-2.5 min-w-0">
-                <p className="text-xs font-semibold text-card-foreground truncate leading-tight">{name}</p>
-                <p className="text-[10px] font-mono text-muted-foreground truncate">{workId}</p>
+            <div className="flex flex-col gap-0.5 px-2.5 py-2.5 min-w-0 font-poppins">
+                <p className="text-xs font-semibold text-card-foreground truncate leading-tight font-poppins">{name}</p>
+                <p className="text-[10px] text-muted-foreground truncate font-poppins">{workId}</p>
                 <div className="flex items-center gap-1.5 mt-1">
                     <Clock className="w-3 h-3 text-primary/50 shrink-0" />
-                    <span className="text-sm font-mono tabular-nums font-semibold text-card-foreground leading-none">
+                    <span className="text-[10px]  tabular-nums font-semibold text-card-foreground ">
                         {fmtTime(record.captured_at)}
                     </span>
                 </div>
-                <p className="text-[9px] uppercase tracking-widest font-semibold text-primary/60 mt-0.5">
+                <p className="text-[9px] uppercase tracking-widest font-semibold  mt-0.5 text-green-500">
                     Detected
                 </p>
             </div>
@@ -617,7 +601,6 @@ export default function RecognitionLogIndex({
                         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
                             <Radio className="w-4 h-4 text-primary" />
                             Attendance Monitor
-                            <LiveDot connected={echoConnected} />
                         </h1>
                         <p className="text-sm text-muted-foreground mt-0.5">
                             {isToday ? "Today — " : ""}{fmtDate(date)}
@@ -671,8 +654,7 @@ export default function RecognitionLogIndex({
                     {/* ══ RIGHT: Detection log ══ */}
                     <div
                         className="flex flex-col bg-card border border-border rounded-xl overflow-hidden"
-                        style={{ height: "calc(87dvh - 10rem)" }}
-                    >
+                        style={{ height: "calc(87dvh - 10rem)" }}>
                         {/* Panel header */}
                         <div className="flex flex-col gap-2 px-4 py-3 border-b border-border shrink-0 bg-muted/20">
                             <div className="flex items-center justify-between gap-2">
