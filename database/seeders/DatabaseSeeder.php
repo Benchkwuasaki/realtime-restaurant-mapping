@@ -1207,7 +1207,7 @@ class DatabaseSeeder extends Seeder
             LeaveTypeSeeder::class,
             LeaveBalanceSeeder::class,
             LeaveApplicationSeeder::class,
-            AttendanceSeeder::class,
+            // AttendanceSeeder::class,
             // LeaveEntitlementSeeder::class,
         ]);
     }
