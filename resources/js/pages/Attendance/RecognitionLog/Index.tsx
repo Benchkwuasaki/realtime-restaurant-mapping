@@ -1,5 +1,5 @@
 import { Head, router } from "@inertiajs/react"
-import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import axios from "axios"
 import {
     Search, CalendarDays, WifiOff, Loader2, Radio,
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { BreadcrumbItem } from "@/types"
+import { useEchoPublic } from "@laravel/echo-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ interface Employee {
 
 type TimeType = "time_in" | "break_in" | "break_out" | "time_out"
 
-interface AttendanceRecord {
+interface AttendanceLog {
     id: number
     work_id: string | null
     verification_status: "verified" | "unknown" | "blacklisted"
@@ -47,18 +48,17 @@ interface AttendanceRecord {
 }
 
 interface PaginatedAttendances {
-    data: AttendanceRecord[]
+    data: AttendanceLog[]
     total?: number
     [key: string]: unknown
 }
 
 interface Props {
-    attendances: AttendanceRecord[] | PaginatedAttendances
+    attendances: AttendanceLog[] | PaginatedAttendances
     filters: { date: string }
 }
 
-// Normalize whatever the backend sends into a plain array
-function toArray(raw: AttendanceRecord[] | PaginatedAttendances): AttendanceRecord[] {
+function toArray(raw: AttendanceLog[] | PaginatedAttendances): AttendanceLog[] {
     if (!raw) return []
     if (Array.isArray(raw)) return raw
     if (Array.isArray((raw as PaginatedAttendances).data)) return (raw as PaginatedAttendances).data
@@ -129,12 +129,16 @@ function fmtDate(dateStr: string) {
     })
 }
 
-function getName(r: AttendanceRecord): string {
+function todayPH(): string {
+    return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
+}
+
+function getName(r: AttendanceLog): string {
     const b = r.employee?.basic_info
     return b ? `${b.first_name} ${b.last_name}` : "Unknown"
 }
 
-function getWorkId(r: AttendanceRecord): string {
+function getWorkId(r: AttendanceLog): string {
     return r.employee?.work_id ?? r.work_id ?? "—"
 }
 
@@ -142,18 +146,35 @@ function initials(name: string): string {
     return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
 }
 
-// Client-side search: matches name or work_id
-function matchesSearch(r: AttendanceRecord, q: string): boolean {
+function matchesSearch(r: AttendanceLog, q: string): boolean {
     if (!q.trim()) return true
     const lower = q.toLowerCase()
     return getName(r).toLowerCase().includes(lower) || getWorkId(r).toLowerCase().includes(lower)
+}
+
+// ─── Live Dot ─────────────────────────────────────────────────────────────────
+
+function LiveDot({ connected }: { connected: boolean }) {
+    return (
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-normal">
+            {connected ? (
+                <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+            ) : (
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+            )}
+            {connected ? "Live" : "Offline"}
+        </span>
+    )
 }
 
 // ─── CCTV Stream (WebRTC/WHEP) ────────────────────────────────────────────────
 
 function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) {
     const videoRef = useRef<HTMLVideoElement>(null)
-    const pcRef    = useRef<RTCPeerConnection | null>(null)
+    const pcRef = useRef<RTCPeerConnection | null>(null)
     const [status, setStatus] = useState<"connecting" | "live" | "error">("connecting")
 
     const connect = useCallback(async () => {
@@ -215,7 +236,10 @@ function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) 
                         <>
                             <WifiOff className="w-10 h-10 text-white/20" />
                             <p className="text-xs text-white/30 tracking-widest uppercase">Stream Offline</p>
-                            <button onClick={() => connect()} className="mt-1 text-xs text-white/50 hover:text-white/80 underline transition-colors">
+                            <button
+                                onClick={() => connect()}
+                                className="mt-1 text-xs text-white/50 hover:text-white/80 underline transition-colors"
+                            >
                                 Retry
                             </button>
                         </>
@@ -223,7 +247,6 @@ function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) 
                 </div>
             )}
 
-            {/* Label + live badge */}
             <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
                 <span className="text-xs font-semibold text-white bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg">
                     {label}
@@ -271,8 +294,8 @@ function SnapshotImage({ path, avatarUrl, name, className = "" }: {
 
     if (!src || err) {
         return (
-            <div className={`bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center ${className}`}>
-                <span className="text-primary font-bold text-xl select-none">{initials(name)}</span>
+            <div className={`bg-accent flex items-center justify-center ${className}`}>
+                <span className="text-accent-foreground font-bold text-xl select-none">{initials(name)}</span>
             </div>
         )
     }
@@ -294,20 +317,25 @@ function TimeTypePill({ type }: { type: TimeType }) {
 
 // ─── Attendance Card ──────────────────────────────────────────────────────────
 
-function AttendanceCard({ record, onClick }: { record: AttendanceRecord; onClick: () => void }) {
-    const name   = getName(record)
+function AttendanceCard({ record, isNew, onClick }: {
+    record: AttendanceLog; isNew?: boolean; onClick: () => void
+}) {
+    const name = getName(record)
     const workId = getWorkId(record)
-    const cfg    = TT[record.time_type ?? "time_in"]
+    const cfg = TT[record.time_type ?? "time_in"]
 
     return (
         <button
             onClick={onClick}
-            className="group relative flex flex-col w-full bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-md active:scale-[0.98] transition-all duration-200 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={`group relative flex flex-col w-full bg-card rounded-xl overflow-hidden text-left transition-all duration-200
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]
+                border hover:shadow-md hover:border-primary/30
+                ${isNew ? "border-primary/50 shadow-sm shadow-primary/10" : "border-border"}`}
         >
-            {/* Coloured top accent bar */}
+            {/* Accent bar */}
             <div className={`h-0.5 w-full ${cfg.bar} opacity-60 group-hover:opacity-100 transition-opacity shrink-0`} />
 
-            {/* Square face snapshot */}
+            {/* Snapshot */}
             <div className="relative w-full aspect-square overflow-hidden bg-muted">
                 <SnapshotImage
                     path={record.snapshot_path}
@@ -315,15 +343,18 @@ function AttendanceCard({ record, onClick }: { record: AttendanceRecord; onClick
                     name={name}
                     className="w-full h-full group-hover:scale-105 transition-transform duration-300"
                 />
-                {/* Bottom gradient for pill legibility */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent pointer-events-none" />
-                {/* Time type pill */}
                 <div className="absolute bottom-2 left-2">
                     <TimeTypePill type={record.time_type ?? "time_in"} />
                 </div>
+                {isNew && (
+                    <div className="absolute top-2 right-2 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                        NEW
+                    </div>
+                )}
             </div>
 
-            {/* Info row */}
+            {/* Info */}
             <div className="flex flex-col gap-0.5 px-2.5 py-2 min-w-0">
                 <p className="text-xs font-semibold text-foreground truncate leading-tight">{name}</p>
                 <p className="text-[10px] font-mono text-muted-foreground/70 truncate">{workId}</p>
@@ -339,28 +370,26 @@ function AttendanceCard({ record, onClick }: { record: AttendanceRecord; onClick
 // ─── Employee Detail Dialog ───────────────────────────────────────────────────
 
 function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
-    record: AttendanceRecord | null
-    allRecords: AttendanceRecord[]
+    record: AttendanceLog | null
+    allRecords: AttendanceLog[]
     open: boolean
     onClose: () => void
 }) {
     if (!record) return null
 
-    const name       = getName(record)
-    const workId     = getWorkId(record)
+    const name = getName(record)
+    const workId = getWorkId(record)
     const employeeId = record.employee?.employee_id
 
-    // All records for this employee today, sorted chronologically
     const empRecords = useMemo(() =>
         allRecords
             .filter(r => employeeId ? r.employee?.employee_id === employeeId : r.work_id === record.work_id)
-            .sort((a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime()),
+            .sort((a, b) => new Date(b.captured_at).getTime() - new Date(a.captured_at).getTime()),
         [allRecords, employeeId, record.work_id]
     )
 
-    // Latest record per time-type (last occurrence wins)
     const latest = useMemo(() => {
-        const map: Partial<Record<TimeType, AttendanceRecord>> = {}
+        const map: Partial<Record<TimeType, AttendanceLog>> = {}
         for (const r of empRecords) map[r.time_type] = r
         return map
     }, [empRecords])
@@ -369,7 +398,7 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl max-h-[90vh] flex flex-col">
 
-                {/* Blurred hero header */}
+                {/* Blurred hero */}
                 <div className="relative shrink-0">
                     <div className="absolute inset-0 overflow-hidden">
                         <SnapshotImage
@@ -378,10 +407,9 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                             name={name}
                             className="w-full h-full scale-110"
                         />
-                        <div className="absolute inset-0 bg-foreground/72 backdrop-blur-2xl" />
+                        <div className="absolute inset-0 bg-foreground/75 backdrop-blur-2xl" />
                     </div>
 
-                    {/* Close */}
                     <button
                         onClick={onClose}
                         className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors"
@@ -408,7 +436,7 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                     </div>
                 </div>
 
-                {/* 4-column summary: Time In / Break In / Break Out / Time Out */}
+                {/* 4-column time summary */}
                 <div className="grid grid-cols-4 divide-x divide-border border-b border-border bg-muted/30 shrink-0">
                     {(["time_in", "break_in", "break_out", "time_out"] as TimeType[]).map(tt => {
                         const cfg = TT[tt]
@@ -417,7 +445,9 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                         return (
                             <div key={tt} className="flex flex-col items-center py-3 px-1 gap-1">
                                 <Icon className={`w-3.5 h-3.5 ${cfg.iconCls}`} />
-                                <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold text-center leading-tight">{cfg.label}</span>
+                                <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold text-center leading-tight">
+                                    {cfg.label}
+                                </span>
                                 <span className={`text-[10px] font-mono tabular-nums font-bold ${rec ? "text-foreground" : "text-muted-foreground/40"}`}>
                                     {rec ? fmtTime(rec.captured_at) : "—"}
                                 </span>
@@ -426,44 +456,39 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                     })}
                 </div>
 
-                {/* Timeline header */}
+                {/* Timeline */}
                 <DialogHeader className="px-5 pt-4 pb-2 shrink-0">
                     <DialogTitle className="text-sm font-semibold flex items-center gap-2">
                         <Activity className="w-3.5 h-3.5 text-muted-foreground" />
                         All Records Today
-                        <Badge className="text-[10px] bg-accent text-accent-foreground border-0 ml-auto font-bold">
+                        <Badge variant="secondary" className="text-[10px] ml-auto font-bold">
                             {empRecords.length}
                         </Badge>
                     </DialogTitle>
                 </DialogHeader>
 
-                {/* Scrollable timeline */}
-                <ScrollArea className="flex-1 min-h-0">
+                <ScrollArea className="h-[280px]">
                     <div className="px-5 pb-5">
                         {empRecords.length === 0 ? (
                             <p className="text-sm text-muted-foreground italic text-center py-8">No records found.</p>
                         ) : (
                             <div className="relative">
-                                {/* Vertical connector line */}
-                                <div className="absolute left-[19px] top-5 bottom-5 w-px bg-border" />
-
                                 <div className="space-y-1.5">
                                     {empRecords.map(r => {
-                                        const cfg    = TT[r.time_type ?? "time_in"]
-                                        const Icon   = cfg.icon
+                                        const cfg = TT[r.time_type ?? "time_in"]
+                                        const Icon = cfg.icon
                                         const active = r.id === record.id
                                         return (
                                             <div
                                                 key={r.id}
-                                                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
-                                                    active ? "bg-primary/5 border border-primary/20" : "hover:bg-muted/40"
-                                                }`}
+                                                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active
+                                                    ? "bg-accent border border-accent-foreground/10"
+                                                    : "hover:bg-muted/40"
+                                                    }`}
                                             >
-                                                {/* Timeline dot */}
                                                 <div className={`relative z-10 w-9 h-9 rounded-full ${cfg.bgCls} flex items-center justify-center shrink-0 border ${cfg.borderCls}`}>
                                                     <Icon className={`w-4 h-4 ${cfg.iconCls}`} />
                                                 </div>
-
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between gap-2 flex-wrap">
                                                         <span className={`text-xs font-semibold ${cfg.iconCls}`}>{cfg.label}</span>
@@ -473,7 +498,6 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                                                         <p className="text-[9px] text-muted-foreground mt-0.5 truncate">Device: {r.device_id}</p>
                                                     )}
                                                 </div>
-
                                                 {r.snapshot_path && (
                                                     <div className="w-9 h-9 rounded-lg overflow-hidden border border-border shrink-0">
                                                         <img src={`/storage/${r.snapshot_path}`} alt="" className="w-full h-full object-cover" />
@@ -492,87 +516,87 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
     )
 }
 
-// ─── Stat Chip ────────────────────────────────────────────────────────────────
-
-function StatChip({ icon: Icon, label, value, iconCls, bgCls }: {
-    icon: React.ElementType; label: string; value: number; iconCls: string; bgCls: string
-}) {
-    return (
-        <div className="flex flex-col items-center gap-1.5 bg-card border border-border rounded-xl py-2.5 px-1.5 hover:border-primary/20 transition-colors">
-            <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg ${bgCls} flex items-center justify-center shrink-0`}>
-                <Icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${iconCls}`} />
-            </div>
-            <span className="text-base sm:text-lg font-bold tabular-nums leading-none">{value}</span>
-            <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-none text-center">{label}</span>
-        </div>
-    )
-}
-
 // ─── Breadcrumbs ──────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: "Attendance", href: "/attendance" }]
 
-// ─── POLLING INTERVAL (ms) ────────────────────────────────────────────────────
-const POLL_INTERVAL = 15_000
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function AttendanceIndex({
+export default function RecognitionLogIndex({
     attendances: initialAttendances,
-    filters = { date: new Date().toISOString().split("T")[0] },
+    filters = { date: todayPH() },
 }: Props) {
-    // ── Date (server-side filter, triggers Inertia reload) ──
+    // ── Date ──
     const [date, setDate] = useState(filters.date)
-    const isToday = date === new Date().toISOString().split("T")[0]
+    const isToday = date === todayPH()
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const d = e.target.value
         setDate(d)
-        router.get(route("attendance.index"), { date: d }, { preserveScroll: true, replace: true })
+        router.get(route("recognition-logs.index"), { date: d }, { preserveScroll: true, replace: true })
     }
 
     const setToday = () => {
-        const today = new Date().toISOString().split("T")[0]
+        const today = todayPH()
         setDate(today)
-        router.get(route("attendance.index"), { date: today }, { preserveScroll: true, replace: true })
+        router.get(route("recognition-logs.index"), { date: today }, { preserveScroll: true, replace: true })
     }
 
-    // ── All records — seeded from Inertia, kept fresh via Axios polling ──
-    const [records, setRecords] = useState<AttendanceRecord[]>(() => toArray(initialAttendances))
-    const [polling, setPolling] = useState(false)
+    // ── Records state ──
+    const [records, setRecords] = useState<AttendanceLog[]>(() => toArray(initialAttendances))
+    const [refreshing, setRefreshing] = useState(false)
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    const [newIds, setNewIds] = useState<Set<number>>(new Set())
 
-    // Sync when Inertia navigates to a different date
+    // Sync on Inertia navigate
     useEffect(() => {
         setRecords(toArray(initialAttendances))
     }, [initialAttendances])
 
-    // Axios poll — fetches JSON from the same route with ?json=1
+    // ── Echo connection state ──
+    const [echoConnected, setEchoConnected] = useState(false)
+
+    useEffect(() => {
+        const check = () => {
+            const echo = (window as any).Echo
+            if (!echo) { setEchoConnected(false); return }
+            const state = echo.connector?.pusher?.connection?.state
+            setEchoConnected(state === "connected")
+        }
+        check()
+        const id = setInterval(check, 2000)
+        return () => clearInterval(id)
+    }, [])
+
+    // ── Echo real-time listener ──
+    useEchoPublic("attendance-logs", ".log.created", (incoming: AttendanceLog) => {
+        if (date !== todayPH()) return
+        setRecords(prev => prev.some(r => r.id === incoming.id) ? prev : [incoming, ...prev])
+        setNewIds(prev => new Set(prev).add(incoming.id))
+        setLastUpdated(new Date())
+        setTimeout(() => {
+            setNewIds(prev => { const s = new Set(prev); s.delete(incoming.id); return s })
+        }, 5000)
+    })
+
+    // ── Manual refresh ──
     const fetchRecords = useCallback(async (targetDate: string) => {
-        setPolling(true)
+        setRefreshing(true)
         try {
-            const res = await axios.get<{ attendances: AttendanceRecord[] }>(
-                route("attendance.index"),
+            const res = await axios.get<{ attendances: AttendanceLog[] }>(
+                route("recognition-logs.index"),
                 { params: { date: targetDate, json: 1 } }
             )
             setRecords(toArray(res.data.attendances ?? []))
             setLastUpdated(new Date())
         } catch {
-            // silently fail — data stays stale
+            // silently fail
         } finally {
-            setPolling(false)
+            setRefreshing(false)
         }
     }, [])
 
-    // Start/restart polling whenever date changes
-    useEffect(() => {
-        if (pollRef.current) clearInterval(pollRef.current)
-        pollRef.current = setInterval(() => fetchRecords(date), POLL_INTERVAL)
-        return () => { if (pollRef.current) clearInterval(pollRef.current) }
-    }, [date, fetchRecords])
-
-    // ── Client-side search (instant, zero round-trips) ──
+    // ── Search ──
     const [search, setSearch] = useState("")
 
     const filtered = useMemo(
@@ -580,37 +604,24 @@ export default function AttendanceIndex({
         [records, search]
     )
 
-    // ── Counts from filtered list ──
-    const counts = useMemo(() => ({
-        total:     filtered.length,
-        time_in:   filtered.filter(r => r.time_type === "time_in").length,
-        break_in:  filtered.filter(r => r.time_type === "break_in").length,
-        break_out: filtered.filter(r => r.time_type === "break_out").length,
-        time_out:  filtered.filter(r => r.time_type === "time_out").length,
-    }), [filtered])
+
 
     // ── Dialog ──
-    const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null)
+    const [selectedRecord, setSelectedRecord] = useState<AttendanceLog | null>(null)
     const [dialogOpen, setDialogOpen] = useState(false)
 
-    const openRecord = (record: AttendanceRecord) => {
+    const openRecord = (record: AttendanceLog) => {
         setSelectedRecord(record)
         setDialogOpen(true)
     }
 
-    const CCTV_SRC = "http://192.168.0.104:8889/cam"
+    const CCTV_SRC = "http://192.168.0.109:8889/cam"
+
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Attendance" />
 
-            {/*
-             * Layout strategy:
-             * Mobile  (< xl): stacks vertically — camera 16:9, then chips, then card log.
-             * Desktop (≥ xl): side-by-side — camera+chips on the LEFT (58%), card log on RIGHT.
-             * The overall wrapper does NOT set a fixed height on mobile so everything can scroll naturally.
-             * On desktop we use h-full / flex-1 / overflow-hidden to make both panels independently scrollable.
-             */}
             <div className="flex flex-col gap-4 px-4 sm:px-5 pt-4 pb-4">
 
                 {/* ── Header ── */}
@@ -619,6 +630,7 @@ export default function AttendanceIndex({
                         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
                             <Radio className="w-4 h-4 text-emerald-500" />
                             Attendance Monitor
+                            <LiveDot connected={echoConnected} />
                         </h1>
                         <p className="text-sm text-muted-foreground mt-0.5">
                             {isToday ? "Today — " : ""}{fmtDate(date)}
@@ -627,7 +639,9 @@ export default function AttendanceIndex({
                             {" "}record{records.length !== 1 ? "s" : ""}
                             {lastUpdated && (
                                 <span className="ml-2 text-[11px] text-muted-foreground/60">
-                                    · updated {lastUpdated.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })}
+                                    · updated {lastUpdated.toLocaleTimeString("en-PH", {
+                                        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
+                                    })}
                                 </span>
                             )}
                         </p>
@@ -646,14 +660,13 @@ export default function AttendanceIndex({
                                 <span className="hidden sm:inline">Today</span>
                             </Button>
                         )}
-                        {/* Manual refresh */}
                         <Button
                             variant="outline" size="sm" className="h-9 w-9 p-0"
                             onClick={() => fetchRecords(date)}
-                            disabled={polling}
+                            disabled={refreshing}
                             title="Refresh now"
                         >
-                            <RefreshCw className={`w-3.5 h-3.5 ${polling ? "animate-spin" : ""}`} />
+                            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
                         </Button>
                     </div>
                 </div>
@@ -661,54 +674,40 @@ export default function AttendanceIndex({
                 {/* ── Main layout ── */}
                 <div className="flex flex-col xl:flex-row gap-4">
 
-                    {/* ══ LEFT: Camera (16:9 landscape) + stat chips ══ */}
-                    <div className="flex flex-col gap-3 xl:w-[72%] shrink-0 xl:self-start xl:sticky xl:top-4">
-
-                        {/*
-                         * Camera wrapper: always 16:9 aspect ratio.
-                         * `aspect-video` = 16/9. On desktop the parent column controls width,
-                         * so the height is derived naturally from aspect ratio.
-                         */}
-                        <div className="relative w-full rounded-2xl overflow-hidden border border-border shadow-sm bg-black aspect-video">
+                    {/* ══ LEFT: Camera + stat chips ══ */}
+                    <div className="flex flex-col gap-3 xl:w-[75%] shrink-0 xl:self-start xl:sticky xl:top-4">
+                        <div className="relative w-full rounded-xl overflow-hidden border border-border shadow-sm bg-black aspect-video">
                             <CctvStream src={CCTV_SRC} label="Entrance — CAM 01" />
-                        </div>
-
-                        {/* 5-column stat chips */}
-                        <div className="grid grid-cols-5 gap-2 shrink-0">
-                            <StatChip icon={Users}          label="Total"     value={counts.total}     iconCls="text-primary"                             bgCls="bg-primary/10" />
-                            <StatChip icon={LogIn}          label="Time In"   value={counts.time_in}   iconCls={TT.time_in.iconCls}   bgCls={TT.time_in.bgCls} />
-                            <StatChip icon={Coffee}         label="Break In"  value={counts.break_in}  iconCls={TT.break_in.iconCls}  bgCls={TT.break_in.bgCls} />
-                            <StatChip icon={ArrowUpFromLine} label="Break Out" value={counts.break_out} iconCls={TT.break_out.iconCls} bgCls={TT.break_out.bgCls} />
-                            <StatChip icon={LogOut}         label="Time Out"  value={counts.time_out}  iconCls={TT.time_out.iconCls}  bgCls={TT.time_out.bgCls} />
                         </div>
                     </div>
 
-                    {/* ══ RIGHT: Scrollable recognition log ══ */}
-                    <div className="flex flex-col bg-card border border-border rounded-2xl overflow-hidden" style={{ height: "calc(100dvh - 10rem)" }}>
-
-                        {/* Panel header: title + search */}
+                    {/* ══ RIGHT: Recognition log ══ */}
+                    <div
+                        className="flex flex-col bg-card border border-border rounded-xl overflow-hidden"
+                        style={{ height: "calc(100dvh - 10rem)" }}
+                    >
+                        {/* Panel header */}
                         <div className="flex flex-col gap-2 px-4 py-3 border-b border-border shrink-0 bg-muted/20">
                             <div className="flex items-center justify-between gap-2">
-                                <p className="text-sm font-semibold flex items-center gap-1.5">
+                                <p className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
                                     <Fingerprint className="w-3.5 h-3.5 text-muted-foreground" />
                                     Recognition Log
                                 </p>
                                 <div className="flex items-center gap-1.5">
-                                    {polling && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+                                    {refreshing && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
                                     <span className="text-xs text-muted-foreground tabular-nums">
                                         {filtered.length}{search ? ` / ${records.length}` : ""} records
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Search bar — client-side instant filter */}
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                                 <Input
                                     value={search}
                                     onChange={e => setSearch(e.target.value)}
                                     placeholder="Search by name or work ID…"
-                                    className="pl-8 pr-8 h-8 text-sm"
+                                    className="pl-8 pr-8 h-8 text-sm bg-background"
                                 />
                                 {search && (
                                     <button
@@ -721,16 +720,7 @@ export default function AttendanceIndex({
                             </div>
                         </div>
 
-                        {/*
-                         * Scrollable grid:
-                         * - Mobile: natural height, browser scroll.
-                         * - Desktop (xl+): flex-1 + overflow-y-auto = panel-level scroll,
-                         *   independent of the left camera column.
-                         *
-                         * Grid columns:
-                         * 2 cols on xs/mobile, 3 on sm, 4 on md/lg,
-                         * 2 on xl (panel is ~42% wide), 3 on 2xl.
-                         */}
+                        {/* Scrollable grid */}
                         <div className="flex-1 overflow-y-auto p-3">
                             {filtered.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
@@ -750,6 +740,7 @@ export default function AttendanceIndex({
                                         <AttendanceCard
                                             key={record.id}
                                             record={record}
+                                            isNew={newIds.has(record.id)}
                                             onClick={() => openRecord(record)}
                                         />
                                     ))}
@@ -760,7 +751,6 @@ export default function AttendanceIndex({
                 </div>
             </div>
 
-            {/* Employee detail dialog */}
             <EmployeeDetailDialog
                 record={selectedRecord}
                 allRecords={records}

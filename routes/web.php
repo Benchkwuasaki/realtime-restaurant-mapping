@@ -8,6 +8,7 @@ use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AttendanceLogController;
 use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\AttendanceRecordController;
 use App\Http\Controllers\AttendanceSettingController;
@@ -209,26 +210,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Attendance - api calls
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('attendance')->name('attendance.')->group(function () {
-        Route::post('/clock-in', [AttendanceController::class, 'clockIn'])->name('clock-in');
-        Route::post('/enroll', [AttendanceController::class, 'enroll'])->name('enroll');
-        Route::post('/detect', [AttendanceController::class, 'detect'])->name('detect');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Attendance - Recognition logs
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
-        Route::get('/', [RecognitionLogController::class, 'index'])->name('index');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
     | Attendance - Whereabout Slip
     |--------------------------------------------------------------------------
     */
@@ -314,7 +295,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
 
     Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
-        Route::get('/', [AttendanceController::class, 'index'])->name('index');
+        Route::get('/', [AttendanceLogController::class, 'index'])->name('index');
     });
 
 
@@ -323,9 +304,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 | Attendance - Records (computed daily attendance)
 |--------------------------------------------------------------------------
 */
-    // Attendance Records (read-only — computed on the fly)
+    // Attendance Records
     Route::get('attendance/records', [AttendanceRecordController::class, 'index'])
         ->name('attendance-record.index');
+    Route::post('attendance/records/recompute', [AttendanceRecordController::class, 'recompute'])
+        ->name('attendance-record.recompute');
+    Route::post('attendance/records/sync-absent', [AttendanceRecordController::class, 'syncAbsent'])
+        ->name('attendance-record.sync-absent');
 
     // Attendance Settings (full CRUD)
     Route::get('attendance/settings', [AttendanceSettingController::class, 'index'])
