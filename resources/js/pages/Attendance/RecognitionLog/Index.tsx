@@ -4,7 +4,7 @@ import axios from "axios"
 import {
     Search, CalendarDays, WifiOff, Loader2, Radio,
     LogIn, LogOut, Coffee, ArrowUpFromLine, X,
-    Fingerprint, Activity, Users, Clock, RefreshCw,
+    Fingerprint, Activity, Clock, RefreshCw,
 } from "lucide-react"
 import { route } from "ziggy-js"
 import AppLayout from "@/layouts/app-layout"
@@ -65,13 +65,11 @@ function toArray(raw: AttendanceLog[] | PaginatedAttendances): AttendanceLog[] {
     return []
 }
 
-// ─── Time-type config ─────────────────────────────────────────────────────────
+// ─── Time-type config — mapped to theme tokens ────────────────────────────────
 
 const TT: Record<TimeType, {
     label: string
     icon: React.ElementType
-    pill: string
-    bar: string
     iconCls: string
     bgCls: string
     borderCls: string
@@ -79,38 +77,30 @@ const TT: Record<TimeType, {
     time_in: {
         label: "Time In",
         icon: LogIn,
-        pill: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
-        bar: "bg-emerald-500",
-        iconCls: "text-emerald-600 dark:text-emerald-400",
-        bgCls: "bg-emerald-500/10",
-        borderCls: "border-emerald-200 dark:border-emerald-800",
+        iconCls: "text-primary",
+        bgCls: "bg-primary/10",
+        borderCls: "border-primary/20",
     },
     break_in: {
         label: "Break In",
         icon: Coffee,
-        pill: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800",
-        bar: "bg-amber-500",
-        iconCls: "text-amber-600 dark:text-amber-400",
-        bgCls: "bg-amber-500/10",
-        borderCls: "border-amber-200 dark:border-amber-800",
+        iconCls: "text-secondary-foreground",
+        bgCls: "bg-secondary",
+        borderCls: "border-border",
     },
     break_out: {
         label: "Break Out",
         icon: ArrowUpFromLine,
-        pill: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800",
-        bar: "bg-blue-500",
-        iconCls: "text-blue-600 dark:text-blue-400",
-        bgCls: "bg-blue-500/10",
-        borderCls: "border-blue-200 dark:border-blue-800",
+        iconCls: "text-accent-foreground",
+        bgCls: "bg-accent",
+        borderCls: "border-accent-foreground/20",
     },
     time_out: {
         label: "Time Out",
         icon: LogOut,
-        pill: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800",
-        bar: "bg-rose-500",
-        iconCls: "text-rose-600 dark:text-rose-400",
-        bgCls: "bg-rose-500/10",
-        borderCls: "border-rose-200 dark:border-rose-800",
+        iconCls: "text-destructive",
+        bgCls: "bg-destructive/10",
+        borderCls: "border-destructive/20",
     },
 }
 
@@ -159,8 +149,8 @@ function LiveDot({ connected }: { connected: boolean }) {
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-normal">
             {connected ? (
                 <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                 </span>
             ) : (
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/30" />
@@ -252,10 +242,10 @@ function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) 
                     {label}
                 </span>
                 {status === "live" && (
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg">
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-primary-foreground bg-primary/80 backdrop-blur-sm px-2.5 py-1 rounded-lg">
                         <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-foreground" />
                         </span>
                         LIVE
                     </span>
@@ -294,25 +284,12 @@ function SnapshotImage({ path, avatarUrl, name, className = "" }: {
 
     if (!src || err) {
         return (
-            <div className={`bg-accent flex items-center justify-center ${className}`}>
-                <span className="text-accent-foreground font-bold text-xl select-none">{initials(name)}</span>
+            <div className={`bg-primary/10 flex items-center justify-center ${className}`}>
+                <span className="text-primary font-bold text-xl select-none">{initials(name)}</span>
             </div>
         )
     }
     return <img src={src} alt={name} onError={() => setErr(true)} className={`object-cover ${className}`} />
-}
-
-// ─── TimeTypePill ─────────────────────────────────────────────────────────────
-
-function TimeTypePill({ type }: { type: TimeType }) {
-    const cfg = TT[type]
-    const Icon = cfg.icon
-    return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfg.pill}`}>
-            <Icon className="w-2.5 h-2.5" />
-            {cfg.label}
-        </span>
-    )
 }
 
 // ─── Attendance Card ──────────────────────────────────────────────────────────
@@ -322,18 +299,17 @@ function AttendanceCard({ record, isNew, onClick }: {
 }) {
     const name = getName(record)
     const workId = getWorkId(record)
-    const cfg = TT[record.time_type ?? "time_in"]
 
     return (
         <button
             onClick={onClick}
             className={`group relative flex flex-col w-full bg-card rounded-xl overflow-hidden text-left transition-all duration-200
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]
-                border hover:shadow-md hover:border-primary/30
-                ${isNew ? "border-primary/50 shadow-sm shadow-primary/10" : "border-border"}`}
+                border hover:shadow-md hover:border-primary/40
+                ${isNew ? "border-primary/60 shadow-sm shadow-primary/10" : "border-border"}`}
         >
-            {/* Accent bar */}
-            <div className={`h-0.5 w-full ${cfg.bar} opacity-60 group-hover:opacity-100 transition-opacity shrink-0`} />
+            {/* Primary accent bar */}
+            <div className="h-0.5 w-full bg-primary opacity-50 group-hover:opacity-100 transition-opacity shrink-0" />
 
             {/* Snapshot */}
             <div className="relative w-full aspect-square overflow-hidden bg-muted">
@@ -343,10 +319,7 @@ function AttendanceCard({ record, isNew, onClick }: {
                     name={name}
                     className="w-full h-full group-hover:scale-105 transition-transform duration-300"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent pointer-events-none" />
-                <div className="absolute bottom-2 left-2">
-                    <TimeTypePill type={record.time_type ?? "time_in"} />
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
                 {isNew && (
                     <div className="absolute top-2 right-2 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
                         NEW
@@ -355,13 +328,18 @@ function AttendanceCard({ record, isNew, onClick }: {
             </div>
 
             {/* Info */}
-            <div className="flex flex-col gap-0.5 px-2.5 py-2 min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate leading-tight">{name}</p>
-                <p className="text-[10px] font-mono text-muted-foreground/70 truncate">{workId}</p>
-                <div className="flex items-center gap-1 mt-0.5">
-                    <Clock className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0" />
-                    <span className="text-[10px] font-mono tabular-nums text-muted-foreground">{fmtTime(record.captured_at)}</span>
+            <div className="flex flex-col gap-0.5 px-2.5 py-2.5 min-w-0">
+                <p className="text-xs font-semibold text-card-foreground truncate leading-tight">{name}</p>
+                <p className="text-[10px] font-mono text-muted-foreground truncate">{workId}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                    <Clock className="w-3 h-3 text-primary/50 shrink-0" />
+                    <span className="text-sm font-mono tabular-nums font-semibold text-card-foreground leading-none">
+                        {fmtTime(record.captured_at)}
+                    </span>
                 </div>
+                <p className="text-[9px] uppercase tracking-widest font-semibold text-primary/60 mt-0.5">
+                    Detected
+                </p>
             </div>
         </button>
     )
@@ -390,7 +368,7 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
 
     const latest = useMemo(() => {
         const map: Partial<Record<TimeType, AttendanceLog>> = {}
-        for (const r of empRecords) map[r.time_type] = r
+        for (const r of [...empRecords].reverse()) map[r.time_type] = r
         return map
     }, [empRecords])
 
@@ -398,7 +376,7 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl max-h-[90vh] flex flex-col">
 
-                {/* Blurred hero */}
+                {/* Hero — primary colour wash */}
                 <div className="relative shrink-0">
                     <div className="absolute inset-0 overflow-hidden">
                         <SnapshotImage
@@ -407,18 +385,18 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                             name={name}
                             className="w-full h-full scale-110"
                         />
-                        <div className="absolute inset-0 bg-foreground/75 backdrop-blur-2xl" />
+                        <div className="absolute inset-0 bg-primary/85 backdrop-blur-2xl" />
                     </div>
 
                     <button
                         onClick={onClose}
-                        className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors"
+                        className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-primary-foreground/10 hover:bg-primary-foreground/25 flex items-center justify-center text-primary-foreground transition-colors"
                     >
                         <X className="w-3.5 h-3.5" />
                     </button>
 
                     <div className="relative z-10 flex items-end gap-4 px-5 pt-8 pb-5">
-                        <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/20 shadow-xl shrink-0">
+                        <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-primary-foreground/20 shadow-xl shrink-0">
                             <SnapshotImage
                                 path={record.snapshot_path}
                                 avatarUrl={record.employee?.avatar_url}
@@ -427,10 +405,16 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                             />
                         </div>
                         <div className="min-w-0 pb-1">
-                            <h2 className="text-lg font-bold text-white leading-tight truncate">{name}</h2>
-                            <p className="text-xs font-mono text-white/55 mt-0.5">{workId}</p>
-                            <div className="mt-2.5">
-                                <TimeTypePill type={record.time_type ?? "time_in"} />
+                            <h2 className="text-lg font-bold text-primary-foreground leading-tight truncate">{name}</h2>
+                            <p className="text-xs font-mono text-primary-foreground/60 mt-0.5">{workId}</p>
+                            <div className="mt-2.5 flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-primary-foreground/60" />
+                                <span className="text-sm font-mono tabular-nums font-semibold text-primary-foreground">
+                                    {fmtTime(record.captured_at)}
+                                </span>
+                                <span className="text-[9px] uppercase tracking-widest font-semibold text-primary-foreground/50 ml-1">
+                                    Detected
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -438,7 +422,7 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
 
                 {/* 4-column time summary */}
                 <div className="grid grid-cols-4 divide-x divide-border border-b border-border bg-muted/30 shrink-0">
-                    {(["time_in", "break_in", "break_out", "time_out"] as TimeType[]).map(tt => {
+                    {(["time_in", "break_out", "break_in", "time_out"] as TimeType[]).map(tt => {
                         const cfg = TT[tt]
                         const Icon = cfg.icon
                         const rec = latest[tt]
@@ -460,7 +444,7 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                 <DialogHeader className="px-5 pt-4 pb-2 shrink-0">
                     <DialogTitle className="text-sm font-semibold flex items-center gap-2">
                         <Activity className="w-3.5 h-3.5 text-muted-foreground" />
-                        All Records Today
+                        All Detections Today
                         <Badge variant="secondary" className="text-[10px] ml-auto font-bold">
                             {empRecords.length}
                         </Badge>
@@ -472,41 +456,43 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                         {empRecords.length === 0 ? (
                             <p className="text-sm text-muted-foreground italic text-center py-8">No records found.</p>
                         ) : (
-                            <div className="relative">
-                                <div className="space-y-1.5">
-                                    {empRecords.map(r => {
-                                        const cfg = TT[r.time_type ?? "time_in"]
-                                        const Icon = cfg.icon
-                                        const active = r.id === record.id
-                                        return (
-                                            <div
-                                                key={r.id}
-                                                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active
-                                                    ? "bg-accent border border-accent-foreground/10"
-                                                    : "hover:bg-muted/40"
-                                                    }`}
-                                            >
-                                                <div className={`relative z-10 w-9 h-9 rounded-full ${cfg.bgCls} flex items-center justify-center shrink-0 border ${cfg.borderCls}`}>
-                                                    <Icon className={`w-4 h-4 ${cfg.iconCls}`} />
+                            <div className="space-y-1.5">
+                                {empRecords.map(r => {
+                                    const cfg = TT[r.time_type ?? "time_in"]
+                                    const Icon = cfg.icon
+                                    const active = r.id === record.id
+                                    return (
+                                        <div
+                                            key={r.id}
+                                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active
+                                                ? "bg-primary/10 border border-primary/20"
+                                                : "hover:bg-muted/50"
+                                                }`}
+                                        >
+                                            <div className={`w-9 h-9 rounded-full ${cfg.bgCls} flex items-center justify-center shrink-0 border ${cfg.borderCls}`}>
+                                                <Icon className={`w-4 h-4 ${cfg.iconCls}`} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                                        Detected
+                                                    </span>
+                                                    <span className="font-mono text-sm tabular-nums font-semibold text-foreground">
+                                                        {fmtTime(r.captured_at)}
+                                                    </span>
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                        <span className={`text-xs font-semibold ${cfg.iconCls}`}>{cfg.label}</span>
-                                                        <span className="font-mono text-xs tabular-nums text-muted-foreground">{fmtTime(r.captured_at)}</span>
-                                                    </div>
-                                                    {r.device_id && (
-                                                        <p className="text-[9px] text-muted-foreground mt-0.5 truncate">Device: {r.device_id}</p>
-                                                    )}
-                                                </div>
-                                                {r.snapshot_path && (
-                                                    <div className="w-9 h-9 rounded-lg overflow-hidden border border-border shrink-0">
-                                                        <img src={`/storage/${r.snapshot_path}`} alt="" className="w-full h-full object-cover" />
-                                                    </div>
+                                                {r.device_id && (
+                                                    <p className="text-[9px] text-muted-foreground mt-0.5 truncate">Device: {r.device_id}</p>
                                                 )}
                                             </div>
-                                        )
-                                    })}
-                                </div>
+                                            {r.snapshot_path && (
+                                                <div className="w-9 h-9 rounded-lg overflow-hidden border border-border shrink-0">
+                                                    <img src={`/storage/${r.snapshot_path}`} alt="" className="w-full h-full object-cover" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
                             </div>
                         )}
                     </div>
@@ -518,7 +504,10 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
 
 // ─── Breadcrumbs ──────────────────────────────────────────────────────────────
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: "Attendance", href: "/attendance" }]
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: "Attendance", href: "#" },
+    { title: "Logs", href: "#" },
+]
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -526,7 +515,6 @@ export default function RecognitionLogIndex({
     attendances: initialAttendances,
     filters = { date: todayPH() },
 }: Props) {
-    // ── Date ──
     const [date, setDate] = useState(filters.date)
     const isToday = date === todayPH()
 
@@ -542,18 +530,15 @@ export default function RecognitionLogIndex({
         router.get(route("recognition-logs.index"), { date: today }, { preserveScroll: true, replace: true })
     }
 
-    // ── Records state ──
     const [records, setRecords] = useState<AttendanceLog[]>(() => toArray(initialAttendances))
     const [refreshing, setRefreshing] = useState(false)
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
     const [newIds, setNewIds] = useState<Set<number>>(new Set())
 
-    // Sync on Inertia navigate
     useEffect(() => {
         setRecords(toArray(initialAttendances))
     }, [initialAttendances])
 
-    // ── Echo connection state ──
     const [echoConnected, setEchoConnected] = useState(false)
 
     useEffect(() => {
@@ -568,7 +553,14 @@ export default function RecognitionLogIndex({
         return () => clearInterval(id)
     }, [])
 
-    // ── Echo real-time listener ──
+    const [selectedRecord, setSelectedRecord] = useState<AttendanceLog | null>(null)
+    const [dialogOpen, setDialogOpen] = useState(false)
+
+    const openRecord = (record: AttendanceLog) => {
+        setSelectedRecord(record)
+        setDialogOpen(true)
+    }
+
     useEchoPublic("attendance-logs", ".log.created", (incoming: AttendanceLog) => {
         if (date !== todayPH()) return
         setRecords(prev => prev.some(r => r.id === incoming.id) ? prev : [incoming, ...prev])
@@ -579,7 +571,16 @@ export default function RecognitionLogIndex({
         }, 5000)
     })
 
-    // ── Manual refresh ──
+    useEchoPublic("attendance-logs", ".log.updated", (updated: Pick<AttendanceLog, "id" | "time_type">) => {
+        if (date !== todayPH()) return
+        setRecords(prev =>
+            prev.map(r => r.id === updated.id ? { ...r, time_type: updated.time_type } : r)
+        )
+        setSelectedRecord(prev =>
+            prev?.id === updated.id ? { ...prev, time_type: updated.time_type } : prev
+        )
+    })
+
     const fetchRecords = useCallback(async (targetDate: string) => {
         setRefreshing(true)
         try {
@@ -596,27 +597,13 @@ export default function RecognitionLogIndex({
         }
     }, [])
 
-    // ── Search ──
     const [search, setSearch] = useState("")
-
     const filtered = useMemo(
         () => records.filter(r => matchesSearch(r, search)),
         [records, search]
     )
 
-
-
-    // ── Dialog ──
-    const [selectedRecord, setSelectedRecord] = useState<AttendanceLog | null>(null)
-    const [dialogOpen, setDialogOpen] = useState(false)
-
-    const openRecord = (record: AttendanceLog) => {
-        setSelectedRecord(record)
-        setDialogOpen(true)
-    }
-
     const CCTV_SRC = "http://192.168.0.109:8889/cam"
-
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -628,7 +615,7 @@ export default function RecognitionLogIndex({
                 <div className="flex items-start justify-between gap-3 flex-wrap shrink-0">
                     <div>
                         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-                            <Radio className="w-4 h-4 text-emerald-500" />
+                            <Radio className="w-4 h-4 text-primary" />
                             Attendance Monitor
                             <LiveDot connected={echoConnected} />
                         </h1>
@@ -636,7 +623,7 @@ export default function RecognitionLogIndex({
                             {isToday ? "Today — " : ""}{fmtDate(date)}
                             {" · "}
                             <span className="font-semibold text-foreground">{records.length}</span>
-                            {" "}record{records.length !== 1 ? "s" : ""}
+                            {" "}detection{records.length !== 1 ? "s" : ""}
                             {lastUpdated && (
                                 <span className="ml-2 text-[11px] text-muted-foreground/60">
                                     · updated {lastUpdated.toLocaleTimeString("en-PH", {
@@ -674,29 +661,29 @@ export default function RecognitionLogIndex({
                 {/* ── Main layout ── */}
                 <div className="flex flex-col xl:flex-row gap-4">
 
-                    {/* ══ LEFT: Camera + stat chips ══ */}
-                    <div className="flex flex-col gap-3 xl:w-[75%] shrink-0 xl:self-start xl:sticky xl:top-4">
+                    {/* ══ LEFT: Camera ══ */}
+                    <div className="flex flex-col gap-3 xl:w-[69%] shrink-0 xl:self-start xl:sticky xl:top-4">
                         <div className="relative w-full rounded-xl overflow-hidden border border-border shadow-sm bg-black aspect-video">
                             <CctvStream src={CCTV_SRC} label="Entrance — CAM 01" />
                         </div>
                     </div>
 
-                    {/* ══ RIGHT: Recognition log ══ */}
+                    {/* ══ RIGHT: Detection log ══ */}
                     <div
                         className="flex flex-col bg-card border border-border rounded-xl overflow-hidden"
-                        style={{ height: "calc(100dvh - 10rem)" }}
+                        style={{ height: "calc(87dvh - 10rem)" }}
                     >
                         {/* Panel header */}
                         <div className="flex flex-col gap-2 px-4 py-3 border-b border-border shrink-0 bg-muted/20">
                             <div className="flex items-center justify-between gap-2">
                                 <p className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
-                                    <Fingerprint className="w-3.5 h-3.5 text-muted-foreground" />
-                                    Recognition Log
+                                    <Fingerprint className="w-3.5 h-3.5 text-primary" />
+                                    Detection Log
                                 </p>
                                 <div className="flex items-center gap-1.5">
-                                    {refreshing && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+                                    {refreshing && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
                                     <span className="text-xs text-muted-foreground tabular-nums">
-                                        {filtered.length}{search ? ` / ${records.length}` : ""} records
+                                        {filtered.length}{search ? ` / ${records.length}` : ""} detection{filtered.length !== 1 ? "s" : ""}
                                     </span>
                                 </div>
                             </div>
@@ -726,7 +713,7 @@ export default function RecognitionLogIndex({
                                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
                                     <Fingerprint className="w-10 h-10 opacity-20" />
                                     <p className="text-sm">
-                                        {search ? "No records match your search." : "No records for this date."}
+                                        {search ? "No detections match your search." : "No detections for this date."}
                                     </p>
                                     {search && (
                                         <Button variant="outline" size="sm" onClick={() => setSearch("")} className="gap-1.5">

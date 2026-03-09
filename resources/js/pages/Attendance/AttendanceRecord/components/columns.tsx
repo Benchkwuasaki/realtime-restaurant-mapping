@@ -1,5 +1,5 @@
 import { format, parseISO } from "date-fns"
-import { AlertTriangle, Clock, Coffee, Timer } from "lucide-react"
+import { AlertTriangle, Clock, Coffee, Timer, LogIn } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
@@ -11,15 +11,47 @@ import { type AttendanceRecord } from "../data/schema"
 
 // ─── Time cell ────────────────────────────────────────────────────────────────
 
-function TimeCell({ actual, scheduled }: { actual: string | null; scheduled: string | null }) {
-    if (!actual) return <span className="text-muted-foreground/40 tabular-nums font-mono text-sm">—</span>
-    // Late = arrived after scheduled (only used for time_in context)
-    const isLate = !!scheduled && actual > scheduled
+function TimeCell({
+    actual,
+    isLate = false,
+}: {
+    actual: string | null
+    isLate?: boolean
+}) {
+    if (!actual) return (
+        <span className="text-muted-foreground/40 tabular-nums font-mono text-sm">—</span>
+    )
     return (
-        <span className={`font-mono tabular-nums text-sm ${isLate ? "text-rose-500" : ""}`}>
+        <span className={`font-mono tabular-nums text-sm ${isLate ? "text-destructive" : ""}`}>
             {fmtTime(actual)}
         </span>
     )
+}
+
+// ─── Time-in cell ─────────────────────────────────────────────────────────────
+
+function TimeInCell({ record }: { record: AttendanceRecord }) {
+    const isLate = (record.late_minutes ?? 0) > 0
+
+    if (record.time_in) {
+        return (
+            <span className={`font-mono tabular-nums text-sm ${isLate ? "text-destructive" : ""}`}>
+                {fmtTime(record.time_in)}
+            </span>
+        )
+    }
+
+    // No time_in but break_out recorded → present but missed clock-in
+    if (record.break_out) {
+        return (
+            <span className="inline-flex items-center gap-1 text-xs text-accent-foreground font-medium">
+                <LogIn className="w-3 h-3" />
+                No scan
+            </span>
+        )
+    }
+
+    return <span className="text-muted-foreground/40 tabular-nums font-mono text-sm">—</span>
 }
 
 // ─── Mobile card ──────────────────────────────────────────────────────────────
@@ -28,6 +60,7 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
     const name   = getEmployeeName(row)
     const status = row.status
     const Icon   = STATUS_ICON[status] ?? STATUS_ICON.ABSENT
+    const isLate = (row.late_minutes ?? 0) > 0
 
     return (
         <div className="flex flex-col bg-background overflow-hidden">
@@ -56,7 +89,15 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 pl-3.5 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 shrink-0" />
-                        <span className="font-mono">{fmtTime(row.time_in)}</span>
+                        {row.time_in ? (
+                            <span className={`font-mono ${isLate ? "text-destructive" : ""}`}>
+                                {fmtTime(row.time_in)}
+                            </span>
+                        ) : row.break_out ? (
+                            <span className="text-accent-foreground font-medium">No scan</span>
+                        ) : (
+                            <span className="font-mono">—</span>
+                        )}
                         <span className="text-muted-foreground/40">in</span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -64,8 +105,8 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
                         <span className="font-mono">{fmtTime(row.time_out)}</span>
                         <span className="text-muted-foreground/40">out</span>
                     </div>
-                    {row.late_minutes != null && row.late_minutes > 0 && (
-                        <div className="flex items-center gap-1 text-rose-500 col-span-2">
+                    {isLate && (
+                        <div className="flex items-center gap-1 text-destructive col-span-2">
                             <AlertTriangle className="w-3 h-3 shrink-0" />
                             <span className="font-semibold">{fmtMinutes(row.late_minutes)} late</span>
                         </div>
@@ -129,11 +170,11 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
                 const name   = getEmployeeName(record)
                 return (
                     <div className="flex items-center gap-2.5 min-w-44">
-                        <div className="w-8 h-8 rounded-lg bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 overflow-hidden shrink-0 flex items-center justify-center">
                             {record.employee?.avatar_url ? (
                                 <img src={record.employee.avatar_url} alt={name} className="w-full h-full object-cover" />
                             ) : (
-                                <span className="text-xs font-bold text-muted-foreground">
+                                <span className="text-xs font-bold text-primary">
                                     {name.slice(0, 2).toUpperCase()}
                                 </span>
                             )}
@@ -168,36 +209,28 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
         {
             accessorKey: "time_in",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Time In" />,
-            cell: ({ row }) => (
-                <TimeCell actual={row.original.time_in} scheduled={row.original.scheduled_time_in} />
-            ),
+            cell: ({ row }) => <TimeInCell record={row.original} />,
         },
 
         // Break Out
         {
             accessorKey: "break_out",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Break (Out)" />,
-            cell: ({ row }) => (
-                <TimeCell actual={row.original.break_out} scheduled={row.original.scheduled_break_out} />
-            ),
+            cell: ({ row }) => <TimeCell actual={row.original.break_out} />,
         },
 
         // Break In
         {
             accessorKey: "break_in",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Break (In)" />,
-            cell: ({ row }) => (
-                <TimeCell actual={row.original.break_in} scheduled={row.original.scheduled_break_in} />
-            ),
+            cell: ({ row }) => <TimeCell actual={row.original.break_in} />,
         },
 
         // Time Out
         {
             accessorKey: "time_out",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Time Out" />,
-            cell: ({ row }) => (
-                <TimeCell actual={row.original.time_out} scheduled={row.original.scheduled_time_out} />
-            ),
+            cell: ({ row }) => <TimeCell actual={row.original.time_out} />,
         },
 
         // Late
@@ -209,7 +242,7 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
                 if (!late || late === 0)
                     return <span className="text-muted-foreground/40 text-sm">—</span>
                 return (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive">
                         <AlertTriangle className="w-3 h-3" />
                         {fmtMinutes(late)}
                     </span>

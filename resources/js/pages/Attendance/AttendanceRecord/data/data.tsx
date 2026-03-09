@@ -23,10 +23,20 @@ export const STATUS_DOT: Record<string, string> = {
     ABSENT:   "bg-rose-400",
 }
 
+// Human-readable labels shown in pills and dialogs
 export const STATUS_LABEL: Record<string, string> = {
     PRESENT:  "Present",
     HALF_DAY: "Half Day",
     ABSENT:   "Absent",
+}
+
+// Short descriptions used in stat cards
+export const STATUS_DESCRIPTION: Record<string, string> = {
+    PRESENT:  "Clocked in or actively working",
+    HALF_DAY: "Left before time out",
+    // Absent = no clock-in AND no break_out scan. May still have a break_in
+    // entry if the employee scanned arriving from lunch but never clocked in.
+    ABSENT:   "No clock-in recorded",
 }
 
 export const STATUS_ICON = {
