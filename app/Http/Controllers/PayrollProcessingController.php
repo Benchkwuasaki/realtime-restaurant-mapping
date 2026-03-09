@@ -44,6 +44,7 @@ class PayrollProcessingController extends Controller
                 'end_date' => $p->end_date->toDateString(),
                 'status' => $p->status,
                 'cut_off' => $p->cut_off,
+                'employee_type' => $p->employee_type,
                 'payroll_records_count' => $p->payroll_records_count,
             ]);
 
@@ -313,6 +314,49 @@ class PayrollProcessingController extends Controller
         ]);
 
         return back()->with('success', 'Payroll period deleted.');
+    }
+
+    /**
+     * Step 1 — Early duplicate check.
+     *
+     * Called from the frontend as soon as the user has selected Payroll Month,
+     * Cut-off, and Employee Type. Returns immediately so the UI can block
+     * progression before the user wastes time on Steps 2–4.
+     *
+     * A "duplicate" is any non-cancelled PayrollPeriod row that matches
+     * start_date + end_date + employee_type exactly.
+     *
+     * GET /payroll/check-duplicate?start_date=…&end_date=…&employee_type=…
+     */
+    public function checkDuplicate(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'employee_type' => 'required|string|max:100',
+        ]);
+
+        $employeeType = $validated['employee_type'] ?? null;
+        $existing = PayrollPeriod::where('start_date', $validated['start_date'])
+            ->where('end_date', $validated['end_date'])
+            ->when(
+                ! is_null($employeeType),
+                fn ($q) => $q->where('employee_type', $employeeType),
+                fn ($q) => $q->whereNull('employee_type'),
+            )
+            ->where('status', '!=', 'cancelled')
+            ->first(['payroll_period_id', 'start_date', 'end_date', 'employee_type', 'status']);
+
+        return response()->json([
+            'duplicate' => $existing !== null,
+            'period' => $existing ? [
+                'payroll_period_id' => $existing->payroll_period_id,
+                'start_date' => $existing->start_date->toDateString(),
+                'end_date' => $existing->end_date->toDateString(),
+                'employee_type' => $existing->employee_type,
+                'status' => $existing->status,
+            ] : null,
+        ]);
     }
 
     /**
@@ -1147,24 +1191,36 @@ class PayrollProcessingController extends Controller
                 'records.*.waived_item_ids.*' => 'integer|min:1',
             ]);
 
-            // Prevent overlapping periods
-            $overlap = PayrollPeriod::where(function ($q) use ($validated) {
-                $q->whereBetween('start_date', [$validated['start_date'], $validated['end_date']])
-                    ->orWhereBetween('end_date', [$validated['start_date'], $validated['end_date']])
-                    ->orWhere(function ($q2) use ($validated) {
-                        $q2->where('start_date', '<=', $validated['start_date'])
-                            ->where('end_date', '>=', $validated['end_date']);
-                    });
-            })->exists();
+            // ── Duplicate guard ────────────────────────────────────────────────
+            // The correct rule: (start_date + end_date + employee_type) must be
+            // unique among non-cancelled periods. Different types (Regular,
+            // Casual, Job Order) are processed independently and are NOT
+            // duplicates of each other.
+            //
+            // IMPORTANT: use when()/whereNull() for employee_type — SQL treats
+            // `WHERE employee_type = NULL` as never-true, so a plain where()
+            // would silently allow every duplicate when employee_type is null.
+            $employeeType = $validated['employee_type'] ?? null;
+            $duplicate = PayrollPeriod::where('start_date', $validated['start_date'])
+                ->where('end_date', $validated['end_date'])
+                ->when(
+                    ! is_null($employeeType),
+                    fn ($q) => $q->where('employee_type', $employeeType),
+                    fn ($q) => $q->whereNull('employee_type'),
+                )
+                ->where('status', '!=', 'cancelled')
+                ->exists();
 
-            if ($overlap) {
-                Log::warning('Payroll period overlap detected', [
+            if ($duplicate) {
+                Log::warning('Duplicate payroll period detected in finalizePayroll', [
                     'start_date' => $validated['start_date'],
                     'end_date' => $validated['end_date'],
+                    'employee_type' => $validated['employee_type'],
                 ]);
 
                 return response()->json([
-                    'error' => 'This period overlaps with an existing payroll period.',
+                    'error' => 'Payroll already exists for this Employment Type within the selected Payroll Period. '
+                             .'Please select a different Employment Type or review the existing payroll record.',
                 ], 422);
             }
 
@@ -1178,6 +1234,7 @@ class PayrollProcessingController extends Controller
                     'start_date' => $validated['start_date'],
                     'end_date' => $validated['end_date'],
                     'status' => 'Processed',
+                    'employee_type' => $validated['employee_type'] ?? null,
                 ]);
 
                 Log::info('Payroll period created successfully', [

@@ -86,7 +86,7 @@ import { peso } from '@/components/Payroll/PayrollProcessing/data/utils';
 
 // Where is the attendance data??
 // Check for PayrollProcessingController if it was extracted from there
-// Employee and FinalizedEmployee types are imported from ./types
+// Employee and FinalizedEmployee Classifications are imported from ./types
 // peso formatter is imported from ./utils
 
 interface ComputedRecord {
@@ -184,7 +184,7 @@ export default function Index({
     const [monthPickerYear, setMonthPickerYear] = useState(
         new Date().getFullYear(),
     );
-    const [employeeType, setEmployeeType] = useState('');
+    const [employeeClassification, setemployeeClassification] = useState('');
     const [workingDays, setWorkingDays] = useState('');
     const [isTypingCustom, setIsTypingCustom] = useState(false);
     const [customDaysInput, setCustomDaysInput] = useState('');
@@ -227,6 +227,11 @@ export default function Index({
             : '');
     const [hrOfficerName, setHrOfficerName] = useState(defaultHrName);
     const [validationError, setValidationError] = useState('');
+    const [isDuplicate, setIsDuplicate] = useState(false);
+    const [isDuplicateChecking, setIsDuplicateChecking] = useState(false);
+    const [duplicateCheckError, setDuplicateCheckError] = useState<
+        string | null
+    >(null);
 
     // ── Step 2 state ───────────────────────────────────────────────────────────
     const [includedEmployeeIds, setIncludedEmployeeIds] = useState<number[]>(
@@ -286,12 +291,14 @@ export default function Index({
 
     const filteredEmployees = useMemo(
         () =>
-            employeeType
+            employeeClassification
                 ? employees.filter(
-                      (e) => e.employment_classification === employeeType,
+                      (e) =>
+                          e.employment_classification ===
+                          employeeClassification,
                   )
                 : employees,
-        [employees, employeeType],
+        [employees, employeeClassification],
     );
 
     useEffect(() => {
@@ -311,6 +318,61 @@ export default function Index({
             fetchAttendanceSummary();
         }
     }, [currentStep]);
+
+    useEffect(() => {
+        // Reset both flags whenever inputs change
+        setDuplicateCheckError(null);
+        if (!startDate || !endDate || !employeeClassification) {
+            setIsDuplicate(false);
+            return;
+        }
+
+        // Use a direct URL instead of Ziggy so this never fails due to a stale
+        // Ziggy route manifest. The path must match web.php:
+        //   Route::get('/payroll/check-duplicate', ...) ->name('payroll.check-duplicate')
+        const checkUrl = '/payroll/check-duplicate';
+
+        let cancelled = false;
+        setIsDuplicateChecking(true);
+        setIsDuplicate(false);
+
+        axios
+            .get(checkUrl, {
+                params: {
+                    start_date: format(startDate, 'yyyy-MM-dd'),
+                    end_date: format(endDate, 'yyyy-MM-dd'),
+                    employee_type: employeeClassification,
+                },
+            })
+            .then(({ data }) => {
+                if (!cancelled) setIsDuplicate(data.duplicate === true);
+            })
+            .catch((err) => {
+                if (!cancelled) {
+                    console.error('Duplicate check error:', err);
+                    const status = err?.response?.status;
+                    const msg =
+                        err?.response?.data?.message ||
+                        err?.message ||
+                        'Unknown error';
+                    let errMsg = `Duplicate check failed: ${msg}.`;
+                    if (status === 404) {
+                        errMsg =
+                            'Duplicate check endpoint not found (404). Run: php artisan route:clear && php artisan optimize';
+                    }
+                    // Do NOT set isDuplicate=true — that would show a false
+                    // "Duplicate Payroll Detected" banner. Use a separate error state.
+                    setDuplicateCheckError(errMsg);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setIsDuplicateChecking(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [startDate, endDate, employeeClassification]);
 
     const includedEmployees = useMemo(
         () =>
@@ -497,7 +559,7 @@ export default function Index({
         const missing = [];
         if (!payrollMonth) missing.push('Payroll Month');
         if (!cutoffType) missing.push('Cut-off');
-        if (!employeeType) missing.push('Employee Type');
+        if (!employeeClassification) missing.push('Employee Classification');
         if (!workingDays || workingDays === 'custom')
             missing.push('Working Days');
         if (!payDate) missing.push('Pay Date');
@@ -505,13 +567,19 @@ export default function Index({
     };
 
     const missingStep1Fields = getMissingStep1Fields();
-    const canProceedStep1 = missingStep1Fields.length === 0;
+    // Also block when a duplicate exists or the check is still in flight.
+    const canProceedStep1 =
+        missingStep1Fields.length === 0 &&
+        !isDuplicate &&
+        !isDuplicateChecking &&
+        !duplicateCheckError;
 
     const handlePayrollMonthSelect = (year: number, monthIndex: number) => {
         setPayrollMonth(new Date(year, monthIndex, 1));
         setMonthPickerOpen(false);
         setWorkingDays('');
         setExtraDayOptions([]);
+        setIsDuplicate(false);
         setValidationError('');
     };
 
@@ -519,6 +587,7 @@ export default function Index({
         setCutoffType(value);
         setWorkingDays('');
         setExtraDayOptions([]);
+        setIsDuplicate(false);
         setValidationError('');
     };
 
@@ -554,13 +623,63 @@ export default function Index({
         }
     };
 
-    const handleNextStep1 = () => {
-        if (!canProceedStep1) {
+    const handleNextStep1 = async () => {
+        // Guard: all fields must be filled first.
+        if (missingStep1Fields.length > 0) {
             setValidationError(
                 'Please complete all required fields before continuing.',
             );
             return;
         }
+
+        // Hard gate: re-verify duplicate right now, regardless of the async
+        // useEffect state. This ensures the check always runs at Step 1 even
+        // if the useEffect result was stale or the route was slow to resolve.
+        if (startDate && endDate && employeeClassification) {
+            setIsDuplicateChecking(true);
+            setIsDuplicate(false);
+            try {
+                // Direct URL — avoids Ziggy manifest staleness issues
+                const checkUrl = '/payroll/check-duplicate';
+                const { data } = await axios.get(checkUrl, {
+                    params: {
+                        start_date: format(startDate, 'yyyy-MM-dd'),
+                        end_date: format(endDate, 'yyyy-MM-dd'),
+                        employee_type: employeeClassification,
+                    },
+                });
+                if (data.duplicate === true) {
+                    setIsDuplicate(true);
+                    setIsDuplicateChecking(false);
+                    // Stop here — do NOT advance to Step 2.
+                    return;
+                }
+            } catch (err: any) {
+                console.error('Step 1 duplicate re-check failed:', err);
+                const httpStatus = err?.response?.status;
+                const serverMsg = err?.response?.data?.message;
+
+                let userMsg =
+                    'Duplicate check failed and could not be verified. Cannot proceed.';
+                if (httpStatus === 404) {
+                    userMsg =
+                        'Duplicate check endpoint not found (404). Run: php artisan route:clear && php artisan optimize';
+                } else if (httpStatus) {
+                    userMsg = `Duplicate check failed (HTTP ${httpStatus}${serverMsg ? ': ' + serverMsg : ''}). Cannot proceed.`;
+                } else if (err?.message) {
+                    userMsg = `Duplicate check error: ${err.message}. Cannot proceed.`;
+                }
+
+                // Do NOT set isDuplicate=true on errors — that shows a false
+                // "Duplicate Payroll Detected" banner. Use a distinct error state.
+                setDuplicateCheckError(userMsg);
+                setIsDuplicateChecking(false);
+                return; // Hard stop — do NOT advance to Step 2.
+            } finally {
+                setIsDuplicateChecking(false);
+            }
+        }
+
         setValidationError('');
         setAttendanceSource('manual');
         setCurrentStep(2);
@@ -582,7 +701,7 @@ export default function Index({
                     params: {
                         start_date: format(startDate, 'yyyy-MM-dd'),
                         end_date: format(endDate, 'yyyy-MM-dd'),
-                        employee_type: employeeType || undefined,
+                        employee_type: employeeClassification || undefined,
                     },
                 },
             );
@@ -696,7 +815,7 @@ export default function Index({
             const { data } = await axios.post(route('payroll.process-new'), {
                 start_date: format(startDate, 'yyyy-MM-dd'),
                 end_date: format(endDate, 'yyyy-MM-dd'),
-                employee_type: employeeType || null,
+                employee_type: employeeClassification || null,
                 hr_officer_name: hrOfficerName || null,
                 attendance: includedEmployeeIds.map((id) => ({
                     employee_id: id,
@@ -907,7 +1026,7 @@ export default function Index({
             const { data } = await axios.post(route('payroll.finalize'), {
                 start_date: format(startDate, 'yyyy-MM-dd'),
                 end_date: format(endDate, 'yyyy-MM-dd'),
-                employee_type: employeeType || null,
+                employee_type: employeeClassification || null,
                 hr_officer_name: hrOfficerName || null,
                 records,
             });
@@ -969,7 +1088,7 @@ export default function Index({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Payroll Processing" />
 
-            <div className="flex flex-1 flex-col gap-6 p-6">
+            <div className="flex flex-1 flex-col gap-8 p-8">
                 <Heading title="Payroll Processing" />
 
                 {validationError && (
@@ -1008,7 +1127,7 @@ export default function Index({
                         <CardContent className="pt-6">
                             <Heading
                                 title="Payroll Period Setup"
-                                description="Configure the payroll period, employee type, working days, and pay date before proceeding."
+                                description="Configure the payroll period, Employee Classification, working days, and pay date before proceeding."
                             />
 
                             <div className="grid grid-cols-1 items-end gap-x-6 gap-y-8 md:grid-cols-4">
@@ -1162,18 +1281,20 @@ export default function Index({
                                     />
                                 </Field>
 
-                                {/* ── Employee Type ─────────────────────────── */}
+                                {/* ── Employee Classification ─────────────────────────── */}
                                 <Field>
-                                    <FieldLabel>Employee Type</FieldLabel>
+                                    <FieldLabel>
+                                        Employee Classification
+                                    </FieldLabel>
                                     <Select
-                                        value={employeeType}
+                                        value={employeeClassification}
                                         onValueChange={(v) => {
-                                            setEmployeeType(v);
+                                            setemployeeClassification(v);
                                             setValidationError('');
                                         }}
                                     >
                                         <SelectTrigger
-                                            className={`w-full ${!employeeType && validationError ? 'border-destructive' : ''}`}
+                                            className={`w-full ${(!employeeClassification && validationError) || isDuplicate ? 'border-destructive ring-1 ring-destructive' : ''}`}
                                         >
                                             <SelectValue placeholder="Select Type" />
                                         </SelectTrigger>
@@ -1326,7 +1447,9 @@ export default function Index({
                                                             {payrollPeriodLabel}
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">
-                                                            {employeeType}
+                                                            {
+                                                                employeeClassification
+                                                            }
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1382,6 +1505,65 @@ export default function Index({
                                 </div>
                             )}
 
+                            {/* ── Duplicate payroll alert ───────────────────── */}
+                            {isDuplicateChecking && (
+                                <div className="mt-6">
+                                    <Alert>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <AlertTitle>
+                                            Checking payroll records…
+                                        </AlertTitle>
+                                        <AlertDescription>
+                                            Verifying whether this period has
+                                            already been processed.
+                                        </AlertDescription>
+                                    </Alert>
+                                </div>
+                            )}
+
+                            {isDuplicate &&
+                                !isDuplicateChecking &&
+                                !duplicateCheckError && (
+                                    <div className="mt-6 flex gap-3 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900">
+                                        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+                                        <div>
+                                            <p className="font-semibold text-red-800">
+                                                Duplicate Payroll Detected
+                                            </p>
+                                            <p className="mt-1 text-sm text-red-700">
+                                                A payroll run for{' '}
+                                                <span className="font-semibold">
+                                                    &ldquo;
+                                                    {employeeClassification}
+                                                    &rdquo;
+                                                </span>{' '}
+                                                already exists for the period{' '}
+                                                <span className="font-semibold">
+                                                    {payrollPeriodLabel}
+                                                </span>
+                                                . Please select a different
+                                                Employment Classification or
+                                                review the existing payroll
+                                                record.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                            {duplicateCheckError && !isDuplicateChecking && (
+                                <div className="mt-6 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
+                                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                                    <div>
+                                        <p className="font-semibold text-amber-800">
+                                            Duplicate Check Unavailable
+                                        </p>
+                                        <p className="mt-1 text-sm text-amber-700">
+                                            {duplicateCheckError}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="mt-6 flex justify-end border-t pt-6">
                                 <TooltipProvider>
                                     <Tooltip>
@@ -1391,6 +1573,9 @@ export default function Index({
                                                     onClick={handleNextStep1}
                                                     disabled={!canProceedStep1}
                                                 >
+                                                    {isDuplicateChecking && (
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    )}
                                                     Next: Load Employees
                                                     <ChevronRight className="ml-2 h-4 w-4" />
                                                 </Button>
@@ -1401,14 +1586,31 @@ export default function Index({
                                                 side="top"
                                                 className="max-w-xs"
                                             >
-                                                <p className="text-xs">
-                                                    Missing:{' '}
-                                                    <span className="font-semibold">
-                                                        {missingStep1Fields.join(
-                                                            ', ',
-                                                        )}
-                                                    </span>
-                                                </p>
+                                                {duplicateCheckError ? (
+                                                    <p className="text-xs">
+                                                        Duplicate check failed.
+                                                        Cannot proceed safely.
+                                                    </p>
+                                                ) : isDuplicate ? (
+                                                    <p className="text-xs">
+                                                        This payroll period has
+                                                        already been processed.
+                                                    </p>
+                                                ) : isDuplicateChecking ? (
+                                                    <p className="text-xs">
+                                                        Checking for existing
+                                                        records…
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-xs">
+                                                        Missing:{' '}
+                                                        <span className="font-semibold">
+                                                            {missingStep1Fields.join(
+                                                                ', ',
+                                                            )}
+                                                        </span>
+                                                    </p>
+                                                )}
                                             </TooltipContent>
                                         )}
                                     </Tooltip>
@@ -1432,7 +1634,7 @@ export default function Index({
                                 />
                                 <div className="flex items-center gap-2">
                                     <Badge variant="secondary">
-                                        {employeeType}
+                                        {employeeClassification}
                                     </Badge>
                                     <Badge variant="outline">
                                         {includedEmployeeIds.length} /{' '}
@@ -1503,8 +1705,8 @@ export default function Index({
                                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
                                     <Users className="mb-3 h-12 w-12 text-muted-foreground/40" />
                                     <p className="text-sm font-medium text-muted-foreground">
-                                        No active {employeeType} employees
-                                        found.
+                                        No active {employeeClassification}{' '}
+                                        employees found.
                                     </p>
                                 </div>
                             ) : (
@@ -1578,7 +1780,7 @@ export default function Index({
                                 />
                                 <div className="flex items-center gap-2">
                                     <Badge variant="secondary">
-                                        {employeeType}
+                                        {employeeClassification}
                                     </Badge>
                                     <Badge variant="outline">
                                         {includedEmployeeIds.length} employees
@@ -3146,7 +3348,6 @@ export default function Index({
                                 </div>
                             ) : (
                                 <>
-                                    {/* Summary meta */}
                                     <div className="mb-6 rounded-lg border bg-muted/20 p-4">
                                         <div className="grid grid-cols-4 gap-4 text-sm">
                                             <div>
@@ -3159,10 +3360,10 @@ export default function Index({
                                             </div>
                                             <div>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Employee Type
+                                                    Employee Classification
                                                 </p>
                                                 <p className="font-medium">
-                                                    {employeeType}
+                                                    {employeeClassification}
                                                 </p>
                                             </div>
                                             <div>
@@ -3426,7 +3627,7 @@ export default function Index({
                                     <p className="mt-0.5 text-xs text-muted-foreground">
                                         {payrollPeriodLabel || '—'}
                                         {' · '}
-                                        {employeeType || 'All Types'}
+                                        {employeeClassification || 'All Types'}
                                     </p>
                                 </div>
                                 <Badge

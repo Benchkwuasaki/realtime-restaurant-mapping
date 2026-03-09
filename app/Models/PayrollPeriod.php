@@ -9,7 +9,7 @@ class PayrollPeriod extends Model
 {
     protected $primaryKey = 'payroll_period_id';
 
-    protected $fillable = ['start_date', 'end_date', 'status'];
+    protected $fillable = ['start_date', 'end_date', 'status', 'employee_type'];
 
     protected $casts = [
         'start_date' => 'date',

@@ -314,6 +314,8 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
             Route::get('/{period}', [PayrollRegisterController::class, 'show'])->name('show');
         });
 
+        Route::get('/check-duplicate', [PayrollProcessingController::class, 'checkDuplicate'])->name('check-duplicate');
+
         // Government Remittance Report
         Route::get('/governmentremittancereport', [GovernmentRemittanceReportController::class, 'index'])
             ->name('governmentremittancereport.index');

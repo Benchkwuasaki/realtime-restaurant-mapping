@@ -35,6 +35,7 @@ class PayrollRegisterController extends Controller
                 'start_date' => $p->start_date->toDateString(),
                 'end_date' => $p->end_date->toDateString(),
                 'cut_off' => $p->cut_off,
+                'employee_type' => $p->employee_type,
                 'status' => $p->status,
                 'payroll_records_count' => $p->payroll_records_count,
                 'total_net_pay' => (float) ($p->payroll_records_sum_net_pay ?? 0),
@@ -95,7 +96,7 @@ class PayrollRegisterController extends Controller
                 'pag_ibig_mpl' => (float) ($r->pag_ibig_mpl ?? 0),
                 'ama_y2k_union' => (float) ($r->ama_y2k_union ?? 0),
                 'water_bill' => (float) ($r->water_bill ?? 0),
-                'total_deductions' => $r->total_deductions, // computed accessor
+                'total_deductions' => $r->total_deductions,
 
                 // Summary
                 'net_pay' => (float) ($r->net_pay ?? 0),
@@ -103,8 +104,8 @@ class PayrollRegisterController extends Controller
                 'status' => $r->status,
                 'hr_officer_name' => $r->hr_officer_name ?? '—',
             ])
-            ->sortBy('employee_name')  // alphabetical by last_name, first_name
-            ->values();                // re-index after sort
+            ->sortBy('employee_name')
+            ->values();
 
         $summary = [
             'total_employees' => $records->count(),
@@ -127,7 +128,6 @@ class PayrollRegisterController extends Controller
             'total_deductions' => $records->sum('total_deductions'),
             'total_net_pay' => $records->sum('net_pay'),
             'floor_issues' => $records->where('floor_check_passed', false)->count(),
-            // HR officer name from first record with one
             'hr_officer_name' => $records->firstWhere('hr_officer_name', '!=', '—')['hr_officer_name'] ?? '—',
         ];
 
