@@ -148,7 +148,7 @@ function PayslipDocument({
                     <p className="text-[10px] text-muted-foreground">
                         SG {data.salary_grade} · Step {data.step}
                     </p>
-                    <p className="mt-0.5 text-[10px]">
+                    {/* <p className="mt-0.5 text-[10px]">
                         <span
                             className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold ${
                                 data.floor_check_passed
@@ -160,7 +160,7 @@ function PayslipDocument({
                                 ? '✓ Floor Check Passed'
                                 : '⚠ Below Minimum Take-Home'}
                         </span>
-                    </p>
+                    </p> */}
                 </div>
             </div>
 
@@ -734,7 +734,7 @@ export default function Index({
                                         </Button>
                                     )}
 
-                                    {payslip && (
+                                    {/* {payslip && (
                                         <div className="flex justify-center">
                                             {payslip.floor_check_passed ? (
                                                 <Badge
@@ -765,7 +765,7 @@ export default function Index({
                                                 </TooltipProvider>
                                             )}
                                         </div>
-                                    )}
+                                    )} */}
                                 </CardContent>
                             </Card>
 

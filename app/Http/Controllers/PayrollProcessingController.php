@@ -68,10 +68,16 @@ class PayrollProcessingController extends Controller
             ->sortBy('name')
             ->values();
 
+        $settings = PayrollDeductionSetting::getSettings();
+
         return Inertia::render('Payroll/PayrollProcessing/Index', [
             'periods' => $periods,
             'employmentClassifications' => $employmentClassifications,
             'employees' => $employees,
+            'floorRules' => [
+                'minimum_take_home_pay' => (float) $settings->minimum_take_home_pay,
+                'salary_threshold' => (float) $settings->salary_threshold,
+            ],
         ]);
     }
 
@@ -336,6 +342,8 @@ class PayrollProcessingController extends Controller
             'employee_type' => 'required|string|max:100',
         ]);
 
+        // Use whereNull / where conditionally — SQL evaluates `column = NULL`
+        // as never-true, so a plain where() silently skips null matches.
         $employeeType = $validated['employee_type'] ?? null;
         $existing = PayrollPeriod::where('start_date', $validated['start_date'])
             ->where('end_date', $validated['end_date'])
@@ -738,14 +746,11 @@ class PayrollProcessingController extends Controller
         $lateDeduction = round($lateMinutes * $minuteRate, 2);
 
         // ── 5. Statutory Deductions (NOW SPLIT EQUALLY BETWEEN BOTH CUT-OFFS) ─
-        // Monthly calculations (full month)
         $monthlyGsisPremium = round($monthlyBasic * ($settings->gsis_employee_rate / 100), 2);
 
-        // PhilHealth: 5% of Basic Monthly Salary (split equally, 2.5% each)
         $monthlyPhilhealthCalc = round($monthlyBasic * ($settings->philhealth_rate / 100), 2);
         $monthlyPhilhealth = max(250.0, min(2500.0, $monthlyPhilhealthCalc));
 
-        // Pag-IBIG: 2% of MBS, capped at pagibig_monthly setting
         if ($monthlyBasic <= 1500) {
             $monthlyPagIbig = round($monthlyBasic * 0.01, 2);
         } else {
@@ -1127,13 +1132,11 @@ class PayrollProcessingController extends Controller
 
         // ── InternalOrgDeductions ─────────────────────────────────────────────
         if ($orgGroupWaived) {
-            // Group waiver — carry forward all org deductions for this employee
             InternalOrgDeduction::where('employee_id', $employeeId)
                 ->where('period_start', '<=', $period->end_date)
                 ->where('period_end', '>=', $period->start_date)
                 ->each(fn (InternalOrgDeduction $d) => $d->update(['period_end' => $nextEnd]));
         } elseif (! empty($waivedItemIds)) {
-            // Individual item waivers — carry forward only the specified rows
             InternalOrgDeduction::whereIn('id', $waivedItemIds)
                 ->where('employee_id', $employeeId)
                 ->where('period_start', '<=', $period->end_date)

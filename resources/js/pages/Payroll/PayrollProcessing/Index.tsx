@@ -135,6 +135,11 @@ interface ComputedRecord {
     status: string;
 }
 
+interface FloorRules {
+    minimum_take_home_pay: number;
+    salary_threshold: number;
+}
+
 interface Props {
     auth: { user: { name?: string; first_name?: string; last_name?: string } };
     periods: any[];
@@ -143,15 +148,13 @@ interface Props {
     computedRecords?: ComputedRecord[];
     processedPeriodId?: number;
     processingErrors?: string[];
+    floorRules?: FloorRules;
 }
 
 const breadcrumbs = [
     { title: 'Payroll', href: '/payroll' },
     { title: 'Processing', href: '/payroll/processing' },
 ];
-
-// Base on the Floor Rules on Payroll Deduction Settings not hardcoded.
-const NET_PAY_THRESHOLD = 3000;
 
 function computeWorkingDaysBetween(from: Date, to: Date): number {
     let count = 0;
@@ -172,7 +175,9 @@ export default function Index({
     computedRecords: incomingComputedRecords = [],
     processedPeriodId: incomingProcessedPeriodId,
     processingErrors: incomingProcessingErrors = [],
+    floorRules,
 }: Props) {
+    const NET_PAY_THRESHOLD = floorRules?.minimum_take_home_pay ?? 0;
     const [currentStep, setCurrentStep] = useState(1);
 
     // ── Step 1 state ───────────────────────────────────────────────────────────
@@ -1542,9 +1547,8 @@ export default function Index({
                                                     {payrollPeriodLabel}
                                                 </span>
                                                 . Please select a different
-                                                Employment Classification or
-                                                review the existing payroll
-                                                record.
+                                                Employment Type or review the
+                                                existing payroll record.
                                             </p>
                                         </div>
                                     </div>
@@ -3348,6 +3352,7 @@ export default function Index({
                                 </div>
                             ) : (
                                 <>
+                                    {/* Summary meta */}
                                     <div className="mb-6 rounded-lg border bg-muted/20 p-4">
                                         <div className="grid grid-cols-4 gap-4 text-sm">
                                             <div>
@@ -3509,6 +3514,8 @@ export default function Index({
                                         >
                                             View in Payroll Register
                                         </Button>
+
+                                        {/* CHANGE THIS TO Create Another Payroll Process Transaction?? Purpose is that to make payroll for other Employment Classification */}
                                         <Button variant="outline">
                                             <Download className="mr-2 h-4 w-4" />
                                             Export Payroll
