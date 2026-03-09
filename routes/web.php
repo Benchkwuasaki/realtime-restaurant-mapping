@@ -35,6 +35,7 @@ use App\Http\Controllers\LeaveApplicationController;
 
 // reports and analytics
 use App\Http\Controllers\LeaveReportController;
+use App\Http\Controllers\AttendanceReportController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -311,12 +312,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
-    Route::get('/', [ReportsController::class, 'index'])->name('index');
-    Route::get('/employees', [ReportsController::class, 'employeeReports'])->name('employees');
-    Route::get('/attendance', [ReportsController::class, 'attendanceReports'])->name('attendance');
-    Route::get('/leave', [ReportsController::class, 'leaveReports'])->name('leave');
-    Route::get('/payroll', [ReportsController::class, 'payrollReports'])->name('payroll');
-    Route::get('/government', [ReportsController::class, 'governmentReports'])->name('government');
+        Route::get('/', [ReportsController::class, 'index'])->name('index');
+        Route::get('/employees', [ReportsController::class, 'employeeReports'])->name('employees');
+        Route::get('/attendance', [ReportsController::class, 'attendanceReports'])->name('attendance');
+        Route::get('/leave', [ReportsController::class, 'leaveReports'])->name('leave');
+        Route::get('/payroll', [ReportsController::class, 'payrollReports'])->name('payroll');
+        Route::get('/government', [ReportsController::class, 'governmentReports'])->name('government');
+
+        Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
 
 });
 

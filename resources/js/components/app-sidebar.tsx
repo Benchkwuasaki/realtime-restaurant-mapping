@@ -180,7 +180,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       },
       {
           title: "Reports and Analytics",
-          url: route("reports_and_analytics.index"),
+          url: "/reports_and_analytics",
           icon: FileBarChart,
           show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
           items: [
@@ -190,7 +190,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             },
             {
               title: "Attendance Reports",
-              url: "/reports_and_analytics/attendance",
+              url: route('reports_and_analytics.attendance-report.index'),
             },
             {
               title: "Leave Reports",
