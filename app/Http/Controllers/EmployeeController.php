@@ -38,7 +38,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => 'Viewed Employee Page',
+            'activity' => 'Viewed Employee Page',
         ]);
 
         $employees = Employee::with([
@@ -265,7 +265,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => 'Created employee: ' . $request->first_name . ' ' . $request->last_name,
+            'activity' => 'Created employee: ' . $request->first_name . ' ' . $request->last_name,
         ]);
 
         return redirect()->route('employee.index')
@@ -446,7 +446,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => ($employee->status ? 'Activated' : 'Deactivated') . ' employee: ' . $employee->basicInfo?->full_name,
+            'activity' => ($employee->status ? 'Activated' : 'Deactivated') . ' employee: ' . $employee->basicInfo?->full_name,
         ]);
 
         return back()->with('success', 'Employee status updated.');
@@ -459,7 +459,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => 'Deleted employee: ' . $employee->basicInfo?->full_name,
+            'activity' => 'Deleted employee: ' . $employee->basicInfo?->full_name,
         ]);
 
         return redirect()->route('employee.index')->with('success', 'Employee deleted successfully.');

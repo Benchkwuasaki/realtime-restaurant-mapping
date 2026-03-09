@@ -36,7 +36,7 @@ class ActivityLogsController extends Controller
                 return [
                     'user' => $log->user->getFullName(),
                     'module' => $this->activityLogService->formatModuleName($log->module),
-                    'description' => $log->description,
+                    'activity' => $log->activity,
                     'device' => $log->device,
                     'platform' => $log->platform,
 
@@ -49,7 +49,7 @@ class ActivityLogsController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'general',
-            'description' => 'Viewed activity logs',
+            'activity' => 'Viewed activity logs',
         ]);
 
         return Inertia::render('ActivityLogs/Index', [

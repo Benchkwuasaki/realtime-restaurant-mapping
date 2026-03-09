@@ -17,7 +17,7 @@ class PayrollController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'payroll',
-            'description' => 'Viewed Payroll Page',
+            'activity' => 'Viewed Payroll Page',
         ]);
         return Inertia::render('Payroll/Index');
     }
