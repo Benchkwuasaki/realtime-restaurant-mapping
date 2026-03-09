@@ -74,20 +74,20 @@ import {
     X,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { type DateRange } from 'react-day-picker';
+import {
+    createLoadEmployeeColumns,
+    finalizedColumns,
+} from '@/components/Payroll/PayrollProcessing/components/columns';
+import {
+    type PayrollEmployee,
+    type FinalizedEmployee,
+} from '@/components/Payroll/PayrollProcessing/data/types';
+import { peso } from '@/components/Payroll/PayrollProcessing/data/utils';
 
 // Where is the attendance data??
 // Check for PayrollProcessingController if it was extracted from there
-interface Employee {
-    id: number;
-    name: string;
-    position: string;
-    employment_classification: string;
-    salary_grade: number | null;
-    salary_step: number | null;
-    monthly_salary: number;
-    basic_pay: number;
-}
+// Employee and FinalizedEmployee types are imported from ./types
+// peso formatter is imported from ./utils
 
 interface ComputedRecord {
     employee_id: number;
@@ -139,7 +139,7 @@ interface Props {
     auth: { user: { name?: string; first_name?: string; last_name?: string } };
     periods: any[];
     employmentClassifications: { id: number; name: string }[];
-    employees: Employee[];
+    employees: PayrollEmployee[];
     computedRecords?: ComputedRecord[];
     processedPeriodId?: number;
     processingErrors?: string[];
@@ -164,10 +164,6 @@ function computeWorkingDaysBetween(from: Date, to: Date): number {
     return count;
 }
 
-function peso(amount: number) {
-    return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 export default function Index({
     auth,
     periods,
@@ -180,8 +176,13 @@ export default function Index({
     const [currentStep, setCurrentStep] = useState(1);
 
     // ── Step 1 state ───────────────────────────────────────────────────────────
-    const [dateRange, setDateRange] = useState<DateRange | undefined>(
+    const [payrollMonth, setPayrollMonth] = useState<Date | undefined>(
         undefined,
+    );
+    const [cutoffType, setCutoffType] = useState<'first' | 'second' | ''>('');
+    const [monthPickerOpen, setMonthPickerOpen] = useState(false);
+    const [monthPickerYear, setMonthPickerYear] = useState(
+        new Date().getFullYear(),
     );
     const [employeeType, setEmployeeType] = useState('');
     const [workingDays, setWorkingDays] = useState('');
@@ -189,6 +190,36 @@ export default function Index({
     const [customDaysInput, setCustomDaysInput] = useState('');
     const [extraDayOptions, setExtraDayOptions] = useState<number[]>([]);
     const [payDate, setPayDate] = useState<Date | undefined>(undefined);
+
+    // ── Derived payroll period dates from month + cut-off ──────────────────────
+    const { startDate, endDate, payrollPeriodLabel } = useMemo(() => {
+        if (!payrollMonth || !cutoffType) {
+            return {
+                startDate: undefined,
+                endDate: undefined,
+                payrollPeriodLabel: '',
+            };
+        }
+        const year = payrollMonth.getFullYear();
+        const month = payrollMonth.getMonth();
+        if (cutoffType === 'first') {
+            const s = new Date(year, month, 1);
+            const e = new Date(year, month, 15);
+            return {
+                startDate: s,
+                endDate: e,
+                payrollPeriodLabel: `${format(s, 'MMMM d')} – ${format(e, 'MMMM d, yyyy')}`,
+            };
+        } else {
+            const s = new Date(year, month, 16);
+            const e = new Date(year, month + 1, 0); // last day of month
+            return {
+                startDate: s,
+                endDate: e,
+                payrollPeriodLabel: `${format(s, 'MMMM d')} – ${format(e, 'MMMM d, yyyy')}`,
+            };
+        }
+    }, [payrollMonth, cutoffType]);
     const defaultHrName =
         auth.user.name ??
         (auth.user.first_name || auth.user.last_name
@@ -226,7 +257,6 @@ export default function Index({
 
     // ── Step 4 state ───────────────────────────────────────────────────────────
     const [reviewedIds, setReviewedIds] = useState<number[]>([]);
-    // floorWaivers[employeeId] = array of column keys waived as a group this period
     const [floorWaivers, setFloorWaivers] = useState<Record<number, string[]>>(
         {},
     );
@@ -447,8 +477,8 @@ export default function Index({
     const currentEmployees = employeesWithStatus.slice(startIndex, endIndex);
 
     const computedDays =
-        dateRange?.from && dateRange?.to
-            ? computeWorkingDaysBetween(dateRange.from, dateRange.to)
+        startDate && endDate
+            ? computeWorkingDaysBetween(startDate, endDate)
             : null;
 
     const baseDayOptions = computedDays
@@ -465,7 +495,8 @@ export default function Index({
 
     const getMissingStep1Fields = () => {
         const missing = [];
-        if (!dateRange?.from || !dateRange?.to) missing.push('Payroll Period');
+        if (!payrollMonth) missing.push('Payroll Month');
+        if (!cutoffType) missing.push('Cut-off');
         if (!employeeType) missing.push('Employee Type');
         if (!workingDays || workingDays === 'custom')
             missing.push('Working Days');
@@ -476,11 +507,17 @@ export default function Index({
     const missingStep1Fields = getMissingStep1Fields();
     const canProceedStep1 = missingStep1Fields.length === 0;
 
-    const handleDateRangeChange = (range: DateRange | undefined) => {
-        setDateRange(range);
+    const handlePayrollMonthSelect = (year: number, monthIndex: number) => {
+        setPayrollMonth(new Date(year, monthIndex, 1));
+        setMonthPickerOpen(false);
         setWorkingDays('');
-        setIsTypingCustom(false);
-        setCustomDaysInput('');
+        setExtraDayOptions([]);
+        setValidationError('');
+    };
+
+    const handleCutoffChange = (value: 'first' | 'second') => {
+        setCutoffType(value);
+        setWorkingDays('');
         setExtraDayOptions([]);
         setValidationError('');
     };
@@ -535,7 +572,7 @@ export default function Index({
      * fully editable so HR can make manual corrections.
      */
     const fetchAttendanceSummary = async () => {
-        if (!dateRange?.from || !dateRange?.to) return;
+        if (!startDate || !endDate) return;
         setIsLoadingAttendance(true);
         setValidationError('');
         try {
@@ -543,8 +580,8 @@ export default function Index({
                 route('payroll.attendance-summary'),
                 {
                     params: {
-                        start_date: format(dateRange.from, 'yyyy-MM-dd'),
-                        end_date: format(dateRange.to, 'yyyy-MM-dd'),
+                        start_date: format(startDate, 'yyyy-MM-dd'),
+                        end_date: format(endDate, 'yyyy-MM-dd'),
                         employee_type: employeeType || undefined,
                     },
                 },
@@ -651,14 +688,14 @@ export default function Index({
     // ── Step 3 helpers ─────────────────────────────────────────────────────────
 
     const handleCompute = async () => {
-        if (!dateRange?.from || !dateRange?.to) return;
+        if (!startDate || !endDate) return;
         setIsProcessing(true);
         setValidationError('');
 
         try {
             const { data } = await axios.post(route('payroll.process-new'), {
-                start_date: format(dateRange.from, 'yyyy-MM-dd'),
-                end_date: format(dateRange.to, 'yyyy-MM-dd'),
+                start_date: format(startDate, 'yyyy-MM-dd'),
+                end_date: format(endDate, 'yyyy-MM-dd'),
                 employee_type: employeeType || null,
                 hr_officer_name: hrOfficerName || null,
                 attendance: includedEmployeeIds.map((id) => ({
@@ -837,7 +874,7 @@ export default function Index({
     // ── Step 5 helpers ─────────────────────────────────────────────────────────
 
     const handleFinalize = async () => {
-        if (!dateRange?.from || !dateRange?.to) return;
+        if (!startDate || !endDate) return;
         setIsFinalizing(true);
         setValidationError('');
 
@@ -868,8 +905,8 @@ export default function Index({
             }));
 
             const { data } = await axios.post(route('payroll.finalize'), {
-                start_date: format(dateRange.from, 'yyyy-MM-dd'),
-                end_date: format(dateRange.to, 'yyyy-MM-dd'),
+                start_date: format(startDate, 'yyyy-MM-dd'),
+                end_date: format(endDate, 'yyyy-MM-dd'),
                 employee_type: employeeType || null,
                 hr_officer_name: hrOfficerName || null,
                 records,
@@ -889,15 +926,11 @@ export default function Index({
         }
     };
 
-    // ── Navigation ─────────────────────────────────────────────────────────────
-
     const goBack = () => {
         setValidationError('');
         setCurrentStep((s) => Math.max(1, s - 1));
     };
     const goToPage = (page: number) => setCurrentPage(page);
-
-    // ── Wizard step config ─────────────────────────────────────────────────────
 
     const steps = [
         { title: 'Selected Period', description: 'Step 1', icon: CalendarIcon },
@@ -907,324 +940,30 @@ export default function Index({
         { title: 'Post and Finalize', description: 'Step 5', icon: FileText },
     ];
 
-    // ── Step 5 column definitions ──────────────────────────────────────────────
+    // ── Step 5 columns ─────────────────────────────────────────────────────────
+    // Imported static export from ./components/columns — no local state deps.
+    // Use `finalizedColumns` directly in the DataTable below.
 
-    type FinalizedEmployee = (typeof finalizedEmployeesWithStatus)[number];
-
-    const finalizedColumns: DataTableColumnDef<FinalizedEmployee>[] = [
-        {
-            id: 'index',
-            header: '#',
-            cell: ({ row }) => (
-                <span className="text-sm text-muted-foreground tabular-nums">
-                    {row.index + 1}
-                </span>
-            ),
-            enableSorting: false,
-            enableHiding: false,
-        },
-        {
-            accessorKey: 'name',
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Employee Name" />
-            ),
-            cell: ({ row }) => (
-                <span className="font-medium">{row.original.name}</span>
-            ),
-        },
-        {
-            accessorKey: 'grossPay',
-            header: ({ column }) => (
-                <DataTableColumnHeader
-                    column={column}
-                    title="Gross Pay"
-                    className="justify-end"
-                />
-            ),
-            cell: ({ row }) => (
-                <span className="block text-right tabular-nums">
-                    {peso(row.original.grossPay)}
-                </span>
-            ),
-        },
-        {
-            accessorKey: 'totalDeductions',
-            header: ({ column }) => (
-                <DataTableColumnHeader
-                    column={column}
-                    title="Total Deductions"
-                    className="justify-end"
-                />
-            ),
-            cell: ({ row }) => (
-                <span className="block text-right text-red-600 tabular-nums">
-                    {peso(row.original.totalDeductions)}
-                </span>
-            ),
-        },
-        {
-            accessorKey: 'netPay',
-            header: ({ column }) => (
-                <DataTableColumnHeader
-                    column={column}
-                    title="Net Pay"
-                    className="justify-end"
-                />
-            ),
-            cell: ({ row }) => (
-                <span
-                    className={`block text-right font-semibold tabular-nums ${row.original.status === 'low' ? 'text-red-600' : 'text-green-700'}`}
-                >
-                    {peso(row.original.netPay)}
-                </span>
-            ),
-        },
-        {
-            accessorKey: 'status',
-            header: 'Status',
-            cell: ({ row }) => (
-                <div className="flex justify-center">
-                    <Badge
-                        variant={
-                            row.original.status === 'ok'
-                                ? 'secondary'
-                                : 'destructive'
-                        }
-                        className={
-                            row.original.status === 'ok'
-                                ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300'
-                                : ''
-                        }
-                    >
-                        {row.original.status === 'ok' ? 'OK' : 'Low'}
-                    </Badge>
-                </div>
-            ),
-            filterFn: (row, _id, filterValues: string[]) =>
-                filterValues.length === 0 ||
-                filterValues.includes(row.original.status),
-        },
-    ];
-
-    // ── Step 2 column definitions ──────────────────────────────────────────────
+    // ── Step 2 columns ─────────────────────────────────────────────────────────
+    // Built via factory: closes over includedEmployeeIds, attendance, and the
+    // three setter callbacks. useMemo ensures columns only rebuild when those
+    // slices actually change — avoids unnecessary DataTable re-renders.
     //
-    // DataTable is applicable here because:
-    //  - The table is a flat list of employees (no grouped headers)
-    //  - Each row has simple cell content: text, badge, and number inputs
-    //  - Search + filter from the shared toolbar is a genuine UX improvement
-    //
-    // NOTE: We do NOT use DataTable's built-in TanStack row selection for the
-    // include/exclude checkboxes, because the "included" state is external
-    // (`includedEmployeeIds`) and must persist across re-renders and filter
-    // changes. Instead, we define a custom checkbox column that directly
-    // reads/writes the existing state. DataTable's built-in mobile-card
-    // checkbox (select-all) is intentionally left unused for this step.
+    // NOTE: We do NOT use DataTable's built-in TanStack row selection here
+    // because the "included" state is external and must survive filter changes.
 
-    type LoadEmployee = (typeof filteredEmployees)[number];
-
-    const loadEmployeeColumns: DataTableColumnDef<LoadEmployee>[] = [
-        {
-            id: 'included',
-            header: () => (
-                <div className="flex justify-center">
-                    <Checkbox
-                        checked={
-                            includedEmployeeIds.length ===
-                                filteredEmployees.length &&
-                            filteredEmployees.length > 0
-                                ? true
-                                : includedEmployeeIds.length === 0
-                                  ? false
-                                  : 'indeterminate'
-                        }
-                        onCheckedChange={(checked) =>
-                            setAllIncluded(
-                                checked === true || checked === 'indeterminate',
-                            )
-                        }
-                    />
-                </div>
-            ),
-            cell: ({ row }) => {
-                const included = includedEmployeeIds.includes(row.original.id);
-                return (
-                    <div className="flex justify-center">
-                        <Checkbox
-                            checked={included}
-                            onCheckedChange={(checked) =>
-                                setEmployeeIncluded(
-                                    row.original.id,
-                                    checked === true,
-                                )
-                            }
-                        />
-                    </div>
-                );
-            },
-            enableSorting: false,
-            enableHiding: false,
-        },
-        {
-            id: 'index',
-            header: '#',
-            cell: ({ row }) => (
-                <span className="text-muted-foreground tabular-nums">
-                    {row.index + 1}
-                </span>
-            ),
-            enableSorting: false,
-            enableHiding: false,
-        },
-        {
-            accessorKey: 'name',
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Employee Name" />
-            ),
-            cell: ({ row }) => {
-                const included = includedEmployeeIds.includes(row.original.id);
-                return (
-                    <span
-                        className={`font-medium ${!included ? 'opacity-40' : ''}`}
-                    >
-                        {row.original.name}
-                    </span>
-                );
-            },
-        },
-        {
-            accessorKey: 'position',
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Position Title" />
-            ),
-            cell: ({ row }) => {
-                const included = includedEmployeeIds.includes(row.original.id);
-                return (
-                    <span
-                        className={`text-sm text-muted-foreground ${!included ? 'opacity-40' : ''}`}
-                    >
-                        {row.original.position}
-                    </span>
-                );
-            },
-        },
-        {
-            accessorKey: 'salary_grade',
-            header: ({ column }) => (
-                <DataTableColumnHeader
-                    column={column}
-                    title="Salary Grade & Step"
-                    className="justify-center"
-                />
-            ),
-            cell: ({ row }) => {
-                const included = includedEmployeeIds.includes(row.original.id);
-                return (
-                    <div
-                        className={`flex justify-center ${!included ? 'opacity-40' : ''}`}
-                    >
-                        {row.original.salary_grade ? (
-                            <Badge
-                                variant="secondary"
-                                className="bg-green-100 text-green-700 hover:bg-green-100"
-                            >
-                                SG {row.original.salary_grade} – Step{' '}
-                                {row.original.salary_step ?? 1}
-                            </Badge>
-                        ) : (
-                            <span className="text-xs text-muted-foreground italic">
-                                —
-                            </span>
-                        )}
-                    </div>
-                );
-            },
-        },
-        {
-            accessorKey: 'basic_pay',
-            header: ({ column }) => (
-                <DataTableColumnHeader
-                    column={column}
-                    title="Basic Pay (Semi-Mo.)"
-                    className="justify-center"
-                />
-            ),
-            cell: ({ row }) => {
-                const included = includedEmployeeIds.includes(row.original.id);
-                return (
-                    <span
-                        className={`block text-center font-medium tabular-nums ${!included ? 'opacity-40' : ''}`}
-                    >
-                        {peso(row.original.basic_pay)}
-                    </span>
-                );
-            },
-        },
-        {
-            id: 'absent_days',
-            header: 'Absent Days',
-            cell: ({ row }) => {
-                const included = includedEmployeeIds.includes(row.original.id);
-                return (
-                    <InputGroup className="mx-auto w-28">
-                        <InputGroupInput
-                            type="number"
-                            min={0}
-                            max={31}
-                            value={
-                                attendance[row.original.id]?.absent_days ?? 0
-                            }
-                            onChange={(e) =>
-                                updateAttendance(
-                                    row.original.id,
-                                    'absent_days',
-                                    e.target.value,
-                                )
-                            }
-                            disabled={!included}
-                            className="text-center"
-                        />
-                        <InputGroupAddon align="inline-end">
-                            <InputGroupText>days</InputGroupText>
-                        </InputGroupAddon>
-                    </InputGroup>
-                );
-            },
-            enableSorting: false,
-        },
-        {
-            id: 'late_minutes',
-            header: 'Late (mins)',
-            cell: ({ row }) => {
-                const included = includedEmployeeIds.includes(row.original.id);
-                return (
-                    <InputGroup className="mx-auto w-28">
-                        <InputGroupInput
-                            type="number"
-                            min={0}
-                            value={
-                                attendance[row.original.id]?.late_minutes ?? 0
-                            }
-                            onChange={(e) =>
-                                updateAttendance(
-                                    row.original.id,
-                                    'late_minutes',
-                                    e.target.value,
-                                )
-                            }
-                            disabled={!included}
-                            className="text-center"
-                        />
-                        <InputGroupAddon align="inline-end">
-                            <InputGroupText>min</InputGroupText>
-                        </InputGroupAddon>
-                    </InputGroup>
-                );
-            },
-            enableSorting: false,
-        },
-    ];
-
-    // ── Render ─────────────────────────────────────────────────────────────────
+    const loadEmployeeColumns = useMemo(
+        () =>
+            createLoadEmployeeColumns({
+                includedEmployeeIds,
+                filteredEmployees,
+                attendance,
+                setAllIncluded,
+                setEmployeeIncluded,
+                updateAttendance,
+            }),
+        [includedEmployeeIds, filteredEmployees, attendance],
+    );
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -1241,7 +980,6 @@ export default function Index({
                     </Alert>
                 )}
 
-                {/* Processing errors from backend */}
                 {processingErrors.length > 0 && (
                     <Alert>
                         <AlertTriangle className="h-4 w-4" />
@@ -1256,7 +994,6 @@ export default function Index({
                     </Alert>
                 )}
 
-                {/* ── Step indicator ── */}
                 <Stepper
                     steps={steps}
                     currentStep={currentStep - 1}
@@ -1274,58 +1011,158 @@ export default function Index({
                                 description="Configure the payroll period, employee type, working days, and pay date before proceeding."
                             />
 
-                            <div className="grid grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 items-end gap-x-6 gap-y-8 md:grid-cols-4">
+                                {/* ── Payroll Month ─────────────────────────── */}
                                 <Field>
-                                    <FieldLabel>Payroll Period</FieldLabel>
-                                    <Popover>
+                                    <FieldLabel>Payroll Month</FieldLabel>
+                                    <Popover
+                                        open={monthPickerOpen}
+                                        onOpenChange={setMonthPickerOpen}
+                                    >
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
-                                                className={`w-full justify-start text-left font-normal ${!dateRange?.from ? 'text-muted-foreground' : ''} ${(!dateRange?.from || !dateRange?.to) && validationError ? 'border-destructive' : ''}`}
+                                                className={`w-full justify-start text-left font-normal ${!payrollMonth ? 'text-muted-foreground' : ''} ${!payrollMonth && validationError ? 'border-destructive' : ''}`}
                                             >
                                                 <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                                                {dateRange?.from ? (
-                                                    dateRange.to ? (
-                                                        <span className="truncate">
-                                                            {format(
-                                                                dateRange.from,
-                                                                'MMM dd, y',
-                                                            )}{' '}
-                                                            –{' '}
-                                                            {format(
-                                                                dateRange.to,
-                                                                'MMM dd, y',
-                                                            )}
-                                                        </span>
-                                                    ) : (
-                                                        format(
-                                                            dateRange.from,
-                                                            'MMM dd, y',
-                                                        )
-                                                    )
-                                                ) : (
-                                                    <span>
-                                                        Pick a date range
-                                                    </span>
-                                                )}
+                                                {payrollMonth
+                                                    ? format(
+                                                          payrollMonth,
+                                                          'MMMM yyyy',
+                                                      )
+                                                    : 'Select month'}
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent
-                                            className="w-auto p-0"
+                                            className="w-72 p-3"
                                             align="start"
                                         >
-                                            <Calendar
-                                                mode="range"
-                                                defaultMonth={dateRange?.from}
-                                                selected={dateRange}
-                                                onSelect={handleDateRangeChange}
-                                                numberOfMonths={2}
-                                                initialFocus
-                                            />
+                                            {/* Year navigation */}
+                                            <div className="mb-3 flex items-center justify-between">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        setMonthPickerYear(
+                                                            (y) => y - 1,
+                                                        )
+                                                    }
+                                                >
+                                                    <ChevronLeft className="h-4 w-4" />
+                                                </Button>
+                                                <span className="text-sm font-semibold">
+                                                    {monthPickerYear}
+                                                </span>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        setMonthPickerYear(
+                                                            (y) => y + 1,
+                                                        )
+                                                    }
+                                                >
+                                                    <ChevronRight className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            {/* Month grid */}
+                                            <div className="grid grid-cols-3 gap-1.5">
+                                                {[
+                                                    'Jan',
+                                                    'Feb',
+                                                    'Mar',
+                                                    'Apr',
+                                                    'May',
+                                                    'Jun',
+                                                    'Jul',
+                                                    'Aug',
+                                                    'Sep',
+                                                    'Oct',
+                                                    'Nov',
+                                                    'Dec',
+                                                ].map((name, idx) => {
+                                                    const isSelected =
+                                                        payrollMonth &&
+                                                        payrollMonth.getFullYear() ===
+                                                            monthPickerYear &&
+                                                        payrollMonth.getMonth() ===
+                                                            idx;
+                                                    return (
+                                                        <Button
+                                                            key={name}
+                                                            variant={
+                                                                isSelected
+                                                                    ? 'default'
+                                                                    : 'ghost'
+                                                            }
+                                                            size="sm"
+                                                            className="h-9 text-xs"
+                                                            onClick={() =>
+                                                                handlePayrollMonthSelect(
+                                                                    monthPickerYear,
+                                                                    idx,
+                                                                )
+                                                            }
+                                                        >
+                                                            {name}
+                                                        </Button>
+                                                    );
+                                                })}
+                                            </div>
                                         </PopoverContent>
                                     </Popover>
                                 </Field>
 
+                                {/* ── Cut-off Type ──────────────────────────── */}
+                                <Field>
+                                    <FieldLabel>Cut-off</FieldLabel>
+                                    <Select
+                                        value={cutoffType}
+                                        onValueChange={(v) =>
+                                            handleCutoffChange(
+                                                v as 'first' | 'second',
+                                            )
+                                        }
+                                        disabled={!payrollMonth}
+                                    >
+                                        <SelectTrigger
+                                            className={`w-full ${!cutoffType && validationError ? 'border-destructive' : ''}`}
+                                        >
+                                            <SelectValue
+                                                placeholder={
+                                                    !payrollMonth
+                                                        ? 'Select month first'
+                                                        : 'Select cut-off'
+                                                }
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="first">
+                                                First Cut-off (Day 1 – 15)
+                                            </SelectItem>
+                                            <SelectItem value="second">
+                                                Second Cut-off (Day 16 – End of
+                                                Month)
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </Field>
+
+                                {/* ── Computed Payroll Period (read-only) ───── */}
+                                <Field>
+                                    <FieldLabel>Payroll Period</FieldLabel>
+                                    <FieldDescription>
+                                        Auto-computed from month &amp; cut-off
+                                    </FieldDescription>
+                                    <Input
+                                        readOnly
+                                        value={payrollPeriodLabel}
+                                        placeholder="—"
+                                        className="cursor-default bg-muted/40 text-sm font-medium"
+                                    />
+                                </Field>
+
+                                {/* ── Employee Type ─────────────────────────── */}
                                 <Field>
                                     <FieldLabel>Employee Type</FieldLabel>
                                     <Select
@@ -1355,6 +1192,7 @@ export default function Index({
                                     </Select>
                                 </Field>
 
+                                {/* ── Working Days ──────────────────────────── */}
                                 <Field>
                                     <FieldLabel>
                                         Working days this period
@@ -1456,9 +1294,7 @@ export default function Index({
                                         </PopoverContent>
                                     </Popover>
                                 </Field>
-                            </div>
 
-                            <div className="mt-6 grid grid-cols-4 gap-6">
                                 <Field>
                                     <FieldLabel>HR Officer Name</FieldLabel>
                                     <FieldDescription>
@@ -1478,82 +1314,65 @@ export default function Index({
 
                             {/* Summary card. Need adjusting*/}
                             {canProceedStep1 && (
-                                <div className="mt-8 animate-in duration-500 fade-in slide-in-from-bottom-2">
-                                    <Card className="relative overflow-hidden border-primary/20 bg-primary/5">
-                                        <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
-                                        <CardContent className="p-6">
-                                            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                                                <div className="flex items-start gap-4">
-                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                                        <CheckCircle2 className="h-6 w-6" />
-                                                    </div>
+                                <div className="mt-8 animate-in duration-300 fade-in slide-in-from-bottom-2">
+                                    <Card>
+                                        <CardContent className="px-6 py-4">
+                                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                                {/* Left — period + type */}
+                                                <div className="flex items-center gap-3">
+                                                    <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                                                     <div>
-                                                        <h4 className="text-sm font-semibold">
-                                                            Ready for Processing
-                                                        </h4>
-                                                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                                                            <span className="flex items-center gap-1.5 font-medium">
-                                                                <CalendarIcon className="h-3.5 w-3.5" />
-                                                                {format(
-                                                                    dateRange!
-                                                                        .from!,
-                                                                    'MMM dd',
-                                                                )}{' '}
-                                                                –{' '}
-                                                                {format(
-                                                                    dateRange!
-                                                                        .to!,
-                                                                    'MMM dd, yyyy',
-                                                                )}
-                                                            </span>
-                                                            <Separator
-                                                                orientation="vertical"
-                                                                className="hidden h-4 lg:block"
-                                                            />
-                                                            <Badge variant="secondary">
-                                                                {employeeType}
-                                                            </Badge>
-                                                        </div>
+                                                        <p className="text-sm font-medium">
+                                                            {payrollPeriodLabel}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {employeeType}
+                                                        </p>
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-8 border-t pt-6 lg:flex lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10">
-                                                    <div className="space-y-1.5">
-                                                        <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-tight text-muted-foreground uppercase">
-                                                            <RefreshCw className="h-3 w-3" />{' '}
+                                                <Separator
+                                                    orientation="vertical"
+                                                    className="hidden h-8 sm:block"
+                                                />
+
+                                                {/* Right — stats row */}
+                                                <div className="flex items-center gap-6 text-sm">
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">
                                                             Working Days
-                                                        </span>
-                                                        <p className="text-lg leading-none font-bold">
-                                                            {workingDays}{' '}
-                                                            <span className="text-xs font-normal text-muted-foreground">
-                                                                Days
-                                                            </span>
+                                                        </p>
+                                                        <p className="font-semibold tabular-nums">
+                                                            {workingDays}
                                                         </p>
                                                     </div>
-                                                    <div className="space-y-1.5">
-                                                        <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-tight text-muted-foreground uppercase">
-                                                            <FileText className="h-3 w-3" />{' '}
+                                                    <Separator
+                                                        orientation="vertical"
+                                                        className="h-6"
+                                                    />
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">
                                                             Pay Date
-                                                        </span>
-                                                        <p className="text-lg leading-none font-bold">
+                                                        </p>
+                                                        <p className="font-semibold tabular-nums">
                                                             {format(
                                                                 payDate!,
                                                                 'MMM dd, yyyy',
                                                             )}
                                                         </p>
                                                     </div>
-                                                    <div className="space-y-1.5">
-                                                        <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-tight text-muted-foreground uppercase">
-                                                            <Users className="h-3 w-3" />{' '}
+                                                    <Separator
+                                                        orientation="vertical"
+                                                        className="h-6"
+                                                    />
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground">
                                                             Employees
-                                                        </span>
-                                                        <p className="text-lg leading-none font-bold">
+                                                        </p>
+                                                        <p className="font-semibold tabular-nums">
                                                             {
                                                                 filteredEmployees.length
-                                                            }{' '}
-                                                            <span className="text-xs font-normal text-muted-foreground">
-                                                                found
-                                                            </span>
+                                                            }
                                                         </p>
                                                     </div>
                                                 </div>
@@ -3335,10 +3154,7 @@ export default function Index({
                                                     Payroll Period
                                                 </p>
                                                 <p className="font-medium">
-                                                    {dateRange?.from &&
-                                                    dateRange?.to
-                                                        ? `${format(dateRange.from, 'MMM dd')} – ${format(dateRange.to, 'MMM dd, yyyy')}`
-                                                        : '—'}
+                                                    {payrollPeriodLabel || '—'}
                                                 </p>
                                             </div>
                                             <div>
@@ -3608,9 +3424,7 @@ export default function Index({
                                         {raw.employee_name}
                                     </DialogTitle>
                                     <p className="mt-0.5 text-xs text-muted-foreground">
-                                        {dateRange?.from && dateRange?.to
-                                            ? `${format(dateRange.from, 'MMM dd')} – ${format(dateRange.to, 'MMM dd, yyyy')}`
-                                            : '—'}
+                                        {payrollPeriodLabel || '—'}
                                         {' · '}
                                         {employeeType || 'All Types'}
                                     </p>

@@ -507,7 +507,7 @@ export default function Index({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Pay Slip Generation" />
 
-            <div className="flex flex-1 flex-col gap-6 p-6">
+            <div className="flex flex-1 flex-col gap-8 p-8">
                 <div>
                     <h1 className="text-2xl font-semibold">
                         Pay Slip Generation

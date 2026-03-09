@@ -851,7 +851,7 @@ export default function GovernmentRemittanceReport({
             <Head title="Government Remittance Report" />
             <style>{printStyles}</style>
 
-            <div className="flex flex-1 flex-col gap-6 p-6">
+            <div className="flex flex-1 flex-col gap-8 p-8">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-semibold">
