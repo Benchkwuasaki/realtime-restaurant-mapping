@@ -972,6 +972,7 @@ class DatabaseSeeder extends Seeder
             RecognitionLogSeeder::class,
             AttendanceRecordSeeder::class,
             LeaveTypeSeeder::class,
+            LeaveBalanceSeeder::class,
             LeaveApplicationSeeder::class,
             // LeaveEntitlementSeeder::class,
         ]);

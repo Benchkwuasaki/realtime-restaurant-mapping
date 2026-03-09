@@ -738,10 +738,12 @@ function BalancesTab({
     data,
     leaveTypes,
     cycleYear,
+    cycleyears = [],
 }: {
     data: BalanceEmployeeRow[]
     leaveTypes: LeaveType[]
     cycleYear: number
+    cycleYears?: number[] 
 }) {
     const [search, setSearch] = useState("")
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
@@ -771,7 +773,7 @@ function BalancesTab({
         (pagination.pageIndex + 1) * pagination.pageSize
     )
     const pageCount = Math.max(1, Math.ceil(filtered.length / pagination.pageSize))
-    const colSpan = 3 + leaveTypes.length * 3
+    const colSpan = 3 + leaveTypes.length
 
     return (
         <div className="flex flex-col gap-4">
@@ -790,19 +792,9 @@ function BalancesTab({
                             <TableHead>Department</TableHead>
                             <TableHead>Employment Type</TableHead>
                             {leaveTypes.map((lt) => (
-                                <TableHead key={lt.leave_type_id} colSpan={3} className="text-center border-l border-border">
+                                <TableHead key={lt.leave_type_id} className="text-center border-l border-border">
                                     {lt.leave_type_name}
                                 </TableHead>
-                            ))}
-                        </TableRow>
-                        <TableRow className="bg-muted/40">
-                            <TableHead colSpan={3} />
-                            {leaveTypes.map((lt) => (
-                                <React.Fragment key={lt.leave_type_id}>
-                                    <TableHead className="text-center text-xs font-normal text-muted-foreground border-l border-border">Total</TableHead>
-                                    <TableHead className="text-center text-xs font-normal text-muted-foreground">Used</TableHead>
-                                    <TableHead className="text-center text-xs font-normal text-muted-foreground">Balance</TableHead>
-                                </React.Fragment>
                             ))}
                         </TableRow>
                     </TableHeader>
@@ -824,17 +816,9 @@ function BalancesTab({
                                     {leaveTypes.map((lt) => {
                                         const b = balanceMap[lt.leave_type_id]
                                         return (
-                                            <React.Fragment key={lt.leave_type_id}>
-                                                <TableCell className="text-center text-muted-foreground text-sm border-l border-border">
-                                                    {b ? b.total_days.toFixed(1) : "—"}
-                                                </TableCell>
-                                                <TableCell className="text-center text-sm text-destructive font-medium">
-                                                    {b ? b.used_days.toFixed(1) : "—"}
-                                                </TableCell>
-                                                <TableCell className="text-center text-sm font-semibold text-primary">
-                                                    {b ? b.balance.toFixed(1) : "—"}
-                                                </TableCell>
-                                            </React.Fragment>
+                                            <TableCell key={lt.leave_type_id} className="text-center text-sm font-semibold text-primary border-l border-border">
+                                                {b ? b.balance.toFixed(2) : <span className="text-destructive">N/A</span>}
+                                            </TableCell>
                                         )
                                     })}
                                 </TableRow>

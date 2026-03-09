@@ -7,6 +7,7 @@ use App\Models\EmployeeLeaveBalance;
 use App\Models\LeaveAccrualPosting;
 use App\Models\LeaveAccrualRecord;
 use App\Models\LeaveType;
+use App\Services\LeaveBalanceService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -16,6 +17,8 @@ use Inertia\Inertia;
 
 class LeaveAccrualController extends Controller
 {
+    public function __construct(protected LeaveBalanceService $leaveBalanceService) {}
+
     // ─────────────────────────────────────────────────────────────────────────
     // Step 1 – Landing / Select Period + Leave Type selection
     // GET /leave/accrual
@@ -40,14 +43,14 @@ class LeaveAccrualController extends Controller
     public function preview(Request $request)
     {
         $request->validate([
-            'month' => ['required', 'integer', 'min:1', 'max:12'],
-            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
-            'leave_type_ids' => ['required', 'array', 'min:1'],
+            'month'            => ['required', 'integer', 'min:1', 'max:12'],
+            'year'             => ['required', 'integer', 'min:2000', 'max:2100'],
+            'leave_type_ids'   => ['required', 'array', 'min:1'],
             'leave_type_ids.*' => ['integer', 'exists:leave_types,leave_type_id'],
         ]);
 
-        $month = (int) $request->month;
-        $year = (int) $request->year;
+        $month        = (int) $request->month;
+        $year         = (int) $request->year;
         $leaveTypeIds = array_map('intval', $request->leave_type_ids);
 
         // Guard: already posted?
@@ -65,7 +68,7 @@ class LeaveAccrualController extends Controller
 
         $workDayData = $this->computeWorkDays($month, $year);
 
-        $employees = $this->getEmployeesWithAttendance($month, $year);
+        $employees  = $this->getEmployeesWithAttendance($month, $year);
         $leaveTypes = LeaveType::whereIn('leave_type_id', $leaveTypeIds)
             ->where('is_accrual', true)
             ->where('status', true)
@@ -77,15 +80,15 @@ class LeaveAccrualController extends Controller
             ->get(['leave_type_id', 'leave_type_name']);
 
         return Inertia::render('Leave/MonthlyEarnedLeave/Index', [
-            'step' => 2,
-            'period' => compact('month', 'year'),
-            'work_days' => $workDayData['work_days'],
-            'total_days' => $workDayData['total_days_in_month'],
-            'total_sundays' => $workDayData['total_sundays'],
-            'total_holidays' => $workDayData['total_holidays'],
-            'previews' => $previews,
-            'leave_types' => $leaveTypes,
-            'leave_type_ids' => $leaveTypeIds,
+            'step'                  => 2,
+            'period'                => compact('month', 'year'),
+            'work_days'             => $workDayData['work_days'],
+            'total_days'            => $workDayData['total_days_in_month'],
+            'total_sundays'         => $workDayData['total_sundays'],
+            'total_holidays'        => $workDayData['total_holidays'],
+            'previews'              => $previews,
+            'leave_types'           => $leaveTypes,
+            'leave_type_ids'        => $leaveTypeIds,
             'available_leave_types' => $availableLeaveTypes,
         ]);
     }
@@ -98,19 +101,19 @@ class LeaveAccrualController extends Controller
     public function confirm(Request $request)
     {
         $request->validate([
-            'month' => ['required', 'integer', 'min:1', 'max:12'],
-            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
-            'leave_type_ids' => ['required', 'array', 'min:1'],
+            'month'            => ['required', 'integer', 'min:1', 'max:12'],
+            'year'             => ['required', 'integer', 'min:2000', 'max:2100'],
+            'leave_type_ids'   => ['required', 'array', 'min:1'],
             'leave_type_ids.*' => ['integer', 'exists:leave_types,leave_type_id'],
         ]);
 
-        $month = (int) $request->month;
-        $year = (int) $request->year;
+        $month        = (int) $request->month;
+        $year         = (int) $request->year;
         $leaveTypeIds = array_map('intval', $request->leave_type_ids);
 
         $workDayData = $this->computeWorkDays($month, $year);
 
-        $employees = $this->getEmployeesWithAttendance($month, $year);
+        $employees  = $this->getEmployeesWithAttendance($month, $year);
         $leaveTypes = LeaveType::whereIn('leave_type_id', $leaveTypeIds)
             ->where('is_accrual', true)
             ->where('status', true)
@@ -118,11 +121,11 @@ class LeaveAccrualController extends Controller
         $previews = $this->buildPreviews($employees, $leaveTypes, $workDayData['work_days'], $month, $year);
 
         $previewCollection = collect($previews);
-        $fullCount = $previewCollection->where('credit_status', 'full_credit')->pluck('employee_id')->unique()->count();
-        $proratedCount = $previewCollection->where('credit_status', 'prorated')->pluck('employee_id')->unique()->count();
-        $ineligibleCount = $previewCollection->where('credit_status', 'ineligible')->pluck('employee_id')->unique()->count();
+        $fullCount         = $previewCollection->where('credit_status', 'full_credit')->pluck('employee_id')->unique()->count();
+        $proratedCount     = $previewCollection->where('credit_status', 'prorated')->pluck('employee_id')->unique()->count();
+        $ineligibleCount   = $previewCollection->where('credit_status', 'ineligible')->pluck('employee_id')->unique()->count();
 
-        $user = Auth::user();
+        $user  = Auth::user();
         $refNo = 'LP-' . str_pad($month, 2, '0', STR_PAD_LEFT) . '-' . $year;
 
         $availableLeaveTypes = LeaveType::where('is_accrual', true)
@@ -130,30 +133,30 @@ class LeaveAccrualController extends Controller
             ->get(['leave_type_id', 'leave_type_name']);
 
         return Inertia::render('Leave/MonthlyEarnedLeave/Index', [
-            'step' => 3,
-            'period' => compact('month', 'year'),
-            'work_days' => $workDayData['work_days'],
-            'total_days' => $workDayData['total_days_in_month'],
-            'total_sundays' => $workDayData['total_sundays'],
-            'total_holidays' => $workDayData['total_holidays'],
-            'previews' => $previews,
-            'leave_types' => $leaveTypes,
-            'leave_type_ids' => $leaveTypeIds,
+            'step'                  => 3,
+            'period'                => compact('month', 'year'),
+            'work_days'             => $workDayData['work_days'],
+            'total_days'            => $workDayData['total_days_in_month'],
+            'total_sundays'         => $workDayData['total_sundays'],
+            'total_holidays'        => $workDayData['total_holidays'],
+            'previews'              => $previews,
+            'leave_types'           => $leaveTypes,
+            'leave_type_ids'        => $leaveTypeIds,
             'available_leave_types' => $availableLeaveTypes,
-            'summary' => [
+            'summary'               => [
                 'total_eligible' => $fullCount + $proratedCount,
-                'full_credit' => $fullCount,
-                'prorated' => $proratedCount,
-                'ineligible' => $ineligibleCount,
-                'work_days' => $workDayData['work_days'],
-                'total_days' => $workDayData['total_days_in_month'],
-                'total_sundays' => $workDayData['total_sundays'],
+                'full_credit'    => $fullCount,
+                'prorated'       => $proratedCount,
+                'ineligible'     => $ineligibleCount,
+                'work_days'      => $workDayData['work_days'],
+                'total_days'     => $workDayData['total_days_in_month'],
+                'total_sundays'  => $workDayData['total_sundays'],
                 'total_holidays' => $workDayData['total_holidays'],
             ],
-            'post_details' => [
-                'posted_by' => $user->name ?? 'Administrator',
-                'role' => $user->roles->first()?->name ?? 'HR Admin',
-                'user_id_str' => 'USR-' . str_pad($user->id, 4, '0', STR_PAD_LEFT),
+            'post_details'          => [
+                'posted_by'    => $user->name ?? 'Administrator',
+                'role'         => $user->roles->first()?->name ?? 'HR Admin',
+                'user_id_str'  => 'USR-' . str_pad($user->id, 4, '0', STR_PAD_LEFT),
                 'posting_date' => now()->format('F d, Y'),
                 'reference_no' => $refNo,
             ],
@@ -168,14 +171,14 @@ class LeaveAccrualController extends Controller
     public function post(Request $request)
     {
         $request->validate([
-            'month' => ['required', 'integer', 'min:1', 'max:12'],
-            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
-            'leave_type_ids' => ['required', 'array', 'min:1'],
+            'month'            => ['required', 'integer', 'min:1', 'max:12'],
+            'year'             => ['required', 'integer', 'min:2000', 'max:2100'],
+            'leave_type_ids'   => ['required', 'array', 'min:1'],
             'leave_type_ids.*' => ['integer', 'exists:leave_types,leave_type_id'],
         ]);
 
-        $month = (int) $request->month;
-        $year = (int) $request->year;
+        $month        = (int) $request->month;
+        $year         = (int) $request->year;
         $leaveTypeIds = array_map('intval', $request->leave_type_ids);
 
         // Final guard
@@ -191,61 +194,72 @@ class LeaveAccrualController extends Controller
             ]);
         }
 
-        $workDayData = $this->computeWorkDays($month, $year);
-
-        $employees = $this->getEmployeesWithAttendance($month, $year);
-        $leaveTypes = LeaveType::whereIn('leave_type_id', $leaveTypeIds)
+        $workDayData  = $this->computeWorkDays($month, $year);
+        $employees    = $this->getEmployeesWithAttendance($month, $year);
+        $leaveTypes   = LeaveType::whereIn('leave_type_id', $leaveTypeIds)
             ->where('is_accrual', true)
             ->where('status', true)
             ->get();
-        $previews = $this->buildPreviews($employees, $leaveTypes, $workDayData['work_days'], $month, $year);
+        $previews     = $this->buildPreviews($employees, $leaveTypes, $workDayData['work_days'], $month, $year);
 
         $refNo = 'LP-' . str_pad($month, 2, '0', STR_PAD_LEFT) . '-' . $year;
 
+        // Collect distinct employee IDs before the transaction so we can run
+        // threshold grants after balances have been committed to the DB.
+        $affectedEmployeeIds = collect($previews)->pluck('employee_id')->unique()->values()->all();
+
         DB::transaction(function () use ($month, $year, $workDayData, $previews, $refNo) {
             $posting = LeaveAccrualPosting::create([
-                'posting_month' => $month,
-                'posting_year' => $year,
+                'posting_month'       => $month,
+                'posting_year'        => $year,
                 'total_days_in_month' => $workDayData['total_days_in_month'],
-                'total_sundays' => $workDayData['total_sundays'],
-                'total_holidays' => $workDayData['total_holidays'],
-                'work_days' => $workDayData['work_days'],
-                'posted_by_user_id' => Auth::id(),
-                'reference_no' => $refNo,
-                'status' => 'posted',
+                'total_sundays'       => $workDayData['total_sundays'],
+                'total_holidays'      => $workDayData['total_holidays'],
+                'work_days'           => $workDayData['work_days'],
+                'posted_by_user_id'   => Auth::id(),
+                'reference_no'        => $refNo,
+                'status'              => 'posted',
             ]);
 
             foreach ($previews as $preview) {
                 LeaveAccrualRecord::create([
                     'leave_accrual_posting_id' => $posting->leave_accrual_posting_id,
-                    'employee_id' => $preview['employee_id'],
-                    'leave_type_id' => $preview['leave_type_id'],
-                    // attendance_days now stores total minutes worked (TMW)
-                    'attendance_days' => $preview['minutes_worked'],
-                    'accrual_earned' => $preview['accrual_earned'],
-                    'balance_before' => $preview['balance_before'],
-                    'balance_after' => $preview['balance_after'],
-                    'credit_status' => $preview['credit_status'],
+                    'employee_id'              => $preview['employee_id'],
+                    'leave_type_id'            => $preview['leave_type_id'],
+                    // attendance_days stores Total Minutes Worked (TMW)
+                    'attendance_days'          => $preview['minutes_worked'],
+                    'accrual_earned'           => $preview['accrual_earned'],
+                    'balance_before'           => $preview['balance_before'],
+                    'balance_after'            => $preview['balance_after'],
+                    'credit_status'            => $preview['credit_status'],
                 ]);
 
-                $cycleYear = $year;
                 EmployeeLeaveBalance::updateOrCreate(
                     [
-                        'employee_id' => $preview['employee_id'],
+                        'employee_id'   => $preview['employee_id'],
                         'leave_type_id' => $preview['leave_type_id'],
-                        'cycle_year' => $cycleYear,
+                        'cycle_year'    => $year,
                     ],
                     [
-                        'balance' => $preview['balance_after'],
+                        'balance'    => $preview['balance_after'],
                         'total_days' => $preview['balance_after'],
                     ]
                 );
             }
         });
 
+        // ── VL threshold check (outside transaction) ──────────────────────────
+        // Now that updated VL balances are committed, check whether any affected
+        // employee has crossed the ≥ 10 VL threshold and grant Forced Leave
+        // (5 days) and/or Special Leave (3 days) if not already present.
+        // applyThresholdGrants() is idempotent — safe to call repeatedly.
+        foreach ($affectedEmployeeIds as $employeeId) {
+            $this->leaveBalanceService->applyThresholdGrants($employeeId, $year);
+        }
+
         return redirect()->route('leave.accrual.posted', [
             'month' => $month,
-            'year' => $year,
+            'year'  => $year,
         ]);
     }
 
@@ -258,11 +272,11 @@ class LeaveAccrualController extends Controller
     {
         $request->validate([
             'month' => ['required', 'integer', 'min:1', 'max:12'],
-            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'year'  => ['required', 'integer', 'min:2000', 'max:2100'],
         ]);
 
         $month = (int) $request->month;
-        $year = (int) $request->year;
+        $year  = (int) $request->year;
 
         $posting = LeaveAccrualPosting::with('records.employee.basicInfo', 'records.leaveType')
             ->where('posting_month', $month)
@@ -271,38 +285,38 @@ class LeaveAccrualController extends Controller
             ->firstOrFail();
 
         $postedPreviews = $posting->records->map(fn(LeaveAccrualRecord $r) => [
-            'employee_id' => $r->employee_id,
-            'name' => $r->employee?->basicInfo?->full_name ?? '—',
-            'department' => $r->employee?->item?->position?->department?->department_name ?? '—',
+            'employee_id'               => $r->employee_id,
+            'name'                      => $r->employee?->basicInfo?->full_name ?? '—',
+            'department'                => $r->employee?->item?->position?->department?->department_name ?? '—',
             'employment_classification' => $r->employee?->employment_classification ?? '—',
-            'avatar_url' => $r->employee?->avatar_url,
-            'leave_type_id' => $r->leave_type_id,
-            'leave_type_name' => $r->leaveType?->leave_type_name ?? '—',
-            // attendance_days column stores TMW (minutes worked)
-            'minutes_worked' => $r->attendance_days,
-            'accrual_earned' => (float) $r->accrual_earned,
-            'balance_before' => (float) $r->balance_before,
-            'balance_after' => (float) $r->balance_after,
-            'credit_status' => $r->credit_status,
+            'avatar_url'                => $r->employee?->avatar_url,
+            'leave_type_id'             => $r->leave_type_id,
+            'leave_type_name'           => $r->leaveType?->leave_type_name ?? '—',
+            // attendance_days stores TMW (minutes worked)
+            'minutes_worked'            => $r->attendance_days,
+            'accrual_earned'            => (float) $r->accrual_earned,
+            'balance_before'            => (float) $r->balance_before,
+            'balance_after'             => (float) $r->balance_after,
+            'credit_status'             => $r->credit_status,
         ])->values()->all();
 
         $leaveTypes = $posting->records
             ->map(fn($r) => [
-                'leave_type_id' => $r->leave_type_id,
+                'leave_type_id'   => $r->leave_type_id,
                 'leave_type_name' => $r->leaveType?->leave_type_name ?? '—',
             ])
             ->unique('leave_type_id')
             ->values();
 
         return Inertia::render('Leave/MonthlyEarnedLeave/Index', [
-            'step' => 4,
-            'period' => compact('month', 'year'),
-            'previews' => $postedPreviews,
-            'leave_types' => $leaveTypes,
+            'step'         => 4,
+            'period'       => compact('month', 'year'),
+            'previews'     => $postedPreviews,
+            'leave_types'  => $leaveTypes,
             'posting_meta' => [
                 'reference_no' => $posting->reference_no,
-                'posted_date' => $posting->updated_at->format('F d, Y'),
-                'work_days' => $posting->work_days,
+                'posted_date'  => $posting->updated_at->format('F d, Y'),
+                'work_days'    => $posting->work_days,
             ],
         ]);
     }
@@ -314,7 +328,7 @@ class LeaveAccrualController extends Controller
 
     public function history(Request $request)
     {
-        $year = $request->integer('year', 0) ?: null;
+        $year  = $request->integer('year', 0) ?: null;
         $month = $request->integer('month', 0) ?: null;
 
         $availableLeaveTypes = LeaveType::where('is_accrual', true)
@@ -322,56 +336,44 @@ class LeaveAccrualController extends Controller
             ->get(['leave_type_id', 'leave_type_name']);
 
         return Inertia::render('Leave/MonthlyEarnedLeave/Index', [
-            'tab' => 'history',
-            'history' => $this->getHistory($year, $month),
-            'history_filter' => compact('year', 'month'),
+            'tab'                   => 'history',
+            'history'               => $this->getHistory($year, $month),
+            'history_filter'        => compact('year', 'month'),
             'available_leave_types' => $availableLeaveTypes,
         ]);
     }
 
-    public function balances()
+    // ─────────────────────────────────────────────────────────────────────────
+    // Balances – Leave Balances tab (redirects to dedicated controller)
+    // GET /leave/accrual/balances  →  kept for backwards-compat tab routing
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function balances(Request $request)
     {
         $currentYear = (int) date('Y');
+        $cycleYear   = $request->integer('year', $currentYear) ?: $currentYear;
 
+        $cycleYears = $this->leaveBalanceService->getCycleYears();
+
+        // All active leave types — column headers show every type including
+        // threshold-gated ones (Forced Leave, Special Leave)
+        $leaveTypes = LeaveType::where('status', true)
+            ->get(['leave_type_id', 'leave_type_name']);
+
+        // Accrual-only types — for the posting wizard leave type selector
         $availableLeaveTypes = LeaveType::where('is_accrual', true)
             ->where('status', true)
             ->get(['leave_type_id', 'leave_type_name']);
 
-        $leaveTypes = LeaveType::where('is_accrual', true)
-            ->where('status', true)
-            ->get(['leave_type_id', 'leave_type_name']);
-
-        $grouped = Employee::with([
-            'basicInfo',
-            'item.position.department',
-            'leaveBalances' => fn($q) => $q->where('cycle_year', $currentYear)->with('leaveType'),
-        ])
-            ->where('status', true)
-            ->get()
-            ->filter(fn($e) => $e->leaveBalances->isNotEmpty())
-            ->map(fn($e) => [
-                'employee_id' => $e->employee_id,
-                'name' => $e->basicInfo?->full_name ?? '—',
-                'avatar_url' => $e->avatar_url,
-                'department' => $e->item?->position?->department?->department_name ?? '—',
-                'employment_classification' => $e->employment_classification ?? '—',
-                'leave_balances' => $e->leaveBalances->map(fn($b) => [
-                    'leave_type_id' => $b->leave_type_id,
-                    'leave_type_name' => $b->leaveType?->leave_type_name ?? '—',
-                    'total_days' => (float) $b->total_days,
-                    'used_days' => (float) $b->used_days,
-                    'balance' => (float) $b->balance,
-                ])->values()->all(),
-            ])
-            ->sortBy('name')
-            ->values();
+        $balancesData = $this->leaveBalanceService->getBalancesTable($cycleYear);
 
         return Inertia::render('Leave/MonthlyEarnedLeave/Index', [
-            'tab' => 'balances',
+            'tab'                   => 'balances',
             'available_leave_types' => $availableLeaveTypes,
-            'balances_data' => $grouped,
-            'balances_leave_types' => $leaveTypes,
-            'balances_cycle_year' => $currentYear,
+            'balances_data'         => $balancesData,
+            'balances_leave_types'  => $leaveTypes,
+            'balances_cycle_year'   => $cycleYear,
+            'balances_cycle_years'  => $cycleYears,
         ]);
     }
 
@@ -388,9 +390,9 @@ class LeaveAccrualController extends Controller
     private function computeWorkDays(int $month, int $year): array
     {
         $start = Carbon::create($year, $month, 1)->startOfDay();
-        $end = $start->copy()->endOfMonth();
+        $end   = $start->copy()->endOfMonth();
 
-        $totalDays = $end->day;
+        $totalDays    = $end->day;
         $totalSundays = 0;
 
         foreach (CarbonPeriod::create($start, $end) as $day) {
@@ -409,9 +411,9 @@ class LeaveAccrualController extends Controller
 
         return [
             'total_days_in_month' => $totalDays,
-            'total_sundays' => $totalSundays,
-            'total_holidays' => $totalHolidays,
-            'work_days' => $workDays,
+            'total_sundays'       => $totalSundays,
+            'total_holidays'      => $totalHolidays,
+            'work_days'           => $workDays,
         ];
     }
 
@@ -437,9 +439,9 @@ class LeaveAccrualController extends Controller
                 // Pull attendance rows that have all four recognition IDs set,
                 // then join recognition_logs four times to get actual timestamps.
                 $rows = DB::table('attendance_records as ar')
-                    ->join('recognition_logs as rl_am_in', 'rl_am_in.recognition_log_id', '=', 'ar.recognition_morning_in_id')
+                    ->join('recognition_logs as rl_am_in',  'rl_am_in.recognition_log_id',  '=', 'ar.recognition_morning_in_id')
                     ->join('recognition_logs as rl_am_out', 'rl_am_out.recognition_log_id', '=', 'ar.recognition_morning_out_id')
-                    ->join('recognition_logs as rl_pm_in', 'rl_pm_in.recognition_log_id', '=', 'ar.recognition_afternoon_in_id')
+                    ->join('recognition_logs as rl_pm_in',  'rl_pm_in.recognition_log_id',  '=', 'ar.recognition_afternoon_in_id')
                     ->join('recognition_logs as rl_pm_out', 'rl_pm_out.recognition_log_id', '=', 'ar.recognition_afternoon_out_id')
                     ->where('ar.employee_id', $employee->employee_id)
                     ->whereMonth('ar.created_at', $month)
@@ -458,9 +460,9 @@ class LeaveAccrualController extends Controller
 
                 // THWD per day in minutes; sum = TMW
                 $totalMinutesWorked = $rows->sum(function ($row) {
-                    $amIn = Carbon::parse($row->am_in);
+                    $amIn  = Carbon::parse($row->am_in);
                     $amOut = Carbon::parse($row->am_out);
-                    $pmIn = Carbon::parse($row->pm_in);
+                    $pmIn  = Carbon::parse($row->pm_in);
                     $pmOut = Carbon::parse($row->pm_out);
 
                     $amMinutes = max(0, $amIn->diffInMinutes($amOut, false));
@@ -470,12 +472,12 @@ class LeaveAccrualController extends Controller
                 });
 
                 return [
-                    'employee_id' => $employee->employee_id,
-                    'name' => $employee->basicInfo?->full_name ?? '—',
-                    'department' => $employee->item?->position?->department?->department_name ?? '—',
+                    'employee_id'               => $employee->employee_id,
+                    'name'                      => $employee->basicInfo?->full_name ?? '—',
+                    'department'                => $employee->item?->position?->department?->department_name ?? '—',
                     'employment_classification' => $employee->employment_classification,
-                    'avatar_url' => $employee->avatar_url,
-                    'minutes_worked' => (int) $totalMinutesWorked,
+                    'avatar_url'                => $employee->avatar_url,
+                    'minutes_worked'            => (int) $totalMinutesWorked,
                 ];
             });
     }
@@ -499,10 +501,10 @@ class LeaveAccrualController extends Controller
         int $month,
         int $year
     ): array {
-        $previews = [];
+        $previews     = [];
         $leaveTypeIds = $leaveTypes->pluck('leave_type_id')->all();
-        $employeeIds = $employees->pluck('employee_id')->all();
-        $cycleYear = $year;
+        $employeeIds  = $employees->pluck('employee_id')->all();
+        $cycleYear    = $year;
 
         // Total expected work minutes for the month (TWD * 8 hours * 60 minutes)
         $totalWorkMinutes = $workDays * 8 * 60;
@@ -538,7 +540,7 @@ class LeaveAccrualController extends Controller
                 : round($leaveAccrualRate * $tmw, 4);
 
             foreach ($leaveTypes as $leaveType) {
-                $balanceKey = "{$employee['employee_id']}_{$leaveType->leave_type_id}";
+                $balanceKey    = "{$employee['employee_id']}_{$leaveType->leave_type_id}";
                 $balanceBefore = isset($balances[$balanceKey])
                     ? (float) $balances[$balanceKey]->balance
                     : 0.0;
@@ -548,18 +550,18 @@ class LeaveAccrualController extends Controller
                     : round($balanceBefore + $accrualEarned, 4);
 
                 $previews[] = [
-                    'employee_id' => $employee['employee_id'],
-                    'name' => $employee['name'],
-                    'department' => $employee['department'],
+                    'employee_id'               => $employee['employee_id'],
+                    'name'                      => $employee['name'],
+                    'department'                => $employee['department'],
                     'employment_classification' => $employee['employment_classification'],
-                    'avatar_url' => $employee['avatar_url'],
-                    'leave_type_id' => $leaveType->leave_type_id,
-                    'leave_type_name' => $leaveType->leave_type_name,
-                    'minutes_worked' => $tmw,
-                    'accrual_earned' => $accrualEarned,
-                    'balance_before' => $balanceBefore,
-                    'balance_after' => $balanceAfter,
-                    'credit_status' => $creditStatus,
+                    'avatar_url'                => $employee['avatar_url'],
+                    'leave_type_id'             => $leaveType->leave_type_id,
+                    'leave_type_name'           => $leaveType->leave_type_name,
+                    'minutes_worked'            => $tmw,
+                    'accrual_earned'            => $accrualEarned,
+                    'balance_before'            => $balanceBefore,
+                    'balance_after'             => $balanceAfter,
+                    'credit_status'             => $creditStatus,
                 ];
             }
         }
@@ -572,10 +574,8 @@ class LeaveAccrualController extends Controller
         $query = LeaveAccrualPosting::with('records.employee.basicInfo', 'records.leaveType')
             ->where('status', 'posted');
 
-        if ($year)
-            $query->where('posting_year', $year);
-        if ($month)
-            $query->where('posting_month', $month);
+        if ($year)  $query->where('posting_year', $year);
+        if ($month) $query->where('posting_month', $month);
 
         return $query
             ->orderByDesc('posting_year')
@@ -591,32 +591,32 @@ class LeaveAccrualController extends Controller
                         // each entry carries its own accrual_earned,
                         // balance_before, and balance_after.
                         $leaveCredits = $records->map(fn(LeaveAccrualRecord $r) => [
-                            'leave_type_id' => $r->leave_type_id,
+                            'leave_type_id'   => $r->leave_type_id,
                             'leave_type_name' => $r->leaveType?->leave_type_name ?? '—',
-                            'accrual_earned' => (float) $r->accrual_earned,
-                            'balance_before' => (float) $r->balance_before,
-                            'balance_after' => (float) $r->balance_after,
+                            'accrual_earned'  => (float) $r->accrual_earned,
+                            'balance_before'  => (float) $r->balance_before,
+                            'balance_after'   => (float) $r->balance_after,
                         ])->values()->all();
 
                         return [
-                            'posting_id' => $posting->leave_accrual_posting_id,
-                            'posting_month' => $posting->posting_month,
-                            'posting_year' => $posting->posting_year,
-                            'employee_id' => $first->employee_id,
-                            'name' => $first->employee?->basicInfo?->full_name ?? '—',
-                            'department' => $first->employee?->item?->position?->department?->department_name ?? '—',
+                            'posting_id'                => $posting->leave_accrual_posting_id,
+                            'posting_month'             => $posting->posting_month,
+                            'posting_year'              => $posting->posting_year,
+                            'employee_id'               => $first->employee_id,
+                            'name'                      => $first->employee?->basicInfo?->full_name ?? '—',
+                            'department'                => $first->employee?->item?->position?->department?->department_name ?? '—',
                             'employment_classification' => $first->employee?->employment_classification ?? '—',
-                            'avatar_url' => $first->employee?->avatar_url,
+                            'avatar_url'                => $first->employee?->avatar_url,
                             // Kept for table column display and search
-                            'leave_type_name' => $records->map(fn($r) => $r->leaveType?->leave_type_name)->filter()->join(', '),
-                            // attendance_days column stores TMW (minutes worked)
-                            'minutes_worked' => $first->attendance_days,
-                            'credit_status' => $first->credit_status,
-                            'reference_no' => $posting->reference_no,
-                            'posting_date' => $posting->updated_at->format('F d, Y'),
-                            'status' => $posting->status,
+                            'leave_type_name'           => $records->map(fn($r) => $r->leaveType?->leave_type_name)->filter()->join(', '),
+                            // attendance_days stores TMW (minutes worked)
+                            'minutes_worked'            => $first->attendance_days,
+                            'credit_status'             => $first->credit_status,
+                            'reference_no'              => $posting->reference_no,
+                            'posting_date'              => $posting->updated_at->format('F d, Y'),
+                            'status'                    => $posting->status,
                             // Per-leave-type breakdown for the detail dialog
-                            'leave_credits' => $leaveCredits,
+                            'leave_credits'             => $leaveCredits,
                         ];
                     })
                     ->values();
