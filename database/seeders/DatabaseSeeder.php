@@ -694,7 +694,16 @@ class DatabaseSeeder extends Seeder
 
         // ── 8. Insert 100 employees ────────────────────────────────
         $createdEmployeeIds = [];
-        $docTrackAssignedByDepartment = [];
+        $docTrackTargetPositionByDepartment = [
+            $deptId => 5,
+            $deptOpsId => 6,
+            $deptGovId => 7,
+        ];
+        $roleTargetPosition = [
+            'hr_admin' => 5,
+            'ogm' => 7,
+        ];
+        $positionSeenCount = [];
         srand(42); // reproducible randomness
 
         for ($i = 0; $i < 100; $i++) {
@@ -736,6 +745,8 @@ class DatabaseSeeder extends Seeder
             $itemEntry = $fillableItemIds[$i];
             $itemId = $itemEntry['id'];
             $posIdx = $itemEntry['pos_idx'];
+            $positionSeenCount[$posIdx] = ($positionSeenCount[$posIdx] ?? 0) + 1;
+            $positionOccurrence = $positionSeenCount[$posIdx];
             $sgIdx = $positions[$posIdx]['sg_idx'];
 
             $workEmail = strtolower(
@@ -787,11 +798,20 @@ class DatabaseSeeder extends Seeder
                 'password' => $employeeUser->password,
             ]);
 
-            $user->syncRoles('employee');
+            $user->assignRole('employee');
             $departmentId = $positions[$posIdx]['dept'] ?? null;
-            if ($departmentId !== null && !isset($docTrackAssignedByDepartment[$departmentId])) {
-                $user->syncRoles(['employee', 'document_tracking_operator']);
-                $docTrackAssignedByDepartment[$departmentId] = $employeeId;
+            $isDocTrackTarget = $departmentId !== null
+                && isset($docTrackTargetPositionByDepartment[$departmentId])
+                && $docTrackTargetPositionByDepartment[$departmentId] === $posIdx
+                && $positionOccurrence === 1;
+            if ($isDocTrackTarget) {
+                $user->assignRole('document_tracking_operator');
+            }
+            if ($posIdx === $roleTargetPosition['hr_admin'] && $positionOccurrence === 1) {
+                $user->assignRole('hr_admin');
+            }
+            if ($posIdx === $roleTargetPosition['ogm'] && $positionOccurrence === 1) {
+                $user->assignRole('ogm');
             }
 
             $createdEmployeeIds[] = $employeeId;
