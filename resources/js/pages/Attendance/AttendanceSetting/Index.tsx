@@ -148,7 +148,9 @@ function SettingDialog({
                             onChange={e => setData("name", e.target.value)}
                             placeholder="e.g. Standard Policy"
                         />
-                        {errors.name && <p className="text-xs text-rose-500">{errors.name}</p>}
+                        {errors.name && (
+                            <p className="text-xs text-destructive">{errors.name}</p>
+                        )}
                     </div>
 
                     {/* Grace periods */}
@@ -225,34 +227,43 @@ function SettingCard({
     onDelete: () => void
 }) {
     const rows = [
-        { label: "Time-in Grace",          value: fmtMins(setting.time_in_grace_minutes) },
-        { label: "Break-in Grace",         value: fmtMins(setting.break_in_grace_minutes) },
-        { label: "Early Time-in Allows",   value: fmtMins(setting.early_time_in_minutes) },
-        { label: "Late Time-out Allows",   value: fmtMins(setting.late_time_out_minutes) },
+        { label: "Time-in Grace",        value: fmtMins(setting.time_in_grace_minutes)  },
+        { label: "Break-in Grace",       value: fmtMins(setting.break_in_grace_minutes) },
+        { label: "Early Time-in Allows", value: fmtMins(setting.early_time_in_minutes)  },
+        { label: "Late Time-out Allows", value: fmtMins(setting.late_time_out_minutes)  },
     ]
 
     return (
-        <div className={`rounded-xl border bg-background overflow-hidden ${setting.is_default ? "border-primary/40 ring-1 ring-primary/20" : "border-border"}`}>
+        <div className={`rounded-xl border bg-background overflow-hidden transition-colors ${
+            setting.is_default
+                ? "border-primary/40 ring-1 ring-primary/20"
+                : "border-border"
+        }`}>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
                 <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-muted-foreground" />
+                    <Shield className={`w-4 h-4 ${setting.is_default ? "text-primary" : "text-muted-foreground"}`} />
                     <span className="font-semibold text-sm">{setting.name}</span>
                     {setting.is_default && (
-                        <Badge variant="secondary" className="text-[10px] gap-1 px-1.5 py-0">
+                        <Badge variant="secondary" className="text-[10px] gap-1 px-1.5 py-0 text-primary bg-primary/10 border-primary/20">
                             <BadgeCheck className="w-3 h-3" />
                             Default
                         </Badge>
                     )}
                 </div>
                 <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={onEdit}
+                    >
                         <Pencil className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                         onClick={onDelete}
                         disabled={setting.is_default}
                     >
@@ -277,9 +288,9 @@ function SettingCard({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AttendanceSettingsIndex({ settings }: Props) {
-    const [createOpen, setCreateOpen]                   = useState(false)
-    const [editing, setEditing]                         = useState<AttendanceSetting | null>(null)
-    const [deletingId, setDeletingId]                   = useState<number | null>(null)
+    const [createOpen, setCreateOpen] = useState(false)
+    const [editing, setEditing]       = useState<AttendanceSetting | null>(null)
+    const [deletingId, setDeletingId] = useState<number | null>(null)
 
     const deletingRecord = settings.find(s => s.id === deletingId)
 
@@ -358,7 +369,7 @@ export default function AttendanceSettingsIndex({ settings }: Props) {
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-rose-500 hover:bg-rose-600"
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                             onClick={confirmDelete}
                         >
                             Delete
