@@ -7,7 +7,6 @@ use App\Models\Attendance;
 use App\Models\AttendanceRecord;
 use App\Models\AttendanceSetting;
 use App\Models\Employee;
-use Carbon\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -43,8 +42,11 @@ class AttendanceRecordController extends Controller
             ->values();
 
         return Inertia::render('Attendance/AttendanceRecord/Index', [
-            'records' => $records,
-            'setting' => AttendanceSetting::getDefault(),
+            'records'  => $records,
+            // Full list for the settings dialog (sorted: default first, then by name)
+            'settings' => AttendanceSetting::orderByDesc('is_default')
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 
