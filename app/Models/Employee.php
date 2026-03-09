@@ -134,5 +134,9 @@ class Employee extends Model
             'internal_organization_id'
         )->withTimestamps();
     }
-    
+
+    public function user()
+    {
+        return $this->hasOne(User::class, 'employee_id', 'employee_id');
+    }
 }

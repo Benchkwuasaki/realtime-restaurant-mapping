@@ -44,12 +44,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       },
       // TODO: implement user management, admin, super admin
       {
-        title: "Users",
-        url: route("user.index"),
-        icon: UserCog,
-        show: hasRole('super_admin'),
-      },
-      {
         title: "Employee",
         url: route("employee.index"),
         icon: User,
@@ -180,7 +174,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Document Tracking",
         url: route("document_tracking.index"),
         icon: File,
-        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("org") || hasRole("inventory"),
+        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("document_tracking_operator"),
       },
       {
         title: "Reports and Analytics",

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ActivityLog;
-use Illuminate\Support\Facades\Auth;
 use Jenssegers\Agent\Agent;
 
 class ActivityLogService
@@ -38,14 +37,6 @@ class ActivityLogService
     private function detectPlatform()
     {
         return $this->agent->platform() ?: 'Unknown';
-    }
-
-    public function formatUserName(string $name)
-    {
-        $parts = explode(' ', $name);
-        $firstName = $parts[0] ?? '';
-        $lastName = $parts[1] ?? '';
-        return "{$firstName} {$lastName}";
     }
 
     public function formatModuleName(string $module)

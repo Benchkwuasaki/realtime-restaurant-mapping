@@ -1,14 +1,8 @@
-# 🚀 MKWD HRIS — Project Setup Guide
+# MKWD HRIS - Project Setup Guide
 
-Welcome to the **MKWD (Metro Kidapawan Water District) HRIS** project!
+Welcome to the **MKWD (Metro Kidapawan Water District) HRIS** project.
 
-This README contains the essential steps for local development setup, including the default seeded user credentials for testing.
-
----
-
-## 🏢 About MKWD
-
-**MKWD** stands for **Metro Kidapawan Water District**.
+This README contains the essential steps for local development setup, including default seeded user credentials for testing.
 
 <p align="center">
   <img src="resources/js/assets/images/logo.svg" alt="Metro Kidapawan Water District Logo" height="120" />
@@ -16,24 +10,33 @@ This README contains the essential steps for local development setup, including 
 
 ---
 
-## 🔐 Default Development User
+## Default Development Users (Seeded Roles)
 
-For development and testing purposes, a pre-seeded user account is available after running the database seeders. Check RoleSeeder.php for more accounts for role-based access.
+For development and testing, these users are seeded after `php artisan migrate:fresh --seed`.
 
-> ⚠️ **This account is intended for local development only.**  
-> Do NOT use these credentials in production environments.
+> **These accounts are for local development only.**
+> Do NOT use these credentials in production.
 
-### 📧 Credentials
+### Credentials by Role
 
-**Email:**  
-`superadmin@gmail.com`
-
-**Password:**  
-`password`
+- `super_admin`
+  - Email: `superadmin@gmail.com`
+  - Password: `password`
+- `hr_admin`
+  - Email: `anessa.orales20@obx.gov.ph`
+  - Password: `password`
+- `ogm`
+  - Email: `usan.una28@obx.gov.ph`
+  - Password: `password`
+- `document_tracking_operator` (one per department)
+  - `anessa.orales20@obx.gov.ph`
+  - `onald.acapagal24@obx.gov.ph`
+  - `usan.una28@obx.gov.ph`
+  - Password (all): `password`
 
 ---
 
-## 🛠 Local Setup
+## Local Setup
 
 After cloning the repository, run the following commands:
 
@@ -44,3 +47,4 @@ cp .env.example .env
 php artisan key:generate
 php artisan migrate:fresh --seed
 composer run dev
+```

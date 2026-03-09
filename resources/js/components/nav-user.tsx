@@ -30,7 +30,7 @@ import { useAuth } from "@/hooks/use-auth"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  const { user, role } = useAuth()
+  const { user } = useAuth()
 
   const handleLogout = () => {
     router.post(route('logout'))
