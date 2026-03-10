@@ -55,7 +55,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: Building2,
         show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
         items: [
-          // TODO: Update the URLs for the organization sub-menu items
           {
             title: "Organizational Chart",
             url: route("organization.chart"),
@@ -176,9 +175,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       },
       {
         title: "Document Tracking",
-        url: route("document_tracking.index"),
+        url: null,
         icon: File,
         show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("document_tracking_operator"),
+        items: [
+          {
+            title: "Incoming",
+            url: route('document-tracking-incoming.index'),
+          }
+        ]
       },
       {
           title: "Reports and Analytics",

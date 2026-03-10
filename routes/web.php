@@ -35,6 +35,7 @@ use App\Http\Controllers\LeaveApplicationController;
 // reports and analytics
 use App\Http\Controllers\LeaveReportController;
 use App\Http\Controllers\AttendanceReportController;
+use App\Http\Controllers\DocumentTrackingIncomingController;
 use App\Http\Controllers\EmployeeReportController;
 use App\Http\Controllers\GovernmentReportController;
 
@@ -295,7 +296,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Document Tracking
     |--------------------------------------------------------------------------
     */
-    Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
+    Route::prefix('document-tracking/incoming')->name('document-tracking-incoming.')->group(function () {
+        Route::get('/', [DocumentTrackingIncomingController::class, 'index'])->name('index');
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -367,7 +370,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Activity Logs Routes
 
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
-
 });
 
 require __DIR__ . '/settings.php';
