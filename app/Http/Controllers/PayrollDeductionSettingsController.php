@@ -87,11 +87,22 @@ class PayrollDeductionSettingsController extends Controller
     public function updatePriorityOrder(Request $request)
     {
         $validated = $request->validate([
-            'ordered_ids' => 'required|array',
+            'ordered_ids'   => 'required|array',
             'ordered_ids.*' => 'exists:payroll_deduction_priority_order,id',
-            'cuttability' => 'required|array',
+            'cuttability'   => 'required|array',
             'cuttability.*' => 'in:Never,Rarely,Yes,First_to_Cut',
         ]);
+
+        // Government contributions (Never) cannot be made cuttable from the UI.
+        // Enforce this server-side regardless of what the frontend sends.
+        $govContribIds = \App\Models\PayrollDeductionPriorityOrder::where(
+            'deduction_category',
+            \App\Models\PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_CONTRIBUTION
+        )->pluck('id')->toArray();
+
+        foreach ($govContribIds as $id) {
+            $validated['cuttability'][$id] = \App\Models\PayrollDeductionPriorityOrder::CUT_NEVER;
+        }
 
         PayrollDeductionPriorityOrder::reorder(
             $validated['ordered_ids'],
@@ -99,8 +110,8 @@ class PayrollDeductionSettingsController extends Controller
         );
 
         $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'payroll',
+            'user_id'     => Auth::id(),
+            'module'      => 'payroll',
             'description' => 'Updated Payroll Deduction Priority Order',
         ]);
 

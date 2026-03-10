@@ -36,16 +36,10 @@ interface Employee {
     position?: string;
 }
 
-interface LoanService {
-    id: number;
-    name: string;
-}
-
 interface InternalOrganization {
     id: string;
     name: string;
     type: string;
-    loan_services: LoanService[];
 }
 
 interface Props {
@@ -207,14 +201,6 @@ function LoanDialog({
             loan_type: '',           // reset service selection
         }));
     };
-
-    // Services for selected org
-    const activeOrgServices = useMemo(() => {
-        const org = internalOrganizations.find(
-            (o) => o.id === internalForm.internal_organization_id
-        );
-        return org?.loan_services ?? [];
-    }, [internalOrganizations, internalForm.internal_organization_id]);
 
     // Computed amortization preview
     const govtPreview  = computeAmortization(govtForm.total_amount, govtForm.term_months);
@@ -387,30 +373,14 @@ function LoanDialog({
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-1.5">
                                     <Label>
-                                        Loan Service <span className="text-destructive">*</span>
+                                        Loan Type <span className="text-destructive">*</span>
                                     </Label>
-                                    <Select
+                                    <Input
                                         value={internalForm.loan_type}
-                                        onValueChange={(v) => setI('loan_type', v)}
-                                        disabled={!internalForm.internal_organization_id || activeOrgServices.length === 0}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue
-                                                placeholder={
-                                                    !internalForm.internal_organization_id
-                                                        ? 'Select org first...'
-                                                        : 'Select service...'
-                                                }
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {activeOrgServices.map((s) => (
-                                                <SelectItem key={s.id} value={s.name}>
-                                                    {s.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        onChange={(e) => setI('loan_type', e.target.value)}
+                                        placeholder="e.g. Emergency Loan, Multi-Purpose Loan"
+                                        disabled={!internalForm.internal_organization_id}
+                                    />
                                 </div>
                                 <div className="grid gap-1.5">
                                     <Label>Source</Label>

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\InternalOrganization;
-use App\Models\InternalOrganizationService;
 use App\Models\Loan;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
@@ -59,25 +58,16 @@ class LoanEntryController extends Controller
                 'position' => $e->basicInfo?->position_title ?? null,
             ]);
 
-        // Internal orgs with their Loan-category services
-        // Shape: [ { id, name, type, loan_services: [ { id, name } ] } ]
+        // Internal orgs available for loan entry
+        // Shape: [ { id, name, type } ]
         $internalOrganizations = InternalOrganization::where('payroll_deduction_linked', true)
             ->where('status', true)
-            ->with(['services' => fn($q) => $q
-                ->where('service_category', InternalOrganizationService::CATEGORY_LOAN)
-                ->where('deductable_from_payroll', true)
-                ->orderBy('internal_organization_service_name')
-            ])
             ->orderBy('name')
             ->get()
             ->map(fn(InternalOrganization $org) => [
-                'id'            => (string) $org->internal_organization_id,
-                'name'          => $org->name,
-                'type'          => $org->type,
-                'loan_services' => $org->services->map(fn($s) => [
-                    'id'   => $s->internal_organization_service_id,
-                    'name' => $s->internal_organization_service_name,
-                ])->values(),
+                'id'   => (string) $org->internal_organization_id,
+                'name' => $org->name,
+                'type' => $org->type,
             ])
             ->values();
 
