@@ -587,7 +587,8 @@ export default function RecognitionLogIndex({
         [records, search]
     )
 
-    const CCTV_SRC = "http://192.168.0.114:8889/cam"
+    const CCTV_SRC1 = "http://192.168.0.114:8889/cam1"
+    const CCTV_SRC2 = "http://192.168.0.114:8889/cam2"
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -647,7 +648,10 @@ export default function RecognitionLogIndex({
                     {/* ══ LEFT: Camera ══ */}
                     <div className="flex flex-col gap-3 xl:w-[69%] shrink-0 xl:self-start xl:sticky xl:top-4">
                         <div className="relative w-full rounded-xl overflow-hidden border border-border shadow-sm bg-black aspect-video">
-                            <CctvStream src={CCTV_SRC} label="Entrance — CAM 01" />
+                            <CctvStream src={CCTV_SRC1} label="Entrance — CAM 01" />
+                        </div>
+                        <div className="relative w-full rounded-xl overflow-hidden border border-border shadow-sm bg-black aspect-video">
+                            <CctvStream src={CCTV_SRC2} label="Entrance — CAM 02" />
                         </div>
                     </div>
 
