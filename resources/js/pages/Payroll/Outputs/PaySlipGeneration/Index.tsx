@@ -108,7 +108,7 @@ function PayslipDocument({
 
     const totalDeductions = totalMandatory + totalAttendance + totalLoans;
 
-    // B&W financial document style — Times New Roman, no color
+    // print style only — Times New Roman, no color
     const serif: React.CSSProperties = {
         fontFamily: "'Times New Roman', Times, serif",
         color: '#000',
@@ -137,7 +137,6 @@ function PayslipDocument({
             style={{ ...serif, minWidth: 560 }}
             className="mx-auto w-full max-w-[720px] shadow-md print:shadow-none"
         >
-            {/* ── Header ── */}
             <div
                 style={{
                     borderBottom: '2px solid #000',
@@ -199,7 +198,6 @@ function PayslipDocument({
                 </div>
             </div>
 
-            {/* ── Body ── */}
             <div
                 style={{
                     display: 'grid',
@@ -208,7 +206,6 @@ function PayslipDocument({
                     fontFamily: "'Times New Roman', Times, serif",
                 }}
             >
-                {/* LEFT — Earnings + Attendance */}
                 <div
                     style={{
                         padding: '16px 28px',
@@ -284,7 +281,6 @@ function PayslipDocument({
                     )}
                 </div>
 
-                {/* RIGHT — Mandatory + Loans */}
                 <div style={{ padding: '16px 28px' }}>
                     <p style={sectionLabel}>Mandatory Deductions</p>
                     <Row
