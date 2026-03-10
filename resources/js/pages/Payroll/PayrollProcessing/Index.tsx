@@ -1879,10 +1879,10 @@ export default function Index({
                                                         className="border-r border-b bg-red-50 px-3 py-1.5 text-center text-red-700"
                                                     >
                                                         Deductions{' '}
-                                                        <span className="font-normal text-red-400 normal-case">
+                                                        {/* <span className="font-normal text-red-400 normal-case">
                                                             (2nd cut-off, based
                                                             on monthly salary)
-                                                        </span>
+                                                        </span> */}
                                                     </th>
                                                     {/* Net Pay */}
                                                     <th

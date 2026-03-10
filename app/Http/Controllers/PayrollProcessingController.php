@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Allowance;
 use App\Models\Employee;
 use App\Models\GovernmentAccType;
+use App\Models\InternalOrganizationService;
 use App\Models\InternalOrgDeduction;
 use App\Models\Loan;
 use App\Models\OtherDeduction;
-use App\Models\InternalOrganizationService;
-use App\Models\PayrollDeductionPriorityOrder;
 use App\Models\PayrollDeductionSetting;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollRecord;
@@ -25,9 +24,7 @@ use Inertia\Response;
 
 class PayrollProcessingController extends Controller
 {
-    public function __construct(protected ActivityLogService $activityLogService)
-    {
-    }
+    public function __construct(protected ActivityLogService $activityLogService) {}
 
     /**
      * Display the payroll processing page.
@@ -44,7 +41,7 @@ class PayrollProcessingController extends Controller
         $periods = PayrollPeriod::withCount('payrollRecords')
             ->orderBy('start_date', 'desc')
             ->get()
-            ->map(fn(PayrollPeriod $p) => [
+            ->map(fn (PayrollPeriod $p) => [
                 'payroll_period_id' => $p->payroll_period_id,
                 'start_date' => $p->start_date->toDateString(),
                 'end_date' => $p->end_date->toDateString(),
@@ -59,10 +56,10 @@ class PayrollProcessingController extends Controller
         $employees = Employee::with(['basicInfo', 'salaryGradeStep', 'item.position'])
             ->where('status', true)
             ->get()
-            ->map(fn(Employee $e) => [
+            ->map(fn (Employee $e) => [
                 'id' => $e->employee_id,
                 'name' => $e->basicInfo
-                    ? $e->basicInfo->last_name . ', ' . $e->basicInfo->first_name
+                    ? $e->basicInfo->last_name.', '.$e->basicInfo->first_name
                     : '—',
                 'position' => $e->item?->position?->position_name ?? '—',
                 'employment_classification' => $e->employment_classification,
@@ -119,7 +116,7 @@ class PayrollProcessingController extends Controller
                 ->where('status', true)
                 ->whereIn('employee_id', $includedIds);
 
-            if (!empty($validated['employee_type'])) {
+            if (! empty($validated['employee_type'])) {
                 $query->where('employment_classification', $validated['employee_type']);
             }
 
@@ -159,13 +156,13 @@ class PayrollProcessingController extends Controller
                     $computedRecords[] = array_merge($data, [
                         'employee_id' => $employee->employee_id,
                         'employee_name' => $employee->basicInfo
-                            ? $employee->basicInfo->last_name . ', ' . $employee->basicInfo->first_name
+                            ? $employee->basicInfo->last_name.', '.$employee->basicInfo->first_name
                             : '—',
                         'gross_pay' => round($grossPay, 2),
                         'total_deductions' => round($totalDeductions, 2),
                     ]);
                 } catch (\Throwable $e) {
-                    Log::error('Employee computation error: ' . $e->getMessage(), [
+                    Log::error('Employee computation error: '.$e->getMessage(), [
                         'employee_id' => $employee->employee_id,
                         'trace' => $e->getTraceAsString(),
                     ]);
@@ -185,10 +182,10 @@ class PayrollProcessingController extends Controller
             return response()->json([
                 'computedRecords' => [],
                 'processedPeriodId' => null,
-                'processingErrors' => ['Validation error: ' . collect($e->errors())->flatten()->first()],
+                'processingErrors' => ['Validation error: '.collect($e->errors())->flatten()->first()],
             ]);
         } catch (\Throwable $e) {
-            Log::error('processNew fatal error: ' . $e->getMessage(), [
+            Log::error('processNew fatal error: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
@@ -197,76 +194,76 @@ class PayrollProcessingController extends Controller
             return response()->json([
                 'computedRecords' => [],
                 'processedPeriodId' => null,
-                'processingErrors' => ['Server error: ' . $e->getMessage()],
+                'processingErrors' => ['Server error: '.$e->getMessage()],
             ]);
         }
     }
 
-    public function register(): Response
-    {
-        $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'payroll',
-            'description' => 'Viewed Payroll Register Page',
-        ]);
+    // public function register(): Response
+    // {
+    //     $this->activityLogService->createLog([
+    //         'user_id' => Auth::id(),
+    //         'module' => 'payroll',
+    //         'description' => 'Viewed Payroll Register Page',
+    //     ]);
 
-        return Inertia::render('Payroll/Register/Index');
-    }
+    //     return Inertia::render('Payroll/Register/Index');
+    // }
 
-    public function paySlip(): Response
-    {
-        $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'payroll',
-            'description' => 'Viewed Pay Slip Generation Page',
-        ]);
+    // public function paySlip(): Response
+    // {
+    //     $this->activityLogService->createLog([
+    //         'user_id' => Auth::id(),
+    //         'module' => 'payroll',
+    //         'description' => 'Viewed Pay Slip Generation Page',
+    //     ]);
 
-        return Inertia::render('Payroll/PaySlipGeneration/Index');
-    }
+    //     return Inertia::render('Payroll/PaySlipGeneration/Index');
+    // }
 
-    public function allowances(): Response
-    {
-        $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'payroll',
-            'description' => 'Viewed Allowances Management Page',
-        ]);
+    // public function allowances(): Response
+    // {
+    //     $this->activityLogService->createLog([
+    //         'user_id' => Auth::id(),
+    //         'module' => 'payroll',
+    //         'description' => 'Viewed Allowances Management Page',
+    //     ]);
 
-        return Inertia::render('Payroll/AllowancesManagement/Index');
-    }
+    //     return Inertia::render('Payroll/AllowancesManagement/Index');
+    // }
 
-    public function loanEntry(): Response
-    {
-        $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'payroll',
-            'description' => 'Viewed Loan Entry Page',
-        ]);
+    // public function loanEntry(): Response
+    // {
+    //     $this->activityLogService->createLog([
+    //         'user_id' => Auth::id(),
+    //         'module' => 'payroll',
+    //         'description' => 'Viewed Loan Entry Page',
+    //     ]);
 
-        return Inertia::render('Payroll/LoanEntry/Index');
-    }
+    //     return Inertia::render('Payroll/LoanEntry/Index');
+    // }
 
-    public function otherDeductions(): Response
-    {
-        $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'payroll',
-            'description' => 'Viewed Other Deduction Entry Page',
-        ]);
+    // public function otherDeductions(): Response
+    // {
+    //     $this->activityLogService->createLog([
+    //         'user_id' => Auth::id(),
+    //         'module' => 'payroll',
+    //         'description' => 'Viewed Other Deduction Entry Page',
+    //     ]);
 
-        return Inertia::render('Payroll/OtherDeductionEntry/Index');
-    }
+    //     return Inertia::render('Payroll/OtherDeductionEntry/Index');
+    // }
 
-    public function deductionSettings(): Response
-    {
-        $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'payroll',
-            'description' => 'Viewed Payroll Deduction Settings Page',
-        ]);
+    // public function deductionSettings(): Response
+    // {
+    //     $this->activityLogService->createLog([
+    //         'user_id' => Auth::id(),
+    //         'module' => 'payroll',
+    //         'description' => 'Viewed Payroll Deduction Settings Page',
+    //     ]);
 
-        return Inertia::render('Payroll/PayrollDeductionSettings/Index');
-    }
+    //     return Inertia::render('Payroll/PayrollDeductionSettings/Index');
+    // }
 
     /**
      * Create a new payroll period (must not overlap existing ones).
@@ -341,9 +338,9 @@ class PayrollProcessingController extends Controller
         $existing = PayrollPeriod::where('start_date', $validated['start_date'])
             ->where('end_date', $validated['end_date'])
             ->when(
-                !is_null($employeeType),
-                fn($q) => $q->where('employee_type', $employeeType),
-                fn($q) => $q->whereNull('employee_type'),
+                ! is_null($employeeType),
+                fn ($q) => $q->where('employee_type', $employeeType),
+                fn ($q) => $q->whereNull('employee_type'),
             )
             ->where('status', '!=', 'cancelled')
             ->first(['payroll_period_id', 'start_date', 'end_date', 'employee_type', 'status']);
@@ -387,25 +384,23 @@ class PayrollProcessingController extends Controller
             $start = Carbon::parse($validated['start_date'])->startOfDay();
             $end = Carbon::parse($validated['end_date'])->endOfDay();
 
-            // ── Build holiday set for the period ──────────────────────────────
             try {
                 $holidays = DB::table('holidays')
                     ->whereBetween('holiday_date', [$start->toDateString(), $end->toDateString()])
                     ->pluck('holiday_date')
-                    ->map(fn($d) => Carbon::parse($d)->toDateString())
+                    ->map(fn ($d) => Carbon::parse($d)->toDateString())
                     ->flip()
                     ->all();
             } catch (\Exception $e) {
-                Log::warning('Holidays table query failed: ' . $e->getMessage());
+                Log::warning('Holidays table query failed: '.$e->getMessage());
                 $holidays = [];
             }
 
-            // ── Enumerate working days (Mon–Fri, non-holiday) ─────────────────
             $workingDates = [];
             $cursor = $start->copy();
             while ($cursor->lte($end)) {
                 $dateStr = $cursor->toDateString();
-                if (!$cursor->isWeekend() && !isset($holidays[$dateStr])) {
+                if (! $cursor->isWeekend() && ! isset($holidays[$dateStr])) {
                     $workingDates[] = $dateStr;
                 }
                 $cursor->addDay();
@@ -469,30 +464,25 @@ class PayrollProcessingController extends Controller
                     ])
                     ->get()
                     ->groupBy('employee_id')
-                    ->map(fn($group) => $group->keyBy('record_date'));
+                    ->map(fn ($group) => $group->keyBy('record_date'));
             } catch (\Exception $e) {
-                Log::error('Attendance records query failed: ' . $e->getMessage());
+                Log::error('Attendance records query failed: '.$e->getMessage());
 
                 return response()->json([
                     'error' => 'Attendance system tables not found or inaccessible.',
-                    'message' => 'Database error: ' . $e->getMessage(),
+                    'message' => 'Database error: '.$e->getMessage(),
                 ], 500);
             }
 
             $startHour = 8;
             $startMinute = 0;
 
-            // ── Per-employee absent / late computation ────────────────────────
             $result = [];
 
             foreach ($employeeIds as $empId) {
                 $emp = $employeeScheduleMap->get($empId);
                 $empRecords = $rows->get($empId, collect());
 
-                // FIX: Resolve this employee's scheduled start time.
-                // work_schedule_start is stored as a time string, e.g. "08:00:00".
-                // Fall back to the standard Philippine government workday start
-                // of 08:00 when the field is not populated.
                 $scheduleStartTime = $emp->work_schedule_start ?? '08:00:00';
 
                 $absentDays = 0;
@@ -500,16 +490,17 @@ class PayrollProcessingController extends Controller
 
                 foreach ($workingDates as $date) {
                     // No attendance record at all for this working day → absent.
-                    if (! $empRecords->has($date)) {
+                    if (!$empRecords->has($date)) {
                         $absentDays++;
+
                         continue;
                     }
 
                     $record = $empRecords->get($date);
 
-                    // Record exists but morning check-in is missing → absent.
                     if (is_null($record->recognition_morning_in_id)) {
                         $absentDays++;
+
                         continue;
                     }
 
@@ -555,7 +546,7 @@ class PayrollProcessingController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            Log::error('attendanceSummary error: ' . $e->getMessage(), [
+            Log::error('attendanceSummary error: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
 
@@ -629,7 +620,7 @@ class PayrollProcessingController extends Controller
 
                     $processed[] = $employee->employee_id;
                 } catch (\Throwable $e) {
-                    Log::error('Employee processing error: ' . $e->getMessage(), [
+                    Log::error('Employee processing error: '.$e->getMessage(), [
                         'employee_id' => $employee->employee_id,
                         'trace' => $e->getTraceAsString(),
                     ]);
@@ -642,23 +633,23 @@ class PayrollProcessingController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Payroll processing failed: ' . $e->getMessage(), [
+            Log::error('Payroll processing failed: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return back()->withErrors([
-                'error' => 'Payroll processing failed: ' . $e->getMessage(),
+                'error' => 'Payroll processing failed: '.$e->getMessage(),
             ]);
         }
 
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'payroll',
-            'description' => "Processed Payroll Period #{$period->payroll_period_id} — {$period->start_date->toDateString()} to {$period->end_date->toDateString()} (" . count($processed) . ' employees)',
+            'description' => "Processed Payroll Period #{$period->payroll_period_id} — {$period->start_date->toDateString()} to {$period->end_date->toDateString()} (".count($processed).' employees)',
         ]);
 
         return back()->with([
-            'success' => count($processed) . ' employees processed successfully.',
+            'success' => count($processed).' employees processed successfully.',
             'processing_errors' => $errors,
         ]);
     }
@@ -787,18 +778,19 @@ class PayrollProcessingController extends Controller
         $philhealthType = $accTypes->get('PHILHEALTH');
         $pagibigType = $accTypes->get('PAGIBIG');
 
+        // ── GSIS ─────────────────────────────────────────────────────────────
         $gsisRate = $gsisType?->employeeDeductionValue() ?? 9.0;
-        $philhealthRate = $philhealthType?->employeeDeductionValue() ?? 2.5;
-        $pagIbigCap = $pagibigType?->employeeDeductionValue() ?? 100.0;
-
         $monthlyGsisPremium = round($monthlyBasic * ($gsisRate / 100), 2);
 
-        $monthlyPhilhealthCalc = round($monthlyBasic * ($philhealthRate / 100), 2);
-        $monthlyPhilhealth = max(250.0, min(2500.0, $monthlyPhilhealthCalc));
+        // ── PhilHealth ────────────────────────────────────────────────────────
+        $monthlyPhilhealth = $philhealthType
+            ? $philhealthType->computePhilHealth($monthlyBasic)
+            : round($monthlyBasic * 0.025, 2);
 
-        $monthlyPagIbig = $monthlyBasic <= 1500
-            ? round($monthlyBasic * 0.01, 2)
-            : min($pagIbigCap, round($monthlyBasic * 0.02, 2));
+        // ── Pag-IBIG ──────────────────────────────────────────────────────────
+        $monthlyPagIbig = $pagibigType
+            ? $pagibigType->computePagIbig($monthlyBasic)
+            : round(min(100.0, $monthlyBasic * 0.02), 2);
 
         $monthlyWithholdingTax = $this->computeWithholdingTax(
             monthlyBasic: $monthlyBasic,
@@ -811,7 +803,8 @@ class PayrollProcessingController extends Controller
         $gsisPremium = round($monthlyGsisPremium / 2, 2);
         $philhealth = round($monthlyPhilhealth / 2, 2);
         $pagIbig = round($monthlyPagIbig / 2, 2);
-        $withholdingTax = round($monthlyWithholdingTax / 2, 2);
+        // $withholdingTax = round($monthlyWithholdingTax / 2, 2);
+        $withholdingTax = $monthlyWithholdingTax;
 
         // ── Internal Org Deductions ───────────────────────────────────────────
         // Fetched for all cut-offs — service_category determines when each applies
@@ -842,7 +835,7 @@ class PayrollProcessingController extends Controller
 
             $applies = $isBothCutOff || ($isSecondOnly && $isSecondCutOff);
 
-            if (!$applies) {
+            if (! $applies) {
                 continue;
             }
 
@@ -1236,7 +1229,7 @@ class PayrollProcessingController extends Controller
         $classification = $employee->employment_classification;
 
         foreach ($mandatoryAllowances as $allowance) {
-            if (!$allowance->isApplicableTo($classification)) {
+            if (! $allowance->isApplicableTo($classification)) {
                 continue;
             }
 
@@ -1259,7 +1252,7 @@ class PayrollProcessingController extends Controller
         foreach ($employee->allowances as $empAllowance) {
             /** @var Allowance|null $def */
             $def = $empAllowance->allowance ?? null;
-            if (!$def) {
+            if (! $def) {
                 continue;
             }
 
@@ -1298,7 +1291,7 @@ class PayrollProcessingController extends Controller
             $smt <= 16666.67 => ($smt - 10416.67) * 0.15,
             $smt <= 33333.33 => 937.50 + ($smt - 16666.67) * 0.20,
             $smt <= 83333.33 => 4270.83 + ($smt - 33333.33) * 0.25,
-            $smt <= 333333.33 => 16770.83 + ($smt - 83333.33) * 0.30,
+            $smt <= 333333.33 => 16770.83 + ($smt - 83333.33) * 0.32,
             default => 91770.83 + ($smt - 333333.33) * 0.35,
         };
 
@@ -1352,7 +1345,7 @@ class PayrollProcessingController extends Controller
             ->where('status', 'Active')
             ->where('start_period', '<=', $periodYearMonth)
             ->where('end_period', '>=', $periodYearMonth)
-            ->each(fn(Loan $loan) => $loan->applyDeduction());
+            ->each(fn (Loan $loan) => $loan->applyDeduction());
     }
 
     /**
@@ -1375,7 +1368,7 @@ class PayrollProcessingController extends Controller
                     if (str_contains($typeLower, 'emergency') && in_array('gsis_emergency', $waived)) {
                         return;
                     }
-                    if (!str_contains($typeLower, 'emergency') && in_array('gsis_mpl', $waived)) {
+                    if (! str_contains($typeLower, 'emergency') && in_array('gsis_mpl', $waived)) {
                         return;
                     }
                 } elseif (in_array($sourceLower, ['pag-ibig', 'pagibig', 'hdmf'])) {
@@ -1401,13 +1394,13 @@ class PayrollProcessingController extends Controller
         $orgGroupWaived = in_array('ama_y2k_union', $waived);
         $waterGroupWaived = in_array('water_bill', $waived);
 
-        if (!$orgGroupWaived && !$waterGroupWaived && empty($waivedItemIds)) {
+        if (! $orgGroupWaived && ! $waterGroupWaived && empty($waivedItemIds)) {
             return;
         }
 
         $nextEnd = Carbon::parse($period->end_date)->addDays(16);
 
-        if ($orgGroupWaived || $waterGroupWaived || !empty($waivedItemIds)) {
+        if ($orgGroupWaived || $waterGroupWaived || ! empty($waivedItemIds)) {
             OtherDeduction::where('employee_id', $employeeId)
                 ->where('period_start', '<=', $period->end_date)
                 ->where('period_end', '>=', $period->start_date)
@@ -1419,7 +1412,7 @@ class PayrollProcessingController extends Controller
                         $shouldCarry = true;
                     } elseif ($orgGroupWaived && ($deduction->isNsNd() || $deduction->isMiscellaneous())) {
                         $shouldCarry = true;
-                    } elseif (!empty($waivedItemIds) && in_array($deduction->id, $waivedItemIds)) {
+                    } elseif (! empty($waivedItemIds) && in_array($deduction->id, $waivedItemIds)) {
                         $shouldCarry = true;
                     }
 
@@ -1433,13 +1426,13 @@ class PayrollProcessingController extends Controller
             InternalOrgDeduction::where('employee_id', $employeeId)
                 ->where('period_start', '<=', $period->end_date)
                 ->where('period_end', '>=', $period->start_date)
-                ->each(fn(InternalOrgDeduction $d) => $d->update(['period_end' => $nextEnd]));
-        } elseif (!empty($waivedItemIds)) {
+                ->each(fn (InternalOrgDeduction $d) => $d->update(['period_end' => $nextEnd]));
+        } elseif (! empty($waivedItemIds)) {
             InternalOrgDeduction::whereIn('id', $waivedItemIds)
                 ->where('employee_id', $employeeId)
                 ->where('period_start', '<=', $period->end_date)
                 ->where('period_end', '>=', $period->start_date)
-                ->each(fn(InternalOrgDeduction $d) => $d->update(['period_end' => $nextEnd]));
+                ->each(fn (InternalOrgDeduction $d) => $d->update(['period_end' => $nextEnd]));
         }
     }
 
@@ -1490,9 +1483,9 @@ class PayrollProcessingController extends Controller
             $duplicate = PayrollPeriod::where('start_date', $validated['start_date'])
                 ->where('end_date', $validated['end_date'])
                 ->when(
-                    !is_null($employeeType),
-                    fn($q) => $q->where('employee_type', $employeeType),
-                    fn($q) => $q->whereNull('employee_type'),
+                    ! is_null($employeeType),
+                    fn ($q) => $q->where('employee_type', $employeeType),
+                    fn ($q) => $q->whereNull('employee_type'),
                 )
                 ->where('status', '!=', 'cancelled')
                 ->exists();
@@ -1506,7 +1499,7 @@ class PayrollProcessingController extends Controller
 
                 return response()->json([
                     'error' => 'Payroll already exists for this Employment Type within the selected Payroll Period. '
-                        . 'Please select a different Employment Type or review the existing payroll record.',
+                        .'Please select a different Employment Type or review the existing payroll record.',
                 ], 422);
             }
 
@@ -1540,7 +1533,7 @@ class PayrollProcessingController extends Controller
 
                         if (in_array('ama_y2k_union', $waived)) {
                             $amaY2kUnion = 0.0;
-                        } elseif (!empty($waivedItemIds)) {
+                        } elseif (! empty($waivedItemIds)) {
                             $waivedInternalAmt = InternalOrgDeduction::whereIn('id', $waivedItemIds)
                                 ->where('employee_id', $rec['employee_id'])
                                 ->sum('amount');
@@ -1555,7 +1548,7 @@ class PayrollProcessingController extends Controller
 
                         if (in_array('water_bill', $waived)) {
                             $waterBill = 0.0;
-                        } elseif (!empty($waivedItemIds)) {
+                        } elseif (! empty($waivedItemIds)) {
                             $waivedWaterAmt = OtherDeduction::whereIn('id', $waivedItemIds)
                                 ->where('employee_id', $rec['employee_id'])
                                 ->where('category', OtherDeduction::CATEGORY_WATER_BILL)
@@ -1604,8 +1597,8 @@ class PayrollProcessingController extends Controller
                                 'gsis_emergency' => $gsisEmergency,
                                 'pag_ibig_mpl' => $pagIbigMpl,
                                 'ama_y2k_union' => $amaY2kUnion,
-                                'water_bill' => $waterBill,
-                                'net_pay' => $netPay,
+                                'water_bill'            => $waterBill,,
+                                'net_pay'               => $netPay,
                                 'floor_check_passed' => $floorCheckPassed,
                                 'hr_officer_name' => $validated['hr_officer_name'] ?? null,
                                 'status' => 'draft',
@@ -1616,7 +1609,7 @@ class PayrollProcessingController extends Controller
                             $this->applyLoanDeductionsFiltered($rec['employee_id'], $period, $waived);
                         }
 
-                        if (!empty($waived) || !empty($waivedItemIds)) {
+                        if (! empty($waived) || ! empty($waivedItemIds)) {
                             $this->carryForwardWaivedDeductions($rec['employee_id'], $period, $waived, $waivedItemIds);
                         }
                     } catch (\Throwable $e) {
@@ -1634,7 +1627,7 @@ class PayrollProcessingController extends Controller
                 $this->activityLogService->createLog([
                     'user_id' => Auth::id(),
                     'module' => 'payroll',
-                    'description' => "Finalized Payroll Period #{$period->payroll_period_id} ({$period->start_date->toDateString()} – {$period->end_date->toDateString()}) — " . count($validated['records']) . ' employees',
+                    'description' => "Finalized Payroll Period #{$period->payroll_period_id} ({$period->start_date->toDateString()} – {$period->end_date->toDateString()}) — ".count($validated['records']).' employees',
                 ]);
 
                 Log::info('Payroll finalized successfully', [
@@ -1663,14 +1656,14 @@ class PayrollProcessingController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Throwable $e) {
-            Log::error('Finalization failed: ' . $e->getMessage(), [
+            Log::error('Finalization failed: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
-                'error' => 'Finalization failed: ' . $e->getMessage(),
+                'error' => 'Finalization failed: '.$e->getMessage(),
             ], 500);
         }
     }

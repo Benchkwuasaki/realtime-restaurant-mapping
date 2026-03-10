@@ -75,7 +75,7 @@ class PaySlipGenerationController extends Controller
             $bulkPayslips = $query
                 ->get()
                 ->map(fn (Employee $e) => $this->buildPayslip($e->employee_id, $selectedPeriodId))
-                ->filter()      // remove nulls (no record for this period)
+                ->filter()
                 ->sortBy('employee_name')
                 ->values()
                 ->toArray();
@@ -91,8 +91,6 @@ class PaySlipGenerationController extends Controller
             'is_bulk' => $isBulk,
         ]);
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
      * Build a single payslip data array for one employee + period.

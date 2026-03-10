@@ -21,6 +21,12 @@ class DatabaseSeeder extends Seeder
             'employee_rate' => 9.00,
             'employer_rate' => 12.00,
             'fixed_amount' => null,
+            // GSIS has no floor/ceiling or tier — these stay null
+            'min_contribution' => null,
+            'max_contribution' => null,
+            'lower_salary_threshold' => null,
+            'lower_rate' => null,
+            'upper_rate' => null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -30,9 +36,14 @@ class DatabaseSeeder extends Seeder
             'name' => 'Philippine Health Insurance Corporation',
             'has_employer_share' => true,
             'computation_type' => 'rate',
-            'employee_rate' => 2.50,
-            'employer_rate' => 2.50,
+            'employee_rate' => 2.50,    // employee share (half of 5% total)
+            'employer_rate' => 2.50,    // employer share (half of 5% total)
             'fixed_amount' => null,
+            'min_contribution' => 250.00,  // monthly floor — was hardcoded max(250.0, ...)
+            'max_contribution' => 2500.00, // monthly ceiling — was hardcoded min(2500.0, ...)
+            'lower_salary_threshold' => null,
+            'lower_rate' => null,
+            'upper_rate' => null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -44,7 +55,12 @@ class DatabaseSeeder extends Seeder
             'computation_type' => 'fixed',
             'employee_rate' => null,
             'employer_rate' => null,
-            'fixed_amount' => 100.00,
+            'fixed_amount' => 100.00,  // monthly cap — was hardcoded
+            'min_contribution' => null,
+            'max_contribution' => null,
+            'lower_salary_threshold' => 1500.00, // was hardcoded $monthlyBasic <= 1500
+            'lower_rate' => 1.0,     // was hardcoded 0.01 (1%)
+            'upper_rate' => 2.0,     // was hardcoded 0.02 (2%)
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -57,6 +73,11 @@ class DatabaseSeeder extends Seeder
             'employee_rate' => 4.50,
             'employer_rate' => 9.50,
             'fixed_amount' => null,
+            'min_contribution' => null,
+            'max_contribution' => null,
+            'lower_salary_threshold' => null,
+            'lower_rate' => null,
+            'upper_rate' => null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -833,7 +854,7 @@ class DatabaseSeeder extends Seeder
             $hireYear = min(2023, 2000 + ($i % 24));
             $hireMonth = str_pad(($i % 12) + 1, 2, '0', STR_PAD_LEFT);
             $hiredDate = "{$hireYear}-{$hireMonth}-01";
-            $appliedDate = date('Y-m-d', strtotime($hiredDate . ' -1 month'));
+            $appliedDate = date('Y-m-d', strtotime($hiredDate.' -1 month'));
 
             $city = $cities[$i % count($cities)];
             $street = $streets[$i % count($streets)];
@@ -860,9 +881,9 @@ class DatabaseSeeder extends Seeder
             $sgStepId = $sgRow?->salary_grade_step_id ?? null;
 
             $workEmail = strtolower(
-                preg_replace('/[^a-z0-9]/', '', $firstName) . '.' .
-                preg_replace('/[^a-z0-9]/', '', $lastName) .
-                ($i > 0 ? $i : '') .
+                preg_replace('/[^a-z0-9]/', '', $firstName).'.'.
+                preg_replace('/[^a-z0-9]/', '', $lastName).
+                ($i > 0 ? $i : '').
                 '@obx.gov.ph'
             );
 
@@ -871,11 +892,11 @@ class DatabaseSeeder extends Seeder
                 'first_name' => $firstName,
                 'last_name' => $lastName,
                 'middle_name' => $middleName,
-                'name_extension' => ($i % 15 === 0 && !$isSexFemale) ? 'Jr.' : null,
+                'name_extension' => ($i % 15 === 0 && ! $isSexFemale) ? 'Jr.' : null,
                 'birth_date' => $birthDate,
                 'sex' => $sex,
                 'personal_email' => strtolower("{$firstName}.{$lastName}{$i}@gmail.com"),
-                'phone_number' => '09' . str_pad((171000000 + $i * 1234567) % 900000000 + 100000000, 9, '0'),
+                'phone_number' => '09'.str_pad((171000000 + $i * 1234567) % 900000000 + 100000000, 9, '0'),
                 'civil_status' => $civStat,
                 'place_of_birth' => $placesBirth[$i % count($placesBirth)],
                 'created_at' => now(),
@@ -935,9 +956,9 @@ class DatabaseSeeder extends Seeder
             DB::table('family_info')->insert([
                 'employee_basic_info_id' => $basicInfoId,
                 'full_name' => "{$spouseFirstName} {$lastName}",
-                'contact_number' => '09' . str_pad((281000000 + $i * 7654321) % 900000000 + 100000000, 9, '0'),
+                'contact_number' => '09'.str_pad((281000000 + $i * 7654321) % 900000000 + 100000000, 9, '0'),
                 'relationship' => 'Spouse',
-                'sex' => !$isSexFemale, // opposite of employee
+                'sex' => ! $isSexFemale, // opposite of employee
                 'date_of_birth' => "{$spouseBirthYear}-{$spouseBirthMonth}-{$spouseBirthDay}",
                 'place_of_birth' => $placesBirth[($i + 2) % count($placesBirth)],
                 'created_at' => now(),
@@ -1024,7 +1045,7 @@ class DatabaseSeeder extends Seeder
             ]);
             if ($hireYear <= 2015) {
                 $prevYear = $hireYear;
-                $prevEnd = ($hireYear + 4) . '-12-31';
+                $prevEnd = ($hireYear + 4).'-12-31';
                 DB::table('employee_service_records')->insert([
                     'employee_id' => $employeeId,
                     'department' => $divName,
@@ -1052,7 +1073,7 @@ class DatabaseSeeder extends Seeder
                 DB::table('employee_seminars_and_trainings')->insert([
                     'employee_id' => $employeeId,
                     'seminar_training_name' => $seminar2['name'],
-                    'date_attended' => min(2024, $semYear + 1) . '-11-20',
+                    'date_attended' => min(2024, $semYear + 1).'-11-20',
                     'venue' => $seminar2['venue'],
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -1091,7 +1112,7 @@ class DatabaseSeeder extends Seeder
                     'employee_id' => $employeeId,
                     'leave_type' => $lvType,
                     'leave_start_date' => "2024-{$lvMonth}-{$lvDay}",
-                    'leave_end_date' => "2024-{$lvMonth}-" . str_pad(((int) $lvDay + 1) % 28 + 1, 2, '0', STR_PAD_LEFT),
+                    'leave_end_date' => "2024-{$lvMonth}-".str_pad(((int) $lvDay + 1) % 28 + 1, 2, '0', STR_PAD_LEFT),
                     'status' => 'approved',
                     'created_at' => now(),
                     'updated_at' => now(),
