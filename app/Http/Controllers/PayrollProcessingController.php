@@ -154,7 +154,6 @@ class PayrollProcessingController extends Controller
                         + $data['ama_y2k_union']          // ← includes internal org loans + dues
                         + $data['water_bill'];
 
-
                     $computedRecords[] = array_merge($data, [
                         'employee_id' => $employee->employee_id,
                         'employee_name' => $employee->basicInfo
@@ -424,7 +423,7 @@ class PayrollProcessingController extends Controller
                     'work_schedule_end',
                 ]);
 
-            if (!empty($validated['employee_type'])) {
+            if (! empty($validated['employee_type'])) {
                 $empQuery->where('employment_classification', $validated['employee_type']);
             }
 
@@ -514,9 +513,9 @@ class PayrollProcessingController extends Controller
                     // diffInMinutes($other, absolute=false) returns a signed
                     // integer: positive when $other is after $this (i.e. the
                     // employee checked in later than their scheduled start).
-                    if (!is_null($record->morning_in_manila)) {
+                    if (! is_null($record->morning_in_manila)) {
                         $scheduledStart = Carbon::parse(
-                            $date . ' ' . $scheduleStartTime,
+                            $date.' '.$scheduleStartTime,
                             'Asia/Manila'
                         );
                         $actualCheckIn = Carbon::parse(
@@ -758,8 +757,8 @@ class PayrollProcessingController extends Controller
         $schedEnd = $employee->work_schedule_end;   // e.g. "17:00:00"
 
         if ($schedStart && $schedEnd) {
-            $parsedMinutes = (int) Carbon::parse('1970-01-01 ' . $schedEnd)
-                ->diffInMinutes(Carbon::parse('1970-01-01 ' . $schedStart));
+            $parsedMinutes = (int) Carbon::parse('1970-01-01 '.$schedEnd)
+                ->diffInMinutes(Carbon::parse('1970-01-01 '.$schedStart));
 
             if ($parsedMinutes > 0) {
                 $workMinutesPerDay = $parsedMinutes;
@@ -1349,10 +1348,10 @@ class PayrollProcessingController extends Controller
                                 'gsis_emergency' => $gsisEmergency,
                                 'pag_ibig_mpl' => $pagIbigMpl,
                                 'ama_y2k_union' => $amaY2kUnion,
-                                'water_bill'            => $waterBill,
-                                'internal_org_savings'  => $internalOrgSavings,
-                                'internal_org_second'   => (float) ($rec['internal_org_second'] ?? 0),
-                                'net_pay'               => $netPay,
+                                'water_bill' => $waterBill,
+                                'internal_org_savings' => $internalOrgSavings,
+                                'internal_org_second' => (float) ($rec['internal_org_second'] ?? 0),
+                                'net_pay' => $netPay,
                                 'floor_check_passed' => $floorCheckPassed,
                                 'hr_officer_name' => $validated['hr_officer_name'] ?? null,
                                 'status' => 'draft',
