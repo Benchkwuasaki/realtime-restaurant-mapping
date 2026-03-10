@@ -587,7 +587,7 @@ export default function RecognitionLogIndex({
         [records, search]
     )
 
-    const CCTV_SRC = "http://192.168.0.114:8889/cam"
+    const CCTV_SRC = "http://192.168.0.114:8889/cam2"
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

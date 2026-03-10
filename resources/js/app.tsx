@@ -49,4 +49,7 @@ initializeTheme();
 
 // npm install react-easy-crop 
 // npm install reverb
-// php artisan reverb: start
+// php artisan install:broadcasting
+// composer require laravel/reverb
+// npm install --save-dev laravel-echo pusher-js
+// php artisan reverb:start
