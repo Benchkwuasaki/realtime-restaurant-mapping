@@ -1,6 +1,6 @@
-// Loan Entry Index.tsx
+// Loan Entry — Index.tsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import AppLayout from '@/layouts/app-layout';
@@ -23,9 +23,12 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLoanColumns } from '@/components/Payroll/Earnings&Deductions/LoanEntry/components/columns';
 import { type Loan } from '@/components/Payroll/Earnings&Deductions/LoanEntry/data/schema';
 import type { BreadcrumbItem } from '@/types';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Employee {
     id: number;
@@ -33,10 +36,25 @@ interface Employee {
     position?: string;
 }
 
+interface LoanService {
+    id: number;
+    name: string;
+}
+
+interface InternalOrganization {
+    id: string;
+    name: string;
+    type: string;
+    loan_services: LoanService[];
+}
+
 interface Props {
     loans: Loan[];
     employees: Employee[];
+    internalOrganizations: InternalOrganization[];
 }
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Payroll', href: '#' },
@@ -44,115 +62,218 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Loan Entry', href: route('loanentry.index') },
 ];
 
-// TODO: Extract from database. Dummy datda for now hehe
-// HMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMm
-const LOAN_TYPES: { label: string; source: 'GSIS' | 'PagIBIG' }[] = [
-    { label: 'GSIS MPL', source: 'GSIS' },
-    { label: 'GSIS Emergency Loan', source: 'GSIS' },
-    { label: 'GSIS Salary Loan', source: 'GSIS' },
-    { label: 'GSIS Policy Loan', source: 'GSIS' },
-    { label: 'Pag-IBIG MPL', source: 'PagIBIG' },
-    { label: 'Pag-IBIG Housing Loan', source: 'PagIBIG' },
-    { label: 'Pag-IBIG Calamity Loan', source: 'PagIBIG' },
+const GOVT_LOAN_TYPES: { label: string; source: 'GSIS' | 'Pag-IBIG' }[] = [
+    { label: 'GSIS MPL',             source: 'GSIS' },
+    { label: 'GSIS Emergency Loan',  source: 'GSIS' },
+    { label: 'GSIS Salary Loan',     source: 'GSIS' },
+    { label: 'GSIS Policy Loan',     source: 'GSIS' },
+    { label: 'Pag-IBIG MPL',         source: 'Pag-IBIG' },
+    { label: 'Pag-IBIG Housing Loan',source: 'Pag-IBIG' },
+    { label: 'Pag-IBIG Calamity Loan', source: 'Pag-IBIG' },
 ];
 
 const STATUS_OPTIONS: Loan['status'][] = ['Active', 'Completed', 'Suspended'];
 
 const statusFilterOptions = STATUS_OPTIONS.map((s) => ({ value: s, label: s }));
 const sourceFilterOptions = [
-    { value: 'GSIS', label: 'GSIS' },
-    { value: 'PagIBIG', label: 'PagIBIG' },
+    { value: 'GSIS',    label: 'GSIS' },
+    { value: 'Pag-IBIG', label: 'Pag-IBIG' },
 ];
 
-const emptyForm = {
-    employee_id: '',
-    loan_type: '',
-    source: '',
+type LoanTab = 'govt' | 'internal';
+
+// ── Empty forms ───────────────────────────────────────────────────────────────
+
+const emptyGovtForm = {
+    employee_id:  '',
+    loan_type:    '',
+    source:       '',
     total_amount: '',
-    monthly_amortization: '',
-    semi_monthly_deduction: '',
+    term_months:  '',
     start_period: '',
-    end_period: '',
-    status: 'Active' as Loan['status'],
+    status:       'Active' as Loan['status'],
 };
+
+const emptyInternalForm = {
+    employee_id:               '',
+    internal_organization_id:  '',
+    loan_type:                 '',   // service name
+    source:                    '',   // org name (auto-filled)
+    total_amount:              '',
+    term_months:               '',
+    start_period:              '',
+    status:                    'Active' as Loan['status'],
+};
+
+// ── Computed preview ──────────────────────────────────────────────────────────
+
+function computeAmortization(totalAmount: string, termMonths: string) {
+    const total = parseFloat(totalAmount) || 0;
+    const term  = parseInt(termMonths)    || 0;
+    if (!total || !term) return { monthly: '—', semi: '—', endPeriod: '—' };
+    const monthly = (total / term).toFixed(2);
+    const semi    = (total / term / 2).toFixed(2);
+    return { monthly, semi };
+}
+
+function computeEndPeriod(startPeriod: string, termMonths: string): string {
+    if (!startPeriod || !termMonths) return '—';
+    const term = parseInt(termMonths) || 0;
+    if (!term) return '—';
+    const [year, month] = startPeriod.split('-').map(Number);
+    const endDate = new Date(year, month - 1 + term - 1);
+    return `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// ── Dialog ────────────────────────────────────────────────────────────────────
 
 interface LoanDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     loan?: Loan | null;
     employees: Employee[];
+    internalOrganizations: InternalOrganization[];
 }
 
-function LoanDialog({ open, onOpenChange, loan, employees }: LoanDialogProps) {
+function LoanDialog({
+    open,
+    onOpenChange,
+    loan,
+    employees,
+    internalOrganizations,
+}: LoanDialogProps) {
     const isEdit = !!loan;
 
-    const buildForm = (l?: Loan | null) => ({
-        employee_id: l?.employee_id?.toString() ?? '',
-        loan_type: l?.loan_type ?? '',
-        source: l?.source ?? '',
+    // Determine initial tab from existing loan
+    const initialTab: LoanTab =
+        loan?.internal_organization_id ? 'internal' : 'govt';
+
+    const [activeTab, setActiveTab] = useState<LoanTab>(initialTab);
+
+    // ── Gov't form ────────────────────────────────────────────────────────────
+    const buildGovtForm = (l?: Loan | null) => ({
+        employee_id:  l?.employee_id?.toString() ?? '',
+        loan_type:    l?.loan_type ?? '',
+        source:       l?.source ?? '',
         total_amount: l?.total_amount?.toString() ?? '',
-        monthly_amortization: l?.monthly_amortization?.toString() ?? '',
-        semi_monthly_deduction: l?.semi_monthly_deduction?.toString() ?? '',
+        term_months:  l ? String(computeTermFromLoan(l)) : '',
         start_period: l?.start_period ?? '',
-        end_period: l?.end_period ?? '',
-        status: l?.status ?? ('Active' as Loan['status']),
+        status:       (l?.status ?? 'Active') as Loan['status'],
     });
 
-    const [form, setForm] = useState(() => buildForm(loan));
+    // ── Internal org form ─────────────────────────────────────────────────────
+    const buildInternalForm = (l?: Loan | null) => ({
+        employee_id:              l?.employee_id?.toString() ?? '',
+        internal_organization_id: l?.internal_organization_id?.toString() ?? '',
+        loan_type:                l?.loan_type ?? '',
+        source:                   l?.source ?? '',
+        total_amount:             l?.total_amount?.toString() ?? '',
+        term_months:              l ? String(computeTermFromLoan(l)) : '',
+        start_period:             l?.start_period ?? '',
+        status:                   (l?.status ?? 'Active') as Loan['status'],
+    });
+
+    const [govtForm, setGovtForm]         = useState(() => buildGovtForm(loan));
+    const [internalForm, setInternalForm] = useState(() => buildInternalForm(loan));
 
     useEffect(() => {
-        setForm(buildForm(loan));
+        setActiveTab(loan?.internal_organization_id ? 'internal' : 'govt');
+        setGovtForm(buildGovtForm(loan));
+        setInternalForm(buildInternalForm(loan));
     }, [loan]);
 
-    const set = (key: string, value: string) =>
-        setForm((f) => ({ ...f, [key]: value }));
+    const setG = (key: string, value: string) =>
+        setGovtForm((f) => ({ ...f, [key]: value }));
+    const setI = (key: string, value: string) =>
+        setInternalForm((f) => ({ ...f, [key]: value }));
 
-    const handleLoanTypeChange = (value: string) => {
-        const found = LOAN_TYPES.find((lt) => lt.label === value);
-        setForm((f) => ({
+    // Auto-fill source when loan type selected (govt)
+    const handleGovtLoanTypeChange = (value: string) => {
+        const found = GOVT_LOAN_TYPES.find((lt) => lt.label === value);
+        setGovtForm((f) => ({
             ...f,
             loan_type: value,
             source: found?.source ?? f.source,
         }));
     };
 
-    const handleMonthlyAmortChange = (value: string) => {
-        const monthly = parseFloat(value) || 0;
-        const semi = (monthly / 2).toFixed(2);
-        setForm((f) => ({
+    // Auto-fill source when org selected (internal)
+    const handleOrgChange = (orgId: string) => {
+        const org = internalOrganizations.find((o) => o.id === orgId);
+        setInternalForm((f) => ({
             ...f,
-            monthly_amortization: value,
-            semi_monthly_deduction: semi,
+            internal_organization_id: orgId,
+            source: org?.name ?? '',
+            loan_type: '',           // reset service selection
         }));
     };
 
+    // Services for selected org
+    const activeOrgServices = useMemo(() => {
+        const org = internalOrganizations.find(
+            (o) => o.id === internalForm.internal_organization_id
+        );
+        return org?.loan_services ?? [];
+    }, [internalOrganizations, internalForm.internal_organization_id]);
+
+    // Computed amortization preview
+    const govtPreview  = computeAmortization(govtForm.total_amount, govtForm.term_months);
+    const internalPreview = computeAmortization(internalForm.total_amount, internalForm.term_months);
+    const govtEndPeriod    = computeEndPeriod(govtForm.start_period, govtForm.term_months);
+    const internalEndPeriod = computeEndPeriod(internalForm.start_period, internalForm.term_months);
+
     const handleSubmit = () => {
-        const payload = {
-            employee_id: parseInt(form.employee_id),
-            loan_type: form.loan_type,
-            source: form.source,
-            total_amount: parseFloat(form.total_amount) || 0,
-            monthly_amortization: parseFloat(form.monthly_amortization) || 0,
-            semi_monthly_deduction:
-                parseFloat(form.semi_monthly_deduction) || 0,
-            start_period: form.start_period,
-            end_period: form.end_period,
-            status: form.status,
+        const isInternal = activeTab === 'internal';
+        const f = isInternal ? internalForm : govtForm;
+
+        const payload: Record<string, unknown> = {
+            employee_id:  parseInt(f.employee_id),
+            loan_type:    f.loan_type,
+            source:       f.source,
+            total_amount: parseFloat(f.total_amount) || 0,
+            term_months:  parseInt(f.term_months)    || 0,
+            start_period: f.start_period,
+            status:       f.status,
         };
+
+        if (isInternal) {
+            payload.internal_organization_id =
+                (internalForm as typeof emptyInternalForm).internal_organization_id;
+        }
 
         if (isEdit) {
             router.put(route('loanentry.update', loan!.id), payload, {
+                preserveScroll: true,
                 onSuccess: () => onOpenChange(false),
             });
         } else {
             router.post(route('loanentry.store'), payload, {
+                preserveScroll: true,
                 onSuccess: () => {
                     onOpenChange(false);
-                    setForm(emptyForm);
+                    setGovtForm(emptyGovtForm);
+                    setInternalForm(emptyInternalForm);
                 },
             });
         }
     };
+
+    const isGovtValid =
+        !!govtForm.employee_id &&
+        !!govtForm.loan_type &&
+        !!govtForm.total_amount &&
+        !!govtForm.term_months &&
+        !!govtForm.start_period;
+
+    const isInternalValid =
+        !!internalForm.employee_id &&
+        !!internalForm.internal_organization_id &&
+        !!internalForm.loan_type &&
+        !!internalForm.total_amount &&
+        !!internalForm.term_months &&
+        !!internalForm.start_period;
+
+    const canSubmit = activeTab === 'govt' ? isGovtValid : isInternalValid;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,24 +286,37 @@ function LoanDialog({ open, onOpenChange, loan, employees }: LoanDialogProps) {
 
                 <Separator />
 
+                {/* ── Tab selector (hidden in edit mode — type is fixed) ── */}
+                {!isEdit && (
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={(v) => setActiveTab(v as LoanTab)}
+                    >
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="govt">Government Loan</TabsTrigger>
+                            <TabsTrigger value="internal">Internal Org Loan</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                )}
+
                 <div className="grid gap-4 py-2">
+                    {/* ── Employee (shared) ─────────────────────────────── */}
                     <div className="grid gap-1.5">
                         <Label>
                             Employee <span className="text-destructive">*</span>
                         </Label>
                         <Select
-                            value={form.employee_id}
-                            onValueChange={(v) => set('employee_id', v)}
+                            value={activeTab === 'govt' ? govtForm.employee_id : internalForm.employee_id}
+                            onValueChange={(v) =>
+                                activeTab === 'govt' ? setG('employee_id', v) : setI('employee_id', v)
+                            }
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Select employee..." />
                             </SelectTrigger>
                             <SelectContent>
                                 {employees.map((e) => (
-                                    <SelectItem
-                                        key={e.id}
-                                        value={e.id.toString()}
-                                    >
+                                    <SelectItem key={e.id} value={String(e.id)}>
                                         {e.full_name}
                                         {e.position ? ` — ${e.position}` : ''}
                                     </SelectItem>
@@ -191,154 +325,217 @@ function LoanDialog({ open, onOpenChange, loan, employees }: LoanDialogProps) {
                         </Select>
                     </div>
 
+                    {/* ── Gov't-specific fields ─────────────────────────── */}
+                    {activeTab === 'govt' && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-1.5">
+                                <Label>
+                                    Loan Type <span className="text-destructive">*</span>
+                                </Label>
+                                <Select
+                                    value={govtForm.loan_type}
+                                    onValueChange={handleGovtLoanTypeChange}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select type..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {GOVT_LOAN_TYPES.map((lt) => (
+                                            <SelectItem key={lt.label} value={lt.label}>
+                                                {lt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label>Source</Label>
+                                <Input
+                                    value={govtForm.source}
+                                    readOnly
+                                    className="bg-muted text-muted-foreground"
+                                    placeholder="Auto-filled"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Internal org-specific fields ──────────────────── */}
+                    {activeTab === 'internal' && (
+                        <>
+                            <div className="grid gap-1.5">
+                                <Label>
+                                    Organization <span className="text-destructive">*</span>
+                                </Label>
+                                <Select
+                                    value={internalForm.internal_organization_id}
+                                    onValueChange={handleOrgChange}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select organization..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {internalOrganizations.map((org) => (
+                                            <SelectItem key={org.id} value={org.id}>
+                                                {org.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-1.5">
+                                    <Label>
+                                        Loan Service <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Select
+                                        value={internalForm.loan_type}
+                                        onValueChange={(v) => setI('loan_type', v)}
+                                        disabled={!internalForm.internal_organization_id || activeOrgServices.length === 0}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue
+                                                placeholder={
+                                                    !internalForm.internal_organization_id
+                                                        ? 'Select org first...'
+                                                        : 'Select service...'
+                                                }
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {activeOrgServices.map((s) => (
+                                                <SelectItem key={s.id} value={s.name}>
+                                                    {s.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-1.5">
+                                    <Label>Source</Label>
+                                    <Input
+                                        value={internalForm.source}
+                                        readOnly
+                                        className="bg-muted text-muted-foreground"
+                                        placeholder="Auto-filled from org"
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── Amount + Term (shared) ────────────────────────── */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-1.5">
                             <Label>
-                                Loan Type{' '}
-                                <span className="text-destructive">*</span>
+                                Total Loan Amount (₱) <span className="text-destructive">*</span>
                             </Label>
+                            <Input
+                                type="number"
+                                placeholder="0.00"
+                                value={activeTab === 'govt' ? govtForm.total_amount : internalForm.total_amount}
+                                onChange={(e) =>
+                                    activeTab === 'govt'
+                                        ? setG('total_amount', e.target.value)
+                                        : setI('total_amount', e.target.value)
+                                }
+                                step="0.01"
+                                min="0"
+                            />
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label>
+                                Term (months) <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                                type="number"
+                                placeholder="12"
+                                value={activeTab === 'govt' ? govtForm.term_months : internalForm.term_months}
+                                onChange={(e) =>
+                                    activeTab === 'govt'
+                                        ? setG('term_months', e.target.value)
+                                        : setI('term_months', e.target.value)
+                                }
+                                min="1"
+                            />
+                        </div>
+                    </div>
+
+                    {/* ── Amortization preview ──────────────────────────── */}
+                    {(() => {
+                        const preview = activeTab === 'govt' ? govtPreview : internalPreview;
+                        const endPeriod = activeTab === 'govt' ? govtEndPeriod : internalEndPeriod;
+                        const hasValues = preview.monthly !== '—';
+                        return hasValues ? (
+                            <div className="rounded-lg border bg-muted/40 px-4 py-3">
+                                <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                    Computed Amortization
+                                </p>
+                                <div className="grid grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Monthly</p>
+                                        <p className="font-medium">₱{preview.monthly}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Semi-Monthly</p>
+                                        <p className="font-medium">₱{preview.semi}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">End Period</p>
+                                        <p className="font-medium">{endPeriod}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null;
+                    })()}
+
+                    {/* ── Start Period + Status ─────────────────────────── */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-1.5">
+                            <Label>
+                                Start Period <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                                type="month"
+                                value={activeTab === 'govt' ? govtForm.start_period : internalForm.start_period}
+                                onChange={(e) =>
+                                    activeTab === 'govt'
+                                        ? setG('start_period', e.target.value)
+                                        : setI('start_period', e.target.value)
+                                }
+                            />
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label>Status</Label>
                             <Select
-                                value={form.loan_type}
-                                onValueChange={handleLoanTypeChange}
+                                value={activeTab === 'govt' ? govtForm.status : internalForm.status}
+                                onValueChange={(v) =>
+                                    activeTab === 'govt'
+                                        ? setG('status', v)
+                                        : setI('status', v)
+                                }
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select type..." />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {LOAN_TYPES.map((lt) => (
-                                        <SelectItem
-                                            key={lt.label}
-                                            value={lt.label}
-                                        >
-                                            {lt.label}
-                                        </SelectItem>
+                                    {STATUS_OPTIONS.map((s) => (
+                                        <SelectItem key={s} value={s}>{s}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
-
-                        <div className="grid gap-1.5">
-                            <Label>Source</Label>
-                            <Input
-                                value={form.source}
-                                readOnly
-                                className="bg-muted text-muted-foreground"
-                                placeholder="Auto-filled"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid gap-1.5">
-                        <Label>
-                            Total Loan Amount{' '}
-                            <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                            type="number"
-                            placeholder="0.00"
-                            value={form.total_amount}
-                            onChange={(e) =>
-                                set('total_amount', e.target.value)
-                            }
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-1.5">
-                            <Label>
-                                Monthly Amortization{' '}
-                                <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                type="number"
-                                placeholder="0.00"
-                                value={form.monthly_amortization}
-                                onChange={(e) =>
-                                    handleMonthlyAmortChange(e.target.value)
-                                }
-                            />
-                        </div>
-
-                        <div className="grid gap-1.5">
-                            <Label>Semi-Monthly Deduction</Label>
-                            <Input
-                                type="number"
-                                placeholder="0.00"
-                                value={form.semi_monthly_deduction}
-                                onChange={(e) =>
-                                    set(
-                                        'semi_monthly_deduction',
-                                        e.target.value,
-                                    )
-                                }
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Auto-computed as Monthly ÷ 2
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-1.5">
-                            <Label>
-                                Start Period{' '}
-                                <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                type="month"
-                                value={form.start_period}
-                                onChange={(e) =>
-                                    set('start_period', e.target.value)
-                                }
-                            />
-                        </div>
-                        <div className="grid gap-1.5">
-                            <Label>
-                                End Period{' '}
-                                <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                type="month"
-                                value={form.end_period}
-                                onChange={(e) =>
-                                    set('end_period', e.target.value)
-                                }
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid gap-1.5">
-                        <Label>Status</Label>
-                        <Select
-                            value={form.status}
-                            onValueChange={(v) =>
-                                set('status', v as Loan['status'])
-                            }
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select status..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {STATUS_OPTIONS.map((s) => (
-                                    <SelectItem key={s} value={s}>
-                                        {s}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
                     </div>
                 </div>
 
                 <Separator />
 
                 <DialogFooter>
-                    <Button
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                    >
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
-                    <Button onClick={handleSubmit}>
+                    <Button onClick={handleSubmit} disabled={!canSubmit}>
                         {isEdit ? 'Save Changes' : 'Add Loan'}
                     </Button>
                 </DialogFooter>
@@ -347,9 +544,30 @@ function LoanDialog({ open, onOpenChange, loan, employees }: LoanDialogProps) {
     );
 }
 
-export default function Index({ loans = [], employees = [] }: Props) {
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [editTarget, setEditTarget] = useState<Loan | null>(null);
+// ── Helper: estimate term from loan record ────────────────────────────────────
+
+function computeTermFromLoan(loan: Loan): number {
+    if (!loan.start_period || !loan.end_period) return 0;
+    const [sy, sm] = loan.start_period.split('-').map(Number);
+    const [ey, em] = loan.end_period.split('-').map(Number);
+    return (ey - sy) * 12 + (em - sm) + 1;
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function Index({
+    loans = [],
+    employees = [],
+    internalOrganizations = [],
+}: Props) {
+    const [dialogOpen, setDialogOpen]   = useState(false);
+    const [editTarget, setEditTarget]   = useState<Loan | null>(null);
+    const [activeTabKey, setActiveTabKey] = useState<LoanTab>('govt');
+
+    // Split loans into govt and internal org for the table tabs
+    const govtLoans     = useMemo(() => loans.filter((l) => !l.internal_organization_id), [loans]);
+    const internalLoans = useMemo(() => loans.filter((l) =>  l.internal_organization_id), [loans]);
+    const displayedLoans = activeTabKey === 'govt' ? govtLoans : internalLoans;
 
     const handleEdit = (loan: Loan) => {
         setEditTarget(loan);
@@ -367,34 +585,53 @@ export default function Index({ loans = [], employees = [] }: Props) {
         setDialogOpen(open);
     };
 
-    const columns = useLoanColumns({
-        onEdit: handleEdit,
-        onDelete: handleDelete,
-    });
+    const columns = useLoanColumns({ onEdit: handleEdit, onDelete: handleDelete });
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Loan Entry" />
 
-            <div className="flex h-full flex-1 flex-col gap-8 p-8">
+            <div className="flex h-full flex-1 flex-col gap-4 p-8">
+                {/* ── Tab Navigation ──────────────────────────────────── */}
+                <Tabs value={activeTabKey} onValueChange={(v) => setActiveTabKey(v as LoanTab)}>
+                    <div className="shrink-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <TabsList className="flex h-auto flex-nowrap gap-0 bg-transparent p-0">
+                            {([
+                                { key: 'govt',     label: "Gov't Loans" },
+                                { key: 'internal', label: 'Internal Org Loans' },
+                            ] as { key: LoanTab; label: string }[]).map(({ key, label }) => (
+                                <TabsTrigger
+                                    key={key}
+                                    value={key}
+                                    className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+                                >
+                                    {label}
+                                    <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                        {key === 'govt' ? govtLoans.length : internalLoans.length}
+                                    </span>
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </div>
+                </Tabs>
+
+                {/* ── Table ───────────────────────────────────────────── */}
                 <DataTable
-                    data={loans}
+                    data={displayedLoans}
                     columns={columns}
                     getRowId={(row) => String(row.id)}
                     searchColumnId="employee_name"
                     searchPlaceholder="Search by employee..."
-                    filters={[
-                        {
-                            columnId: 'source',
-                            title: 'Source',
-                            options: sourceFilterOptions,
-                        },
-                        {
-                            columnId: 'status',
-                            title: 'Status',
-                            options: statusFilterOptions,
-                        },
-                    ]}
+                    filters={
+                        activeTabKey === 'govt'
+                            ? [
+                                { columnId: 'source', title: 'Source', options: sourceFilterOptions },
+                                { columnId: 'status', title: 'Status', options: statusFilterOptions },
+                              ]
+                            : [
+                                { columnId: 'status', title: 'Status', options: statusFilterOptions },
+                              ]
+                    }
                     addButton={{
                         label: 'New Loan',
                         onClick: () => {
@@ -415,6 +652,7 @@ export default function Index({ loans = [], employees = [] }: Props) {
                 onOpenChange={handleDialogClose}
                 loan={editTarget}
                 employees={employees}
+                internalOrganizations={internalOrganizations}
             />
         </AppLayout>
     );

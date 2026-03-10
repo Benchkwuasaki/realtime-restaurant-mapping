@@ -10,13 +10,23 @@ return new class extends Migration
     {
         Schema::create('loans', function (Blueprint $table) {
             $table->id();
+
             $table->unsignedBigInteger('employee_id');
             $table->foreign('employee_id')
                 ->references('employee_id')
                 ->on('employees')
                 ->cascadeOnDelete();
+
             $table->string('loan_type', 100);
-            $table->string('source', 50);
+            $table->string('source', 255);
+
+            // Nullable FK — only set for internal org loans
+            $table->unsignedBigInteger('internal_organization_id')->nullable();
+            $table->foreign('internal_organization_id')
+                ->references('internal_organization_id')
+                ->on('internal_organizations')
+                ->nullOnDelete();
+
             $table->decimal('total_amount', 12, 2);
             $table->decimal('monthly_amortization', 10, 2);
             $table->decimal('semi_monthly_deduction', 10, 2);
@@ -25,6 +35,7 @@ return new class extends Migration
             $table->string('end_period', 7);
             $table->enum('status', ['Active', 'Completed', 'Suspended'])
                 ->default('Active');
+
             $table->timestamps();
         });
     }

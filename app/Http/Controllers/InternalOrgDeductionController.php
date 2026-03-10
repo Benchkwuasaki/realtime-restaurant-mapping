@@ -77,11 +77,17 @@ class InternalOrgDeductionController extends Controller
             ->groupBy('internal_organization_id')
             ->map(fn($group) => $group->pluck('employee')->sortBy('full_name')->values());
 
-        // Services grouped by org, further grouped by category
+        // Services grouped by org, further grouped by category.
+        // Loan category is excluded — internal org loans are managed in the
+        // Loan Entry page and stored in the loans table.
         // Shape: { [org_id]: { [category]: [ { id, name, category } ] } }
         $servicesByOrg = InternalOrganization::where('payroll_deduction_linked', true)
             ->where('status', true)
-            ->with(['services' => fn($q) => $q->where('deductable_from_payroll', true)->orderBy('internal_organization_service_name')])
+            ->with(['services' => fn($q) => $q
+                ->where('deductable_from_payroll', true)
+                ->where('service_category', '!=', \App\Models\InternalOrganizationService::CATEGORY_LOAN)
+                ->orderBy('internal_organization_service_name')
+            ])
             ->get()
             ->mapWithKeys(fn(InternalOrganization $org) => [
                 (string) $org->internal_organization_id => $org->services
