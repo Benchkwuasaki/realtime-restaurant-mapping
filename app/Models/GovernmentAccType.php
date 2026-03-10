@@ -14,19 +14,30 @@ class GovernmentAccType extends Model
         'name',
         'has_employer_share',
         'computation_type',
+        // Shared
         'employee_rate',
         'employer_rate',
         'fixed_amount',
+        // PhilHealth bracket
+        'min_contribution',
+        'max_contribution',
+        // Pag-IBIG tier
+        'lower_salary_threshold',
+        'lower_rate',
+        'upper_rate',
     ];
 
     protected $casts = [
         'has_employer_share' => 'boolean',
-        'employee_rate'      => 'float',
-        'employer_rate'      => 'float',
-        'fixed_amount'       => 'float',
+        'employee_rate' => 'float',
+        'employer_rate' => 'float',
+        'fixed_amount' => 'float',
+        'min_contribution' => 'float',
+        'max_contribution' => 'float',
+        'lower_salary_threshold' => 'float',
+        'lower_rate' => 'float',
+        'upper_rate' => 'float',
     ];
-
-    // ── Relationships ──────────────────────────────────────────────────────────
 
     public function governmentAccounts(): HasMany
     {
@@ -46,12 +57,14 @@ class GovernmentAccType extends Model
         );
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
-
     /**
-     * Returns the effective deduction value for payroll computation.
-     * For rate types, returns the employee_rate percentage.
-     * For fixed types, returns the fixed_amount.
+     * Returns the effective employee deduction value.
+     *
+     * For rate-type agencies (GSIS, PhilHealth) → returns employee_rate percentage.
+     * For fixed-type agencies (Pag-IBIG)        → returns fixed_amount (the cap).
+     *
+     * NOTE: For PhilHealth and Pag-IBIG, use the dedicated compute methods below
+     * instead of this one — they apply the full bracket/tier logic.
      */
     public function employeeDeductionValue(): float
     {
@@ -75,7 +88,56 @@ class GovernmentAccType extends Model
     }
 
     /**
-     * Convenient lookup by code — used throughout the payroll engine.
+     * Compute the monthly PhilHealth employee contribution for a given salary.
+     *
+     * Formula: clamp(monthlyBasic × rate%, min_contribution, max_contribution)
+     *
+     * All three values — rate, floor, ceiling — come from the DB row,
+     * replacing the previously hardcoded max(250.0, min(2500.0, ...)).
+     *
+     * @param  float  $monthlyBasic  The employee's full monthly basic salary.
+     * @return float Monthly PhilHealth employee share (not yet halved).
+     */
+    public function computePhilHealth(float $monthlyBasic): float
+    {
+        $rate = (float) ($this->employee_rate ?? 2.5);
+        $floor = (float) ($this->min_contribution ?? 250.0);
+        $ceiling = (float) ($this->max_contribution ?? 2500.0);
+
+        $computed = round($monthlyBasic * ($rate / 100), 2);
+
+        return max($floor, min($ceiling, $computed));
+    }
+
+    /**
+     * Compute the monthly Pag-IBIG employee contribution for a given salary.
+     *
+     * Formula:
+     *   if monthlyBasic <= lower_salary_threshold → basic × lower_rate%
+     *   else                                      → min(fixed_amount, basic × upper_rate%)
+     *
+     * All four values — threshold, lower rate, upper rate, cap — come from the DB row,
+     * replacing the previously hardcoded <= 1500, 0.01, 0.02, 100.0.
+     *
+     * @param  float  $monthlyBasic  The employee's full monthly basic salary.
+     * @return float Monthly Pag-IBIG contribution (not yet halved).
+     */
+    public function computePagIbig(float $monthlyBasic): float
+    {
+        $cap = (float) ($this->fixed_amount ?? 100.0);
+        $threshold = (float) ($this->lower_salary_threshold ?? 1500.0);
+        $lowerRate = (float) ($this->lower_rate ?? 1.0);
+        $upperRate = (float) ($this->upper_rate ?? 2.0);
+
+        if ($monthlyBasic <= $threshold) {
+            return round($monthlyBasic * ($lowerRate / 100), 2);
+        }
+
+        return min($cap, round($monthlyBasic * ($upperRate / 100), 2));
+    }
+
+    /**
+     * Convenient lookup by code.
      * e.g. GovernmentAccType::byCode('GSIS')
      */
     public static function byCode(string $code): self
