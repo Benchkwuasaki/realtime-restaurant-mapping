@@ -69,7 +69,7 @@ class PaySlipGenerationController extends Controller
             $query = Employee::with(['basicInfo', 'item.position', 'salaryGradeStep']);
 
             if ($bulkClassification !== '') {
-                $query->where('employment_classification', 'ilike', $bulkClassification);
+                $query->where('employment_classification', 'like', $bulkClassification);
             }
 
             $bulkPayslips = $query

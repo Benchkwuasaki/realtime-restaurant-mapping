@@ -108,268 +108,406 @@ function PayslipDocument({
 
     const totalDeductions = totalMandatory + totalAttendance + totalLoans;
 
+    // print style only — Times New Roman, no color
+    const serif: React.CSSProperties = {
+        fontFamily: "'Times New Roman', Times, serif",
+        color: '#000',
+        backgroundColor: '#fff',
+    };
+    const sectionLabel: React.CSSProperties = {
+        fontSize: 9,
+        fontWeight: 'bold',
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        borderBottom: '1px solid #000',
+        paddingBottom: 3,
+        margin: '0 0 6px',
+    };
+    const subtotalRow: React.CSSProperties = {
+        display: 'flex',
+        justifyContent: 'space-between',
+        borderTop: '1px solid #000',
+        marginTop: 6,
+        paddingTop: 4,
+    };
+
     return (
         <div
             id={printId}
-            className="mx-auto w-full max-w-[720px] bg-white font-sans shadow-md ring-1 ring-border/20 print:shadow-none print:ring-0"
-            style={{ minWidth: 560 }}
+            style={{ ...serif, minWidth: 560 }}
+            className="mx-auto w-full max-w-[720px] shadow-md print:shadow-none"
         >
-            {/* ── Header ── */}
-            <div className="flex items-center justify-between border-b-2 border-foreground/80 px-8 py-5">
-                <div className="flex items-center gap-3">
+            <div
+                style={{
+                    borderBottom: '2px solid #000',
+                    padding: '20px 32px 16px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    fontFamily: "'Times New Roman', Times, serif",
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <img
                         src={Logo}
                         alt="MKWD Logo"
-                        className="h-12 w-12 object-contain"
+                        style={{ height: 48, width: 48, objectFit: 'contain' }}
                         onError={(e) =>
                             ((e.target as HTMLImageElement).style.display =
                                 'none')
                         }
                     />
                     <div>
-                        <p className="text-[10px] font-normal tracking-widest text-muted-foreground uppercase">
+                        <p
+                            style={{
+                                fontSize: 9,
+                                letterSpacing: '0.12em',
+                                textTransform: 'uppercase',
+                                margin: 0,
+                            }}
+                        >
                             Metro Kidapawan Water District
                         </p>
-                        <p className="text-[18px] leading-none font-bold tracking-wide uppercase">
+                        <p
+                            style={{
+                                fontSize: 20,
+                                fontWeight: 'bold',
+                                letterSpacing: '0.06em',
+                                textTransform: 'uppercase',
+                                margin: '2px 0 0',
+                                lineHeight: 1,
+                            }}
+                        >
                             Pay Slip
                         </p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        <p style={{ fontSize: 10, margin: '4px 0 0' }}>
                             {data.period_label}
                         </p>
                     </div>
                 </div>
-                <div className="text-right">
-                    <p className="text-[11px] font-semibold">
+                <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: 11, fontWeight: 'bold', margin: 0 }}>
                         {data.employee_name}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p style={{ fontSize: 10, margin: '2px 0 0' }}>
                         {data.position}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
-                        SG {data.salary_grade} · Step {data.step}
+                    <p style={{ fontSize: 10, margin: '2px 0 0' }}>
+                        SG {data.salary_grade} &middot; Step {data.step}
                     </p>
-                    {/* <p className="mt-0.5 text-[10px]">
-                        <span
-                            className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold ${
-                                data.floor_check_passed
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-amber-100 text-amber-700'
-                            }`}
-                        >
-                            {data.floor_check_passed
-                                ? '✓ Floor Check Passed'
-                                : '⚠ Below Minimum Take-Home'}
-                        </span>
-                    </p> */}
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-0 divide-x divide-border/50 px-0">
-                <div className="space-y-4 px-8 py-5">
-                    <div>
-                        <p className="mb-2 border-b border-blue-200 pb-1 text-[9px] font-bold tracking-widest text-blue-700 uppercase">
-                            Earnings
-                        </p>
-                        <Row label="Basic Pay" value={data.basic_pay} />
-                        <Row label="PERA" value={data.pera} />
-                        <Row
-                            label="Rice Allowance"
-                            value={data.rice_allowance}
-                        />
-                        <Row
-                            label="Uniform Allowance"
-                            value={data.uniform_allowance}
-                        />
-                        <div className="mt-1.5 flex justify-between border-t border-blue-200 pt-1.5">
-                            <span className="text-[10px] font-bold text-blue-800">
-                                Gross Pay
-                            </span>
-                            <span className="text-[10px] font-bold text-blue-800 tabular-nums">
-                                ₱{peso(grossPay)}
-                            </span>
-                        </div>
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    borderBottom: '1px solid #000',
+                    fontFamily: "'Times New Roman', Times, serif",
+                }}
+            >
+                <div
+                    style={{
+                        padding: '16px 28px',
+                        borderRight: '1px solid #ccc',
+                    }}
+                >
+                    <p style={sectionLabel}>Earnings</p>
+                    <Row label="Basic Pay" value={data.basic_pay} />
+                    <Row label="PERA" value={data.pera} />
+                    <Row label="Rice Allowance" value={data.rice_allowance} />
+                    <Row
+                        label="Uniform Allowance"
+                        value={data.uniform_allowance}
+                    />
+                    <div style={subtotalRow}>
+                        <span style={{ fontSize: 10, fontWeight: 'bold' }}>
+                            Gross Pay
+                        </span>
+                        <span
+                            style={{
+                                fontSize: 10,
+                                fontWeight: 'bold',
+                                fontVariantNumeric: 'tabular-nums',
+                            }}
+                        >
+                            &#8369;{peso(grossPay)}
+                        </span>
                     </div>
 
-                    <div>
-                        <p className="mb-2 border-b border-purple-200 pb-1 text-[9px] font-bold tracking-widest text-purple-700 uppercase">
-                            Attendance Deductions
+                    <p style={{ ...sectionLabel, margin: '16px 0 6px' }}>
+                        Attendance Deductions
+                    </p>
+                    {data.absent_days > 0 && (
+                        <Row
+                            label={`Absent (${data.absent_days} day${data.absent_days !== 1 ? 's' : ''})`}
+                            value={data.absent_deduction}
+                            negative
+                        />
+                    )}
+                    {data.late_minutes > 0 && (
+                        <Row
+                            label={`Late (${data.late_minutes} min${data.late_minutes !== 1 ? 's' : ''})`}
+                            value={data.late_deduction}
+                            negative
+                        />
+                    )}
+                    {data.absent_days === 0 && data.late_minutes === 0 && (
+                        <p
+                            style={{
+                                fontSize: 10,
+                                fontStyle: 'italic',
+                                margin: 0,
+                            }}
+                        >
+                            No attendance deductions
                         </p>
-                        {data.absent_days > 0 ? (
-                            <Row
-                                label={`Absent (${data.absent_days} day${data.absent_days !== 1 ? 's' : ''})`}
-                                value={data.absent_deduction}
-                                negative
-                            />
-                        ) : null}
-                        {data.late_minutes > 0 ? (
-                            <Row
-                                label={`Late (${data.late_minutes} min${data.late_minutes !== 1 ? 's' : ''})`}
-                                value={data.late_deduction}
-                                negative
-                            />
-                        ) : null}
-                        {data.absent_days === 0 && data.late_minutes === 0 && (
-                            <p className="text-[10px] text-muted-foreground italic">
-                                No attendance deductions
-                            </p>
-                        )}
-                        {(data.absent_days > 0 || data.late_minutes > 0) && (
-                            <div className="mt-1.5 flex justify-between border-t border-purple-200 pt-1.5">
-                                <span className="text-[10px] font-bold text-purple-800">
-                                    Subtotal
-                                </span>
-                                <span className="text-[10px] font-bold text-red-600 tabular-nums">
-                                    -₱{peso(totalAttendance)}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="space-y-4 px-8 py-5">
-                    <div>
-                        <p className="mb-2 border-b border-orange-200 pb-1 text-[9px] font-bold tracking-widest text-orange-700 uppercase">
-                            Mandatory Deductions
-                        </p>
-                        <Row
-                            label="GSIS Premium"
-                            value={data.gsis_premium}
-                            negative
-                        />
-                        <Row
-                            label="PhilHealth"
-                            value={data.philhealth}
-                            negative
-                        />
-                        <Row label="Pag-IBIG" value={data.pag_ibig} negative />
-                        <Row
-                            label="Withholding Tax"
-                            value={data.withholding_tax}
-                            negative
-                        />
-                        <div className="mt-1.5 flex justify-between border-t border-orange-200 pt-1.5">
-                            <span className="text-[10px] font-bold text-orange-800">
+                    )}
+                    {(data.absent_days > 0 || data.late_minutes > 0) && (
+                        <div style={subtotalRow}>
+                            <span style={{ fontSize: 10, fontWeight: 'bold' }}>
                                 Subtotal
                             </span>
-                            <span className="text-[10px] font-bold text-red-600 tabular-nums">
-                                -₱{peso(totalMandatory)}
+                            <span
+                                style={{
+                                    fontSize: 10,
+                                    fontWeight: 'bold',
+                                    fontVariantNumeric: 'tabular-nums',
+                                }}
+                            >
+                                -&#8369;{peso(totalAttendance)}
                             </span>
                         </div>
+                    )}
+                </div>
+
+                <div style={{ padding: '16px 28px' }}>
+                    <p style={sectionLabel}>Mandatory Deductions</p>
+                    <Row
+                        label="GSIS Premium"
+                        value={data.gsis_premium}
+                        negative
+                    />
+                    <Row label="PhilHealth" value={data.philhealth} negative />
+                    <Row label="Pag-IBIG" value={data.pag_ibig} negative />
+                    <Row
+                        label="Withholding Tax"
+                        value={data.withholding_tax}
+                        negative
+                    />
+                    <div style={subtotalRow}>
+                        <span style={{ fontSize: 10, fontWeight: 'bold' }}>
+                            Subtotal
+                        </span>
+                        <span
+                            style={{
+                                fontSize: 10,
+                                fontWeight: 'bold',
+                                fontVariantNumeric: 'tabular-nums',
+                            }}
+                        >
+                            -&#8369;{peso(totalMandatory)}
+                        </span>
                     </div>
 
-                    {/* Loans & Others */}
-                    <div>
-                        <p className="mb-2 border-b border-red-200 pb-1 text-[9px] font-bold tracking-widest text-red-700 uppercase">
-                            Loans &amp; Other Deductions
+                    <p style={{ ...sectionLabel, margin: '16px 0 6px' }}>
+                        Loans &amp; Other Deductions
+                    </p>
+                    {data.gsis_mpl > 0 && (
+                        <Row label="GSIS MPL" value={data.gsis_mpl} negative />
+                    )}
+                    {data.gsis_emergency > 0 && (
+                        <Row
+                            label="GSIS Emergency"
+                            value={data.gsis_emergency}
+                            negative
+                        />
+                    )}
+                    {data.pag_ibig_mpl > 0 && (
+                        <Row
+                            label="Pag-IBIG MPL"
+                            value={data.pag_ibig_mpl}
+                            negative
+                        />
+                    )}
+                    {data.ama_y2k_union > 0 && (
+                        <Row
+                            label="AMA / Y2K / Union"
+                            value={data.ama_y2k_union}
+                            negative
+                        />
+                    )}
+                    {data.water_bill > 0 && (
+                        <Row
+                            label="Water Bill"
+                            value={data.water_bill}
+                            negative
+                        />
+                    )}
+                    {totalLoans === 0 && (
+                        <p
+                            style={{
+                                fontSize: 10,
+                                fontStyle: 'italic',
+                                margin: 0,
+                            }}
+                        >
+                            No loan deductions
                         </p>
-                        {data.gsis_mpl > 0 && (
-                            <Row
-                                label="GSIS MPL"
-                                value={data.gsis_mpl}
-                                negative
-                            />
-                        )}
-                        {data.gsis_emergency > 0 && (
-                            <Row
-                                label="GSIS Emergency"
-                                value={data.gsis_emergency}
-                                negative
-                            />
-                        )}
-                        {data.pag_ibig_mpl > 0 && (
-                            <Row
-                                label="Pag-IBIG MPL"
-                                value={data.pag_ibig_mpl}
-                                negative
-                            />
-                        )}
-                        {data.ama_y2k_union > 0 && (
-                            <Row
-                                label="AMA / Y2K / Union"
-                                value={data.ama_y2k_union}
-                                negative
-                            />
-                        )}
-                        {data.water_bill > 0 && (
-                            <Row
-                                label="Water Bill"
-                                value={data.water_bill}
-                                negative
-                            />
-                        )}
-                        {totalLoans === 0 && (
-                            <p className="text-[10px] text-muted-foreground italic">
-                                No loan deductions
-                            </p>
-                        )}
-                        {totalLoans > 0 && (
-                            <div className="mt-1.5 flex justify-between border-t border-red-200 pt-1.5">
-                                <span className="text-[10px] font-bold text-red-800">
-                                    Subtotal
-                                </span>
-                                <span className="text-[10px] font-bold text-red-600 tabular-nums">
-                                    -₱{peso(totalLoans)}
-                                </span>
-                            </div>
-                        )}
-                    </div>
+                    )}
+                    {totalLoans > 0 && (
+                        <div style={subtotalRow}>
+                            <span style={{ fontSize: 10, fontWeight: 'bold' }}>
+                                Subtotal
+                            </span>
+                            <span
+                                style={{
+                                    fontSize: 10,
+                                    fontWeight: 'bold',
+                                    fontVariantNumeric: 'tabular-nums',
+                                }}
+                            >
+                                -&#8369;{peso(totalLoans)}
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div className="mx-8 mb-0 rounded-lg border-2 border-foreground/10 bg-muted/30 px-6 py-3">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
-                            Total Deductions
-                        </p>
-                        <p className="text-sm font-bold text-red-600 tabular-nums">
-                            -₱{peso(totalDeductions)}
-                        </p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
-                            Net Pay
-                        </p>
-                        <p className="text-2xl font-bold text-green-700 tabular-nums">
-                            ₱{peso(data.net_pay)}
-                        </p>
-                    </div>
+            {/* ── Net Pay Summary ── */}
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 32px',
+                    borderBottom: '2px solid #000',
+                    backgroundColor: '#f0f0f0',
+                    fontFamily: "'Times New Roman', Times, serif",
+                }}
+            >
+                <div>
+                    <p
+                        style={{
+                            fontSize: 9,
+                            fontWeight: 'bold',
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            margin: 0,
+                        }}
+                    >
+                        Total Deductions
+                    </p>
+                    <p
+                        style={{
+                            fontSize: 14,
+                            fontWeight: 'bold',
+                            margin: '3px 0 0',
+                            fontVariantNumeric: 'tabular-nums',
+                        }}
+                    >
+                        -&#8369;{peso(totalDeductions)}
+                    </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                    <p
+                        style={{
+                            fontSize: 9,
+                            fontWeight: 'bold',
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            margin: 0,
+                        }}
+                    >
+                        Net Pay
+                    </p>
+                    <p
+                        style={{
+                            fontSize: 24,
+                            fontWeight: 'bold',
+                            margin: '3px 0 0',
+                            fontVariantNumeric: 'tabular-nums',
+                        }}
+                    >
+                        &#8369;{peso(data.net_pay)}
+                    </p>
                 </div>
             </div>
 
-            <div className="px-8 py-5">
-                <div className="mb-4 flex items-center justify-center gap-1.5 rounded border border-dashed border-amber-400 bg-amber-50/60 px-3 py-1 text-[9px] font-medium text-amber-700 print:border-amber-300 print:bg-transparent">
+            {/* ── Signatures + Footer ── */}
+            <div
+                style={{
+                    padding: '16px 32px 20px',
+                    fontFamily: "'Times New Roman', Times, serif",
+                }}
+            >
+                <div className="mb-3 flex items-center justify-center gap-1.5 rounded border border-dashed border-gray-400 px-3 py-1 text-[9px] text-gray-600 print:hidden">
                     Print on{' '}
                     <strong className="mx-0.5">
-                        Short Bond Paper (8.5" × 11")
+                        Short Bond Paper (8.5&Prime; &times; 11&Prime;)
                     </strong>{' '}
-                    — Portrait orientation
+                    &mdash; Portrait orientation
                 </div>
 
-                <div className="flex justify-between gap-6">
-                    <div className="flex-1 text-center">
-                        <div className="mb-6 border-b border-dashed border-muted-foreground/50" />
-                        <p className="text-[10px] font-semibold tracking-wide uppercase">
+                <div style={{ display: 'flex', gap: 40, marginTop: 8 }}>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                        <div
+                            style={{
+                                borderBottom: '1px solid #000',
+                                height: 36,
+                                marginBottom: 8,
+                            }}
+                        />
+                        <p
+                            style={{
+                                fontSize: 10,
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase',
+                                margin: 0,
+                            }}
+                        >
                             {data.hr_officer !== '—'
                                 ? data.hr_officer
                                 : '________________________________'}
                         </p>
-                        <p className="mt-0.5 text-[9px] text-muted-foreground">
+                        <p style={{ fontSize: 9, margin: '2px 0 0' }}>
                             Prepared by: HR Officer
                         </p>
                     </div>
-                    <div className="flex-1 text-center">
-                        <div className="mb-6 border-b border-dashed border-muted-foreground/50" />
-                        <p className="text-[10px] font-semibold tracking-wide uppercase">
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                        <div
+                            style={{
+                                borderBottom: '1px solid #000',
+                                height: 36,
+                                marginBottom: 8,
+                            }}
+                        />
+                        <p
+                            style={{
+                                fontSize: 10,
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase',
+                                margin: 0,
+                            }}
+                        >
                             ________________________________
                         </p>
-                        <p className="mt-0.5 text-[9px] text-muted-foreground">
+                        <p style={{ fontSize: 9, margin: '2px 0 0' }}>
                             Received by: Employee
                         </p>
                     </div>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-border/30 pt-2 text-[8.5px] text-muted-foreground">
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        borderTop: '1px solid #ccc',
+                        marginTop: 14,
+                        paddingTop: 6,
+                        fontSize: 8,
+                    }}
+                >
                     <span>Posted: {data.posted_date}</span>
                     <span>Metro Kidapawan Water District — Payroll System</span>
                     <span>{data.employment_classification} Employee</span>
@@ -390,14 +528,17 @@ function Row({
 }) {
     if (value === 0) return null;
     return (
-        <div className="flex items-center justify-between py-[2px]">
-            <span className="text-[10px] text-foreground/75">{label}</span>
-            <span
-                className={`text-[10px] font-medium tabular-nums ${
-                    negative ? 'text-red-600' : 'text-foreground'
-                }`}
-            >
-                {negative ? '-' : ''}₱{peso(value)}
+        <div
+            style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '2px 0',
+                fontFamily: "'Times New Roman', Times, serif",
+            }}
+        >
+            <span style={{ fontSize: 10 }}>{label}</span>
+            <span style={{ fontSize: 10, fontVariantNumeric: 'tabular-nums' }}>
+                {negative ? '-' : ''}&#8369;{peso(value)}
             </span>
         </div>
     );

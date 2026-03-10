@@ -58,7 +58,6 @@ export default function Index({ periods }: Props) {
             <Head title="Payroll Register" />
 
             <div className="flex h-full flex-1 flex-col gap-8 p-8">
-                {/* Use Heading */}
                 <div>
                     <h1 className="text-2xl font-semibold">Payroll Register</h1>
                     <p className="mt-1 text-sm text-muted-foreground">

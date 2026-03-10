@@ -362,6 +362,17 @@ class PayrollProcessingController extends Controller
     /**
      * Returns attendance-derived absent days and late minutes for each active
      * employee within the payroll date range.
+     *
+     * Working days  = Mon–Fri, excluding public holidays in the holidays table.
+     * Absent        = no attendance_record for the day, OR record has null
+     *                 recognition_morning_in_id (employee did not check in).
+     * Late minutes  = minutes after the employee's own work_schedule_start when
+     *                 morning check-in is later than that scheduled start time.
+     *                 Falls back to 08:00 if work_schedule_start is not set.
+     *
+     * All check-in timestamps are converted to Asia/Manila (+08:00) in SQL
+     * before being handed to PHP, keeping the calculation timezone-proof
+     * regardless of the MySQL session or PHP app timezone.
      */
     public function attendanceSummary(Request $request): \Illuminate\Http\JsonResponse
     {
@@ -375,6 +386,7 @@ class PayrollProcessingController extends Controller
             $start = Carbon::parse($validated['start_date'])->startOfDay();
             $end = Carbon::parse($validated['end_date'])->endOfDay();
 
+            // ── Build holiday set for the period ──────────────────────────────
             try {
                 $holidays = DB::table('holidays')
                     ->whereBetween('holiday_date', [$start->toDateString(), $end->toDateString()])
@@ -387,6 +399,7 @@ class PayrollProcessingController extends Controller
                 $holidays = [];
             }
 
+            // ── Enumerate working days (Mon–Fri, non-holiday) ─────────────────
             $workingDates = [];
             $cursor = $start->copy();
             while ($cursor->lte($end)) {
@@ -401,16 +414,36 @@ class PayrollProcessingController extends Controller
                 return response()->json([]);
             }
 
-            $empQuery = Employee::where('status', true);
-            if (!empty($validated['employee_type'])) {
+            // ── Load employees with their individual work schedules ───────────
+            // FIX: select work_schedule_start and work_schedule_end so that
+            // late-minute computation uses each employee's own schedule instead
+            // of a global hardcoded 08:00 value.
+            $empQuery = Employee::where('status', true)
+                ->select([
+                    'employee_id',
+                    'employment_classification',
+                    'work_schedule_start',
+                    'work_schedule_end',
+                ]);
+
+            if (! empty($validated['employee_type'])) {
                 $empQuery->where('employment_classification', $validated['employee_type']);
             }
-            $employeeIds = $empQuery->pluck('employee_id')->all();
+
+            // Key by employee_id for O(1) lookups inside the loop below.
+            $employeeScheduleMap = $empQuery->get()->keyBy('employee_id');
+            $employeeIds = $employeeScheduleMap->keys()->all();
 
             if (empty($employeeIds)) {
                 return response()->json([]);
             }
 
+            // ── Fetch attendance records ───────────────────────────────────────
+            // FIX: The old query computed late_mins_sql in MySQL using a
+            // hardcoded '08:00:00' anchor. That SQL expression is removed.
+            // Instead we bring the raw check-in timestamp (converted to Manila
+            // time) into PHP, where we can diff it against each employee's own
+            // work_schedule_start.
             try {
                 $rows = DB::table('attendance_records as ar')
                     ->leftJoin(
@@ -424,13 +457,15 @@ class PayrollProcessingController extends Controller
                         DB::raw('DATE(ar.created_at)'),
                         [$start->toDateString(), $end->toDateString()]
                     )
-                    ->select(
+                    ->select([
                         'ar.employee_id',
                         'ar.recognition_morning_in_id',
                         DB::raw('DATE(ar.created_at) as record_date'),
-                        'rl.created_at as morning_in_at',
-                        DB::raw("GREATEST(0, TIMESTAMPDIFF(MINUTE, DATE_FORMAT(CONVERT_TZ(rl.created_at, @@session.time_zone, '+08:00'), '%Y-%m-%d 08:00:00'), CONVERT_TZ(rl.created_at, @@session.time_zone, '+08:00'))) as late_mins_sql")
-                    )
+                        // Convert to Manila time in SQL so the value is
+                        // timezone-proof regardless of MySQL session timezone.
+                        // PHP will compute the per-employee diff below.
+                        DB::raw("CONVERT_TZ(rl.created_at, @@session.time_zone, '+08:00') as morning_in_manila"),
+                    ])
                     ->get()
                     ->groupBy('employee_id')
                     ->map(fn($group) => $group->keyBy('record_date'));
@@ -446,37 +481,59 @@ class PayrollProcessingController extends Controller
             $startHour = 8;
             $startMinute = 0;
 
+            // ── Per-employee absent / late computation ────────────────────────
             $result = [];
+
             foreach ($employeeIds as $empId) {
+                $emp = $employeeScheduleMap->get($empId);
                 $empRecords = $rows->get($empId, collect());
 
-                if ($empRecords->isEmpty()) {
-                    $result[] = [
-                        'employee_id' => $empId,
-                        'absent_days' => 0,
-                        'late_minutes' => 0,
-                    ];
-
-                    continue;
-                }
+                // FIX: Resolve this employee's scheduled start time.
+                // work_schedule_start is stored as a time string, e.g. "08:00:00".
+                // Fall back to the standard Philippine government workday start
+                // of 08:00 when the field is not populated.
+                $scheduleStartTime = $emp->work_schedule_start ?? '08:00:00';
 
                 $absentDays = 0;
                 $lateMinutes = 0;
 
                 foreach ($workingDates as $date) {
-                    if (!$empRecords->has($date)) {
+                    // No attendance record at all for this working day → absent.
+                    if (! $empRecords->has($date)) {
                         $absentDays++;
                         continue;
                     }
 
                     $record = $empRecords->get($date);
 
+                    // Record exists but morning check-in is missing → absent.
                     if (is_null($record->recognition_morning_in_id)) {
                         $absentDays++;
                         continue;
                     }
 
-                    $lateMinutes += max(0, (int) ($record->late_mins_sql ?? 0));
+                    // FIX: Compute late minutes in PHP against the employee's
+                    // own scheduled start, not a hardcoded 08:00 SQL anchor.
+                    //
+                    // $morning_in_manila is already in Asia/Manila (+08:00)
+                    // because CONVERT_TZ was applied in the SQL query above.
+                    //
+                    // diffInMinutes($other, absolute=false) returns a signed
+                    // integer: positive when $other is after $this (i.e. the
+                    // employee checked in later than their scheduled start).
+                    if (! is_null($record->morning_in_manila)) {
+                        $scheduledStart = Carbon::parse(
+                            $date.' '.$scheduleStartTime,
+                            'Asia/Manila'
+                        );
+                        $actualCheckIn = Carbon::parse(
+                            $record->morning_in_manila,
+                            'Asia/Manila'
+                        );
+
+                        $minutesLate = (int) $scheduledStart->diffInMinutes($actualCheckIn, false);
+                        $lateMinutes += max(0, $minutesLate);
+                    }
                 }
 
                 $result[] = [
@@ -487,6 +544,7 @@ class PayrollProcessingController extends Controller
             }
 
             return response()->json($result);
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::warning('Attendance summary validation error:', $e->errors());
 
@@ -683,15 +741,42 @@ class PayrollProcessingController extends Controller
         // ── 3. Gross Pay ──────────────────────────────────────────────────────
         $gross = $basicPay + $pera + $riceAllowance + $uniformAllowance;
 
-        // ── 4. Absent / Late ──────────────────────────────────────────────────
+        // ── 4. Absent / Late ─────────────────────────────────────────────────
         $absentDays = (int) ($attendance['absent_days'] ?? 0);
         $lateMinutes = (int) ($attendance['late_minutes'] ?? 0);
+
         $dailyRate = $settings->working_days_divisor > 0
             ? round($monthlyBasic / $settings->working_days_divisor, 6)
             : 0.0;
+
+        // FIX: Derive work minutes per day from the employee's own stored
+        // schedule (work_schedule_end − work_schedule_start) instead of
+        // assuming a fixed 8-hour (480-minute) day for everyone.
+        //
+        // This matters for the late-deduction formula:
+        //   Late Deduction = Late Minutes × (Monthly Basic ÷ Working-Days Divisor ÷ Work-Minutes-Per-Day)
+        //
+        // Falls back to the standard Philippine government 8-hour workday
+        // (480 minutes) when either schedule field is missing or the computed
+        // duration is zero or negative (guard against bad data).
+        $workMinutesPerDay = 8 * 60; // default: 480 minutes
+
+        $schedStart = $employee->work_schedule_start; // e.g. "08:00:00"
+        $schedEnd = $employee->work_schedule_end;   // e.g. "17:00:00"
+
+        if ($schedStart && $schedEnd) {
+            $parsedMinutes = (int) Carbon::parse('1970-01-01 '.$schedEnd)
+                ->diffInMinutes(Carbon::parse('1970-01-01 '.$schedStart));
+
+            if ($parsedMinutes > 0) {
+                $workMinutesPerDay = $parsedMinutes;
+            }
+        }
+
         $minuteRate = $dailyRate > 0
-            ? round($dailyRate / (8 * 60), 8)
+            ? round($dailyRate / $workMinutesPerDay, 8)
             : 0.0;
+
         $absentDeduction = round($absentDays * $dailyRate, 2);
         $lateDeduction = round($lateMinutes * $minuteRate, 2);
 
@@ -971,6 +1056,14 @@ class PayrollProcessingController extends Controller
 
     /**
      * Apply floor-rule to a group of deductions.
+     *
+     * Each deduction in the group is applied only if the running balance
+     * remains at or above the minimum take-home pay.
+     * If it would fall below, that deduction is zeroed out (cut).
+     *
+     * Returns: [...adjusted deductions, updated running balance, all_passed, total_cut]
+     *
+     * TODO: BASE THIS ON THE FLOOR RULE UNDER PAYROLL DEDUCTION SETTINGS.
      */
     private function applyFloorRule(
         float $runningBalance,
