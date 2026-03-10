@@ -15,7 +15,7 @@ class ActivityLogService
         $log = ActivityLog::create([
             'user_id' => $data['user_id'] ?? null,
             'module' => $data['module'] ?? 'general',
-            'activity' => $data['activity'],
+            'activity' => $data['activity'] ?? 'Unkown Activity',
             'device' => $this->detectDevice(),
             'platform' => $this->detectPlatform(),
         ]);
