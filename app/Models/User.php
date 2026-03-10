@@ -21,9 +21,12 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'email',
         'password',
+        'employee_id',
+        'email_verified_at',
     ];
 
     /**
@@ -50,5 +53,23 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
+    }
+
+    public function getFullName()
+    {
+        $firstName = $this->employee->basicInfo?->first_name ?? $this->first_name ?? null;
+        $lastName = $this->employee->basicInfo?->last_name ?? $this->last_name ?? null;
+
+        $name = trim(implode(' ', array_filter([
+            $firstName ? ucfirst($firstName) : null,
+            $lastName ? ucfirst($lastName) : null,
+        ])));
+
+        return $name ?: null;
     }
 }

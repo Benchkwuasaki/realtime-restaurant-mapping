@@ -30,6 +30,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/use-auth"
+import { url } from "node_modules/zod/v4/classic/external.cjs"
+import { title } from "process"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { hasRole } = useAuth()
@@ -43,12 +45,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
       },
       // TODO: implement user management, admin, super admin
-      {
-        title: "Users",
-        url: route("user.index"),
-        icon: UserCog,
-        show: hasRole('super_admin'),
-      },
       {
         title: "Employee",
         url: route("employee.index"),
@@ -131,8 +127,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: route("leave.leave-calendar")
           },
           {
-            title: "Leave Filing",
-            url: "/leave/leave-filing",
+            title: "Leave Application",
+            url: route("leave.leave-application.index"),
           },
           {
             title: "Leave Adjustment Memo",
@@ -140,7 +136,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
           {
             title: "Monthly Earned Leave Posting",
-            url: "/leave/monthly-earned-leave-posting",
+            url: route("leave.accrual.index")
           },
           {
             title: "Leave Settings",
@@ -188,14 +184,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Document Tracking",
         url: route("document_tracking.index"),
         icon: File,
-        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("org") || hasRole("inventory"),
+        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("document_tracking_operator"),
       },
       {
-        title: "Reports and Analytics",
-        url: route("reports_and_analytics.index"),
-        icon: FileBarChart,
-        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
-      },
+          title: "Reports and Analytics",
+          url: "/reports_and_analytics",
+          icon: FileBarChart,
+          show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
+          items: [
+            {
+              title: "Employee Reports",
+              url: "/reports_and_analytics/employees",
+            },
+            {
+              title: "Attendance Reports",
+              url: route('reports_and_analytics.attendance-report.index'),
+            },
+            {
+              title: "Leave Reports",
+              url: "/reports_and_analytics/leave",
+            },
+            {
+              title: "Payroll Reports",
+              url: "/reports_and_analytics/payroll",
+            },
+            {
+              title: "Government Reports",
+              url: "/reports_and_analytics/government",
+            },
+          ],
+        },
       {
         title: "Announcements",
         url: route("announcement.index"),
@@ -206,7 +224,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Activity Logs",
         url: route("activity_logs.index"),
         icon: Logs,
-        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
+        show: true,
       },
     ],
     // navSecondary: [

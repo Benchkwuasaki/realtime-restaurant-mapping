@@ -18,7 +18,7 @@ class LeaveEntitlement extends Model
     ];
 
     protected $casts = [
-        'days_entitled' => 'decimal:3',
+        'days_entitled' => 'decimal:4',
     ];
 
     public function leaveType(): BelongsTo

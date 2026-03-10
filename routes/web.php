@@ -14,6 +14,7 @@ use App\Http\Controllers\AttendanceRecordController;
 use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaveCalendarController;
+use App\Http\Controllers\LeaveAccrualController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
@@ -32,6 +33,11 @@ use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\LeaveSettingsController;
 use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\LeaveEntitlementController;
+use App\Http\Controllers\LeaveApplicationController;
+
+// reports and analytics
+use App\Http\Controllers\LeaveReportController;
+use App\Http\Controllers\AttendanceReportController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -53,11 +59,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
         Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
         Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
-    });
-
-    // User Routes
-    Route::prefix('users')->name('user.')->group(function () {
-        Route::get('/', [UserController::class, 'index'])->name('index');
     });
 
     /*
@@ -245,6 +246,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // leave setting
         Route::get('/leave-settings', [LeaveSettingsController::class, 'index'])->name('leave-settings');
 
+
         // leave types
         Route::prefix('leave-type')->name('leave-type.')->group(function () {
             Route::post('/', [LeaveTypeController::class, 'store'])->name('store');
@@ -261,8 +263,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/', [LeaveEntitlementController::class, 'bulkDestroy'])->name('bulk-destroy');
         });
 
-    });
+        Route::prefix('accrual')->name('accrual.')->group(function () {
+            Route::get('/', [LeaveAccrualController::class, 'index'])->name('index');
+            Route::get('/preview', [LeaveAccrualController::class, 'preview'])->name('preview');
+            Route::post('/confirm', [LeaveAccrualController::class, 'confirm'])->name('confirm');
+            Route::post('/post', [LeaveAccrualController::class, 'post'])->name('post');
+            Route::get('/posted', [LeaveAccrualController::class, 'posted'])->name('posted');
+            Route::get('/history', [LeaveAccrualController::class, 'history'])->name('history');
+            Route::get('/balances', [LeaveAccrualController::class, 'balances'])->name('balances');
+        });
 
+
+        Route::get('/leave-application', [LeaveApplicationController::class, 'index'])->name('leave-application.index');
+
+    });
 
     // Payroll routes
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
@@ -279,7 +293,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Reports and Analytics
     |--------------------------------------------------------------------------
     */
-    Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
+    Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
+        Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
+
+});
 
     /*
     |--------------------------------------------------------------------------

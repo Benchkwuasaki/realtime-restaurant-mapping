@@ -138,4 +138,8 @@ class Employee extends Model
         )->withTimestamps();
     }
 
+    public function user()
+    {
+        return $this->hasOne(User::class, 'employee_id', 'employee_id');
+    }
 }

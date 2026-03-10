@@ -12,6 +12,7 @@ use App\Models\FamilyInfo;
 use App\Models\GovernmentAccount;
 use App\Models\EligibilityInformation;
 use App\Models\EmployeeUploadedFile;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -20,6 +21,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
+
+use function Symfony\Component\Clock\now;
 
 class EmployeeController extends Controller
 {
@@ -36,7 +40,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => 'Viewed Employee Page',
+            'activity' => 'Viewed Employee Page',
         ]);
 
         $employees = Employee::with([
@@ -87,6 +91,7 @@ class EmployeeController extends Controller
                 ]),
             'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),
             'employmentClassifications' => \App\Models\EmploymentClassification::orderBy('name')->get(['id', 'name', 'description']),
+            'roles' => Role::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -113,6 +118,8 @@ class EmployeeController extends Controller
             'item_id' => ['required', 'exists:items,item_id'],
             'salary_grade_step_id' => ['required', 'exists:salary_grade_steps,salary_grade_step_id'],
             'employment_classification' => ['required', 'string', 'exists:employment_classifications,name'],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['string', 'exists:roles,name'],
             'work_email' => ['required', 'email', 'max:255', Rule::unique('employees', 'work_email')->whereNull('deleted_at')],
             'password' => [
                 'required',
@@ -250,12 +257,21 @@ class EmployeeController extends Controller
                     'year_passed' => $eligibility['year_passed'],
                 ]);
             }
+
+            $user = User::create([
+                'employee_id' => $employee->employee_id,
+                'email' => $employee->work_email,
+                'email_verified_at' => now(),
+                'password' => $employee->password,
+            ]);
+
+            $user->syncRoles($request->roles);
         });
 
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => 'Created employee: ' . $request->first_name . ' ' . $request->last_name,
+            'activity' => 'Created employee: ' . $request->first_name . ' ' . $request->last_name,
         ]);
 
         return redirect()->route('employee.index')
@@ -443,7 +459,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => ($employee->status ? 'Activated' : 'Deactivated') . ' employee: ' . $employee->basicInfo?->full_name,
+            'activity' => ($employee->status ? 'Activated' : 'Deactivated') . ' employee: ' . $employee->basicInfo?->full_name,
         ]);
 
         return back()->with('success', 'Employee status updated.');
@@ -456,7 +472,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => 'Deleted employee: ' . $employee->basicInfo?->full_name,
+            'activity' => 'Deleted employee: ' . $employee->basicInfo?->full_name,
         ]);
 
         return redirect()->route('employee.index')->with('success', 'Employee deleted successfully.');

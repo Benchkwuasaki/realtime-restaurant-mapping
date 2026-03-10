@@ -17,7 +17,7 @@ class DocumentTrackingController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'document_tracking',
-            'description' => 'Viewed Document Tracking Page',
+            'activity' => 'Viewed Document Tracking Page',
         ]);
 
         return Inertia::render('DocumentTracking/Index', []);
