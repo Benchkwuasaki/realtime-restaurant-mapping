@@ -147,11 +147,13 @@ class PayrollProcessingController extends Controller
                         + $data['withholding_tax']
                         + $data['absent_deduction']
                         + $data['late_deduction']
+                        + $data['internal_org_savings']   // ← both cut-offs
                         + $data['gsis_mpl']
                         + $data['gsis_emergency']
                         + $data['pag_ibig_mpl']
-                        + $data['ama_y2k_union']
+                        + $data['ama_y2k_union']          // ← includes internal org loans + dues
                         + $data['water_bill'];
+
 
                     $computedRecords[] = array_merge($data, [
                         'employee_id' => $employee->employee_id,
@@ -422,7 +424,7 @@ class PayrollProcessingController extends Controller
                     'work_schedule_end',
                 ]);
 
-            if (! empty($validated['employee_type'])) {
+            if (!empty($validated['employee_type'])) {
                 $empQuery->where('employment_classification', $validated['employee_type']);
             }
 
@@ -512,9 +514,9 @@ class PayrollProcessingController extends Controller
                     // diffInMinutes($other, absolute=false) returns a signed
                     // integer: positive when $other is after $this (i.e. the
                     // employee checked in later than their scheduled start).
-                    if (! is_null($record->morning_in_manila)) {
+                    if (!is_null($record->morning_in_manila)) {
                         $scheduledStart = Carbon::parse(
-                            $date.' '.$scheduleStartTime,
+                            $date . ' ' . $scheduleStartTime,
                             'Asia/Manila'
                         );
                         $actualCheckIn = Carbon::parse(
@@ -756,8 +758,8 @@ class PayrollProcessingController extends Controller
         $schedEnd = $employee->work_schedule_end;   // e.g. "17:00:00"
 
         if ($schedStart && $schedEnd) {
-            $parsedMinutes = (int) Carbon::parse('1970-01-01 '.$schedEnd)
-                ->diffInMinutes(Carbon::parse('1970-01-01 '.$schedStart));
+            $parsedMinutes = (int) Carbon::parse('1970-01-01 ' . $schedEnd)
+                ->diffInMinutes(Carbon::parse('1970-01-01 ' . $schedStart));
 
             if ($parsedMinutes > 0) {
                 $workMinutesPerDay = $parsedMinutes;
@@ -886,6 +888,11 @@ class PayrollProcessingController extends Controller
                     }
                 } elseif (in_array($sourceLower, ['pag-ibig', 'pagibig', 'hdmf'])) {
                     $pagIbigMpl += (float) $loan->semi_monthly_deduction;
+                } elseif ($loan->isInternalOrg()) {
+                    // Internal org loans are bucketed into amaY2kUnion (2nd cut-off group)
+                    // alongside dues, so they participate in the same floor-rule check
+                    // and waiver logic as other org deductions.
+                    $amaY2kUnion += (float) $loan->semi_monthly_deduction;
                 }
             }
 
@@ -1305,12 +1312,15 @@ class PayrollProcessingController extends Controller
                             + (float) $rec['rice_allowance']
                             + (float) $rec['uniform_allowance'];
 
+                        $internalOrgSavings = (float) ($rec['internal_org_savings'] ?? 0);
+
                         $totalDeductions = (float) $rec['gsis_premium']
                             + (float) $rec['philhealth']
                             + (float) $rec['pag_ibig']
                             + (float) $rec['withholding_tax']
                             + (float) $rec['absent_deduction']
                             + (float) $rec['late_deduction']
+                            + $internalOrgSavings                // ← both cut-offs
                             + $gsisMpl + $gsisEmergency + $pagIbigMpl
                             + $amaY2kUnion + $waterBill;
 
@@ -1339,8 +1349,10 @@ class PayrollProcessingController extends Controller
                                 'gsis_emergency' => $gsisEmergency,
                                 'pag_ibig_mpl' => $pagIbigMpl,
                                 'ama_y2k_union' => $amaY2kUnion,
-                                'water_bill' => $waterBill,
-                                'net_pay' => $netPay,
+                                'water_bill'            => $waterBill,
+                                'internal_org_savings'  => $internalOrgSavings,
+                                'internal_org_second'   => (float) ($rec['internal_org_second'] ?? 0),
+                                'net_pay'               => $netPay,
                                 'floor_check_passed' => $floorCheckPassed,
                                 'hr_officer_name' => $validated['hr_officer_name'] ?? null,
                                 'status' => 'draft',
