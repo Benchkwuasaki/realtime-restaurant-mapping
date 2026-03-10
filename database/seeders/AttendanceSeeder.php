@@ -12,8 +12,6 @@ class AttendanceSeeder extends Seeder
         $setting = AttendanceSetting::firstOrCreate(
             ['name' => 'Standard Policy'],
             [
-                'time_in_grace_minutes'  => 15,
-                'break_in_grace_minutes' => 15,
                 'early_time_in_minutes'  => 60,
                 'late_time_out_minutes'  => 60,
                 'is_default'             => false, // markAsDefault() handles clearing others

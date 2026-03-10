@@ -1,5 +1,4 @@
 <?php
-// app/Events/AttendanceLogCreated.php
 
 namespace App\Events;
 
@@ -14,6 +13,15 @@ class AttendanceLogCreated implements ShouldBroadcast
     use Dispatchable, SerializesModels;
 
     public function __construct(public readonly Attendance $log) {}
+
+    /**
+     * Only broadcast if the log is linked to a real employee.
+     * Returning false suppresses the broadcast entirely.
+     */
+    public function broadcastWhen(): bool
+    {
+        return $this->log->employee_id !== null;
+    }
 
     public function broadcastOn(): Channel
     {

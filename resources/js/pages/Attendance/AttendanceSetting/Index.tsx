@@ -33,8 +33,6 @@ import type { BreadcrumbItem } from "@/types"
 interface AttendanceSetting {
     id: number
     name: string
-    time_in_grace_minutes: number
-    break_in_grace_minutes: number
     early_time_in_minutes: number
     late_time_out_minutes: number
     is_default: boolean
@@ -46,7 +44,6 @@ interface Props {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MINUTE_OPTIONS = [0, 5, 10, 15, 20, 30, 45, 60, 90, 120]
 const WINDOW_OPTIONS = [0, 15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 420, 480]
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -56,14 +53,14 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // ─── Field helpers ────────────────────────────────────────────────────────────
 
-function fmtMins(n: number, unit = "min"): string {
+function fmtMins(n: number): string {
     if (n === 0) return "None"
     if (n >= 60) {
         const h = Math.floor(n / 60)
         const m = n % 60
         return m === 0 ? `${h}h` : `${h}h ${m}m`
     }
-    return `${n} ${unit}`
+    return `${n} min`
 }
 
 function SelectField({
@@ -72,14 +69,12 @@ function SelectField({
     value,
     onChange,
     options,
-    formatFn = fmtMins,
 }: {
     label: string
     description: string
     value: number
     onChange: (v: number) => void
     options: number[]
-    formatFn?: (n: number) => string
 }) {
     return (
         <div className="flex flex-col gap-1.5">
@@ -91,7 +86,7 @@ function SelectField({
                 className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
             >
                 {options.map(o => (
-                    <option key={o} value={o}>{formatFn(o)}</option>
+                    <option key={o} value={o}>{fmtMins(o)}</option>
                 ))}
             </select>
         </div>
@@ -112,12 +107,10 @@ function SettingDialog({
     const isEdit = !!setting
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        name:                   setting?.name                   ?? "",
-        time_in_grace_minutes:  setting?.time_in_grace_minutes  ?? 15,
-        break_in_grace_minutes: setting?.break_in_grace_minutes ?? 10,
-        early_time_in_minutes:  setting?.early_time_in_minutes  ?? 60,
-        late_time_out_minutes:  setting?.late_time_out_minutes  ?? 60,
-        is_default:             setting?.is_default              ?? false,
+        name:                  setting?.name                  ?? "",
+        early_time_in_minutes: setting?.early_time_in_minutes ?? 60,
+        late_time_out_minutes: setting?.late_time_out_minutes ?? 60,
+        is_default:            setting?.is_default             ?? false,
     })
 
     const submit = () => {
@@ -151,24 +144,6 @@ function SettingDialog({
                         {errors.name && (
                             <p className="text-xs text-destructive">{errors.name}</p>
                         )}
-                    </div>
-
-                    {/* Grace periods */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <SelectField
-                            label="Time-in Grace Period"
-                            description="Minutes after scheduled time-in still on-time"
-                            value={data.time_in_grace_minutes}
-                            onChange={v => setData("time_in_grace_minutes", v)}
-                            options={MINUTE_OPTIONS}
-                        />
-                        <SelectField
-                            label="Break-in Grace Period"
-                            description="Minutes after scheduled break-in still on-time"
-                            value={data.break_in_grace_minutes}
-                            onChange={v => setData("break_in_grace_minutes", v)}
-                            options={MINUTE_OPTIONS}
-                        />
                     </div>
 
                     {/* Windows */}
@@ -227,10 +202,8 @@ function SettingCard({
     onDelete: () => void
 }) {
     const rows = [
-        { label: "Time-in Grace",        value: fmtMins(setting.time_in_grace_minutes)  },
-        { label: "Break-in Grace",       value: fmtMins(setting.break_in_grace_minutes) },
-        { label: "Early Time-in Allows", value: fmtMins(setting.early_time_in_minutes)  },
-        { label: "Late Time-out Allows", value: fmtMins(setting.late_time_out_minutes)  },
+        { label: "Early Time-in Allows", value: fmtMins(setting.early_time_in_minutes) },
+        { label: "Late Time-out Allows", value: fmtMins(setting.late_time_out_minutes) },
     ]
 
     return (
@@ -311,7 +284,8 @@ export default function AttendanceSettingsIndex({ settings }: Props) {
                     <div>
                         <h1 className="text-xl font-semibold tracking-tight">Attendance Settings</h1>
                         <p className="text-sm text-muted-foreground mt-0.5">
-                            Configure grace periods and scan windows for attendance computation.
+                            Configure scan windows for attendance computation. Lateness is always
+                            calculated from the exact scheduled time — no grace period applied.
                         </p>
                     </div>
                     <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>

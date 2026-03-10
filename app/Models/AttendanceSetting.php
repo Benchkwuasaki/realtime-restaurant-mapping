@@ -8,8 +8,6 @@ class AttendanceSetting extends Model
 {
     protected $fillable = [
         'name',
-        'time_in_grace_minutes',
-        'break_in_grace_minutes',
         'early_time_in_minutes',
         'late_time_out_minutes',
         'is_default',
@@ -25,12 +23,10 @@ class AttendanceSetting extends Model
     public static function getDefault(): self
     {
         return static::where('is_default', true)->first() ?? new self([
-            'name'                   => 'Default',
-            'time_in_grace_minutes'  => 15,
-            'break_in_grace_minutes' => 10,
-            'early_time_in_minutes'  => 60,
-            'late_time_out_minutes'  => 60,
-            'is_default'             => true,
+            'name'                  => 'Default',
+            'early_time_in_minutes' => 60,
+            'late_time_out_minutes' => 60,
+            'is_default'            => true,
         ]);
     }
 
