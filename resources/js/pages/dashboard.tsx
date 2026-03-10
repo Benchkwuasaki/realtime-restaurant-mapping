@@ -14,7 +14,7 @@ import {
 import AppLayout from "@/layouts/app-layout";
 import { Head } from "@inertiajs/react";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const today = new Date();
 const fullDate = today.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -56,12 +56,10 @@ const leavePendingKPI = [
     { label: "Avg. Wait Time", value: "2d", sub: "average approval time", bg: "bg-amber-100", color: "text-amber-500", icon: Clock },
 ];
 
-
 const leaveData = [
     { label: "on leave", value: 20, fill: "#3b82f6" },
 ];
 
-{/*on leave trend*/ }
 const leaveTrend = [
     { month: "January", leave: 12 },
     { month: "February", leave: 19 },
@@ -86,7 +84,6 @@ const employeeLeaveData = [
     { name: "Lucia Torres", days: 7, type: "Sick", fill: "#ef4444" },
     { name: "Ramon Castillo", days: 2, type: "Other", fill: "#f97316" },
 ];
-
 
 const remittanceData = [
     { label: "SSS", value: 45000, fill: "#3b82f6" },
@@ -118,7 +115,20 @@ const payrollStackedData = [
     { month: "Mar", Regular: 180, Casual: 95, JobOrder: 125 },
 ];
 
-const payrollDates = [15, 30]; // twice a month
+const payrollDates = [15, 30];
+
+const employeeWhereabouts = [
+    { id: 1,  name: "Earl Francis Philip Amoy",  barangay: "Kidapawan Poblacion", municipality: "Kidapawan", lat: 7.0083,  lng: 125.0894, status: "On-site",    type: "Regular",   slip: "WS-2025-001" },
+    { id: 2,  name: "Liam Christian Papasin",     barangay: "Ilomavis",            municipality: "Kidapawan", lat: 7.0150,  lng: 125.0820, status: "Field",      type: "Regular",   slip: "WS-2025-002" },
+    { id: 3,  name: "Melbert Buligan",            barangay: "Amas",                municipality: "Kidapawan", lat: 7.0200,  lng: 125.0950, status: "On-site",    type: "Casual",    slip: "WS-2025-003" },
+    { id: 4,  name: "Glizzy Go",                  barangay: "Makilala Poblacion",  municipality: "Makilala",  lat: 6.9717,  lng: 125.0892, status: "On-leave",   type: "Regular",   slip: "WS-2025-004" },
+    { id: 5,  name: "Klein Allen",                barangay: "Batasan",             municipality: "Makilala",  lat: 6.9650,  lng: 125.0800, status: "Field",      type: "Job Order", slip: "WS-2025-005" },
+    { id: 6,  name: "Lucia Torres",               barangay: "Magpet Poblacion",    municipality: "Magpet",    lat: 7.1167,  lng: 125.1167, status: "On-site",    type: "Casual",    slip: "WS-2025-006" },
+    { id: 7,  name: "Ramon Castillo",             barangay: "Matalam Poblacion",   municipality: "Matalam",   lat: 7.0833,  lng: 124.9000, status: "Field",      type: "Job Order", slip: "WS-2025-007" },
+    { id: 8,  name: "Ana Reyes",                  barangay: "Lanao",               municipality: "Kidapawan", lat: 7.0050,  lng: 125.1000, status: "On-site",    type: "Regular",   slip: "WS-2025-008" },
+    { id: 9,  name: "Jose Mendoza",               barangay: "Malasila",            municipality: "Magpet",    lat: 7.1200,  lng: 125.1100, status: "Field",      type: "Casual",    slip: "WS-2025-009" },
+    { id: 10, name: "Maria Santos",               barangay: "Marbel",              municipality: "Matalam",   lat: 7.0780,  lng: 124.9100, status: "On-site",    type: "Regular",   slip: "WS-2025-010" },
+];
 
 const RADIAN = Math.PI / 180;
 
@@ -186,6 +196,8 @@ function AttendancePieChart({ data }) {
         </div>
     );
 }
+
+
 
 function EmployeeBarChart({ data }) {
     return (
@@ -293,6 +305,7 @@ function LeaveTrendChart({ data }) {
         </div>
     );
 }
+
 function EmployeeLeaveHeatmap({ data }) {
     const maxDays = Math.max(...data.map(d => d.days));
     const getColor = (days, type) => {
@@ -331,7 +344,6 @@ function EmployeeLeaveHeatmap({ data }) {
         </div>
     );
 }
-
 
 function RemittanceDonut({ data }) {
     const [activeIndex, setActiveIndex] = useState(null);
@@ -412,6 +424,273 @@ function PayrollStackedBar({ data }) {
     );
 }
 
+function EmployeeMapCard({ employees }) {
+    const mapRef = useRef(null);
+    const mapInstanceRef = useRef(null);
+    const [selected, setSelected] = useState(null);
+    const [filter, setFilter] = useState("All");
+    const markersRef = useRef([]);
+
+    const statusColors = {
+        "On-site": "#22c55e",
+        "Field":   "#3b82f6",
+        "On-leave":"#f59e0b",
+    };
+
+    const filtered = filter === "All" ? employees : employees.filter(e => e.status === filter);
+
+    // Define initMap before useEffect to avoid ReferenceError
+    const initMap = () => {
+        if (!mapRef.current || mapInstanceRef.current) return;
+
+        const L = window.L;
+        const map = L.map(mapRef.current, { zoomControl: true, scrollWheelZoom: true })
+            .setView([7.0083, 125.0500], 10);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap contributors"
+        }).addTo(map);
+
+        mapInstanceRef.current = map;
+
+        // Load barangay boundaries
+        const urls = [
+            "https://portal.georisk.gov.ph/arcgis/rest/services/PSA/Barangay/MapServer/4/query?f=json&where=city_code=%27124704000%27&outFields=*&returnGeometry=true&outSR=4326",
+            "https://portal.georisk.gov.ph/arcgis/rest/services/PSA/Barangay/MapServer/4/query?f=json&where=city_code=%27124707000%27&outFields=*&returnGeometry=true&outSR=4326",
+            "https://portal.georisk.gov.ph/arcgis/rest/services/PSA/Barangay/MapServer/4/query?f=json&where=city_code=%27124706000%27&outFields=*&returnGeometry=true&outSR=4326",
+            "https://portal.georisk.gov.ph/arcgis/rest/services/PSA/Barangay/MapServer/4/query?f=json&where=city_code=%27124708000%27&outFields=*&returnGeometry=true&outSR=4326",
+        ];
+
+        const municipalityColors = {
+            "124704000": "#3b82f6",
+            "124707000": "#22c55e",
+            "124706000": "#f97316",
+            "124708000": "#8b5cf6",
+        };
+
+        urls.forEach(url => {
+            const cityCode = url.match(/city_code=%27(\d+)%27/)?.[1];
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.features) return;
+                    data.features.forEach(feature => {
+                        const geo = feature.geometry;
+                        if (!geo || !geo.rings) return;
+                        const latlngs = geo.rings.map(ring =>
+                            ring.map(([lng, lat]) => [lat, lng])
+                        );
+                        L.polygon(latlngs, {
+                            color: municipalityColors[cityCode] || "#6b7280",
+                            weight: 1.5,
+                            fillOpacity: 0.08,
+                            fillColor: municipalityColors[cityCode] || "#6b7280",
+                        }).addTo(map).bindTooltip(
+                            feature.attributes?.brgy_name || "Barangay",
+                            { permanent: false, direction: "center", className: "text-xs" }
+                        );
+                    });
+                })
+                .catch(() => {});
+        });
+
+        renderMarkers(map, employees);
+    };
+
+    const renderMarkers = (map, data) => {
+        const L = window.L;
+        markersRef.current.forEach(m => map.removeLayer(m));
+        markersRef.current = [];
+
+        data.forEach(emp => {
+            const color = statusColors[emp.status] || "#6b7280";
+            const icon = L.divIcon({
+                className: "",
+                html: `<div style="
+                    width:28px;height:28px;border-radius:50%;
+                    background:${color};border:2.5px solid white;
+                    box-shadow:0 2px 6px rgba(0,0,0,0.25);
+                    display:flex;align-items:center;justify-content:center;
+                    cursor:pointer;font-size:11px;font-weight:700;color:white;
+                ">${emp.name.charAt(0)}</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14],
+            });
+
+            const marker = L.marker([emp.lat, emp.lng], { icon })
+                .addTo(map)
+                .on("click", () => setSelected(emp));
+
+            markersRef.current.push(marker);
+        });
+    };
+
+    useEffect(() => {
+        if (!mapInstanceRef.current || !window.L) return;
+        renderMarkers(mapInstanceRef.current, filtered);
+    }, [filter]);
+
+    useEffect(() => {
+        if (mapInstanceRef.current) return;
+
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+        document.head.appendChild(link);
+
+        const script = document.createElement("script");
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+        script.onload = () => {
+            initMap();
+        };
+        document.head.appendChild(script);
+
+        return () => {
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.remove();
+                mapInstanceRef.current = null;
+            }
+            // Cleanup script tags
+            const existingScript = document.querySelector('script[src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"]');
+            if (existingScript) existingScript.remove();
+            const existingLink = document.querySelector('link[href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"]');
+            if (existingLink) existingLink.remove();
+        };
+    }, []);
+
+    const counts = {
+        "All": employees.length,
+        "On-site": employees.filter(e => e.status === "On-site").length,
+        "Field": employees.filter(e => e.status === "Field").length,
+        "On-leave": employees.filter(e => e.status === "On-leave").length,
+    };
+
+    return (
+        <Card className="p-4 border border-gray-200">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                    <div className="bg-teal-100 p-1.5 rounded-md">
+                        <Users className="size-4 text-teal-500" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">Employee Whereabouts Map</span>
+                </div>
+                <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                {["All","On-site","Field","On-leave"].map(f => (
+                    <button key={f} onClick={() => setFilter(f)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all border
+                            ${filter === f
+                                ? "bg-gray-800 text-white border-gray-800"
+                                : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"}`}
+                    >
+                        {f} <span className="opacity-60 ml-0.5">({counts[f]})</span>
+                    </button>
+                ))}
+                <div className="ml-auto flex items-center gap-3">
+                    {Object.entries(statusColors).map(([s, c]) => (
+                        <div key={s} className="flex items-center gap-1">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c }} />
+                            <span className="text-xs text-gray-400">{s}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Map + Sidebar */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                {/* Map */}
+                <div className="md:col-span-2 rounded-xl overflow-hidden border border-gray-100" style={{ height: 420 }}>
+                    <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+                </div>
+
+                {/* Employee List / Slip Panel */}
+                <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 420 }}>
+                    {selected ? (
+                        <div className="border border-gray-200 rounded-xl p-4 flex flex-col gap-3">
+                            {/* Slip Header */}
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Whereabouts Slip</span>
+                                <button onClick={() => setSelected(null)} className="text-gray-300 hover:text-gray-500">
+                                    <X className="size-4" />
+                                </button>
+                            </div>
+                            <div className="border-t border-dashed border-gray-200 pt-3 flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                                        style={{ backgroundColor: statusColors[selected.status] }}>
+                                        {selected.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-800 leading-tight">{selected.name}</p>
+                                        <p className="text-xs text-gray-400">{selected.type}</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 mt-1">
+                                    {[
+                                        { label: "Slip No.",      value: selected.slip },
+                                        { label: "Status",        value: selected.status },
+                                        { label: "Barangay",      value: selected.barangay },
+                                        { label: "Municipality",  value: selected.municipality },
+                                        { label: "Coordinates",   value: `${selected.lat.toFixed(4)}, ${selected.lng.toFixed(4)}` },
+                                    ].map(row => (
+                                        <div key={row.label} className={`flex flex-col gap-0.5 p-2 rounded-lg bg-gray-50 ${row.label === "Coordinates" ? "col-span-2" : ""}`}>
+                                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">{row.label}</p>
+                                            <p className="text-xs font-semibold text-gray-700">{row.value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="border-t border-dashed border-gray-200 pt-2 mt-1">
+                                    <p className="text-[10px] text-gray-300 text-center">MKWD — Employee Whereabouts Slip</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        filtered.map(emp => (
+                            <div key={emp.id} onClick={() => setSelected(emp)}
+                                className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-300 hover:bg-gray-50 cursor-pointer transition-all">
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                                    style={{ backgroundColor: statusColors[emp.status] }}>
+                                    {emp.name.charAt(0)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-gray-700 truncate">{emp.name}</p>
+                                    <p className="text-[10px] text-gray-400 truncate">{emp.barangay}, {emp.municipality}</p>
+                                </div>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0"
+                                    style={{ backgroundColor: `${statusColors[emp.status]}20`, color: statusColors[emp.status] }}>
+                                    {emp.status}
+                                </span>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+            </div>
+
+            {/* Municipality Legend */}
+            <div className="flex items-center gap-6 mt-3 pt-3 border-t border-gray-100 flex-wrap">
+                {[
+                    { label: "Kidapawan", color: "#3b82f6" },
+                    { label: "Makilala",  color: "#22c55e" },
+                    { label: "Magpet",    color: "#f97316" },
+                    { label: "Matalam",   color: "#8b5cf6" },
+                ].map(m => (
+                    <div key={m.label} className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-sm opacity-60" style={{ backgroundColor: m.color }} />
+                        <span className="text-xs text-gray-500">{m.label}</span>
+                    </div>
+                ))}
+            </div>
+        </Card>
+    );
+}
+
+
 export default function Page() {
     const { user } = useAuth();
 
@@ -490,6 +769,8 @@ export default function Page() {
                     </div>
                     <WeeklyTrendChart data={weeklyTrend} />
                 </Card>
+                
+                <EmployeeMapCard employees={employeeWhereabouts} /> 
 
                 {/* Employees on Leave */}
                 <Card className="p-4 border border-gray-200">
@@ -669,9 +950,6 @@ export default function Page() {
                                     </div>
                                 );
                             })()}
-
-
-
 
                         </div>
                     </Card>
