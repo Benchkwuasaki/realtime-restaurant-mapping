@@ -13,15 +13,13 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $search = $request->get('search', '');
-        $date = $request->get('date', Carbon::today()->toDateString());
-
-        // Parse the date in Philippine time, then convert to UTC range for the query
+        $date   = $request->get('date', Carbon::today()->toDateString());
 
         $start = Carbon::parse($date, 'Asia/Manila')->startOfDay()->utc();
-        $end = Carbon::parse($date, 'Asia/Manila')->endOfDay()->utc();
+        $end   = Carbon::parse($date, 'Asia/Manila')->endOfDay()->utc();
 
         $query = Attendance::with(['employee.basicInfo'])
-            ->whereNotNull('employee_id')          // ← only matched employees
+            ->whereNotNull('employee_id')
             ->whereBetween('captured_at', [$start, $end])
             ->orderByDesc('captured_at');
 
@@ -35,14 +33,12 @@ class AttendanceController extends Controller
             });
         }
 
-
         $attendances = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Attendance/RecognitionLog/Index', [
             'attendances' => $attendances,
-            'filters' => ['search' => $search, 'date' => $date],
+            'filters'     => ['search' => $search, 'date' => $date],
         ]);
-
     }
 
     public function store(Request $request)
@@ -53,29 +49,34 @@ class AttendanceController extends Controller
             return response()->json(['error' => 'invalid'], 400);
         }
 
-        $info = $data['info'];
+        $info     = $data['info'];
         $employee = Employee::where('work_id', $info['IdCard'])->first();
 
-        // duplicate prevention (5 minutes)
-        if ($employee) {
-            $exists = Attendance::where('employee_id', $employee->employee_id)
-                ->whereBetween('captured_at', [now()->subMinutes(5), now()])
-                ->exists();
-            if ($exists)
-                return response()->json(['status' => 'duplicate']);
+        // ── Reject unmatched scans — no employee, no record ───────────────────
+        // If the face/card doesn't match any active employee in the system,
+        // we discard the scan entirely. Nothing is saved, nothing is broadcast.
+        if (!$employee) {
+            return response()->json(['status' => 'unmatched']);
+        }
+
+        // ── Duplicate prevention (5-minute window) ────────────────────────────
+        $exists = Attendance::where('employee_id', $employee->employee_id)
+            ->whereBetween('captured_at', [now()->subMinutes(5), now()])
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['status' => 'duplicate']);
         }
 
         Attendance::create([
-            'employee_id' => $employee?->employee_id,
-            'work_id' => $info['IdCard'],
-            'verification_status' => $info['VerifyStatus'] == 1 ? 'verified' : 'unknown',
-            'similarity' => $info['Similarity1'] ?? null,
-            'device_id' => $info['DeviceID'] ?? null,
-            'captured_at' => $info['CreateTime'],
+            'employee_id'         => $employee->employee_id,
+            'work_id'             => $info['IdCard'],
+            'verification_status' => ($info['VerifyStatus'] ?? 0) == 1 ? 'verified' : 'unknown',
+            'similarity'          => $info['Similarity1'] ?? null,
+            'device_id'           => $info['DeviceID'] ?? null,
+            'captured_at'         => $info['CreateTime'],
         ]);
 
         return response()->json(['status' => 'ok']);
     }
-
-
 }

@@ -52,8 +52,6 @@ interface RecordWithHistory extends AttendanceRecord {
 interface AttendanceSetting {
     id: number
     name: string
-    time_in_grace_minutes: number
-    break_in_grace_minutes: number
     early_time_in_minutes: number
     late_time_out_minutes: number
     is_default: boolean
@@ -164,8 +162,6 @@ function HistoryDialog({
 
 const EMPTY_FORM = {
     name: "",
-    time_in_grace_minutes: 15,
-    break_in_grace_minutes: 10,
     early_time_in_minutes: 60,
     late_time_out_minutes: 60,
     is_default: false,
@@ -204,13 +200,11 @@ function SettingForm({
                 <Input placeholder="e.g. Standard Schedule" {...field("name")} />
             </div>
 
-            {/* Grace / buffer grid */}
+            {/* Cap fields */}
             <div className="grid grid-cols-2 gap-3">
                 {[
-                    { key: "time_in_grace_minutes",  label: "Time-In Grace",     unit: "min" },
-                    { key: "break_in_grace_minutes", label: "Break-In Grace",    unit: "min" },
-                    { key: "early_time_in_minutes",  label: "Early Time-In Cap", unit: "min" },
-                    { key: "late_time_out_minutes",  label: "Late Time-Out Cap", unit: "min" },
+                    { key: "early_time_in_minutes",  label: "Early Time-In Cap",  unit: "min" },
+                    { key: "late_time_out_minutes",  label: "Late Time-Out Cap",  unit: "min" },
                 ].map(({ key, label, unit }) => (
                     <div key={key} className="flex flex-col gap-1.5">
                         <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -410,13 +404,11 @@ function SettingsDialog({
                                         </div>
                                     </div>
 
-                                    {/* Values grid */}
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border/50">
+                                    {/* Values grid — 2 cols now */}
+                                    <div className="grid grid-cols-2 gap-px bg-border/50">
                                         {[
-                                            { label: "Time-In Grace",  value: `${s.time_in_grace_minutes}m`  },
-                                            { label: "Break-In Grace", value: `${s.break_in_grace_minutes}m` },
-                                            { label: "Early Time-In",  value: `${s.early_time_in_minutes}m`  },
-                                            { label: "Late Time-Out",  value: `${s.late_time_out_minutes}m`  },
+                                            { label: "Early Time-In",  value: `${s.early_time_in_minutes}m` },
+                                            { label: "Late Time-Out",  value: `${s.late_time_out_minutes}m` },
                                         ].map(({ label, value }) => (
                                             <div key={label} className={`flex flex-col gap-0.5 px-3 py-2 ${s.is_default ? "bg-primary/5" : "bg-background"}`}>
                                                 <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
@@ -596,7 +588,7 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                     <StatCard
                         title="Late"
                         value={lateCount}
-                        description="Exceeded grace period"
+                        description="Arrived after scheduled time"
                         icon={<AlertTriangle className="w-4 h-4 m-2 text-accent-foreground" />}
                     />
                 </div>
