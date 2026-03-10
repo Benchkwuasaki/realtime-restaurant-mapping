@@ -5,6 +5,7 @@ import {
     Search, CalendarDays, WifiOff, Loader2, Radio,
     LogIn, LogOut, Coffee, ArrowUpFromLine, X,
     Fingerprint, Activity, Clock, RefreshCw,
+    Pin, PinOff, Plus, Trash2, Edit2, Check, Camera,
 } from "lucide-react"
 import { route } from "ziggy-js"
 import AppLayout from "@/layouts/app-layout"
@@ -58,14 +59,42 @@ interface Props {
     filters: { date: string }
 }
 
+// ─── Camera Types ─────────────────────────────────────────────────────────────
+
+interface CameraSource {
+    id: string
+    label: string
+    /** Full base URL, e.g. http://192.168.0.114:8889/cam1 */
+    src: string
+}
+
+const DEFAULT_CAMERAS: CameraSource[] = [
+    { id: "cam1", label: "Entrance — CAM 01", src: "http://192.168.0.114:8889/cam1" },
+    { id: "cam2", label: "Entrance — CAM 02", src: "http://192.168.0.114:8889/cam2" },
+]
+
+const CAMERAS_STORAGE_KEY = "attendance_cctv_cameras"
+
+function loadCameras(): CameraSource[] {
+    try {
+        const raw = localStorage.getItem(CAMERAS_STORAGE_KEY)
+        if (raw) return JSON.parse(raw) as CameraSource[]
+    } catch { /* ignore */ }
+    return DEFAULT_CAMERAS
+}
+
+function saveCameras(cams: CameraSource[]) {
+    try { localStorage.setItem(CAMERAS_STORAGE_KEY, JSON.stringify(cams)) } catch { /* ignore */ }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function toArray(raw: AttendanceLog[] | PaginatedAttendances): AttendanceLog[] {
     if (!raw) return []
     if (Array.isArray(raw)) return raw
     if (Array.isArray((raw as PaginatedAttendances).data)) return (raw as PaginatedAttendances).data
     return []
 }
-
-// ─── Time-type config — mapped to theme tokens ────────────────────────────────
 
 const TT: Record<TimeType, {
     label: string
@@ -104,8 +133,6 @@ const TT: Record<TimeType, {
     },
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function fmtTime(iso: string) {
     return new Date(iso).toLocaleTimeString("en-PH", {
         hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
@@ -142,7 +169,88 @@ function matchesSearch(r: AttendanceLog, q: string): boolean {
     return getName(r).toLowerCase().includes(lower) || getWorkId(r).toLowerCase().includes(lower)
 }
 
+// ─── Add / Edit Camera Dialog ─────────────────────────────────────────────────
 
+function CameraFormDialog({
+    open,
+    onClose,
+    onSave,
+    initial,
+}: {
+    open: boolean
+    onClose: () => void
+    onSave: (cam: CameraSource) => void
+    initial?: CameraSource
+}) {
+    const [label, setLabel] = useState(initial?.label ?? "")
+    const [src, setSrc] = useState(initial?.src ?? "")
+
+    // Keep in sync if `initial` changes (edit re-opens)
+    useEffect(() => {
+        setLabel(initial?.label ?? "")
+        setSrc(initial?.src ?? "")
+    }, [initial, open])
+
+    const handleSave = () => {
+        if (!src.trim()) return
+        onSave({
+            id: initial?.id ?? crypto.randomUUID(),
+            label: label.trim() || src.trim(),
+            src: src.trim(),
+        })
+        onClose()
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+            <DialogContent className="sm:max-w-sm gap-4">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-base">
+                        <Camera className="w-4 h-4 text-primary" />
+                        {initial ? "Edit Camera" : "Add Camera"}
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="flex flex-col gap-3">
+                    {/* Label */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Label</label>
+                        <Input
+                            value={label}
+                            onChange={e => setLabel(e.target.value)}
+                            placeholder="e.g. Entrance — CAM 03"
+                            className="h-9"
+                        />
+                    </div>
+
+                    {/* Stream URL */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">
+                            MediaMTX Stream URL
+                        </label>
+                        <Input
+                            value={src}
+                            onChange={e => setSrc(e.target.value)}
+                            placeholder="http://192.168.x.x:8889/stream-name"
+                            className="h-9 font-mono text-sm"
+                        />
+                        <p className="text-[11px] text-muted-foreground/70">
+                            The base URL of your MediaMTX stream. The <code>/whep</code> suffix is added automatically.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                    <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+                    <Button size="sm" onClick={handleSave} disabled={!src.trim()} className="gap-1.5">
+                        <Check className="w-3.5 h-3.5" />
+                        {initial ? "Save Changes" : "Add Camera"}
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
 
 // ─── CCTV Stream (WebRTC/WHEP) ────────────────────────────────────────────────
 
@@ -203,12 +311,12 @@ function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) 
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 gap-3 z-10">
                     {status === "connecting" ? (
                         <>
-                            <Loader2 className="w-10 h-10 text-white/30 animate-spin" />
+                            <Loader2 className="w-8 h-8 text-white/30 animate-spin" />
                             <p className="text-xs text-white/30 tracking-widest uppercase">Connecting…</p>
                         </>
                     ) : (
                         <>
-                            <WifiOff className="w-10 h-10 text-white/20" />
+                            <WifiOff className="w-8 h-8 text-white/20" />
                             <p className="text-xs text-white/30 tracking-widest uppercase">Stream Offline</p>
                             <button
                                 onClick={() => connect()}
@@ -221,15 +329,15 @@ function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) 
                 </div>
             )}
 
-            <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
-                <span className="text-xs font-semibold text-white bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg">
+            <div className="absolute top-2 left-2 flex items-center gap-1.5 z-10">
+                <span className="text-xs font-semibold text-white bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md">
                     {label}
                 </span>
                 {status === "live" && (
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-primary-foreground bg-primary/80 backdrop-blur-sm px-2.5 py-1 rounded-lg">
-                        <span className="relative flex h-2 w-2">
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-primary-foreground bg-primary/80 backdrop-blur-sm px-2 py-0.5 rounded-md">
+                        <span className="relative flex h-1.5 w-1.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-foreground" />
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
                         </span>
                         LIVE
                     </span>
@@ -252,8 +360,192 @@ function LiveClock() {
         return () => clearInterval(id)
     }, [])
     return (
-        <div className="absolute bottom-3 right-3 text-xs font-mono text-white/70 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg tabular-nums z-10">
+        <div className="absolute bottom-2 right-2 text-[10px] font-mono text-white/70 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md tabular-nums z-10">
             {time}
+        </div>
+    )
+}
+
+// ─── Camera Grid (Google Meet–style) ──────────────────────────────────────────
+
+const THUMB_HEIGHT_PX = 80
+
+function CameraGrid({
+    cameras,
+    pinnedId,
+    onPin,
+    onEdit,
+    onRemove,
+}: {
+    cameras: CameraSource[]
+    pinnedId: string | null
+    onPin: (id: string | null) => void
+    onEdit: (cam: CameraSource) => void
+    onRemove: (id: string) => void
+}) {
+    const pinned = cameras.find(c => c.id === pinnedId) ?? null
+    const others = cameras.filter(c => c.id !== pinnedId)
+
+    if (cameras.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 aspect-video text-muted-foreground">
+                <Camera className="w-8 h-8 opacity-30" />
+                <p className="text-sm">No cameras added yet.</p>
+            </div>
+        )
+    }
+
+    if (!pinned) {
+        // Equal grid — all tiles use aspect-video naturally
+        const colCount = Math.min(cameras.length, 4)
+        return (
+            <div
+                className="grid gap-2"
+                style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+            >
+                {cameras.map(cam => (
+                    <CameraTile
+                        key={cam.id}
+                        cam={cam}
+                        isPinned={false}
+                        fixedHeight={null}
+                        onPin={() => onPin(cam.id)}
+                        onEdit={() => onEdit(cam)}
+                        onRemove={() => onRemove(cam.id)}
+                    />
+                ))}
+            </div>
+        )
+    }
+
+    // Pinned mode — primary on top, horizontal scrollable thumbnail strip below
+    const THUMB_H = 90
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", width: "100%" }}>
+            {/* Primary — full width, 16/9 */}
+            <div style={{ width: "100%", aspectRatio: "16/9", position: "relative" }}>
+                <CameraTile
+                    cam={pinned}
+                    isPinned
+                    fixedHeight={null}
+                    fullAbsolute
+                    onPin={() => onPin(null)}
+                    onEdit={() => onEdit(pinned)}
+                    onRemove={() => onRemove(pinned.id)}
+                />
+            </div>
+
+            {/* Horizontal scrollable thumbnail strip */}
+            {others.length > 0 && (
+                <div style={{
+                    display: "flex",
+                    flexDirection: "row",
+                    gap: "0.5rem",
+                    overflowX: "auto",
+                    overflowY: "hidden",
+                    scrollbarWidth: "none",
+                    paddingBottom: "2px",
+                }}>
+                    {others.map(cam => (
+                        <div
+                            key={cam.id}
+                            style={{
+                                height: `${THUMB_H}px`,
+                                aspectRatio: "16/9",
+                                flexShrink: 0,
+                                position: "relative",
+                            }}
+                        >
+                            <CameraTile
+                                cam={cam}
+                                isPinned={false}
+                                fixedHeight={null}
+                                fullAbsolute
+                                onPin={() => onPin(cam.id)}
+                                onEdit={() => onEdit(cam)}
+                                onRemove={() => onRemove(cam.id)}
+                            />
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+
+function CameraTile({
+    cam,
+    isPinned,
+    fixedHeight,
+    fullAbsolute = false,
+    onPin,
+    onEdit,
+    onRemove,
+}: {
+    cam: CameraSource
+    isPinned: boolean
+    /** null → aspect-video; number → fixed px height */
+    fixedHeight: number | null
+    /** true → position absolute inset-0 (used for pinned primary) */
+    fullAbsolute?: boolean
+    onPin: () => void
+    onEdit: () => void
+    onRemove: () => void
+}) {
+    const [hovered, setHovered] = useState(false)
+
+    const sizeStyle: React.CSSProperties = fullAbsolute
+        ? { position: "absolute", inset: 0 }
+        : fixedHeight !== null
+            ? { height: `${fixedHeight}px`, width: "160px", flexShrink: 0 }
+            : { width: "100%", height: "100%" }
+
+    return (
+        <div
+            className="relative rounded-xl overflow-hidden border border-border bg-black shadow-sm"
+            style={sizeStyle}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+        >
+            <CctvStream src={cam.src} label={cam.label} />
+
+            {/* Hover overlay */}
+            {hovered && <div className="absolute inset-0 bg-black/30 z-20 pointer-events-none" />}
+
+            {/* Controls — appear on hover */}
+            <div
+                className="absolute top-2 right-2 z-30 flex items-center gap-1 transition-opacity duration-150"
+                style={{ opacity: hovered ? 1 : 0, pointerEvents: hovered ? "auto" : "none" }}
+            >
+                <button
+                    onClick={onPin}
+                    title={isPinned ? "Unpin" : "Pin (focus)"}
+                    className="w-7 h-7 rounded-lg bg-black/70 hover:bg-primary/90 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
+                >
+                    {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                    onClick={onEdit}
+                    title="Edit camera"
+                    className="w-7 h-7 rounded-lg bg-black/70 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
+                >
+                    <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                    onClick={onRemove}
+                    title="Remove camera"
+                    className="w-7 h-7 rounded-lg bg-black/70 hover:bg-destructive/90 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
+                >
+                    <Trash2 className="w-3.5 h-3.5" />
+                </button>
+            </div>
+
+            {isPinned && (
+                <div className="absolute bottom-2 left-2 z-30 flex items-center gap-1 text-[10px] font-bold text-white bg-primary/80 backdrop-blur-sm px-2 py-0.5 rounded-md">
+                    <Pin className="w-2.5 h-2.5" /> Pinned
+                </div>
+            )}
         </div>
     )
 }
@@ -292,10 +584,7 @@ function AttendanceCard({ record, isNew, onClick }: {
                 border hover:shadow-md hover:border-primary/40
                 ${isNew ? "border-primary/60 shadow-sm shadow-primary/10" : "border-border"}`}
         >
-            {/* Primary accent bar */}
             <div className="h-0.5 w-full bg-primary opacity-50 group-hover:opacity-100 transition-opacity shrink-0" />
-
-            {/* Snapshot */}
             <div className="relative w-full aspect-square overflow-hidden bg-muted">
                 <SnapshotImage
                     path={record.snapshot_path}
@@ -310,18 +599,16 @@ function AttendanceCard({ record, isNew, onClick }: {
                     </div>
                 )}
             </div>
-
-            {/* Info */}
             <div className="flex flex-col gap-0.5 px-2.5 py-2.5 min-w-0 font-poppins">
-                <p className="text-xs font-semibold text-card-foreground truncate leading-tight font-poppins">{name}</p>
-                <p className="text-[10px] text-muted-foreground truncate font-poppins">{workId}</p>
+                <p className="text-xs font-semibold text-card-foreground truncate leading-tight">{name}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{workId}</p>
                 <div className="flex items-center gap-1.5 mt-1">
                     <Clock className="w-3 h-3 text-primary/50 shrink-0" />
-                    <span className="text-[10px]  tabular-nums font-semibold text-card-foreground ">
+                    <span className="text-[10px] tabular-nums font-semibold text-card-foreground">
                         {fmtTime(record.captured_at)}
                     </span>
                 </div>
-                <p className="text-[9px] uppercase tracking-widest font-semibold  mt-0.5 text-green-500">
+                <p className="text-[9px] uppercase tracking-widest font-semibold mt-0.5 text-green-500">
                     Detected
                 </p>
             </div>
@@ -359,34 +646,20 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl max-h-[90vh] flex flex-col">
-
-                {/* Hero — primary colour wash */}
                 <div className="relative shrink-0">
                     <div className="absolute inset-0 overflow-hidden">
-                        <SnapshotImage
-                            path={record.snapshot_path}
-                            avatarUrl={record.employee?.avatar_url}
-                            name={name}
-                            className="w-full h-full scale-110"
-                        />
+                        <SnapshotImage path={record.snapshot_path} avatarUrl={record.employee?.avatar_url} name={name} className="w-full h-full scale-110" />
                         <div className="absolute inset-0 bg-primary/85 backdrop-blur-2xl" />
                     </div>
-
                     <button
                         onClick={onClose}
                         className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-primary-foreground/10 hover:bg-primary-foreground/25 flex items-center justify-center text-primary-foreground transition-colors"
                     >
                         <X className="w-3.5 h-3.5" />
                     </button>
-
                     <div className="relative z-10 flex items-end gap-4 px-5 pt-8 pb-5">
                         <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-primary-foreground/20 shadow-xl shrink-0">
-                            <SnapshotImage
-                                path={record.snapshot_path}
-                                avatarUrl={record.employee?.avatar_url}
-                                name={name}
-                                className="w-full h-full"
-                            />
+                            <SnapshotImage path={record.snapshot_path} avatarUrl={record.employee?.avatar_url} name={name} className="w-full h-full" />
                         </div>
                         <div className="min-w-0 pb-1">
                             <h2 className="text-lg font-bold text-primary-foreground leading-tight truncate">{name}</h2>
@@ -404,7 +677,6 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                     </div>
                 </div>
 
-                {/* 4-column time summary */}
                 <div className="grid grid-cols-4 divide-x divide-border border-b border-border bg-muted/30 shrink-0">
                     {(["time_in", "break_out", "break_in", "time_out"] as TimeType[]).map(tt => {
                         const cfg = TT[tt]
@@ -413,9 +685,7 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                         return (
                             <div key={tt} className="flex flex-col items-center py-3 px-1 gap-1">
                                 <Icon className={`w-3.5 h-3.5 ${cfg.iconCls}`} />
-                                <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold text-center leading-tight">
-                                    {cfg.label}
-                                </span>
+                                <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold text-center leading-tight">{cfg.label}</span>
                                 <span className={`text-[10px] font-mono tabular-nums font-bold ${rec ? "text-foreground" : "text-muted-foreground/40"}`}>
                                     {rec ? fmtTime(rec.captured_at) : "—"}
                                 </span>
@@ -424,14 +694,11 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                     })}
                 </div>
 
-                {/* Timeline */}
                 <DialogHeader className="px-5 pt-4 pb-2 shrink-0">
                     <DialogTitle className="text-sm font-semibold flex items-center gap-2">
                         <Activity className="w-3.5 h-3.5 text-muted-foreground" />
                         All Detections Today
-                        <Badge variant="secondary" className="text-[10px] ml-auto font-bold">
-                            {empRecords.length}
-                        </Badge>
+                        <Badge variant="secondary" className="text-[10px] ml-auto font-bold">{empRecords.length}</Badge>
                     </DialogTitle>
                 </DialogHeader>
 
@@ -448,26 +715,17 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                                     return (
                                         <div
                                             key={r.id}
-                                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active
-                                                ? "bg-primary/10 border border-primary/20"
-                                                : "hover:bg-muted/50"
-                                                }`}
+                                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/50"}`}
                                         >
                                             <div className={`w-9 h-9 rounded-full ${cfg.bgCls} flex items-center justify-center shrink-0 border ${cfg.borderCls}`}>
                                                 <Icon className={`w-4 h-4 ${cfg.iconCls}`} />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                                                        Detected
-                                                    </span>
-                                                    <span className="font-mono text-sm tabular-nums font-semibold text-foreground">
-                                                        {fmtTime(r.captured_at)}
-                                                    </span>
+                                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Detected</span>
+                                                    <span className="font-mono text-sm tabular-nums font-semibold text-foreground">{fmtTime(r.captured_at)}</span>
                                                 </div>
-                                                {r.device_id && (
-                                                    <p className="text-[9px] text-muted-foreground mt-0.5 truncate">Device: {r.device_id}</p>
-                                                )}
+                                                {r.device_id && <p className="text-[9px] text-muted-foreground mt-0.5 truncate">Device: {r.device_id}</p>}
                                             </div>
                                             {r.snapshot_path && (
                                                 <div className="w-9 h-9 rounded-lg overflow-hidden border border-border shrink-0">
@@ -524,13 +782,11 @@ export default function RecognitionLogIndex({
     }, [initialAttendances])
 
     const [echoConnected, setEchoConnected] = useState(false)
-
     useEffect(() => {
         const check = () => {
             const echo = (window as any).Echo
             if (!echo) { setEchoConnected(false); return }
-            const state = echo.connector?.pusher?.connection?.state
-            setEchoConnected(state === "connected")
+            setEchoConnected(echo.connector?.pusher?.connection?.state === "connected")
         }
         check()
         const id = setInterval(check, 2000)
@@ -539,11 +795,7 @@ export default function RecognitionLogIndex({
 
     const [selectedRecord, setSelectedRecord] = useState<AttendanceLog | null>(null)
     const [dialogOpen, setDialogOpen] = useState(false)
-
-    const openRecord = (record: AttendanceLog) => {
-        setSelectedRecord(record)
-        setDialogOpen(true)
-    }
+    const openRecord = (record: AttendanceLog) => { setSelectedRecord(record); setDialogOpen(true) }
 
     useEchoPublic("attendance-logs", ".log.created", (incoming: AttendanceLog) => {
         if (date !== todayPH()) return
@@ -557,12 +809,8 @@ export default function RecognitionLogIndex({
 
     useEchoPublic("attendance-logs", ".log.updated", (updated: Pick<AttendanceLog, "id" | "time_type">) => {
         if (date !== todayPH()) return
-        setRecords(prev =>
-            prev.map(r => r.id === updated.id ? { ...r, time_type: updated.time_type } : r)
-        )
-        setSelectedRecord(prev =>
-            prev?.id === updated.id ? { ...prev, time_type: updated.time_type } : prev
-        )
+        setRecords(prev => prev.map(r => r.id === updated.id ? { ...r, time_type: updated.time_type } : r))
+        setSelectedRecord(prev => prev?.id === updated.id ? { ...prev, time_type: updated.time_type } : prev)
     })
 
     const fetchRecords = useCallback(async (targetDate: string) => {
@@ -574,30 +822,52 @@ export default function RecognitionLogIndex({
             )
             setRecords(toArray(res.data.attendances ?? []))
             setLastUpdated(new Date())
-        } catch {
-            // silently fail
-        } finally {
-            setRefreshing(false)
-        }
+        } catch { /* silently fail */ } finally { setRefreshing(false) }
     }, [])
 
     const [search, setSearch] = useState("")
-    const filtered = useMemo(
-        () => records.filter(r => matchesSearch(r, search)),
-        [records, search]
-    )
+    const filtered = useMemo(() => records.filter(r => matchesSearch(r, search)), [records, search])
 
-    const CCTV_SRC1 = "http://192.168.0.114:8889/cam1"
-    const CCTV_SRC2 = "http://192.168.0.114:8889/cam2"
+    // ── Camera state ──────────────────────────────────────────────────────────
+    const [cameras, setCameras] = useState<CameraSource[]>(() => loadCameras())
+    const [pinnedId, setPinnedId] = useState<string | null>(null)
+
+    // Form dialog state
+    const [camFormOpen, setCamFormOpen] = useState(false)
+    const [editingCam, setEditingCam] = useState<CameraSource | undefined>(undefined)
+
+    const openAddCam = () => { setEditingCam(undefined); setCamFormOpen(true) }
+    const openEditCam = (cam: CameraSource) => { setEditingCam(cam); setCamFormOpen(true) }
+
+    const handleSaveCam = (cam: CameraSource) => {
+        setCameras(prev => {
+            const exists = prev.findIndex(c => c.id === cam.id)
+            const updated = exists >= 0
+                ? prev.map(c => c.id === cam.id ? cam : c)
+                : [...prev, cam]
+            saveCameras(updated)
+            return updated
+        })
+    }
+
+    const handleRemoveCam = (id: string) => {
+        setCameras(prev => {
+            const updated = prev.filter(c => c.id !== id)
+            saveCameras(updated)
+            return updated
+        })
+        if (pinnedId === id) setPinnedId(null)
+    }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Attendance" />
 
-            <div className="flex flex-col gap-4 px-4 sm:px-5 pt-4 pb-4">
+            {/* Full-screen flex column — fills viewport below app chrome */}
+            <div className="flex flex-col px-4 sm:px-5 pt-4 pb-4" style={{ height: "calc(100dvh - 56px)" }}>
 
                 {/* ── Header ── */}
-                <div className="flex items-start justify-between gap-3 flex-wrap shrink-0">
+                <div className="flex items-start justify-between gap-3 flex-wrap shrink-0 mb-3">
                     <div>
                         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
                             <Radio className="w-4 h-4 text-primary" />
@@ -619,12 +889,7 @@ export default function RecognitionLogIndex({
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                        <Input
-                            type="date"
-                            value={date}
-                            onChange={handleDateChange}
-                            className="w-38 h-9"
-                        />
+                        <Input type="date" value={date} onChange={handleDateChange} className="w-38 h-9" />
                         {!isToday && (
                             <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={setToday}>
                                 <CalendarDays className="w-3.5 h-3.5" />
@@ -633,32 +898,46 @@ export default function RecognitionLogIndex({
                         )}
                         <Button
                             variant="outline" size="sm" className="h-9 w-9 p-0"
-                            onClick={() => fetchRecords(date)}
-                            disabled={refreshing}
-                            title="Refresh now"
+                            onClick={() => fetchRecords(date)} disabled={refreshing} title="Refresh now"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
                         </Button>
                     </div>
                 </div>
 
-                {/* ── Main layout ── */}
-                <div className="flex flex-col xl:flex-row gap-4">
+                {/* ── Main layout — fills all remaining height ── */}
+                <div className="flex flex-col xl:flex-row gap-4 flex-1 min-h-0">
 
-                    {/* ══ LEFT: Camera ══ */}
-                    <div className="flex flex-col gap-3 xl:w-[69%] shrink-0 xl:self-start xl:sticky xl:top-4">
-                        <div className="relative w-full rounded-xl overflow-hidden border border-border shadow-sm bg-black aspect-video">
-                            <CctvStream src={CCTV_SRC1} label="Entrance — CAM 01" />
+                    {/* ══ LEFT: Camera panel ══ */}
+                    <div className="flex flex-col gap-2 xl:w-[69%] shrink-0 min-h-0">
+
+                        {/* Camera toolbar */}
+                        <div className="flex items-center justify-between gap-2 shrink-0">
+                            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                                <Camera className="w-3.5 h-3.5" />
+                                {cameras.length} camera{cameras.length !== 1 ? "s" : ""}
+                                {pinnedId && <span className="text-primary"> · 1 pinned</span>}
+                            </p>
+                            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={openAddCam}>
+                                <Plus className="w-3 h-3" />
+                                Add Camera
+                            </Button>
                         </div>
-                        <div className="relative w-full rounded-xl overflow-hidden border border-border shadow-sm bg-black aspect-video">
-                            <CctvStream src={CCTV_SRC2} label="Entrance — CAM 02" />
+
+                        {/* Camera grid — fills remaining height */}
+                        <div className="flex-1 min-h-0">
+                            <CameraGrid
+                                cameras={cameras}
+                                pinnedId={pinnedId}
+                                onPin={id => setPinnedId(id)}
+                                onEdit={openEditCam}
+                                onRemove={handleRemoveCam}
+                            />
                         </div>
                     </div>
 
-                    {/* ══ RIGHT: Detection log ══ */}
-                    <div
-                        className="flex flex-col bg-card border border-border rounded-xl overflow-hidden"
-                        style={{ height: "calc(87dvh - 10rem)" }}>
+                    {/* ══ RIGHT: Detection log — fills full height, scrollable inside ══ */}
+                    <div className="flex flex-col bg-card border border-border rounded-xl overflow-hidden flex-1 min-h-0">
                         {/* Panel header */}
                         <div className="flex flex-col gap-2 px-4 py-3 border-b border-border shrink-0 bg-muted/20">
                             <div className="flex items-center justify-between gap-2">
@@ -673,7 +952,6 @@ export default function RecognitionLogIndex({
                                     </span>
                                 </div>
                             </div>
-
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                                 <Input
@@ -694,7 +972,7 @@ export default function RecognitionLogIndex({
                         </div>
 
                         {/* Scrollable grid */}
-                        <div className="flex-1 overflow-y-auto p-3">
+                        <div className="flex-1 overflow-y-auto p-3 min-h-0">
                             {filtered.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
                                     <Fingerprint className="w-10 h-10 opacity-20" />
@@ -723,6 +1001,14 @@ export default function RecognitionLogIndex({
                     </div>
                 </div>
             </div>
+
+            {/* Camera form dialog */}
+            <CameraFormDialog
+                open={camFormOpen}
+                onClose={() => setCamFormOpen(false)}
+                onSave={handleSaveCam}
+                initial={editingCam}
+            />
 
             <EmployeeDetailDialog
                 record={selectedRecord}
