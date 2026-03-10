@@ -45,8 +45,8 @@ const printStyles = `
     }
 
     body {
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      -webkit-print-color-adjust: #f8f9fa;
+      print-color-adjust: #f8f9fa;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: white;
     }
