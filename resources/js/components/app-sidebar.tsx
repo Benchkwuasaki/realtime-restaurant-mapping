@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { Link } from '@inertiajs/react';
 import {
     User,
     LayoutDashboard,
@@ -8,7 +8,6 @@ import {
     Building2,
     FileCheck2,
     Calendar,
-    Wallet,
     Logs,
     Play,
     FileOutput,
@@ -18,7 +17,10 @@ import {
     Bell,
     FileBarChart,
 } from 'lucide-react';
+import * as React from 'react';
 
+import { route } from 'ziggy-js';
+import Logo from '@/assets/images/logo.svg';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -30,9 +32,6 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { route } from 'ziggy-js';
-import { Link } from '@inertiajs/react';
-import Logo from '@/assets/images/logo.svg';
 import { useAuth } from '@/hooks/use-auth';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

@@ -1,15 +1,5 @@
-// Payroll Deduction Settings Index.tsx
+// Payroll Deduction Settings — Index.tsx
 
-import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
-import { route } from 'ziggy-js';
-import {
-    Save,
-    GripVertical,
-    Settings2,
-    ListOrdered,
-    ShieldAlert,
-} from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -17,7 +7,7 @@ import {
     PointerSensor,
     useSensor,
     useSensors,
-    DragEndEvent,
+    type DragEndEvent,
 } from '@dnd-kit/core';
 import {
     arrayMove,
@@ -27,12 +17,27 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import AppLayout from '@/layouts/app-layout';
+import { Head, router } from '@inertiajs/react';
+import {
+    Save,
+    GripVertical,
+    Settings2,
+    ListOrdered,
+    ShieldAlert,
+} from 'lucide-react';
+import { useState } from 'react';
+import { route } from 'ziggy-js';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import {
     Table,
@@ -42,7 +47,11 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface DeductionSettings {
     gsis_employee_rate: number;
@@ -53,13 +62,15 @@ interface DeductionSettings {
     [key: string]: number;
 }
 
+type Cuttability = 'Never' | 'Rarely' | 'Yes' | 'First_to_Cut';
+
 interface PriorityOrderItem {
-    id: string;
+    id: number;
     priority: number;
-    deduction_type: string;
+    deduction_category: string;
+    label: string;
     examples: string;
-    can_be_cut: string;
-    [key: string]: string | number;
+    cuttability: Cuttability;
 }
 
 interface FloorRules {
@@ -73,6 +84,8 @@ interface Props {
     priorityOrder?: PriorityOrderItem[];
     floorRules?: FloorRules;
 }
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Payroll', href: '#' },
@@ -93,39 +106,44 @@ const DEFAULT_SETTINGS: DeductionSettings = {
 
 const DEFAULT_PRIORITY_ORDER: PriorityOrderItem[] = [
     {
-        id: '1',
+        id: 1,
         priority: 1,
-        deduction_type: "Gov't Contributions",
+        deduction_category: 'government_contribution',
+        label: "Gov't Contributions",
         examples: 'GSIS, PhilHealth, Pag-IBIG, Tax',
-        can_be_cut: 'Never',
+        cuttability: 'Never',
     },
     {
-        id: '2',
+        id: 2,
         priority: 2,
-        deduction_type: "Gov't Loans",
+        deduction_category: 'government_loan',
+        label: "Gov't Loans",
         examples: 'All GSIS Loans, Pag-IBIG Loans',
-        can_be_cut: 'Rarely',
+        cuttability: 'Rarely',
     },
     {
-        id: '3',
+        id: 3,
         priority: 3,
-        deduction_type: 'Internal Org Loans',
+        deduction_category: 'internal_org_loan',
+        label: 'Internal Org Loans',
         examples: 'AMA Loan, Y2K Loans, MKWD Loans',
-        can_be_cut: 'Yes',
+        cuttability: 'Yes',
     },
     {
-        id: '4',
+        id: 4,
         priority: 4,
-        deduction_type: 'Org Dues & Premiums',
+        deduction_category: 'internal_org_dues',
+        label: 'Org Dues & Premiums',
         examples: 'AMA Premium, Y2K Premium, Union Dues...',
-        can_be_cut: 'First to Cut',
+        cuttability: 'First_to_Cut',
     },
     {
-        id: '5',
+        id: 5,
         priority: 5,
-        deduction_type: 'Miscellaneous',
+        deduction_category: 'miscellaneous',
+        label: 'Miscellaneous',
         examples: 'Water Bill, NSGND, One-time Items',
-        can_be_cut: 'First to Cut',
+        cuttability: 'First_to_Cut',
     },
 ];
 
@@ -141,35 +159,35 @@ const CONTRIBUTION_FIELDS: {
     placeholder: string;
     step: string;
 }[] = [
-    {
-        key: 'gsis_employee_rate',
-        label: 'GSIS EMPLOYEE RATE (%)',
-        helper: 'Regular & Casual only',
-        placeholder: '0.0',
-        step: '0.1',
-    },
-    {
-        key: 'gsis_employer_rate',
-        label: 'GSIS EMPLOYER RATE (%) - MKWD',
-        helper: 'MKWD pays this share',
-        placeholder: '0.0',
-        step: '0.1',
-    },
-    {
-        key: 'philhealth_rate',
-        label: 'PhilHealth RATE (%) - MKWD',
-        helper: 'Split 50/50 Employer – Employee',
-        placeholder: '0.0',
-        step: '0.1',
-    },
-    {
-        key: 'pagibig_monthly',
-        label: 'Pag-IBIG Monthly (₱)',
-        helper: '₱50 per payroll period (15 days)',
-        placeholder: '0.00',
-        step: '0.01',
-    },
-];
+        {
+            key: 'gsis_employee_rate',
+            label: 'GSIS EMPLOYEE RATE (%)',
+            helper: 'Regular & Casual only',
+            placeholder: '0.0',
+            step: '0.1',
+        },
+        {
+            key: 'gsis_employer_rate',
+            label: 'GSIS EMPLOYER RATE (%) - MKWD',
+            helper: 'MKWD pays this share',
+            placeholder: '0.0',
+            step: '0.1',
+        },
+        {
+            key: 'philhealth_rate',
+            label: 'PhilHealth RATE (%) - MKWD',
+            helper: 'Split 50/50 Employer – Employee',
+            placeholder: '0.0',
+            step: '0.1',
+        },
+        {
+            key: 'pagibig_monthly',
+            label: 'Pag-IBIG Monthly (₱)',
+            helper: '₱50 per payroll period (15 days)',
+            placeholder: '0.00',
+            step: '0.01',
+        },
+    ];
 
 const TABS = [
     {
@@ -189,6 +207,65 @@ const TABS = [
     },
 ] as const;
 
+// ── Cuttability helpers ───────────────────────────────────────────────────────
+
+const CUTTABILITY_LABELS: Record<Cuttability, string> = {
+    Never: 'Never',
+    Rarely: 'Rarely',
+    Yes: 'Yes',
+    First_to_Cut: 'First to Cut',
+};
+
+// Middle items can be manually set to either of these
+const EDITABLE_OPTIONS: Cuttability[] = ['Never', 'Rarely', 'Yes', 'First_to_Cut'];
+
+/**
+ * Enforces cuttability rules across the full list:
+ * - index 0         → always 'never'        (locked)
+ * - index last      → always 'first_to_cut' (locked)
+ * - middle items    → 'rarely' or 'yes', defaulting to 'yes'
+ *
+ * Ordering constraint: no 'yes' may appear above a 'rarely' in the list.
+ * If a violation is detected after a drag, the offending items are corrected
+ * by converting any 'yes' that precedes a 'rarely' into 'rarely'.
+ */
+const ORDER: Cuttability[] = ['Never', 'Rarely', 'Yes', 'First_to_Cut'];
+
+const rankOf = (c: Cuttability) => ORDER.indexOf(c);
+
+function assignCuttability(items: PriorityOrderItem[]): PriorityOrderItem[] {
+    const total = items.length;
+
+    // Step 1 — pin first and last
+    const pinned = items.map((item, idx) => {
+        if (idx === 0) return { ...item, cuttability: 'Never' as Cuttability };
+        if (idx === total - 1) return { ...item, cuttability: 'First_to_Cut' as Cuttability };
+        return item;
+    });
+
+    // Step 2 — forward pass: each item must be >= rank of item above it
+    const forward = [...pinned];
+    for (let i = 1; i < total; i++) {
+        const above = forward[i - 1].cuttability;
+        if (rankOf(forward[i].cuttability) < rankOf(above)) {
+            forward[i] = { ...forward[i], cuttability: above };
+        }
+    }
+
+    // Step 3 — backward pass: each item must be <= rank of item below it
+    const backward = [...forward];
+    for (let i = total - 2; i >= 1; i--) {
+        const below = backward[i + 1].cuttability;
+        if (rankOf(backward[i].cuttability) > rankOf(below)) {
+            backward[i] = { ...backward[i], cuttability: below };
+        }
+    }
+
+    // Step 4 — reassign priority numbers
+    return backward.map((item, idx) => ({ ...item, priority: idx + 1 }));
+}
+// ── Shared components ─────────────────────────────────────────────────────────
+
 function SaveButton({ onClick }: { onClick: () => void }) {
     return (
         <div className="flex justify-end">
@@ -203,6 +280,8 @@ function SaveButton({ onClick }: { onClick: () => void }) {
     );
 }
 
+// ── Government Contribution Rates tab ────────────────────────────────────────
+
 function GovernmentContributionRatesTab({
     settings,
 }: {
@@ -214,16 +293,18 @@ function GovernmentContributionRatesTab({
         setForm((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
 
     const handleSave = () => {
-        router.put(route('payroll.deduction-settings.update'), form, {
-            preserveScroll: true,
-        });
+        router.put(
+            route('payroll.deduction-settings.update'),
+            form,
+            { preserveScroll: true },
+        );
     };
 
     return (
         <div className="flex flex-col gap-6">
             <SaveButton onClick={handleSave} />
 
-            <Card>
+            <Card className="border-secondary">
                 <CardHeader>
                     <CardTitle className="text-base font-semibold">
                         Government Contribution Rate
@@ -235,10 +316,7 @@ function GovernmentContributionRatesTab({
                 <CardContent className="pt-6">
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
                         {CONTRIBUTION_FIELDS.map((field) => (
-                            <div
-                                key={field.key}
-                                className="flex flex-col gap-1.5"
-                            >
+                            <div key={field.key} className="flex flex-col gap-1.5">
                                 <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                                     {field.label}
                                 </Label>
@@ -247,9 +325,7 @@ function GovernmentContributionRatesTab({
                                     step={field.step}
                                     placeholder={field.placeholder}
                                     value={form[field.key]}
-                                    onChange={(e) =>
-                                        set(field.key, e.target.value)
-                                    }
+                                    onChange={(e) => set(field.key, e.target.value)}
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     {field.helper}
@@ -269,9 +345,7 @@ function GovernmentContributionRatesTab({
                             step="1"
                             placeholder="22"
                             value={form.working_days_divisor}
-                            onChange={(e) =>
-                                set('working_days_divisor', e.target.value)
-                            }
+                            onChange={(e) => set('working_days_divisor', e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">
                             Used for daily rate (standard: 22)
@@ -283,7 +357,16 @@ function GovernmentContributionRatesTab({
     );
 }
 
-function SortableRow({ item }: { item: PriorityOrderItem }) {
+// ── Priority Order tab ────────────────────────────────────────────────────────
+
+interface SortableRowProps {
+    item: PriorityOrderItem;
+    isFirst: boolean;
+    isLast: boolean;
+    onCuttabilityChange: (id: number, value: Cuttability) => void;
+}
+
+function SortableRow({ item, isFirst, isLast, onCuttabilityChange }: SortableRowProps) {
     const {
         attributes,
         listeners,
@@ -300,6 +383,8 @@ function SortableRow({ item }: { item: PriorityOrderItem }) {
         zIndex: isDragging ? 10 : undefined,
     };
 
+    const isLocked = isFirst || isLast;
+
     return (
         <TableRow ref={setNodeRef} style={style} className="hover:bg-muted/40">
             <TableCell className="w-10">
@@ -315,27 +400,49 @@ function SortableRow({ item }: { item: PriorityOrderItem }) {
             <TableCell className="text-sm text-muted-foreground">
                 {item.priority}
             </TableCell>
-            <TableCell className="text-sm">{item.deduction_type}</TableCell>
+            <TableCell className="text-sm">{item.label}</TableCell>
             <TableCell className="text-sm text-muted-foreground">
                 {item.examples}
             </TableCell>
-            <TableCell className="text-sm text-muted-foreground">
-                {item.can_be_cut}
+            <TableCell className="text-sm">
+                {isLocked ? (
+                    // First and last are locked — show label only
+                    <span className="text-muted-foreground">
+                        {CUTTABILITY_LABELS[item.cuttability]}
+                    </span>
+                ) : (
+                    <Select
+                        value={item.cuttability}
+                        onValueChange={(v) =>
+                            onCuttabilityChange(item.id, v as Cuttability)
+                        }
+                    >
+                        <SelectTrigger className="h-7 w-32 text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {EDITABLE_OPTIONS.map((opt) => (
+                                <SelectItem key={opt} value={opt} className="text-xs">
+                                    {CUTTABILITY_LABELS[opt]}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
             </TableCell>
         </TableRow>
     );
 }
 
-// TODO: Make it based on the Internal Organizations and Government Organizations
-// Currently pre defined but then need to specify it more on the deduction types hehe
-// Hmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
 function PriorityOrderTab({
     priorityOrder,
 }: {
     priorityOrder: PriorityOrderItem[];
 }) {
-    const [items, setItems] = useState<PriorityOrderItem[]>(
-        priorityOrder.map((item, idx) => ({ ...item, priority: idx + 1 })),
+    const [items, setItems] = useState<PriorityOrderItem[]>(() =>
+        assignCuttability(
+            priorityOrder.map((item, idx) => ({ ...item, priority: idx + 1 }))
+        )
     );
 
     const sensors = useSensors(
@@ -353,17 +460,44 @@ function PriorityOrderTab({
             const oldIndex = prev.findIndex((i) => i.id === active.id);
             const newIndex = prev.findIndex((i) => i.id === over.id);
             const reordered = arrayMove(prev, oldIndex, newIndex);
-            return reordered.map((item, idx) => ({
-                ...item,
-                priority: idx + 1,
-            }));
+            return assignCuttability(reordered);
         });
     };
+
+    const handleCuttabilityChange = (id: number, value: Cuttability) => {
+        setItems((prev) => {
+            // Apply the new cuttability value to the item
+            const updated = prev.map((item) =>
+                item.id === id ? { ...item, cuttability: value } : item
+            );
+
+            // Extract middle items (exclude first and last which are locked)
+            const first = updated[0];
+            const last = updated[updated.length - 1];
+            const middle = updated.slice(1, updated.length - 1);
+
+            // Stable sort middle items by cuttability rank
+            // Items with the same rank keep their relative order
+            const sorted = [...middle].sort(
+                (a, b) => rankOf(a.cuttability) - rankOf(b.cuttability)
+            );
+
+            // Reconstruct and reassign priorities
+            const reordered = [first, ...sorted, last];
+            return reordered.map((item, idx) => ({ ...item, priority: idx + 1 }));
+        });
+    };
+
 
     const handleSave = () => {
         router.put(
             route('payroll.deduction-settings.priority-order.update'),
-            { priority_order: items.map((i) => ({ ...i })) },
+            {
+                ordered_ids: items.map((i) => i.id),
+                cuttability: Object.fromEntries(
+                    items.map((i) => [i.id, i.cuttability])
+                ),
+            },
             { preserveScroll: true },
         );
     };
@@ -372,7 +506,7 @@ function PriorityOrderTab({
         <div className="flex flex-col gap-6">
             <SaveButton onClick={handleSave} />
 
-            <Card>
+            <Card className="border-secondary">
                 <CardHeader>
                     <CardTitle className="text-base font-semibold">
                         Deduction Priority Order
@@ -410,10 +544,13 @@ function PriorityOrderTab({
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {items.map((item) => (
+                                    {items.map((item, idx) => (
                                         <SortableRow
                                             key={item.id}
                                             item={item}
+                                            isFirst={idx === 0}
+                                            isLast={idx === items.length - 1}
+                                            onCuttabilityChange={handleCuttabilityChange}
                                         />
                                     ))}
                                 </TableBody>
@@ -425,6 +562,8 @@ function PriorityOrderTab({
         </div>
     );
 }
+
+// ── Floor Rules tab ───────────────────────────────────────────────────────────
 
 function FloorRulesTab({ floorRules }: { floorRules: FloorRules }) {
     const [form, setForm] = useState<FloorRules>({ ...floorRules });
@@ -444,7 +583,7 @@ function FloorRulesTab({ floorRules }: { floorRules: FloorRules }) {
         <div className="flex flex-col gap-6">
             <SaveButton onClick={handleSave} />
 
-            <Card>
+            <Card className="border-secondary">
                 <CardHeader>
                     <CardTitle className="text-base font-semibold">
                         Floor Rules
@@ -498,6 +637,8 @@ function FloorRulesTab({ floorRules }: { floorRules: FloorRules }) {
         </div>
     );
 }
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Index({
     settings = DEFAULT_SETTINGS,

@@ -10,23 +10,21 @@ return new class extends Migration
     {
         Schema::create('internal_org_deductions', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employee_id');
-            $table->unsignedBigInteger('internal_organization_id');
+            $table->foreignId('employee_id')
+                ->constrained('employees', 'employee_id')
+                ->cascadeOnDelete();
+            $table->foreignId('internal_organization_id')
+                ->constrained('internal_organizations', 'internal_organization_id')
+                ->cascadeOnDelete();
+            $table->foreignId('internal_organization_service_id')
+                ->nullable()
+                ->constrained('internal_organization_services', 'internal_organization_service_id')
+                ->nullOnDelete();
             $table->string('description', 255);
             $table->decimal('amount', 12, 2)->default(0);
             $table->date('period_start');
             $table->date('period_end');
             $table->timestamps();
-
-            $table->foreign('employee_id')
-                ->references('employee_id')
-                ->on('employees')
-                ->cascadeOnDelete();
-
-            $table->foreign('internal_organization_id')
-                ->references('internal_organization_id')
-                ->on('internal_organizations')
-                ->cascadeOnDelete();
         });
     }
 

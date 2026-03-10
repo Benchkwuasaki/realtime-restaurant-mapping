@@ -12,6 +12,7 @@ class InternalOrgDeduction extends Model
     protected $fillable = [
         'employee_id',
         'internal_organization_id',
+        'internal_organization_service_id', // ← new
         'description',
         'amount',
         'period_start',
@@ -19,10 +20,12 @@ class InternalOrgDeduction extends Model
     ];
 
     protected $casts = [
-        'amount' => 'float',
+        'amount'      => 'float',
         'period_start' => 'date',
-        'period_end' => 'date',
+        'period_end'   => 'date',
     ];
+
+    // ── Relationships ──────────────────────────────────────────────────────────
 
     public function employee(): BelongsTo
     {
@@ -38,9 +41,17 @@ class InternalOrgDeduction extends Model
         );
     }
 
-    /**
-     * Tab key used in the UI to group by organization.
-     */
+    public function service(): BelongsTo // ← new
+    {
+        return $this->belongsTo(
+            InternalOrganizationService::class,
+            'internal_organization_service_id',
+            'internal_organization_service_id'
+        );
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
     public function tabKey(): string
     {
         return $this->internal_organization_id;

@@ -3,14 +3,17 @@
 namespace Database\Seeders;
 
 use App\Models\InternalOrganization;
+use App\Models\InternalOrganizationService;
 use Illuminate\Database\Seeder;
 
 class InternalOrganizationSeeder extends Seeder
 {
     public function run(): void
     {
+        // ── Organizations ──────────────────────────────────────────────────────
+
         $organizations = [
-            // ── Unions ──────────────────────────────────────────────────────────
+            // ── Unions ────────────────────────────────────────────────────────
             [
                 'code'                     => 'UN-001',
                 'name'                     => 'General Workers Union',
@@ -36,7 +39,7 @@ class InternalOrganizationSeeder extends Seeder
                 'status'                   => false,
             ],
 
-            // ── Cooperatives ─────────────────────────────────────────────────────
+            // ── Cooperatives ──────────────────────────────────────────────────
             [
                 'code'                     => 'CO-001',
                 'name'                     => 'Employees Multi-Purpose Cooperative',
@@ -70,7 +73,7 @@ class InternalOrganizationSeeder extends Seeder
                 'status'                   => false,
             ],
 
-            // ── Associations ─────────────────────────────────────────────────────
+            // ── Associations ──────────────────────────────────────────────────
             [
                 'code'                     => 'AS-001',
                 'name'                     => 'Employees Welfare Association',
@@ -118,6 +121,184 @@ class InternalOrganizationSeeder extends Seeder
                 ['code' => $org['code']],
                 $org
             );
+        }
+
+        // ── Services ───────────────────────────────────────────────────────────
+        // Only seeded for payroll_deduction_linked orgs.
+        // Categories map to cut-off rules in InternalOrganizationService:
+        //   Savings, Share_Capital → both cut-offs
+        //   Loan, Dues             → 2nd cut-off only
+
+        $servicesByOrgCode = [
+
+            // ── UN-001: General Workers Union ──────────────────────────────────
+            // Unions typically collect dues and offer member loans
+            'UN-001' => [
+                [
+                    'name'     => 'Union Membership Dues',
+                    'category' => InternalOrganizationService::CATEGORY_DUES,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Union Emergency Loan',
+                    'category' => InternalOrganizationService::CATEGORY_LOAN,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Union Mutual Aid Fund',
+                    'category' => InternalOrganizationService::CATEGORY_SAVINGS,
+                    'deductable_from_payroll' => true,
+                ],
+            ],
+
+            // ── UN-002: Technical Employees Union ──────────────────────────────
+            'UN-002' => [
+                [
+                    'name'     => 'Union Membership Dues',
+                    'category' => InternalOrganizationService::CATEGORY_DUES,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Union Calamity Loan',
+                    'category' => InternalOrganizationService::CATEGORY_LOAN,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Union Solidarity Fund',
+                    'category' => InternalOrganizationService::CATEGORY_SAVINGS,
+                    'deductable_from_payroll' => true,
+                ],
+            ],
+
+            // ── CO-001: Employees Multi-Purpose Cooperative ────────────────────
+            // Multi-purpose cooperatives offer the full range of services
+            'CO-001' => [
+                [
+                    'name'     => 'Regular Savings',
+                    'category' => InternalOrganizationService::CATEGORY_SAVINGS,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Share Capital Contribution',
+                    'category' => InternalOrganizationService::CATEGORY_SHARE_CAPITAL,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Multi-Purpose Loan',
+                    'category' => InternalOrganizationService::CATEGORY_LOAN,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Emergency Loan',
+                    'category' => InternalOrganizationService::CATEGORY_LOAN,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Educational Loan',
+                    'category' => InternalOrganizationService::CATEGORY_LOAN,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Membership Dues',
+                    'category' => InternalOrganizationService::CATEGORY_DUES,
+                    'deductable_from_payroll' => true,
+                ],
+            ],
+
+            // ── CO-002: Staff Savings and Credit Cooperative ───────────────────
+            // Savings-focused cooperative with credit facilities
+            'CO-002' => [
+                [
+                    'name'     => 'Compulsory Savings',
+                    'category' => InternalOrganizationService::CATEGORY_SAVINGS,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Voluntary Savings',
+                    'category' => InternalOrganizationService::CATEGORY_SAVINGS,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Share Capital Contribution',
+                    'category' => InternalOrganizationService::CATEGORY_SHARE_CAPITAL,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Salary Loan',
+                    'category' => InternalOrganizationService::CATEGORY_LOAN,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Emergency Loan',
+                    'category' => InternalOrganizationService::CATEGORY_LOAN,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Membership Dues',
+                    'category' => InternalOrganizationService::CATEGORY_DUES,
+                    'deductable_from_payroll' => true,
+                ],
+            ],
+
+            // ── AS-001: Employees Welfare Association ──────────────────────────
+            // Associations typically collect dues and run mutual aid savings
+            'AS-001' => [
+                [
+                    'name'     => 'Association Membership Dues',
+                    'category' => InternalOrganizationService::CATEGORY_DUES,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Welfare Fund Savings',
+                    'category' => InternalOrganizationService::CATEGORY_SAVINGS,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Welfare Loan',
+                    'category' => InternalOrganizationService::CATEGORY_LOAN,
+                    'deductable_from_payroll' => true,
+                ],
+            ],
+
+            // ── AS-005: Professional Development Association ───────────────────
+            'AS-005' => [
+                [
+                    'name'     => 'Association Membership Dues',
+                    'category' => InternalOrganizationService::CATEGORY_DUES,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Professional Development Fund',
+                    'category' => InternalOrganizationService::CATEGORY_SAVINGS,
+                    'deductable_from_payroll' => true,
+                ],
+                [
+                    'name'     => 'Professional Development Loan',
+                    'category' => InternalOrganizationService::CATEGORY_LOAN,
+                    'deductable_from_payroll' => true,
+                ],
+            ],
+        ];
+
+        foreach ($servicesByOrgCode as $orgCode => $services) {
+            $org = InternalOrganization::where('code', $orgCode)->first();
+
+            if (! $org) {
+                continue;
+            }
+
+            foreach ($services as $service) {
+                InternalOrganizationService::updateOrCreate(
+                    [
+                        'internal_organization_id'         => $org->internal_organization_id,
+                        'internal_organization_service_name' => $service['name'],
+                    ],
+                    [
+                        'service_category'        => $service['category'],
+                        'deductable_from_payroll' => $service['deductable_from_payroll'],
+                    ]
+                );
+            }
         }
     }
 }
