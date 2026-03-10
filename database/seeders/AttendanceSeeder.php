@@ -46,12 +46,14 @@ use Illuminate\Support\Facades\DB;
 class AttendanceSeeder extends Seeder
 {
     // ── Schedule constants ────────────────────────────────────────────────────
-    // Adjust to match your employees' actual schedules if needed.
     private const SCHED_IN        = '08:00:00';
     private const SCHED_BREAK_OUT = '12:00:00';
     private const SCHED_BREAK_IN  = '13:00:00';
     private const SCHED_OUT       = '17:00:00';
-    private const BREAK_DURATION  = 60; // minutes — kept in sync with schedule
+    private const BREAK_DURATION  = 60;
+
+    // Cached supervisor employee_id used for whereabout slip FK fields.
+    private int $supervisorId;
 
     public function run(): void
     {
@@ -76,14 +78,16 @@ class AttendanceSeeder extends Seeder
         $this->command->info("AttendanceSetting [{$setting->name}] ready.");
 
         // ── 2. Load employees ─────────────────────────────────────────────────
-        // We need at least 12 employees. We'll use as many as exist and
-        // cycle through scenarios if there are fewer.
         $employees = Employee::orderBy('employee_id')->take(12)->get();
 
         if ($employees->isEmpty()) {
             $this->command->error('No employees found. Please seed employees first.');
             return;
         }
+
+        // Resolve a valid supervisor employee_id for whereabout slip FK columns.
+        // The foreign key references employees.employee_id, NOT users.id.
+        $this->supervisorId = $employees->first()->employee_id;
 
         $count = $employees->count();
         $this->command->info("Found {$count} employee(s). Seeding 1 month of records…");
@@ -94,25 +98,22 @@ class AttendanceSeeder extends Seeder
 
         /** @var Carbon[] $workdays */
         $workdays = collect(CarbonPeriod::create($startDate, $today))
-            ->filter(fn (Carbon $d) => $d->isWeekday())
+            ->filter(fn(Carbon $d) => $d->isWeekday())
             ->values()
             ->all();
 
         $this->command->info('Workdays in range: ' . count($workdays));
 
         // ── 4. Scenario list ──────────────────────────────────────────────────
-        // Each closure has signature: fn(Employee, string $date, bool $isToday)
         $scenarios = [
 
-            // ─────────────────────────────────────────────────────────────────
             // 1. PRESENT · On time · No slips
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, [
-                    '07:55:00', // time_in  (5 min early)
-                    '12:00:00', // break_out
-                    '13:00:00', // break_in
-                    '17:05:00', // time_out
+                    '07:55:00',
+                    '12:00:00',
+                    '13:00:00',
+                    '17:05:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => '07:55:00',
@@ -120,34 +121,29 @@ class AttendanceSeeder extends Seeder
                     'break_in'     => '13:00:00',
                     'time_out'     => '17:05:00',
                     'late_minutes' => 0,
-                    'work_minutes' => 480,   // 8 h exactly (break excluded)
+                    'work_minutes' => 480,
                     'status'       => 'PRESENT',
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
             // 2. PRESENT · Late 1 h 30 m · No slips
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, [
-                    '09:30:00', // time_in  (90 min late)
-                    '17:00:00', // time_out
+                    '09:30:00',
+                    '17:00:00',
                 ]);
-                // No break logs — work_minutes = time_out - time_in (no break deduction)
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => '09:30:00',
                     'break_out'    => null,
                     'break_in'     => null,
                     'time_out'     => '17:00:00',
                     'late_minutes' => 90,
-                    'work_minutes' => 450,   // 7.5 h
+                    'work_minutes' => 450,
                     'status'       => 'PRESENT',
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
             // 3. PRESENT · On time · Personal slip deducted (has time_out)
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, [
                     '08:00:00',
@@ -155,14 +151,13 @@ class AttendanceSeeder extends Seeder
                     '13:00:00',
                     '17:00:00',
                 ]);
-                // 45-minute personal errand → deducted from work_minutes
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => '08:00:00',
                     'break_out'    => '12:00:00',
                     'break_in'     => '13:00:00',
                     'time_out'     => '17:00:00',
                     'late_minutes' => 0,
-                    'work_minutes' => 435,   // 480 - 45
+                    'work_minutes' => 435,
                     'status'       => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
@@ -176,24 +171,21 @@ class AttendanceSeeder extends Seeder
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
             // 4. PRESENT · Late · Personal slip deducted
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, [
-                    '08:30:00', // 30 min late
+                    '08:30:00',
                     '12:00:00',
                     '13:00:00',
                     '17:00:00',
                 ]);
-                // 30-min personal slip → deducted
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => '08:30:00',
                     'break_out'    => '12:00:00',
                     'break_in'     => '13:00:00',
                     'time_out'     => '17:00:00',
                     'late_minutes' => 30,
-                    'work_minutes' => 420,   // 450 - 30
+                    'work_minutes' => 420,
                     'status'       => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
@@ -207,9 +199,7 @@ class AttendanceSeeder extends Seeder
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
             // 5. PRESENT · On time · Official slip — NO deduction
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, [
                     '08:00:00',
@@ -217,7 +207,6 @@ class AttendanceSeeder extends Seeder
                     '13:00:00',
                     '17:00:00',
                 ]);
-                // Official slip — work_minutes unchanged
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => '08:00:00',
                     'break_out'    => '12:00:00',
@@ -238,9 +227,7 @@ class AttendanceSeeder extends Seeder
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
             // 6. PRESENT · Mix: personal deducted + official ignored
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, [
                     '08:00:00',
@@ -248,14 +235,13 @@ class AttendanceSeeder extends Seeder
                     '13:00:00',
                     '17:00:00',
                 ]);
-                // Personal: 30 min deducted; Official: 45 min, no deduction
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => '08:00:00',
                     'break_out'    => '12:00:00',
                     'break_in'     => '13:00:00',
                     'time_out'     => '17:00:00',
                     'late_minutes' => 0,
-                    'work_minutes' => 450,   // 480 - 30
+                    'work_minutes' => 450,
                     'status'       => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
@@ -278,9 +264,7 @@ class AttendanceSeeder extends Seeder
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
             // 7. PRESENT · Multiple personal slips deducted
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, [
                     '08:00:00',
@@ -288,14 +272,13 @@ class AttendanceSeeder extends Seeder
                     '13:00:00',
                     '17:00:00',
                 ]);
-                // 20 + 25 = 45 min total personal deduction
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => '08:00:00',
                     'break_out'    => '12:00:00',
                     'break_in'     => '13:00:00',
                     'time_out'     => '17:00:00',
                     'late_minutes' => 0,
-                    'work_minutes' => 435,   // 480 - 45
+                    'work_minutes' => 435,
                     'status'       => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
@@ -318,22 +301,18 @@ class AttendanceSeeder extends Seeder
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
-            // 8. PRESENT · Personal slip returned — NOT timed out yet (today)
-            //    Deduction is PENDING until employee clocks out.
-            // ─────────────────────────────────────────────────────────────────
+            // 8. PRESENT · Personal slip returned — NOT timed out yet
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, ['08:00:00']);
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => '08:00:00',
                     'break_out'    => null,
                     'break_in'     => null,
-                    'time_out'     => null,   // still at work
+                    'time_out'     => null,
                     'late_minutes' => 0,
                     'work_minutes' => null,
                     'status'       => 'PRESENT',
                 ]);
-                // Returned from slip but hasn't clocked out → pending deduction
                 $this->insertSlip($emp->employee_id, $date, [
                     'purpose_type'        => 'personal',
                     'purpose_description' => 'Personal errand (AM)',
@@ -345,9 +324,7 @@ class AttendanceSeeder extends Seeder
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
             // 9. PRESENT · Personal slip NOT returned (still out)
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, ['08:00:00']);
                 $this->upsertRecord($emp, $date, [
@@ -359,7 +336,6 @@ class AttendanceSeeder extends Seeder
                     'work_minutes' => null,
                     'status'       => 'PRESENT',
                 ]);
-                // Filed slip but hasn't returned yet
                 $this->insertSlip($emp->employee_id, $date, [
                     'purpose_type'        => 'personal',
                     'purpose_description' => 'Personal errand',
@@ -371,13 +347,11 @@ class AttendanceSeeder extends Seeder
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
             // 10. HALF_DAY · time_in + break_out only (never came back)
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, [
-                    '08:00:00', // time_in
-                    '12:00:00', // break_out — left and never came back
+                    '08:00:00',
+                    '12:00:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => '08:00:00',
@@ -385,18 +359,16 @@ class AttendanceSeeder extends Seeder
                     'break_in'     => null,
                     'time_out'     => null,
                     'late_minutes' => 0,
-                    'work_minutes' => 240,   // 4 h (time_in → break_out)
+                    'work_minutes' => 240,
                     'status'       => 'HALF_DAY',
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
             // 11. HALF_DAY · break_in + time_out only (arrived after lunch)
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, [
-                    '13:00:00', // break_in (arrived after lunch, no morning)
-                    '17:00:00', // time_out
+                    '13:00:00',
+                    '17:00:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => null,
@@ -404,16 +376,13 @@ class AttendanceSeeder extends Seeder
                     'break_in'     => '13:00:00',
                     'time_out'     => '17:00:00',
                     'late_minutes' => null,
-                    'work_minutes' => 240,   // 4 h (break_in → time_out)
+                    'work_minutes' => 240,
                     'status'       => 'HALF_DAY',
                 ]);
             },
 
-            // ─────────────────────────────────────────────────────────────────
             // 12. ABSENT · No logs at all
-            // ─────────────────────────────────────────────────────────────────
             function (Employee $emp, string $date, bool $isToday) {
-                // No raw attendance logs inserted
                 $this->upsertRecord($emp, $date, [
                     'time_in'      => null,
                     'break_out'    => null,
@@ -436,12 +405,8 @@ class AttendanceSeeder extends Seeder
                 $date    = $carbon->toDateString();
                 $isToday = $carbon->isToday();
 
-                // Rotate through all 12 scenarios; offset per employee so
-                // adjacent rows in the table look visually distinct.
                 $scenarioIndex = ($dayIndex + $empIndex * 3) % count($scenarios);
 
-                // Scenarios 7 & 8 require time_out to be null (in-progress day).
-                // Force them to scenario 0 on any past date.
                 if (! $isToday && in_array($scenarioIndex, [7, 8])) {
                     $scenarioIndex = 0;
                 }
@@ -457,17 +422,11 @@ class AttendanceSeeder extends Seeder
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /**
-     * Insert raw attendance scan logs.
-     * Each time string becomes one row in the `attendances` table.
-     */
     private function insertLogs(int $employeeId, string $date, array $times): void
     {
         foreach ($times as $time) {
             $capturedAt = Carbon::parse("{$date} {$time}", 'Asia/Manila');
 
-            // Use updateOrCreate keyed on employee + captured_at so re-running
-            // the seeder doesn't create duplicate rows.
             Attendance::firstOrCreate(
                 [
                     'employee_id' => $employeeId,
@@ -481,10 +440,6 @@ class AttendanceSeeder extends Seeder
         }
     }
 
-    /**
-     * Upsert a computed AttendanceRecord row.
-     * Mirrors what ProcessAttendanceLog writes.
-     */
     private function upsertRecord(Employee $emp, string $date, array $fields): void
     {
         AttendanceRecord::updateOrCreate(
@@ -504,21 +459,20 @@ class AttendanceSeeder extends Seeder
 
     /**
      * Insert one WhereaboutSlip row.
-     * Mirrors what WhereaboutSlipController::store() creates.
+     *
+     * The reviewed_and_noted_by_id, approved_by_id, and attested_by_id columns
+     * are foreign keys to employees.employee_id — NOT users.id. We use the
+     * first seeded employee as the standing supervisor/approver.
      */
     private function insertSlip(int $employeeId, string $date, array $fields): void
     {
-        // Use a supervisor/admin user ID for the noted-by fields.
-        // Falls back to 1 if none found.
-        $adminId = DB::table('users')->value('id') ?? 1;
-
         WhereaboutSlip::create(array_merge(
             [
                 'employee_id'              => $employeeId,
                 'date_filed'               => $date,
-                'reviewed_and_noted_by_id' => $adminId,
-                'approved_by_id'           => $adminId,
-                'attested_by_id'           => $adminId,
+                'reviewed_and_noted_by_id' => $this->supervisorId,
+                'approved_by_id'           => $this->supervisorId,
+                'attested_by_id'           => $this->supervisorId,
                 'time_noted'               => $fields['time_out'],
             ],
             $fields
