@@ -201,18 +201,22 @@ const REQUIRED: Record<number, { field: string; label: string }[]> = {
         { field: "sex", label: "Sex" },
         { field: "civil_status", label: "Civil Status" },
         { field: "phone_number", label: "Phone Number" },
+
     ],
     1: [
         { field: "item_id", label: "Position" },
         { field: "salary_grade", label: "Salary Grade" },
         { field: "salary_grade_step_id", label: "Step" },
         { field: "employment_classification", label: "Employment Classification" },
+        { field: "work_id", label: "Work ID" },
         { field: "work_email", label: "Work Email" },
         { field: "password", label: "Password" },
         { field: "date_applied", label: "Date Applied" },
         { field: "date_hired", label: "Date Hired" },
         { field: "work_schedule_start", label: "Schedule Start" },
         { field: "work_schedule_end", label: "Schedule End" },
+        { field: "break_start", label: "Break Start" },
+        { field: "break_end", label: "Break End" },
         { field: "status", label: "Status" },
     ],
 }
@@ -502,10 +506,11 @@ function PersonalStep({ data, setData, err }: {
 
 function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmentClassifications, roles }: {
     data: {
-        item_id: string; selected_position_name: string; salary_grade_step_id: string
+        item_id: string; selected_position_name: string; salary_grade_step_id: string, work_id: string,
         employment_classification: string; roles: string[]; work_email: string; password: string
         date_applied: string; date_hired: string; work_schedule_start: string
         work_schedule_end: string; status: string; salary_grade: string; step: string
+        break_start: string; break_end: string
     }
     setData: SetDataFn; err: ErrFn
     items: Item[]; salaryGradeSteps: SalaryGradeStep[]; employmentClassifications: EmploymentClassification[]; roles: Role[]
@@ -754,6 +759,17 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     </Select>
                     <FieldError message={err("status")} />
                 </div>
+                {/* Work ID */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="work_id">Work ID <Req /></FieldLabel>
+                    <Input
+                        id="work_id"
+                        value={data.work_id}
+                        onChange={e => setData("work_id", e.target.value)}
+                        placeholder="e.g. EMP-2024-001"
+                    />
+                    <FieldError message={err("work_id")} />
+                </div>
 
                 {/* Work Email */}
                 <div className="space-y-2">
@@ -761,6 +777,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     <Input id="work_email" type="email" value={data.work_email} onChange={e => setData("work_email", e.target.value)} placeholder="johndoe@agency.gov.ph" />
                     <FieldError message={err("work_email")} />
                 </div>
+
 
                 {/* Password */}
                 <div className="space-y-2">
@@ -795,6 +812,20 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     <FieldLabel htmlFor="work_schedule_end">Schedule End <Req /></FieldLabel>
                     <Input id="work_schedule_end" type="time" value={data.work_schedule_end} onChange={e => setData("work_schedule_end", e.target.value)} />
                     <FieldError message={err("work_schedule_end")} />
+                </div>
+
+                {/* Break Start */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="break_start">Break Start</FieldLabel>
+                    <Input id="break_start" type="time" value={data.break_start} onChange={e => setData("break_start", e.target.value)} />
+                    <FieldError message={err("break_start")} />
+                </div>
+
+                {/* Break End */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="break_end">Break End</FieldLabel>
+                    <Input id="break_end" type="time" value={data.break_end} onChange={e => setData("break_end", e.target.value)} />
+                    <FieldError message={err("break_end")} />
                 </div>
             </div>
 
@@ -1032,13 +1063,15 @@ function EligibilityStep({ rows, setRows, err }: { rows: EligibilityRow[]; setRo
 
 function ReviewStep({ data, items, salaryGradeSteps, addresses, family, government, education, eligibility }: {
     data: {
-        first_name: string; last_name: string; middle_name: string; name_extension: string
+        first_name: string; last_name: string; middle_name: string; name_extension: string, work_id: string
         birth_date: string; sex: string; civil_status: string; place_of_birth: string
         personal_email: string; phone_number: string; item_id: string
         selected_position_name: string; salary_grade_step_id: string
         employment_classification: string; roles: string[]; work_email: string
         date_applied: string; date_hired: string
-        work_schedule_start: string; work_schedule_end: string; status: string
+        work_schedule_start: string; work_schedule_end: string
+        break_start: string; break_end: string
+        status: string
     }
     items: Item[]; salaryGradeSteps: SalaryGradeStep[]
     addresses: AddressRow[]; family: FamilyRow[]; government: GovernmentRow[]
@@ -1077,6 +1110,7 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
             {selectedGroup?.position?.department && <ReviewRow label="Department" value={selectedGroup.position.department.department_name} />}
             {selectedGroup?.position?.division && <ReviewRow label="Division" value={selectedGroup.position.division.division_name} />}
             {selectedGroup?.position?.unit && <ReviewRow label="Unit" value={selectedGroup.position.unit.unit_name} />}
+            <ReviewRow label="Work ID" value={data.work_id} />
             <ReviewRow label="Employment Classification" value={data.employment_classification || undefined} />
             <ReviewRow label="Roles" value={data.roles.map(formatRoleLabel).join(", ") || undefined} />
             <ReviewRow
@@ -1090,6 +1124,12 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
             <ReviewRow label="Date Applied" value={data.date_applied} />
             <ReviewRow label="Date Hired" value={data.date_hired} />
             <ReviewRow label="Work Schedule" value={data.work_schedule_start && data.work_schedule_end ? `${data.work_schedule_start} – ${data.work_schedule_end}` : undefined} />
+            <ReviewRow
+                label="Break Time"
+                value={data.break_start && data.break_end
+                    ? `${data.break_start} – ${data.break_end}`
+                    : undefined}
+            />
 
             <SectionHeading>Addresses ({addresses.length})</SectionHeading>
             {addresses.length === 0 ? <EmptyState label="No addresses provided." /> : addresses.map((a, i) => (
@@ -1157,9 +1197,11 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
         selected_position_name: "",
         salary_grade_step_id: "",
         employment_classification: "",
+        work_id: "",
         roles: ["employee"],
         work_email: "", password: "", date_applied: "", date_hired: "",
         work_schedule_start: "", work_schedule_end: "", status: "",
+        break_start: "", break_end: "",
         salary_grade: "", step: "",
     })
 
@@ -1222,6 +1264,11 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             if (data.work_schedule_start && data.work_schedule_end) {
                 if (data.work_schedule_start === data.work_schedule_end) {
                     newErrors["work_schedule_end"] = "Schedule End cannot be the same as Schedule Start."
+                }
+            }
+            if (data.break_start && data.break_end) {
+                if (data.break_start === data.break_end) {
+                    newErrors["break_end"] = "Break End cannot be the same as Break Start."
                 }
             }
         }

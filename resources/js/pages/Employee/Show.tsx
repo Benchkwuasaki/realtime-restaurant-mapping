@@ -150,11 +150,14 @@ interface InternalOrganization {
 interface Employee {
     employee_id: number
     work_email: string
+    work_id?: string
     employment_classification: string
     date_applied?: string
     date_hired?: string
     work_schedule_start?: string
     work_schedule_end?: string
+    break_start?: string
+    break_end?: string
     status: boolean
     avatar_url?: string
     basic_info?: BasicInfo
@@ -226,6 +229,11 @@ function cap(str?: string) {
 function toInputDate(date?: string) {
     if (!date) return ""
     return date.slice(0, 10)
+}
+
+function toInputTime(t?: string): string {
+    if (!t) return ""
+    return t.slice(0, 5)   // "08:30:00" → "08:30"
 }
 
 async function getCroppedImg(imageSrc: string, croppedAreaPixels: { x: number; y: number; width: number; height: number }): Promise<Blob> {
@@ -452,6 +460,7 @@ type EditField =
     | "employment_classification"
     | "date_applied"
     | "work_schedule"
+    | "break_time"
     | null
 
 function EmploymentEditDialog({ employee, field, onClose, items }: {
@@ -473,8 +482,10 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         date_hired: toInputDate(employee.date_hired),
         date_applied: toInputDate(employee.date_applied),
         employment_classification: employee.employment_classification ?? "",
-        work_schedule_start: employee.work_schedule_start ?? "",
-        work_schedule_end: employee.work_schedule_end ?? "",
+        work_schedule_start: toInputTime(employee.work_schedule_start),
+        work_schedule_end: toInputTime(employee.work_schedule_end),
+        break_start: toInputTime(employee.break_start),
+        break_end: toInputTime(employee.break_end),
     })
 
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
@@ -507,6 +518,7 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         if (field === "date_applied") data = { date_applied: form.date_applied }
         if (field === "employment_classification") data = { employment_classification: form.employment_classification }
         if (field === "work_schedule") data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
+        if (field === "break_time") data = { break_start: form.break_start, break_end: form.break_end }
         router.put(route("employee.update", employee.employee_id), data, { preserveScroll: true, onSuccess: onClose })
     }
 
@@ -517,6 +529,7 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         employment_classification: "Edit Employment Classification",
         date_applied: "Edit Date Applied",
         work_schedule: "Edit Work Schedule",
+        break_time: "Edit Break Time",
     }
 
     return (
@@ -647,6 +660,18 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                             </div>
                         </div>
                     )}
+                    {field === "break_time" && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Break Start</Label>
+                                <Input type="time" value={form.break_start} onChange={e => set("break_start", e.target.value)} autoFocus />
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Break End</Label>
+                                <Input type="time" value={form.break_end} onChange={e => set("break_end", e.target.value)} />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <DialogFooter>
@@ -688,6 +713,13 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                         ? `${employee.work_schedule_start} – ${employee.work_schedule_end}`
                         : undefined}
                     onEdit={() => setEditField("work_schedule")}
+                />
+                <DetailCard
+                    title="Break Time"
+                    value={employee.break_start && employee.break_end
+                        ? `${employee.break_start} – ${employee.break_end}`
+                        : undefined}
+                    onEdit={() => setEditField("break_time")}
                 />
             </div>
 
@@ -1561,7 +1593,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, venue: e.target.value }))} /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label><Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
                     </div>
                     <DialogFooter>
@@ -2250,6 +2282,7 @@ export default function ShowEmployee({ employee, items }: Props) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-0">
                             <InfoRow icon={Mail} label="Work Email" value={employee.work_email} />
                             <InfoRow icon={Mail} label="Personal Email" value={basic?.personal_email} />
+                            <InfoRow icon={Briefcase} label="Work ID" value={employee.work_id} />
                             <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} />
                             <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} />
                             <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} />

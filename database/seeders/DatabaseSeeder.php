@@ -72,7 +72,6 @@ class DatabaseSeeder extends Seeder
             'updated_at' => now(),
         ]);
 
-
         // ── 3. Divisions ───────────────────────────────────────────
         // Dept #1 divisions (existing)
         $divHrId = DB::table('divisions')->insertGetId([
@@ -119,7 +118,6 @@ class DatabaseSeeder extends Seeder
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-
 
         // Dept #2 divisions (NEW) — 3 divisions
         $divOpsFieldId = DB::table('divisions')->insertGetId([
@@ -690,8 +688,6 @@ class DatabaseSeeder extends Seeder
         ];
         $leaveTypes = ['Vacation Leave', 'Sick Leave'];
 
-
-
         // ── 8. Insert 100 employees ────────────────────────────────
         $createdEmployeeIds = [];
         $docTrackTargetPositionByDepartment = [
@@ -751,9 +747,9 @@ class DatabaseSeeder extends Seeder
 
             $workEmail = strtolower(
                 preg_replace('/[^a-z0-9]/', '', $firstName) . '.' .
-                preg_replace('/[^a-z0-9]/', '', $lastName) .
-                ($i > 0 ? $i : '') .
-                '@obx.gov.ph'
+                    preg_replace('/[^a-z0-9]/', '', $lastName) .
+                    ($i > 0 ? $i : '') .
+                    '@obx.gov.ph'
             );
 
             // Basic info
@@ -778,12 +774,15 @@ class DatabaseSeeder extends Seeder
                 'item_id' => $itemId,
                 'salary_grade_step_id' => $sgStepIds[$sgIdx],
                 'employment_classification' => $classif,
+                'work_id' => sprintf('EMP-%04d', $i + 1),
                 'work_email' => $workEmail,
                 'password' => Hash::make('password'),
                 'date_applied' => $appliedDate,
                 'date_hired' => $hiredDate,
                 'work_schedule_start' => '08:00:00',
                 'work_schedule_end' => '17:00:00',
+                'break_start' => '12:00:00',
+                'break_end' => '13:00:00',
                 'status' => $status,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -1022,13 +1021,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserSeeder::class,
             InternalOrganizationSeeder::class,
-            HolidaySeeder::class,
-            FaceEmbeddingSeeder::class,
-            RecognitionLogSeeder::class,
-            AttendanceRecordSeeder::class,
             LeaveTypeSeeder::class,
             LeaveBalanceSeeder::class,
             LeaveApplicationSeeder::class,
+            AttendanceSeeder::class,
             // LeaveEntitlementSeeder::class,
         ]);
     }
