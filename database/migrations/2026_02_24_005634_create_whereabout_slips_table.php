@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('whereabout_slips', function (Blueprint $table) {
@@ -23,15 +20,13 @@ return new class extends Migration
             $table->time('time_out');
             $table->time('time_returned')->nullable();
             $table->time('time_noted')->nullable();
+            $table->unsignedSmallInteger('minutes_gone')->nullable(); // null until employee returns; personal only deducts from work_minutes
             $table->enum('status', ['pending', 'done'])->default('pending');
             $table->enum('return_status', ['not_returned', 'returned'])->default('not_returned');
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('whereabout_slips');

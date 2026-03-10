@@ -1,6 +1,7 @@
 import { format, parseISO } from "date-fns"
-import { AlertTriangle, Clock, Coffee, Timer, LogIn } from "lucide-react"
+import { AlertTriangle, Clock, Coffee, Timer, LogIn, ClipboardList } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
 import {
@@ -11,13 +12,7 @@ import { type AttendanceRecord } from "../data/schema"
 
 // ─── Time cell ────────────────────────────────────────────────────────────────
 
-function TimeCell({
-    actual,
-    isLate = false,
-}: {
-    actual: string | null
-    isLate?: boolean
-}) {
+function TimeCell({ actual, isLate = false }: { actual: string | null; isLate?: boolean }) {
     if (!actual) return (
         <span className="text-muted-foreground/40 tabular-nums font-mono text-sm">—</span>
     )
@@ -41,7 +36,6 @@ function TimeInCell({ record }: { record: AttendanceRecord }) {
         )
     }
 
-    // No time_in but break_out recorded → present but missed clock-in
     if (record.break_out) {
         return (
             <span className="inline-flex items-center gap-1 text-xs text-accent-foreground font-medium">
@@ -54,6 +48,50 @@ function TimeInCell({ record }: { record: AttendanceRecord }) {
     return <span className="text-muted-foreground/40 tabular-nums font-mono text-sm">—</span>
 }
 
+// ─── Whereabout slip badge ────────────────────────────────────────────────────
+
+function WhereaboutSlipCell({ record }: { record: AttendanceRecord }) {
+    const slips = record.whereabout_slips ?? []
+
+    if (slips.length === 0) {
+        return <span className="text-muted-foreground/40 text-sm">—</span>
+    }
+
+    const hasPersonal = slips.some(s => s.purpose_type === "personal")
+    const hasOfficial = slips.some(s => s.purpose_type === "official")
+    const hasPending  = slips.some(s => s.return_status === "not_returned")
+
+    return (
+        <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Count badge */}
+            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                <ClipboardList className="w-3 h-3" />
+                {slips.length}
+            </span>
+
+            {/* Purpose type badges */}
+            {hasPersonal && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                    Personal
+                </Badge>
+            )}
+            {hasOfficial && (
+                <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4">
+                    Official
+                </Badge>
+            )}
+
+            {/* Pending return warning */}
+            {hasPending && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="w-3 h-3" />
+                    Pending
+                </span>
+            )}
+        </div>
+    )
+}
+
 // ─── Mobile card ──────────────────────────────────────────────────────────────
 
 function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
@@ -61,6 +99,7 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
     const status = row.status
     const Icon   = STATUS_ICON[status] ?? STATUS_ICON.ABSENT
     const isLate = (row.late_minutes ?? 0) > 0
+    const slips  = row.whereabout_slips ?? []
 
     return (
         <div className="flex flex-col bg-background overflow-hidden">
@@ -112,6 +151,19 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
                         </div>
                     )}
                 </div>
+
+                {/* Whereabout slips */}
+                {slips.length > 0 && (
+                    <div className="pl-3.5 flex items-center gap-1.5 flex-wrap">
+                        <ClipboardList className="w-3 h-3 text-blue-500" />
+                        <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">
+                            {slips.length} whereabout slip{slips.length > 1 ? "s" : ""}
+                        </span>
+                        {slips.some(s => s.return_status === "not_returned") && (
+                            <span className="text-[10px] text-amber-600 font-semibold">· Pending return</span>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Footer */}
@@ -194,7 +246,7 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
             mobileCard: (row) => <MobileAttendanceCard row={row} />,
         },
 
-        // Latest Date
+        // Date
         {
             accessorKey: "date",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
@@ -259,6 +311,14 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
                     {fmtMinutes(row.original.work_minutes)}
                 </span>
             ),
+        },
+
+        // Whereabout Slips
+        {
+            id: "whereabout_slips",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Slips" />,
+            cell: ({ row }) => <WhereaboutSlipCell record={row.original} />,
+            enableSorting: false,
         },
 
         // Status

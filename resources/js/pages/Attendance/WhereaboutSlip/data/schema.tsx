@@ -26,6 +26,7 @@ export const whereaboutSlipSchema = z.object({
     time_out: z.string(),
     time_returned: z.string().nullable().optional(),
     time_noted: z.string().nullable().optional(),
+    minutes_gone: z.number().nullable().optional(),  // null until employee returns
     status: z.enum(["pending", "done"]),
     return_status: z.enum(["not_returned", "returned"]),
     created_at: z.string().nullable().optional(),

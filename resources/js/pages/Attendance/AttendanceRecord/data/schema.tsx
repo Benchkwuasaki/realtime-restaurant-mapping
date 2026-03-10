@@ -1,5 +1,23 @@
 import { z } from "zod"
 
+// ─── Whereabout Slip (embedded in attendance record) ──────────────────────────
+
+export const whereaboutSlipSchema = z.object({
+    whereabout_slip_id:  z.number(),
+    date_filed:          z.string(),
+    purpose_type:        z.enum(["official", "personal"]),
+    purpose_description: z.string(),
+    time_out:            z.string(),
+    time_returned:       z.string().nullable().optional(),
+    minutes_gone:        z.number().nullable().optional(),
+    status:              z.enum(["pending", "done"]),
+    return_status:       z.enum(["not_returned", "returned"]),
+})
+
+export type WhereaboutSlip = z.infer<typeof whereaboutSlipSchema>
+
+// ─── Attendance Record ────────────────────────────────────────────────────────
+
 export const attendanceRecordSchema = z.object({
     id: z.union([z.number(), z.string()]),
     employee_id: z.number(),
@@ -26,6 +44,8 @@ export const attendanceRecordSchema = z.object({
             middle_name: z.string().nullable().optional(),
         }).optional(),
     }).optional(),
+    // Whereabout slips filed on this record's date for this employee
+    whereabout_slips: z.array(whereaboutSlipSchema).default([]),
 })
 
 export const attendanceRecordWithHistorySchema = attendanceRecordSchema.extend({

@@ -7,6 +7,7 @@ use App\Models\Attendance;
 use App\Models\AttendanceRecord;
 use App\Models\AttendanceSetting;
 use App\Models\Employee;
+use App\Models\WhereaboutSlip;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -32,18 +33,60 @@ class AttendanceRecordController extends Controller
             ->orderByDesc('date')
             ->get();
 
+        // ── Load all relevant whereabout slips in one query ───────────────────
+        // Keyed by "employee_id|date" for fast lookup when building records.
+        $employeeIds = $all->pluck('employee_id')->unique()->values()->toArray();
+
+        // Always format as Y-m-d — $r->date may be a Carbon object or a date string;
+        // using Carbon::parse()->format() is safe either way.
+        $dates = $all->pluck('date')
+            ->map(fn($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $slipsByKey = WhereaboutSlip::whereIn('employee_id', $employeeIds)
+            ->whereIn('date_filed', $dates)
+            ->orderBy('time_out')
+            ->get()
+            ->groupBy(fn($s) => $s->employee_id . '|' . \Carbon\Carbon::parse($s->date_filed)->format('Y-m-d'))
+            ->map(fn($group) => $group->map(fn($s) => [
+                'whereabout_slip_id'  => $s->whereabout_slip_id,
+                'date_filed'          => \Carbon\Carbon::parse($s->date_filed)->format('Y-m-d'),
+                'purpose_type'        => $s->purpose_type,
+                'purpose_description' => $s->purpose_description,
+                'time_out'            => $s->time_out,
+                'time_returned'       => $s->time_returned,
+                'minutes_gone'        => $s->minutes_gone,
+                'status'              => $s->status,
+                'return_status'       => $s->return_status,
+            ])->values()->all());
+
         $records = $all
             ->groupBy('employee_id')
-            ->map(function ($group) {
+            ->map(function ($group) use ($slipsByKey) {
                 $latest  = $group->first();
                 $history = $group->slice(1)->values();
-                return array_merge($latest->toArray(), ['history' => $history->toArray()]);
+
+                // Attach slips to the latest record
+                $latestArr                     = $latest->toArray();
+                $latestKey                     = $latest->employee_id . '|' . \Carbon\Carbon::parse($latest->date)->format('Y-m-d');
+                $latestArr['whereabout_slips'] = $slipsByKey[$latestKey] ?? [];
+
+                // Attach slips to each history record too (shown in history dialog)
+                $historyArr = $history->map(function ($r) use ($slipsByKey) {
+                    $arr                     = $r->toArray();
+                    $key                     = $r->employee_id . '|' . \Carbon\Carbon::parse($r->date)->format('Y-m-d');
+                    $arr['whereabout_slips'] = $slipsByKey[$key] ?? [];
+                    return $arr;
+                })->values()->all();
+
+                return array_merge($latestArr, ['history' => $historyArr]);
             })
             ->values();
 
         return Inertia::render('Attendance/AttendanceRecord/Index', [
             'records'  => $records,
-            // Full list for the settings dialog (sorted: default first, then by name)
             'settings' => AttendanceSetting::orderByDesc('is_default')
                 ->orderBy('name')
                 ->get(),
@@ -87,7 +130,6 @@ class AttendanceRecordController extends Controller
         $employees = Employee::where('status', true)->get();
 
         foreach ($employees as $employee) {
-            // Only insert if no record exists for today
             AttendanceRecord::firstOrCreate(
                 ['employee_id' => $employee->employee_id, 'date' => $today],
                 [
@@ -95,7 +137,7 @@ class AttendanceRecordController extends Controller
                     'scheduled_break_out' => $employee->break_start,
                     'scheduled_break_in'  => $employee->break_end,
                     'scheduled_time_out'  => $employee->work_schedule_end,
-                    'grace_minutes'       => $setting->time_in_grace_minutes,
+                    'grace_minutes'       => 0,
                     'time_in'             => null,
                     'break_out'           => null,
                     'break_in'            => null,
