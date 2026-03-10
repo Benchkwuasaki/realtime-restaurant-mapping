@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessAttendanceLog;
+use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\WhereaboutSlip;
 use App\Services\ActivityLogService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,6 +42,7 @@ class WhereaboutSlipController extends Controller
                 'time_out'                 => $slip->time_out,
                 'time_returned'            => $slip->time_returned,
                 'time_noted'               => $slip->time_noted,
+                'minutes_gone'             => $slip->minutes_gone,
                 'status'                   => $slip->status,
                 'return_status'            => $slip->return_status,
                 'employee'              => self::mapEmployee($slip->employee),
@@ -54,9 +58,9 @@ class WhereaboutSlipController extends Controller
             ->values();
 
         $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'attendance',
-            'description' => "Viewed whereabout slip management",
+            'user_id'     => Auth::id(),
+            'module'      => 'attendance',
+            'description' => 'Viewed whereabout slip management',
         ]);
 
         return Inertia::render('Attendance/WhereaboutSlip/Index', [
@@ -64,7 +68,6 @@ class WhereaboutSlipController extends Controller
             'employees' => $employees,
         ]);
     }
-
 
     public function store(Request $request): RedirectResponse
     {
@@ -84,14 +87,13 @@ class WhereaboutSlipController extends Controller
         WhereaboutSlip::create($validated);
 
         $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'attendance',
+            'user_id'     => Auth::id(),
+            'module'      => 'attendance',
             'description' => "Created whereabout slip for {$employee->basicInfo->full_name}",
         ]);
 
         return back()->with('success', 'Whereabout slip created successfully.');
     }
-
 
     public function update(Request $request, WhereaboutSlip $whereaboutSlip): RedirectResponse
     {
@@ -101,7 +103,7 @@ class WhereaboutSlipController extends Controller
             'approved_by_id'           => ['required', 'integer', 'exists:employees,employee_id'],
             'attested_by_id'           => ['required', 'integer', 'exists:employees,employee_id'],
             'date_filed'               => ['required', 'date'],
-            'purpose_type'             => ['required', 'boolean'],
+            'purpose_type'             => ['required', 'string', 'in:official,personal'],
             'purpose_description'      => ['required', 'string', 'max:1000'],
             'time_out'                 => ['required', 'date_format:H:i:s'],
         ]);
@@ -125,19 +127,33 @@ class WhereaboutSlipController extends Controller
                 'required',
                 'date_format:H:i:s',
                 "after:{$timeOut}",
-                'after:time_returned',  // ← must be after the submitted time_returned field
+                'after:time_returned',
             ],
         ], [
             'time_returned.after' => "Time returned must be after the time out ({$timeOut}).",
-            'time_noted.after'    => "Time noted must be after time returned.",
+            'time_noted.after'    => 'Time noted must be after time returned.',
         ]);
+
+        // ── Compute minutes_gone ──────────────────────────────────────────────
+        // This is the raw duration the employee was away (time_out → time_returned).
+        // For personal slips, ProcessAttendanceLog will deduct this from work_minutes.
+        // For official slips, it is stored for record-keeping but not deducted.
+        $minutesGone = (int) Carbon::createFromTimeString($timeOut)
+            ->diffInMinutes(Carbon::createFromTimeString($validated['time_returned']));
 
         $whereaboutSlip->update([
             'time_returned' => $validated['time_returned'],
             'time_noted'    => $validated['time_noted'],
+            'minutes_gone'  => $minutesGone,
             'return_status' => 'returned',
             'status'        => 'done',
         ]);
+
+        // ── Re-trigger attendance computation for personal slips ──────────────
+        // Official slips don't affect work_minutes so no recompute needed.
+        if ($whereaboutSlip->purpose_type === 'personal') {
+            $this->recomputeAttendanceForSlip($whereaboutSlip);
+        }
 
         return back()->with('success', 'Return time logged successfully.');
     }
@@ -166,10 +182,33 @@ class WhereaboutSlipController extends Controller
         );
     }
 
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Dispatch ProcessAttendanceLog for the most recent raw log of this
+     * employee on the slip's date_filed so the attendance record gets
+     * recomputed with the personal deduction applied.
+     */
+    private function recomputeAttendanceForSlip(WhereaboutSlip $slip): void
+    {
+        $date  = $slip->date_filed->format('Y-m-d');
+        $tz    = 'Asia/Manila';
+        $start = Carbon::parse($date, $tz)->startOfDay()->utc();
+        $end   = Carbon::parse($date, $tz)->endOfDay()->utc();
+
+        $log = Attendance::where('employee_id', $slip->employee_id)
+            ->whereBetween('captured_at', [$start, $end])
+            ->orderByDesc('captured_at')
+            ->first();
+
+        if ($log) {
+            ProcessAttendanceLog::dispatch($log->id);
+        }
+    }
 
     private static function mapEmployee(?Employee $employee): ?array
     {
-        if (! $employee) return null;
+        if (!$employee) return null;
 
         return [
             'employee_id'            => $employee->employee_id,

@@ -7,6 +7,7 @@ use App\Models\Attendance;
 use App\Models\AttendanceRecord;
 use App\Models\AttendanceSetting;
 use App\Models\Employee;
+use App\Models\WhereaboutSlip;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -241,6 +242,26 @@ class ProcessAttendanceLog implements ShouldQueue
 
         } else {
             $status = 'ABSENT';
+        }
+
+        // ── Personal whereabout slip deductions ───────────────────────────────
+        //
+        // For each PERSONAL whereabout slip on this date that has been returned,
+        // subtract the minutes_gone from work_minutes.
+        //
+        // OFFICIAL slips are company time — no deduction applied.
+        //
+        // Example:
+        //   work_minutes = 480 (8 hrs)
+        //   personal slip: 9:00 AM → 10:00 AM (60 min)
+        //   final work_minutes = 480 - 60 = 420 (7 hrs)
+        if ($workMinutes !== null) {
+            $personalDeductions = WhereaboutSlip::personalDeductions(
+                $employee->employee_id,
+                $date
+            )->sum('minutes_gone');
+
+            $workMinutes = max(0, $workMinutes - $personalDeductions);
         }
 
         return [
