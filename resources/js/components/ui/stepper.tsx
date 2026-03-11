@@ -27,8 +27,8 @@ const Step: React.FC<StepProps> = ({
     icon: Icon,
 }) => {
     return (
-        <div className="flex flex-1 items-center gap-3 min-w-0">
-            {/* Circle */}
+        <div className="flex flex-1 items-center gap-3">
+            {/* Circle — always shows number; checkmark when completed */}
             <div className="relative flex shrink-0 items-center justify-center">
                 <div
                     className={cn(
@@ -42,8 +42,6 @@ const Step: React.FC<StepProps> = ({
                 >
                     {isCompleted ? (
                         <Check className="size-4" />
-                    ) : Icon ? (
-                        <Icon className="size-4" />
                     ) : (
                         <span className="text-sm font-semibold">{index + 1}</span>
                     )}
@@ -51,22 +49,34 @@ const Step: React.FC<StepProps> = ({
             </div>
 
             {/* Labels */}
-            <div className="min-w-0 flex flex-col">
-                {description && (
-                    <p className="text-xs text-muted-foreground leading-none mb-0.5">
-                        {description}
-                    </p>
-                )}
-                <p
-                    className={cn(
-                        "text-sm font-medium truncate leading-snug",
-                        isActive || isCompleted
-                            ? "text-foreground"
-                            : "text-muted-foreground",
-                    )}
-                >
-                    {title}
+            <div className="flex flex-col">
+                {/* Description ("Step N") always rendered when provided */}
+                <p className="text-xs text-muted-foreground leading-none mb-0.5">
+                    {description ?? `Step ${index + 1}`}
                 </p>
+                <div className="flex items-center gap-1.5">
+                    {/* Icon sits next to title text, not inside the circle */}
+                    {Icon && (
+                        <Icon
+                            className={cn(
+                                "size-3.5 shrink-0",
+                                isActive || isCompleted
+                                    ? "text-foreground"
+                                    : "text-muted-foreground",
+                            )}
+                        />
+                    )}
+                    <p
+                        className={cn(
+                            "text-sm font-medium leading-snug",
+                            isActive || isCompleted
+                                ? "text-foreground"
+                                : "text-muted-foreground",
+                        )}
+                    >
+                        {title}
+                    </p>
+                </div>
             </div>
 
             {/* Connector line — hidden on last step */}
