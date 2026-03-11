@@ -30,6 +30,37 @@ interface ColumnOptions {
     onEdit: (org: InternalOrganization) => void
 }
 
+// ─── Status Toggle Badge ───────────────────────────────────────────────────────
+
+function StatusBadge({ org }: { org: InternalOrganization }) {
+    const [processing, setProcessing] = useState(false)
+
+    function handleToggle(e: React.MouseEvent) {
+        e.stopPropagation()
+        setProcessing(true)
+        router.patch(
+            route("internal-organization.toggle-status", org.internal_organization_id),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setProcessing(false),
+            }
+        )
+    }
+
+    return (
+        <Badge
+            asChild
+            variant={org.status ? "default" : "destructive"}
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+        >
+            <button onClick={handleToggle} disabled={processing}>
+                {processing ? "Saving…" : org.status ? "Active" : "Inactive"}
+            </button>
+        </Badge>
+    )
+}
+
 // ─── Mobile Delete Confirm Dialog ─────────────────────────────────────────────
 
 interface DeleteConfirmDialogProps {
@@ -121,7 +152,9 @@ function MobileOrgCard({ row, onEdit }: MobileOrgCardProps) {
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-muted-foreground">{row.type}</span>
+                        <span className="text-xs text-muted-foreground">
+                            {row.org_type?.internal_org_type ?? "—"}
+                        </span>
                         {row.head && (
                             <span className="text-xs text-muted-foreground">· {row.head}</span>
                         )}
@@ -136,9 +169,7 @@ function MobileOrgCard({ row, onEdit }: MobileOrgCardProps) {
 
                 {/* ── Card Footer ── */}
                 <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
-                    <Badge variant={row.status ? "default" : "secondary"} className="text-xs">
-                        {row.status ? "Active" : "Inactive"}
-                    </Badge>
+                    <StatusBadge org={row} />
                     <div className="flex items-center gap-3">
                         <Button
                             variant="ghost"
@@ -228,7 +259,8 @@ export const columns = ({ onEdit }: ColumnOptions): ColumnDef<InternalOrganizati
         ),
     },
     {
-        accessorKey: "type",
+        id: "type",
+        accessorFn: (row) => row.org_type?.internal_org_type ?? "—",
         header: ({ column }) => (
             <DataTableColumnHeader column={column} title="Type" />
         ),
@@ -259,7 +291,7 @@ export const columns = ({ onEdit }: ColumnOptions): ColumnDef<InternalOrganizati
             const linked: boolean = row.getValue("payroll_deduction_linked")
             return (
                 <div className="min-w-[100px]">
-                    <Badge variant={linked ? "default" : "secondary"}>
+                    <Badge variant={linked ? "default" : "destructive"}>
                         {linked ? "Yes" : "No"}
                     </Badge>
                 </div>
@@ -274,16 +306,11 @@ export const columns = ({ onEdit }: ColumnOptions): ColumnDef<InternalOrganizati
         header: ({ column }) => (
             <DataTableColumnHeader column={column} title="Status" />
         ),
-        cell: ({ row }) => {
-            const isActive: boolean = row.getValue("status")
-            return (
-                <div className="min-w-[90px]">
-                    <Badge variant={isActive ? "default" : "secondary"}>
-                        {isActive ? "Active" : "Inactive"}
-                    </Badge>
-                </div>
-            )
-        },
+        cell: ({ row }) => (
+            <div className="min-w-[90px]">
+                <StatusBadge org={row.original} />
+            </div>
+        ),
         filterFn: (row, id, value: boolean[]) => value.includes(row.getValue(id)),
         enableSorting: true,
         enableHiding: true,

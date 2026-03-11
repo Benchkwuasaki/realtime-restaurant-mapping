@@ -3,18 +3,22 @@
 namespace Database\Seeders;
 
 use App\Models\InternalOrganization;
+use App\Models\InternalOrgType;
 use Illuminate\Database\Seeder;
 
 class InternalOrganizationSeeder extends Seeder
 {
     public function run(): void
     {
+        // Resolve type IDs once — assumes InternalOrgTypeSeeder / migration seeding ran first
+        $typeIds = InternalOrgType::pluck('internal_org_type_id', 'internal_org_type');
+
         $organizations = [
-            // ── Unions ──────────────────────────────────────────────────────────
+            // ── Unions ───────────────────────────────────────────────────────────
             [
                 'code'                     => 'UN-001',
                 'name'                     => 'General Workers Union',
-                'type'                     => 'Union',
+                'internal_org_type_id'     => $typeIds['Union'],
                 'head'                     => 'Ricardo Santos',
                 'payroll_deduction_linked' => true,
                 'status'                   => true,
@@ -22,7 +26,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'UN-002',
                 'name'                     => 'Technical Employees Union',
-                'type'                     => 'Union',
+                'internal_org_type_id'     => $typeIds['Union'],
                 'head'                     => 'Maria Dela Cruz',
                 'payroll_deduction_linked' => true,
                 'status'                   => true,
@@ -30,7 +34,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'UN-003',
                 'name'                     => 'Administrative Staff Union',
-                'type'                     => 'Union',
+                'internal_org_type_id'     => $typeIds['Union'],
                 'head'                     => 'Jose Reyes',
                 'payroll_deduction_linked' => false,
                 'status'                   => false,
@@ -40,7 +44,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'CO-001',
                 'name'                     => 'Employees Multi-Purpose Cooperative',
-                'type'                     => 'Cooperative',
+                'internal_org_type_id'     => $typeIds['Cooperative'],
                 'head'                     => 'Lorna Bautista',
                 'payroll_deduction_linked' => true,
                 'status'                   => true,
@@ -48,7 +52,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'CO-002',
                 'name'                     => 'Staff Savings and Credit Cooperative',
-                'type'                     => 'Cooperative',
+                'internal_org_type_id'     => $typeIds['Cooperative'],
                 'head'                     => 'Antonio Villanueva',
                 'payroll_deduction_linked' => true,
                 'status'                   => true,
@@ -56,7 +60,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'CO-003',
                 'name'                     => 'Workers Consumer Cooperative',
-                'type'                     => 'Cooperative',
+                'internal_org_type_id'     => $typeIds['Cooperative'],
                 'head'                     => 'Carla Mendoza',
                 'payroll_deduction_linked' => false,
                 'status'                   => true,
@@ -64,7 +68,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'CO-004',
                 'name'                     => 'Health Services Cooperative',
-                'type'                     => 'Cooperative',
+                'internal_org_type_id'     => $typeIds['Cooperative'],
                 'head'                     => 'Benjamin Torres',
                 'payroll_deduction_linked' => false,
                 'status'                   => false,
@@ -74,7 +78,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'AS-001',
                 'name'                     => 'Employees Welfare Association',
-                'type'                     => 'Association',
+                'internal_org_type_id'     => $typeIds['Association'],
                 'head'                     => 'Gloria Ramos',
                 'payroll_deduction_linked' => true,
                 'status'                   => true,
@@ -82,7 +86,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'AS-002',
                 'name'                     => 'Retired Employees Association',
-                'type'                     => 'Association',
+                'internal_org_type_id'     => $typeIds['Association'],
                 'head'                     => 'Eduardo Flores',
                 'payroll_deduction_linked' => false,
                 'status'                   => true,
@@ -90,7 +94,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'AS-003',
                 'name'                     => 'Women in the Workplace Association',
-                'type'                     => 'Association',
+                'internal_org_type_id'     => $typeIds['Association'],
                 'head'                     => 'Sophia Garcia',
                 'payroll_deduction_linked' => false,
                 'status'                   => true,
@@ -98,7 +102,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'AS-004',
                 'name'                     => 'Sports and Recreation Association',
-                'type'                     => 'Association',
+                'internal_org_type_id'     => $typeIds['Association'],
                 'head'                     => 'Ramon Castillo',
                 'payroll_deduction_linked' => false,
                 'status'                   => false,
@@ -106,7 +110,7 @@ class InternalOrganizationSeeder extends Seeder
             [
                 'code'                     => 'AS-005',
                 'name'                     => 'Professional Development Association',
-                'type'                     => 'Association',
+                'internal_org_type_id'     => $typeIds['Association'],
                 'head'                     => 'Patricia Navarro',
                 'payroll_deduction_linked' => true,
                 'status'                   => true,

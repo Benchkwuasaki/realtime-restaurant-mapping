@@ -9,28 +9,30 @@ import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
 
 import { columns } from "./components/columns"
-import { OrganizationDialog } from "./components/OrganizationDialog"
+import { OrganizationDialog, type InternalOrgType } from "./components/OrganizationDialog"
 import { type InternalOrganization } from "./data/schema"
 
-// ─── Breadcrumbs ───────────────────────────────────────────────────────────────
+// ─── Breadcrumbs ──────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
   { title: "Internal Organizations", href: route("internal-organization.index") },
 ]
 
-// ─── Props ─────────────────────────────────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
   organizations: InternalOrganization[]
+  orgTypes: InternalOrgType[]
   totalOrganizations: number
   activeOrganizations: number
   inactiveOrganizations: number
 }
 
-// ─── Page ──────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Index({
   organizations,
+  orgTypes,
   totalOrganizations,
   activeOrganizations,
   inactiveOrganizations,
@@ -69,7 +71,7 @@ export default function Index({
           />
         </div>
 
-        {/* ── Table ────────────────────────────────────────────────────────── */}
+        {/* ── Table ──────────────────────────────────────────────────────── */}
         <DataTable
           data={organizations}
           columns={tableColumns}
@@ -97,6 +99,7 @@ export default function Index({
         open={dialogOrg !== undefined}
         onOpenChange={(open) => { if (!open) setDialogOrg(undefined) }}
         organization={dialogOrg}
+        orgTypes={orgTypes}
       />
     </AppLayout>
   )

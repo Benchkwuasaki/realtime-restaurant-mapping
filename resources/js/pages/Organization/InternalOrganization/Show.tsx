@@ -37,7 +37,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
 
-import { OrganizationDialog } from "./components/OrganizationDialog"
+import { OrganizationDialog, type InternalOrgType } from "./components/OrganizationDialog"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,7 +60,8 @@ interface InternalOrganization {
     internal_organization_id: string
     code: string
     name: string
-    type: "Union" | "Cooperative" | "Association"
+    internal_org_type_id: number
+    org_type?: InternalOrgType       // eager-loaded relation
     head: string
     payroll_deduction_linked: boolean
     status: boolean
@@ -72,6 +73,7 @@ interface InternalOrganization {
 interface Props {
     organization: InternalOrganization
     availableEmployees: AvailableEmployee[]
+    orgTypes: InternalOrgType[]
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -84,10 +86,17 @@ function formatDate(dateString: string) {
     })
 }
 
-const typeColorMap: Record<string, string> = {
+// Fallback palette for unknown / dynamically added types
+const knownTypeColors: Record<string, string> = {
     Union: "bg-primary/10 text-primary border-primary/20",
     Cooperative: "bg-chart-2/10 text-chart-2 border-chart-2/20",
     Association: "bg-chart-3/10 text-chart-3 border-chart-3/20",
+}
+const fallbackTypeColor = "bg-muted text-muted-foreground border-border"
+
+function getTypeColor(typeName?: string) {
+    if (!typeName) return fallbackTypeColor
+    return knownTypeColors[typeName] ?? fallbackTypeColor
 }
 
 // ─── Info Row ──────────────────────────────────────────────────────────────────
@@ -435,7 +444,7 @@ function DeleteDialog({ open, onOpenChange, organization }: DeleteDialogProps) {
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-export default function Show({ organization, availableEmployees }: Props) {
+export default function Show({ organization, availableEmployees, orgTypes }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -453,8 +462,8 @@ export default function Show({ organization, availableEmployees }: Props) {
         })
     }
 
-    const typeClass =
-        typeColorMap[organization.type] ?? "bg-muted text-muted-foreground border-border"
+    const typeName = organization.org_type?.internal_org_type
+    const typeClass = getTypeColor(typeName)
     const members = organization.members ?? []
 
     return (
@@ -524,7 +533,7 @@ export default function Show({ organization, availableEmployees }: Props) {
 
                     <InfoRow label="Type" icon={<Tag className="h-3 w-3" />}>
                         <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${typeClass}`}>
-                            {organization.type}
+                            {typeName ?? "—"}
                         </span>
                     </InfoRow>
 
@@ -561,15 +570,15 @@ export default function Show({ organization, availableEmployees }: Props) {
                     <Separator />
 
                     <InfoRow label="Status" icon={<CheckCircle2 className="h-3 w-3" />}>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 text-xs"
-                            onClick={handleToggleStatus}
-                            disabled={processing}
+                        <Badge
+                            asChild
+                            variant={organization.status ? "default" : "destructive"}
+                            className="cursor-pointer hover:opacity-80 transition-opacity"
                         >
-                            {organization.status ? "Deactivate" : "Activate"}
-                        </Button>
+                            <button onClick={handleToggleStatus} disabled={processing}>
+                                {processing ? "Saving..." : organization.status ? "Active" : "Inactive"}
+                            </button>
+                        </Badge>
                     </InfoRow>
 
                     <Separator className="mb-3" />
@@ -621,6 +630,7 @@ export default function Show({ organization, availableEmployees }: Props) {
                 open={editDialogOpen}
                 onOpenChange={setEditDialogOpen}
                 organization={organization}
+                orgTypes={orgTypes}
             />
 
             <AddMemberDialog
