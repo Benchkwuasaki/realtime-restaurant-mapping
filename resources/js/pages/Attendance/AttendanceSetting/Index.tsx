@@ -7,7 +7,6 @@ import AppLayout from "@/layouts/app-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import {
     Dialog,
     DialogContent,
@@ -116,10 +115,12 @@ function SettingDialog({
     const submit = () => {
         if (isEdit) {
             put(route("attendance-settings.update", setting!.id), {
+                preserveState: false,
                 onSuccess: () => { onClose(); reset() },
             })
         } else {
             post(route("attendance-settings.store"), {
+                preserveState: false,
                 onSuccess: () => { onClose(); reset() },
             })
         }
@@ -142,7 +143,7 @@ function SettingDialog({
                             placeholder="e.g. Standard Policy"
                         />
                         {errors.name && (
-                            <p className="text-xs text-destructive">{errors.name}</p>
+                            <p className="text-xs text-rose-600 dark:text-rose-400">{errors.name}</p>
                         )}
                     </div>
 
@@ -218,10 +219,10 @@ function SettingCard({
                     <Shield className={`w-4 h-4 ${setting.is_default ? "text-primary" : "text-muted-foreground"}`} />
                     <span className="font-semibold text-sm">{setting.name}</span>
                     {setting.is_default && (
-                        <Badge variant="secondary" className="text-[10px] gap-1 px-1.5 py-0 text-primary bg-primary/10 border-primary/20">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded-full border border-primary/20">
                             <BadgeCheck className="w-3 h-3" />
                             Default
-                        </Badge>
+                        </span>
                     )}
                 </div>
                 <div className="flex items-center gap-1">
@@ -236,7 +237,7 @@ function SettingCard({
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="h-7 w-7 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-30 disabled:pointer-events-none"
                         onClick={onDelete}
                         disabled={setting.is_default}
                     >
@@ -325,6 +326,7 @@ export default function AttendanceSettingsIndex({ settings }: Props) {
 
             {/* Edit dialog */}
             <SettingDialog
+                key={editing?.id}
                 open={!!editing}
                 onClose={() => setEditing(null)}
                 setting={editing ?? undefined}

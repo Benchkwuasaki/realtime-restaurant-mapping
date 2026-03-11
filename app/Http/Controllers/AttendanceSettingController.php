@@ -20,15 +20,18 @@ class AttendanceSettingController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name'                   => 'required|string|max:100|unique:attendance_settings,name',
-            'time_in_grace_minutes'  => 'required|integer|min:0|max:120',
-            'break_in_grace_minutes' => 'required|integer|min:0|max:120',
-            'early_time_in_minutes'  => 'required|integer|min:0|max:480',
-            'late_time_out_minutes'  => 'required|integer|min:0|max:480',
-            'is_default'             => 'boolean',
+            'name'                  => 'required|string|max:100|unique:attendance_settings,name',
+            'early_time_in_minutes' => 'required|integer|min:0|max:480',
+            'late_time_out_minutes' => 'required|integer|min:0|max:480',
+            'is_default'            => 'boolean',
         ]);
 
-        $setting = AttendanceSetting::create($data);
+        $setting = AttendanceSetting::create([
+            'name'                  => $data['name'],
+            'early_time_in_minutes' => $data['early_time_in_minutes'],
+            'late_time_out_minutes' => $data['late_time_out_minutes'],
+            'is_default'            => false,
+        ]);
 
         if (!empty($data['is_default'])) {
             $setting->markAsDefault();
@@ -40,15 +43,19 @@ class AttendanceSettingController extends Controller
     public function update(Request $request, AttendanceSetting $attendanceSetting): RedirectResponse
     {
         $data = $request->validate([
-            'name'                   => "required|string|max:100|unique:attendance_settings,name,{$attendanceSetting->id}",
-            'time_in_grace_minutes'  => 'required|integer|min:0|max:120',
-            'break_in_grace_minutes' => 'required|integer|min:0|max:120',
-            'early_time_in_minutes'  => 'required|integer|min:0|max:480',
-            'late_time_out_minutes'  => 'required|integer|min:0|max:480',
-            'is_default'             => 'boolean',
+            'name'                  => "required|string|max:100|unique:attendance_settings,name,{$attendanceSetting->id}",
+            'early_time_in_minutes' => 'required|integer|min:0|max:480',
+            'late_time_out_minutes' => 'required|integer|min:0|max:480',
+            'is_default'            => 'boolean',
         ]);
 
-        $attendanceSetting->update($data);
+        // Update non-default fields only — avoids Eloquent dirty-tracking bug
+        // where is_default stays cached as true and the markAsDefault SQL is skipped
+        $attendanceSetting->update([
+            'name'                  => $data['name'],
+            'early_time_in_minutes' => $data['early_time_in_minutes'],
+            'late_time_out_minutes' => $data['late_time_out_minutes'],
+        ]);
 
         if (!empty($data['is_default'])) {
             $attendanceSetting->markAsDefault();

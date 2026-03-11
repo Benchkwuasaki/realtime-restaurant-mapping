@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react"
 import { route } from "ziggy-js"
 import { format, parseISO } from "date-fns"
 import {
-    AlertTriangle, Coffee, RefreshCw, Timer, UserCheck,
-    UserX, Settings, Plus, Trash2, Pencil, Star, StarOff,
+    AlertTriangle, BadgeCheck, Coffee, RefreshCw, Timer, UserCheck,
+    UserX, Settings, Plus, Trash2, Pencil,
     Check, X, ClipboardList, MapPin, ChevronDown, ChevronRight,
 } from "lucide-react"
 
@@ -535,7 +535,7 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
 
     function handleCreate(data: typeof EMPTY_FORM) {
         setSubmitting(true)
-        router.post(route("attendance-setting.store"), data, {
+        router.post(route("attendance-settings.store"), data, {
             preserveScroll: true,
             onFinish: () => { setSubmitting(false); resetToList() },
         })
@@ -544,7 +544,7 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
     function handleUpdate(data: typeof EMPTY_FORM) {
         if (!editing) return
         setSubmitting(true)
-        router.put(route("attendance-setting.update", editing.id), data, {
+        router.put(route("attendance-settings.update", editing.id), data, {
             preserveScroll: true,
             onFinish: () => { setSubmitting(false); resetToList() },
         })
@@ -552,14 +552,10 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
 
     function handleDelete() {
         if (!deleting) return
-        router.delete(route("attendance-setting.destroy", deleting.id), {
+        router.delete(route("attendance-settings.destroy", deleting.id), {
             preserveScroll: true,
             onFinish: () => setDeleting(null),
         })
-    }
-
-    function handleMarkDefault(setting: AttendanceSetting) {
-        router.put(route("attendance-setting.update", setting.id), { ...setting, is_default: true }, { preserveScroll: true })
     }
 
     useEffect(() => { if (open) resetToList() }, [open])
@@ -576,7 +572,7 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
                     </DialogHeader>
 
                     {mode === "create" && <SettingForm onSubmit={handleCreate} onCancel={resetToList} submitting={submitting} />}
-                    {mode === "edit" && editing && <SettingForm initial={editing} onSubmit={handleUpdate} onCancel={resetToList} submitting={submitting} />}
+                    {mode === "edit" && editing && <SettingForm key={editing.id} initial={editing} onSubmit={handleUpdate} onCancel={resetToList} submitting={submitting} />}
 
                     {mode === "list" && (
                         <div className="flex flex-col gap-3 mt-1">
@@ -589,17 +585,12 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
                                         <div className="flex items-center gap-2 min-w-0">
                                             {s.is_default && (
                                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded-full border border-primary/20 shrink-0">
-                                                    <Star className="w-2.5 h-2.5" /> Default
+                                                    <BadgeCheck className="w-2.5 h-2.5" /> Default
                                                 </span>
                                             )}
                                             <span className="text-sm font-semibold truncate">{s.name}</span>
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0">
-                                            {!s.is_default && (
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => handleMarkDefault(s)}>
-                                                    <StarOff className="w-3.5 h-3.5" />
-                                                </Button>
-                                            )}
                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(s); setMode("edit") }}>
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </Button>
