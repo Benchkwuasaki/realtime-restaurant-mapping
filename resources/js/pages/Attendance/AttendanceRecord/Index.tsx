@@ -14,7 +14,6 @@ import { StatCard } from "@/components/shared/stat-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import {
     Dialog,
     DialogContent,
@@ -71,6 +70,20 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: "Records", href: route("attendance-record.index") },
 ]
 
+// ─── Themed badge helpers ─────────────────────────────────────────────────────
+
+function PurposeBadge({ type }: { type: "personal" | "official" }) {
+    return type === "personal"
+        ? <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">Personal</span>
+        : <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">Official</span>
+}
+
+function ReturnBadge({ status }: { status: "returned" | "not_returned" }) {
+    return status === "returned"
+        ? <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">Returned</span>
+        : <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">Not Returned</span>
+}
+
 // ─── Whereabout Slip list (inside history dialog) ─────────────────────────────
 
 function WhereaboutSlipList({
@@ -94,7 +107,7 @@ function WhereaboutSlipList({
                     <div
                         key={slip.whereabout_slip_id}
                         className={`rounded-lg border bg-background overflow-hidden ${
-                            isDeducted ? "border-destructive/30" : "border-border"
+                            isDeducted ? "border-rose-300 dark:border-rose-800" : "border-border"
                         }`}
                     >
                         {/* Header */}
@@ -106,18 +119,8 @@ function WhereaboutSlipList({
                                 </span>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                                <Badge
-                                    variant={isPersonal ? "secondary" : "default"}
-                                    className="text-[10px] px-1.5 py-0 h-4"
-                                >
-                                    {isPersonal ? "Personal" : "Official"}
-                                </Badge>
-                                <Badge
-                                    variant={isReturned ? "green" : "yellow"}
-                                    className="text-[10px] px-1.5 py-0 h-4"
-                                >
-                                    {isReturned ? "Returned" : "Not Returned"}
-                                </Badge>
+                                <PurposeBadge type={slip.purpose_type} />
+                                <ReturnBadge  status={slip.return_status} />
                             </div>
                         </div>
 
@@ -135,7 +138,7 @@ function WhereaboutSlipList({
                             </div>
                             <div className="flex flex-col gap-0.5 px-3 py-2 bg-background">
                                 <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Duration</span>
-                                <span className={`text-xs font-mono font-medium ${isDeducted ? "text-destructive" : ""}`}>
+                                <span className={`text-xs font-mono font-medium ${isDeducted ? "text-rose-600 dark:text-rose-400" : ""}`}>
                                     {slip.minutes_gone != null ? fmtMinutes(slip.minutes_gone) : "—"}
                                 </span>
                             </div>
@@ -145,9 +148,9 @@ function WhereaboutSlipList({
                         {isPersonal && (
                             <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold ${
                                 isDeducted
-                                    ? "bg-destructive/5 text-destructive border-t border-destructive/20"
+                                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800/60"
                                     : isPendingDeduction
-                                        ? "bg-amber-500/5 text-amber-600 dark:text-amber-400 border-t border-amber-500/20"
+                                        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800/60"
                                         : "bg-muted/30 text-muted-foreground border-t border-border/40"
                             }`}>
                                 <AlertTriangle className="w-3 h-3 shrink-0" />
@@ -216,7 +219,7 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
 
                 {/* Status */}
                 <td className="py-2.5 pr-4">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${STATUS_PILL[r.status] ?? "bg-muted text-muted-foreground"}`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap border ${STATUS_PILL[r.status] ?? "bg-muted text-muted-foreground border-border"}`}>
                         <Icon className="w-2.5 h-2.5" />
                         {STATUS_LABEL[r.status]}
                     </span>
@@ -224,7 +227,7 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
 
                 {/* Time In */}
                 <td className="py-2.5 pr-4">
-                    <span className={`text-xs font-mono ${isLate ? "text-destructive font-semibold" : "text-foreground"}`}>
+                    <span className={`text-xs font-mono ${isLate ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-foreground"}`}>
                         {fmtTime(r.time_in)}
                     </span>
                 </td>
@@ -252,7 +255,7 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
                 {/* Late */}
                 <td className="py-2.5 pr-4">
                     {isLate ? (
-                        <span className="text-xs font-mono font-semibold text-destructive">
+                        <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">
                             {fmtMinutes(r.late_minutes)}
                         </span>
                     ) : (
@@ -263,7 +266,7 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
                 {/* Slip Deduction */}
                 <td className="py-2.5 pr-3">
                     {personalDeductionMins > 0 ? (
-                        <span className="text-xs font-mono font-semibold text-destructive">
+                        <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">
                             -{fmtMinutes(personalDeductionMins)}
                         </span>
                     ) : slips.some(s => s.purpose_type === "personal" && s.return_status === "returned" && !hasTimedOut) ? (
@@ -318,16 +321,11 @@ function HistoryDialog({
         (r, i, arr) => arr.findIndex(x => toLocalDate(x.date).getTime() === toLocalDate(r.date).getTime()) === i
     )
 
-    // Convert any date value (YYYY-MM-DD or full ISO UTC string) to a local-midnight Date.
-    // Laravel may send "2026-02-08T16:00:00.000000Z" for a Feb 9 Manila record because
-    // it stores timestamps in UTC. We must use local date components, not slice(0,10).
     function toLocalDate(s: string): Date {
         if (s.length > 10) {
-            // Full ISO datetime — new Date() parses as UTC, getFullYear/Month/Date return LOCAL
             const d = new Date(s)
             return new Date(d.getFullYear(), d.getMonth(), d.getDate())
         }
-        // Plain "YYYY-MM-DD" from <input type="date"> — split to avoid UTC-midnight trap
         const [y, m, d] = s.split('-').map(Number)
         return new Date(y, m - 1, d)
     }
@@ -590,7 +588,7 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
                                     <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/60">
                                         <div className="flex items-center gap-2 min-w-0">
                                             {s.is_default && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded-full border border-primary/20 shrink-0">
                                                     <Star className="w-2.5 h-2.5" /> Default
                                                 </span>
                                             )}
@@ -606,7 +604,7 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </Button>
                                             {!s.is_default && (
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setDeleting(s)}>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleting(s)}>
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </Button>
                                             )}
@@ -739,10 +737,10 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <StatCard title="Present"  value={present}   description="Completed full day"        icon={<UserCheck    className="w-4 h-4 m-2 text-primary" />} />
-                    <StatCard title="Half Day" value={halfDay}   description="Partial attendance"        icon={<Coffee       className="w-4 h-4 m-2 text-secondary-foreground" />} />
-                    <StatCard title="Absent"   value={absent}    description="No attendance recorded"    icon={<UserX        className="w-4 h-4 m-2 text-destructive" />} />
-                    <StatCard title="Late"     value={lateCount} description="Arrived after scheduled time" icon={<AlertTriangle className="w-4 h-4 m-2 text-accent-foreground" />} />
+                    <StatCard title="Present"  value={present}   description="Completed full day"            icon={<UserCheck     className="w-4 h-4 m-2 text-primary" />} />
+                    <StatCard title="Half Day" value={halfDay}   description="Partial attendance"            icon={<Coffee        className="w-4 h-4 m-2 text-secondary-foreground" />} />
+                    <StatCard title="Absent"   value={absent}    description="No attendance recorded"        icon={<UserX         className="w-4 h-4 m-2 text-destructive" />} />
+                    <StatCard title="Late"     value={lateCount} description="Arrived after scheduled time"  icon={<AlertTriangle className="w-4 h-4 m-2 text-accent-foreground" />} />
                 </div>
 
                 <DataTable
@@ -754,7 +752,6 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                     filters={[
                         { columnId: "status", title: "Status", options: statusOptions },
                     ]}
-      
                     onRowClick={row => setSelected(row.original as RecordWithHistory)}
                 />
             </div>
