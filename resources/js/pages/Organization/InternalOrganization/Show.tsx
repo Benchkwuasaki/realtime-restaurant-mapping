@@ -144,7 +144,7 @@ function MobileMemberCard({ row }: MobileMemberCardProps) {
                 </div>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
-                <Badge variant={row.status ? "default" : "secondary"} className="text-xs">
+                <Badge variant={row.status ? "default" : "destructive"} className="text-xs">
                     {row.status ? "Active" : "Inactive"}
                 </Badge>
             </div>
@@ -212,7 +212,7 @@ const memberColumns: ColumnDef<OrganizationMember>[] = [
         cell: ({ row }) => {
             const isActive: boolean = row.getValue("status")
             return (
-                <Badge variant={isActive ? "default" : "secondary"}>
+                <Badge variant={isActive ? "default" : "destructive"}>
                     {isActive ? "Active" : "Inactive"}
                 </Badge>
             )
@@ -570,15 +570,15 @@ export default function Show({ organization, availableEmployees, orgTypes }: Pro
                     <Separator />
 
                     <InfoRow label="Status" icon={<CheckCircle2 className="h-3 w-3" />}>
-                        <Badge
-                            asChild
+                        <Button
                             variant={organization.status ? "default" : "destructive"}
-                            className="cursor-pointer hover:opacity-80 transition-opacity"
+                            size="sm"
+                            className="h-6 text-xs"
+                            onClick={handleToggleStatus}
+                            disabled={processing}
                         >
-                            <button onClick={handleToggleStatus} disabled={processing}>
-                                {processing ? "Saving..." : organization.status ? "Active" : "Inactive"}
-                            </button>
-                        </Badge>
+                            {organization.status ? "Activate" : "Deactivate"}
+                        </Button>
                     </InfoRow>
 
                     <Separator className="mb-3" />
@@ -600,7 +600,7 @@ export default function Show({ organization, availableEmployees, orgTypes }: Pro
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="outline" className="text-xs">
                                 {members.length} {members.length === 1 ? "member" : "members"}
                             </Badge>
                             <Button

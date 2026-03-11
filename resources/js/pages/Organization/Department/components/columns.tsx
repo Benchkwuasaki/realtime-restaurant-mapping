@@ -115,7 +115,7 @@ function MobileDepartmentCard({ row, onEdit }: MobileDepartmentCardProps) {
                         <span className="font-semibold text-base text-foreground">
                             {row.department_name}
                         </span>
-                        <Badge variant="default" className="font-mono text-xs shrink-0">
+                        <Badge variant="outline" className="font-mono text-xs shrink-0">
                             {row.department_acronym}
                         </Badge>
                     </div>
@@ -218,7 +218,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Depart
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
-                <Badge variant="default" className="font-mono text-xs">
+                <Badge variant="outline" className="font-mono text-xs">
                     {row.getValue("department_acronym")}
                 </Badge>
             ),
