@@ -59,7 +59,7 @@ const Step: React.FC<StepProps> = ({
                     {Icon && (
                         <Icon
                             className={cn(
-                                "size-3.5 shrink-0",
+                                "size-5 shrink-0",
                                 isActive || isCompleted
                                     ? "text-foreground"
                                     : "text-muted-foreground",

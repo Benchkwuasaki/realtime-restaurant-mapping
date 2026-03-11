@@ -33,9 +33,11 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
-import { ScrollArea } from "@/components/ui/scroll-area"
+
+import { OrganizationDialog } from "./components/OrganizationDialog"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -119,12 +121,10 @@ interface MobileMemberCardProps {
 function MobileMemberCard({ row }: MobileMemberCardProps) {
     return (
         <div className="flex flex-col bg-background overflow-hidden">
-            {/* ── Card Body ── */}
             <div className="px-4 pt-4 pb-5 space-y-2">
                 <span className="font-semibold text-base text-foreground">
                     {row.name}
                 </span>
-
                 <div className="flex flex-col gap-0.5">
                     {row.position && (
                         <span className="text-xs text-muted-foreground">
@@ -134,8 +134,6 @@ function MobileMemberCard({ row }: MobileMemberCardProps) {
                     )}
                 </div>
             </div>
-
-            {/* ── Card Footer ── */}
             <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
                 <Badge variant={row.status ? "default" : "secondary"} className="text-xs">
                     {row.status ? "Active" : "Inactive"}
@@ -440,6 +438,7 @@ function DeleteDialog({ open, onOpenChange, organization }: DeleteDialogProps) {
 export default function Show({ organization, availableEmployees }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false)
+    const [editDialogOpen, setEditDialogOpen] = useState(false)
 
     const { patch, processing } = useForm()
 
@@ -502,9 +501,7 @@ export default function Show({ organization, availableEmployees }: Props) {
                             variant="outline"
                             size="sm"
                             className="flex-1 text-xs"
-                            onClick={() =>
-                                router.visit(route("internal-organization.edit", organization.internal_organization_id))
-                            }
+                            onClick={() => setEditDialogOpen(true)}
                         >
                             <Pencil className="mr-1.5 h-3 w-3" />
                             Edit
@@ -618,6 +615,13 @@ export default function Show({ organization, availableEmployees }: Props) {
                     />
                 </main>
             </div>
+
+            {/* ── Edit Organization Modal ─────────────────────────────────────────── */}
+            <OrganizationDialog
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+                organization={organization}
+            />
 
             <AddMemberDialog
                 open={addMemberDialogOpen}
