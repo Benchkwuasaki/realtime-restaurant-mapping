@@ -96,20 +96,43 @@ interface ComputedRecord {
     pera: number;
     rice_allowance: number;
     uniform_allowance: number;
+    /** Overtime pay added to gross (computed from total_overtime_hours × hourly rate × 1.25) */
+    overtime_pay: number;
+    /** Half-day count (separate from absent_days — deducted at 0.5 × daily rate) */
+    half_days: number;
+    /** Half-day deduction = half_days × daily_rate × 0.5 */
+    half_day_deduction: number;
+    /** Personal slip minutes (chargeable — deducted at per-minute rate) */
+    personal_slip_minutes: number;
+    /** Personal slip deduction = personal_slip_minutes × per-minute rate */
+    personal_slip_deduction: number;
+    /** Official slip minutes (display only — no deduction) */
+    official_slip_minutes: number;
     gross_pay: number;
     gsis_premium: number;
     philhealth: number;
     pag_ibig: number;
     withholding_tax: number;
+    /** Full-day absents only (HALF_DAY is tracked separately in half_days) */
     absent_days: number;
     absent_deduction: number;
     late_minutes: number;
     late_deduction: number;
+    /** Undertime minutes from updated attendance system */
+    undertime_minutes: number;
+    /** Undertime deduction = undertime_minutes × per-minute rate */
+    undertime_deduction: number;
+    /** Total days actually worked within the payroll period */
+    total_work_days: number;
+    /** Total hours worked (sum of daily total_hours_worked from attendance records) */
+    total_hours_worked: number;
+    /** Total overtime hours (sum of overtime_minutes ÷ 60) */
+    total_overtime_hours: number;
 
     gsis_mpl: number;
     gsis_emergency: number;
     pag_ibig_mpl: number;
-    ama_y2k_union: number;      // org dues + org loans (2nd cut-off) + NS&ND/Misc
+    ama_y2k_union: number; // org dues + org loans (2nd cut-off) + NS&ND/Misc
     water_bill: number;
     // Savings + Share_Capital — deducted on BOTH cut-offs
     internal_org_savings: number;
@@ -245,8 +268,35 @@ export default function Index({
     const [includedEmployeeIds, setIncludedEmployeeIds] = useState<number[]>(
         [],
     );
+    /**
+     * Per-employee attendance metrics sourced from attendance_records +
+     * whereabout_slips via the payroll.attendance-summary endpoint.
+     *
+     * absent_days           — full-day absents only (integer)
+     * half_days             — HALF_DAY records (deducted at 0.5 × daily rate)
+     * late_minutes          — SUM for attended days
+     * undertime_minutes     — pure undertime on PRESENT days (personal slip excl.)
+     * personal_slip_minutes — personal+returned slip minutes (chargeable)
+     * official_slip_minutes — official slip minutes (reference only, no deduction)
+     * total_work_days       — PRESENT + 0.5×HALF_DAY
+     * total_hours_worked    — sum(work_minutes) / 60
+     *
+     * All values are pre-filled from the API but remain fully editable by HR.
+     */
     const [attendance, setAttendance] = useState<
-        Record<number, { absent_days: number; late_minutes: number }>
+        Record<
+            number,
+            {
+                absent_days: number;
+                half_days: number;
+                late_minutes: number;
+                undertime_minutes: number;
+                personal_slip_minutes: number;
+                official_slip_minutes: number;
+                total_work_days: number;
+                total_hours_worked: number;
+            }
+        >
     >({});
     const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
     const [attendanceSource, setAttendanceSource] = useState<'manual' | 'auto'>(
@@ -313,10 +363,26 @@ export default function Index({
         setIncludedEmployeeIds(filteredEmployees.map((e) => e.id));
         const init: Record<
             number,
-            { absent_days: number; late_minutes: number }
+            {
+                absent_days: number;
+                late_minutes: number;
+                undertime_minutes: number;
+                total_overtime_hours: number;
+                total_work_days: number;
+                total_hours_worked: number;
+            }
         > = {};
         filteredEmployees.forEach((e) => {
-            init[e.id] = { absent_days: 0, late_minutes: 0 };
+            init[e.id] = {
+                absent_days: 0,
+                half_days: 0,
+                late_minutes: 0,
+                undertime_minutes: 0,
+                personal_slip_minutes: 0,
+                official_slip_minutes: 0,
+                total_work_days: 0,
+                total_hours_worked: 0,
+            };
         });
         setAttendance(init);
     }, [filteredEmployees]);
@@ -402,6 +468,17 @@ export default function Index({
                     philhealth: r.philhealth,
                     pagibig: r.pag_ibig,
                     tax: r.withholding_tax,
+                    overtimePay: r.overtime_pay ?? 0,
+                    halfDays: r.half_days ?? 0,
+                    halfDayDeduction: r.half_day_deduction ?? 0,
+                    undertimeMinutes: r.undertime_minutes ?? 0,
+                    undertimeDeduction: r.undertime_deduction ?? 0,
+                    personalSlipMinutes: r.personal_slip_minutes ?? 0,
+                    personalSlipDeduction: r.personal_slip_deduction ?? 0,
+                    officialSlipMinutes: r.official_slip_minutes ?? 0,
+                    totalWorkDays: r.total_work_days ?? 0,
+                    totalHoursWorked: r.total_hours_worked ?? 0,
+                    totalOvertimeHours: r.total_overtime_hours ?? 0,
                     otherDeductions:
                         r.gsis_mpl +
                         r.gsis_emergency +
@@ -409,14 +486,21 @@ export default function Index({
                         r.ama_y2k_union +
                         r.water_bill +
                         r.absent_deduction +
+                        (r.half_day_deduction ?? 0) +
                         r.late_deduction +
+                        (r.undertime_deduction ?? 0) +
+                        (r.personal_slip_deduction ?? 0) +
                         (r.internal_org_savings ?? 0),
                     internalOrgSavings: r.internal_org_savings ?? 0,
                     internalOrgSecond: r.internal_org_second ?? 0,
                     internalOrgDeductions: r.internal_org_deductions ?? 0,
                     otherDeductionsMisc: r.other_deductions ?? 0,
                     attendanceDeduction:
-                        (r.absent_deduction ?? 0) + (r.late_deduction ?? 0),
+                        (r.absent_deduction ?? 0) +
+                        (r.half_day_deduction ?? 0) +
+                        (r.late_deduction ?? 0) +
+                        (r.undertime_deduction ?? 0) +
+                        (r.personal_slip_deduction ?? 0),
                     absentDays: r.absent_days ?? 0,
                     absentDeduction: r.absent_deduction ?? 0,
                     lateMinutes: r.late_minutes ?? 0,
@@ -441,6 +525,17 @@ export default function Index({
                 philhealth: 0,
                 pagibig: 0,
                 tax: 0,
+                overtimePay: 0,
+                halfDays: 0,
+                halfDayDeduction: 0,
+                undertimeMinutes: 0,
+                undertimeDeduction: 0,
+                personalSlipMinutes: 0,
+                personalSlipDeduction: 0,
+                officialSlipMinutes: 0,
+                totalWorkDays: 0,
+                totalHoursWorked: 0,
+                totalOvertimeHours: 0,
                 otherDeductions: 0,
                 internalOrgSavings: 0,
                 internalOrgSecond: 0,
@@ -699,9 +794,24 @@ export default function Index({
     };
 
     /**
-     * Fetch absent days + late minutes from the attendance system for the
-     * selected date range. Results pre-fill the Step 2 inputs but remain
-     * fully editable so HR can make manual corrections.
+     * Fetch attendance metrics from the updated attendance system for the
+     * selected payroll date range.
+     *
+     * Fetches pre-computed attendance metrics for all employees in the period
+     * from attendance_records + whereabout_slips.
+     *
+     * Fields returned per employee:
+     *   - absent_days           — full-day absents only
+     *   - half_days             — HALF_DAY records (NEW)
+     *   - late_minutes          — sum for attended days
+     *   - undertime_minutes     — pure undertime on PRESENT days (NEW)
+     *   - personal_slip_minutes — chargeable personal slips (NEW)
+     *   - official_slip_minutes — reference only, no deduction (NEW)
+     *   - total_work_days       — PRESENT + 0.5×HALF_DAY
+     *   - total_hours_worked    — sum(work_minutes) / 60
+     *
+     * All values pre-fill the Step 2 inputs but remain fully editable
+     * so HR can correct any discrepancies before computing payroll.
      */
     const fetchAttendanceSummary = async () => {
         if (!startDate || !endDate) return;
@@ -725,15 +835,35 @@ export default function Index({
                         ({
                             employee_id,
                             absent_days,
+                            half_days,
                             late_minutes,
+                            undertime_minutes,
+                            personal_slip_minutes,
+                            official_slip_minutes,
+                            total_work_days,
+                            total_hours_worked,
                         }: {
                             employee_id: number;
                             absent_days: number;
+                            half_days?: number;
                             late_minutes: number;
+                            undertime_minutes?: number;
+                            personal_slip_minutes?: number;
+                            official_slip_minutes?: number;
+                            total_work_days?: number;
+                            total_hours_worked?: number;
                         }) => {
                             next[employee_id] = {
                                 absent_days: absent_days ?? 0,
+                                half_days: half_days ?? 0,
                                 late_minutes: late_minutes ?? 0,
+                                undertime_minutes: undertime_minutes ?? 0,
+                                personal_slip_minutes:
+                                    personal_slip_minutes ?? 0,
+                                official_slip_minutes:
+                                    official_slip_minutes ?? 0,
+                                total_work_days: total_work_days ?? 0,
+                                total_hours_worked: total_hours_worked ?? 0,
                             };
                         },
                     );
@@ -794,7 +924,14 @@ export default function Index({
 
     const updateAttendance = (
         employeeId: number,
-        field: 'absent_days' | 'late_minutes',
+        field:
+            | 'absent_days'
+            | 'half_days'
+            | 'late_minutes'
+            | 'undertime_minutes'
+            | 'personal_slip_minutes'
+            | 'official_slip_minutes'
+            | 'total_work_days',
         value: string,
     ) => {
         setAttendance((prev) => ({
@@ -802,6 +939,20 @@ export default function Index({
             [employeeId]: {
                 ...prev[employeeId],
                 [field]: Math.max(0, parseInt(value) || 0),
+            },
+        }));
+    };
+
+    const updateAttendanceFloat = (
+        employeeId: number,
+        field: 'total_overtime_hours' | 'total_hours_worked',
+        value: string,
+    ) => {
+        setAttendance((prev) => ({
+            ...prev,
+            [employeeId]: {
+                ...prev[employeeId],
+                [field]: Math.max(0, parseFloat(value) || 0),
             },
         }));
     };
@@ -830,12 +981,36 @@ export default function Index({
                 end_date: format(endDate, 'yyyy-MM-dd'),
                 employee_type: employeeClassification || null,
                 hr_officer_name: hrOfficerName || null,
+                // Pass all attendance fields from the updated attendance system.
+                // New fields (undertime_minutes, total_overtime_hours, etc.) default
+                // to 0 when the employee has no entry in the attendance map.
                 attendance: includedEmployeeIds.map((id) => ({
                     employee_id: id,
                     absent_days: Math.max(0, attendance[id]?.absent_days ?? 0),
+                    half_days: Math.max(0, attendance[id]?.half_days ?? 0),
                     late_minutes: Math.max(
                         0,
                         attendance[id]?.late_minutes ?? 0,
+                    ),
+                    undertime_minutes: Math.max(
+                        0,
+                        attendance[id]?.undertime_minutes ?? 0,
+                    ),
+                    personal_slip_minutes: Math.max(
+                        0,
+                        attendance[id]?.personal_slip_minutes ?? 0,
+                    ),
+                    official_slip_minutes: Math.max(
+                        0,
+                        attendance[id]?.official_slip_minutes ?? 0,
+                    ),
+                    total_work_days: Math.max(
+                        0,
+                        attendance[id]?.total_work_days ?? 0,
+                    ),
+                    total_hours_worked: Math.max(
+                        0,
+                        attendance[id]?.total_hours_worked ?? 0,
                     ),
                 })),
             });
@@ -1029,8 +1204,20 @@ export default function Index({
                 withholding_tax: r.withholding_tax,
                 absent_days: r.absent_days,
                 absent_deduction: r.absent_deduction,
+                half_days: r.half_days ?? 0,
+                half_day_deduction: r.half_day_deduction ?? 0,
                 late_minutes: r.late_minutes,
                 late_deduction: r.late_deduction,
+                undertime_minutes: r.undertime_minutes ?? 0,
+                undertime_deduction: r.undertime_deduction ?? 0,
+                personal_slip_minutes: r.personal_slip_minutes ?? 0,
+                personal_slip_deduction: r.personal_slip_deduction ?? 0,
+                official_slip_minutes: r.official_slip_minutes ?? 0,
+                total_work_days: r.total_work_days ?? 0,
+                total_hours_worked: r.total_hours_worked ?? 0,
+                total_overtime_hours: r.total_overtime_hours ?? 0,
+                overtime_pay: r.overtime_pay ?? 0,
+                // ── Loan / deduction fields ─────────────────────────────────
                 gsis_mpl: r.gsis_mpl,
                 gsis_emergency: r.gsis_emergency,
                 pag_ibig_mpl: r.pag_ibig_mpl,
@@ -1101,6 +1288,7 @@ export default function Index({
                 setAllIncluded,
                 setEmployeeIncluded,
                 updateAttendance,
+                updateAttendanceFloat,
             }),
         [includedEmployeeIds, filteredEmployees, attendance],
     );
@@ -1678,9 +1866,10 @@ export default function Index({
                                         <CheckCircle2 className="h-4 w-4" />
                                         <AlertDescription className="flex items-center justify-between">
                                             <span>
-                                                Absent days &amp; late minutes
-                                                pre-filled from attendance
-                                                records.{' '}
+                                                Attendance data pre-filled from
+                                                updated attendance records
+                                                (absences, late, undertime,
+                                                overtime).{' '}
                                                 <span className="text-muted-foreground">
                                                     Values are editable.
                                                 </span>
@@ -1851,7 +2040,7 @@ export default function Index({
                                 <>
                                     <div className="overflow-x-auto rounded-lg border">
                                         <table className="w-full border-collapse text-sm">
-                                            <thead className='items-center'>
+                                            <thead className="items-center">
                                                 {/* Group header row */}
                                                 <tr className="text-xs font-semibold tracking-wide uppercase">
                                                     <th
@@ -1862,7 +2051,7 @@ export default function Index({
                                                     </th>
                                                     <th
                                                         rowSpan={2}
-                                                        className="border-r border-b text-center bg-slate-100 px-3 py-2 text-slate-600"
+                                                        className="border-r border-b bg-slate-100 px-3 py-2 text-center text-slate-600"
                                                     >
                                                         Employee Name
                                                     </th>
@@ -1873,16 +2062,12 @@ export default function Index({
                                                     >
                                                         Earnings
                                                     </th>
-                                                    {/* Deductions group */}
+                                                    {/* Deductions group — half-day, undertime, personal slip cols */}
                                                     <th
-                                                        colSpan={10}
+                                                        colSpan={13}
                                                         className="border-r border-b bg-red-50 px-3 py-1.5 text-center text-red-700"
                                                     >
                                                         Deductions{' '}
-                                                        {/* <span className="font-normal text-red-400 normal-case">
-                                                            (2nd cut-off, based
-                                                            on monthly salary)
-                                                        </span> */}
                                                     </th>
                                                     {/* Net Pay */}
                                                     <th
@@ -1910,6 +2095,13 @@ export default function Index({
                                                     <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center">
                                                         Allowances
                                                     </th>
+                                                    {/* NEW: Overtime Pay sub-col
+                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center">
+                                                        <div>OT Pay</div>
+                                                        <div className="text-[10px] font-normal text-blue-400">
+                                                            hrs × 1.25
+                                                        </div>
+                                                    </th> */}
                                                     <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center font-semibold">
                                                         Gross Pay
                                                     </th>
@@ -1922,6 +2114,26 @@ export default function Index({
                                                     </th>
                                                     <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
                                                         <div>Tardy</div>
+                                                        <div className="text-[10px] font-normal text-orange-400">
+                                                            mins / amt
+                                                        </div>
+                                                    </th>
+                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
+                                                        <div>Undertime</div>
+                                                        <div className="text-[10px] font-normal text-orange-400">
+                                                            mins / amt
+                                                        </div>
+                                                    </th>
+                                                    {/* Half-Day sub-col */}
+                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
+                                                        <div>Half-Day</div>
+                                                        <div className="text-[10px] font-normal text-orange-400">
+                                                            days / amt
+                                                        </div>
+                                                    </th>
+                                                    {/* Personal Slip sub-col */}
+                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
+                                                        <div>Personal Slip</div>
                                                         <div className="text-[10px] font-normal text-orange-400">
                                                             mins / amt
                                                         </div>
@@ -1945,7 +2157,9 @@ export default function Index({
                                                         </div>
                                                     </th>
                                                     <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
-                                                        <div>Org Dues &amp; Loans</div>
+                                                        <div>
+                                                            Org Dues &amp; Loans
+                                                        </div>
                                                         <div className="text-[10px] font-normal text-red-400">
                                                             2nd cut-off
                                                         </div>
@@ -1987,6 +2201,39 @@ export default function Index({
                                                                     employee.allowances,
                                                                 )}
                                                             </td>
+                                                            {/* NEW: Overtime Pay */}
+                                                            {/* <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                {(employee.overtimePay ??
+                                                                    0) > 0 ? (
+                                                                    <div>
+                                                                        <div className="text-[11px] text-blue-500">
+                                                                            {(
+                                                                                employee.totalOvertimeHours ??
+                                                                                0
+                                                                            ).toFixed(
+                                                                                2,
+                                                                            )}{' '}
+                                                                            hr
+                                                                            {(employee.totalOvertimeHours ??
+                                                                                0) !==
+                                                                            1
+                                                                                ? 's'
+                                                                                : ''}
+                                                                        </div>
+                                                                        <div className="font-medium text-blue-600">
+                                                                            +
+                                                                            {peso(
+                                                                                employee.overtimePay ??
+                                                                                    0,
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td> */}
                                                             <td className="border-r px-3 py-2.5 text-right font-semibold text-blue-700 tabular-nums">
                                                                 {peso(
                                                                     employee.grossPay,
@@ -2043,6 +2290,80 @@ export default function Index({
                                                                     </span>
                                                                 )}
                                                             </td>
+                                                            {/* Undertime */}
+                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                {(employee.undertimeMinutes ??
+                                                                    0) > 0 ? (
+                                                                    <div>
+                                                                        <div className="text-[11px] text-orange-500">
+                                                                            {employee.undertimeMinutes ??
+                                                                                0}{' '}
+                                                                            min
+                                                                        </div>
+                                                                        <div className="font-medium text-orange-600">
+                                                                            {peso(
+                                                                                employee.undertimeDeduction ??
+                                                                                    0,
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            {/* Half-Day */}
+                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                {(employee.halfDays ??
+                                                                    0) > 0 ? (
+                                                                    <div>
+                                                                        <div className="text-[11px] text-orange-500">
+                                                                            {employee.halfDays ??
+                                                                                0}{' '}
+                                                                            day
+                                                                            {(employee.halfDays ??
+                                                                                0) !==
+                                                                            1
+                                                                                ? 's'
+                                                                                : ''}
+                                                                        </div>
+                                                                        <div className="font-medium text-orange-600">
+                                                                            {peso(
+                                                                                employee.halfDayDeduction ??
+                                                                                    0,
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            {/* Personal Slip */}
+                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                {(employee.personalSlipMinutes ??
+                                                                    0) > 0 ? (
+                                                                    <div>
+                                                                        <div className="text-[11px] text-orange-500">
+                                                                            {employee.personalSlipMinutes ??
+                                                                                0}{' '}
+                                                                            min
+                                                                        </div>
+                                                                        <div className="font-medium text-orange-600">
+                                                                            {peso(
+                                                                                employee.personalSlipDeduction ??
+                                                                                    0,
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td>
                                                             <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
                                                                 {peso(
                                                                     employee.gsis,
@@ -2070,7 +2391,8 @@ export default function Index({
                                                             </td>
                                                             <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
                                                                 {peso(
-                                                                    employee.internalOrgDeductions - employee.internalOrgSavings,
+                                                                    employee.internalOrgDeductions -
+                                                                        employee.internalOrgSavings,
                                                                 )}
                                                             </td>
                                                             <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
@@ -2228,6 +2550,39 @@ export default function Index({
                                                             ),
                                                         )}
                                                     </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    (e.undertimeDeduction ??
+                                                                        0),
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    (e.halfDayDeduction ??
+                                                                        0),
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    (e.personalSlipDeduction ??
+                                                                        0),
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
                                                     <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
                                                         {peso(
                                                             currentEmployees.reduce(
@@ -2281,7 +2636,8 @@ export default function Index({
                                                             currentEmployees.reduce(
                                                                 (s, e) =>
                                                                     s +
-                                                                    (e.internalOrgDeductions - e.internalOrgSavings),
+                                                                    (e.internalOrgDeductions -
+                                                                        e.internalOrgSavings),
                                                                 0,
                                                             ),
                                                         )}
@@ -2654,34 +3010,49 @@ export default function Index({
                                                                         ) {
                                                                             return (
                                                                                 <tr
-                                                                                    key={d.key}
+                                                                                    key={
+                                                                                        d.key
+                                                                                    }
                                                                                     className={`border-b transition-colors ${isWaived ? 'bg-amber-50/60' : 'bg-white hover:bg-slate-50'}`}
                                                                                 >
                                                                                     <td className="px-3 py-2.5 text-center">
                                                                                         <Checkbox
-                                                                                            checked={!isWaived}
+                                                                                            checked={
+                                                                                                !isWaived
+                                                                                            }
                                                                                             onCheckedChange={() =>
-                                                                                                toggleWaiver(employee.id, d.key)
+                                                                                                toggleWaiver(
+                                                                                                    employee.id,
+                                                                                                    d.key,
+                                                                                                )
                                                                                             }
                                                                                         />
                                                                                     </td>
                                                                                     <td
                                                                                         className={`px-3 py-2.5 font-medium ${isWaived ? 'text-slate-400 line-through' : 'text-slate-700'}`}
                                                                                     >
-                                                                                        {d.label}
+                                                                                        {
+                                                                                            d.label
+                                                                                        }
                                                                                     </td>
                                                                                     <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                                                                                        {d.group}
+                                                                                        {
+                                                                                            d.group
+                                                                                        }
                                                                                     </td>
                                                                                     <td
                                                                                         className={`px-3 py-2.5 text-right font-medium tabular-nums ${isWaived ? 'text-slate-400 line-through' : 'text-slate-700'}`}
                                                                                     >
-                                                                                        {peso(amt)}
+                                                                                        {peso(
+                                                                                            amt,
+                                                                                        )}
                                                                                     </td>
                                                                                     <td className="px-3 py-2.5 text-center">
                                                                                         {isWaived ? (
                                                                                             <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                                                                                                ↩ Carry fwd
+                                                                                                ↩
+                                                                                                Carry
+                                                                                                fwd
                                                                                             </span>
                                                                                         ) : (
                                                                                             <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
@@ -3679,7 +4050,8 @@ export default function Index({
                     raw.basic_pay +
                     raw.pera +
                     raw.rice_allowance +
-                    raw.uniform_allowance;
+                    raw.uniform_allowance +
+                    (raw.overtime_pay ?? 0);
                 const totalDeductions = empStatus.totalDeductions;
                 const netPay = empStatus.netPay;
 
@@ -3770,6 +4142,13 @@ export default function Index({
                                             amount={raw.uniform_allowance}
                                         />
                                     )}
+                                    {/* NEW: Overtime Pay */}
+                                    {(raw.overtime_pay ?? 0) > 0 && (
+                                        <RowLine
+                                            label={`Overtime Pay (${(raw.total_overtime_hours ?? 0).toFixed(2)} hrs)`}
+                                            amount={raw.overtime_pay ?? 0}
+                                        />
+                                    )}
 
                                     <div className="mt-3 flex items-center justify-between border-t pt-3">
                                         <span className="text-sm font-semibold">
@@ -3806,9 +4185,13 @@ export default function Index({
                                         amount={raw.withholding_tax}
                                     />
 
-                                    {/* Attendance */}
+                                    {/* Attendance deductions */}
                                     {(raw.absent_days > 0 ||
-                                        raw.late_minutes > 0) && (
+                                        (raw.half_days ?? 0) > 0 ||
+                                        raw.late_minutes > 0 ||
+                                        (raw.undertime_minutes ?? 0) > 0 ||
+                                        (raw.personal_slip_minutes ?? 0) >
+                                            0) && (
                                         <>
                                             <p className="mt-3 mb-1 text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
                                                 Attendance
@@ -3821,10 +4204,46 @@ export default function Index({
                                                     }
                                                 />
                                             )}
+                                            {(raw.half_days ?? 0) > 0 && (
+                                                <RowLine
+                                                    label={`Half-Day (${raw.half_days} day${(raw.half_days ?? 0) !== 1 ? 's' : ''})`}
+                                                    amount={
+                                                        raw.half_day_deduction ??
+                                                        0
+                                                    }
+                                                />
+                                            )}
                                             {raw.late_minutes > 0 && (
                                                 <RowLine
                                                     label={`Late (${raw.late_minutes} min)`}
                                                     amount={raw.late_deduction}
+                                                />
+                                            )}
+                                            {(raw.undertime_minutes ?? 0) >
+                                                0 && (
+                                                <RowLine
+                                                    label={`Undertime (${raw.undertime_minutes ?? 0} min)`}
+                                                    amount={
+                                                        raw.undertime_deduction ??
+                                                        0
+                                                    }
+                                                />
+                                            )}
+                                            {(raw.personal_slip_minutes ?? 0) >
+                                                0 && (
+                                                <RowLine
+                                                    label={`Personal Slip (${raw.personal_slip_minutes ?? 0} min)`}
+                                                    amount={
+                                                        raw.personal_slip_deduction ??
+                                                        0
+                                                    }
+                                                />
+                                            )}
+                                            {(raw.official_slip_minutes ?? 0) >
+                                                0 && (
+                                                <RowLine
+                                                    label={`Official Slip (${raw.official_slip_minutes ?? 0} min — authorized, no deduction)`}
+                                                    amount={0}
                                                 />
                                             )}
                                         </>
@@ -3876,8 +4295,12 @@ export default function Index({
                                             </p>
                                             <RowLine
                                                 label="Savings / Share Capital"
-                                                amount={raw.internal_org_savings}
-                                                waived={waived.includes('internal_org_savings')}
+                                                amount={
+                                                    raw.internal_org_savings
+                                                }
+                                                waived={waived.includes(
+                                                    'internal_org_savings',
+                                                )}
                                             />
                                         </>
                                     )}

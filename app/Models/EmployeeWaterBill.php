@@ -9,6 +9,8 @@ class EmployeeWaterBill extends Model
 {
     protected $primaryKey = 'employee_water_bill_id';
 
+    protected $table = 'employee_water_bill';
+
     protected $fillable = [
         'employee_id',
         'water_bill_number',
