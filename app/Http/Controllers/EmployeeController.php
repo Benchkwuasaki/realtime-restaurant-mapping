@@ -317,12 +317,12 @@ class EmployeeController extends Controller
                 // ── Leave balances: map to the shape expected by the frontend ──
                 'leave_balances' => $employee->leaveBalances->map(fn($b) => [
                     'employee_leave_balance_id' => $b->employee_leave_balance_id,
-                    'leave_type_id'             => $b->leave_type_id,
-                    'cycle_year'                => $b->cycle_year,
-                    'total_days'                => $b->total_days,
-                    'used_days'                 => $b->used_days,
-                    'balance'                   => $b->balance,
-                    'leave_type'                => $b->leaveType
+                    'leave_type_id' => $b->leave_type_id,
+                    'cycle_year' => $b->cycle_year,
+                    'total_days' => $b->total_days,
+                    'used_days' => $b->used_days,
+                    'balance' => $b->balance,
+                    'leave_type' => $b->leaveType
                         ? ['leave_type_name' => $b->leaveType->leave_type_name]
                         : null,
                 ]),
@@ -337,7 +337,13 @@ class EmployeeController extends Controller
                     'venue' => $s->venue,
                     'date_attended' => $s->date_attended,
                 ]),
-                'serviceRecords' => $employee->serviceRecords,
+                'serviceRecords' => $employee->serviceRecords->map(fn($s) => [
+                    'id' => $s->employee_service_record_id,
+                    'position_name' => $s->service_title,
+                    'department_name' => $s->department,
+                    'year_start' => $s->durationStart ? substr($s->durationStart, 0, 4) : null,
+                    'year_end' => $s->durationEnd ? substr($s->durationEnd, 0, 4) : null,
+                ]),
             ],
             'items' => Item::with([
                 'position.department',
@@ -806,10 +812,10 @@ class EmployeeController extends Controller
         ]);
 
         $employee->serviceRecords()->create([
-            'position_name' => $request->position_name,
-            'department_name' => $request->filled('department_name') ? $request->department_name : null,
-            'year_start' => $request->filled('year_start') ? $request->year_start : null,
-            'year_end' => $request->filled('year_end') ? $request->year_end : null,
+            'service_title' => $request->position_name,
+            'department' => $request->filled('department_name') ? $request->department_name : null,
+            'durationStart' => $request->filled('year_start') ? $request->year_start . '-01-01' : null,
+            'durationEnd' => $request->filled('year_end') ? $request->year_end . '-01-01' : null,
         ]);
 
         return back()->with('success', 'Service record added.');
@@ -827,10 +833,10 @@ class EmployeeController extends Controller
         $serviceRecord = $employee->serviceRecords()->findOrFail($record);
 
         $serviceRecord->update([
-            'position_name' => $request->position_name,
-            'department_name' => $request->filled('department_name') ? $request->department_name : null,
-            'year_start' => $request->filled('year_start') ? $request->year_start : null,
-            'year_end' => $request->filled('year_end') ? $request->year_end : null,
+            'service_title' => $request->position_name,
+            'department' => $request->filled('department_name') ? $request->department_name : null,
+            'durationStart' => $request->filled('year_start') ? $request->year_start . '-01-01' : null,
+            'durationEnd' => $request->filled('year_end') ? $request->year_end . '-01-01' : null,
         ]);
 
         return back()->with('success', 'Service record updated.');
