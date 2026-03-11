@@ -64,6 +64,8 @@ interface PayrollRecord {
     pag_ibig_mpl: number;
     ama_y2k_union: number;
     water_bill: number;
+    internal_org_savings: number;
+    internal_org_second: number;
     total_deductions: number;
     net_pay: number;
     floor_check_passed: boolean;
@@ -97,6 +99,8 @@ interface Summary {
     total_pag_ibig_mpl: number;
     total_ama_y2k_union: number;
     total_water_bill: number;
+    total_internal_org_savings: number;
+    total_internal_org_second: number;
     total_deductions: number;
     total_net_pay: number;
     floor_issues: number;
@@ -541,7 +545,7 @@ export default function Show({ period, records, summary }: Props) {
 
                                             {/* OTHER */}
                                             <GrpTh
-                                                colSpan={5}
+                                                colSpan={7}
                                                 className="bg-red-50/80 text-red-700 dark:bg-red-950/40 dark:text-red-300"
                                             >
                                                 Other Deductions
@@ -618,6 +622,12 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-red-50/60 text-red-700 dark:bg-red-950/30 dark:text-red-400">
                                                 PagIBIG MPL
+                                            </ColTh>
+                                            <ColTh className="w-[3.5%] bg-red-50/60 text-red-700 dark:bg-red-950/30 dark:text-red-400">
+                                                Org Savings
+                                            </ColTh>
+                                            <ColTh className="w-[3.5%] bg-red-50/60 text-red-700 dark:bg-red-950/30 dark:text-red-400">
+                                                Org Dues &amp; Loans
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-red-50/60 text-red-700 dark:bg-red-950/30 dark:text-red-400">
                                                 AMA/Union
@@ -775,6 +785,18 @@ export default function Show({ period, records, summary }: Props) {
                                                     right
                                                     className="text-red-800 dark:text-red-400"
                                                 >
+                                                    {n(rec.internal_org_savings ?? 0)}
+                                                </Td>
+                                                <Td
+                                                    right
+                                                    className="text-red-800 dark:text-red-400"
+                                                >
+                                                    {n(rec.internal_org_second ?? 0)}
+                                                </Td>
+                                                <Td
+                                                    right
+                                                    className="text-red-800 dark:text-red-400"
+                                                >
                                                     {n(rec.ama_y2k_union)}
                                                 </Td>
                                                 <Td
@@ -880,6 +902,12 @@ export default function Show({ period, records, summary }: Props) {
                                             </TotTd>
                                             <TotTd className="text-red-800 dark:text-red-400">
                                                 {nf(summary.total_pag_ibig_mpl)}
+                                            </TotTd>
+                                            <TotTd className="text-red-800 dark:text-red-400">
+                                                {nf(summary.total_internal_org_savings ?? 0)}
+                                            </TotTd>
+                                            <TotTd className="text-red-800 dark:text-red-400">
+                                                {nf(summary.total_internal_org_second ?? 0)}
                                             </TotTd>
                                             <TotTd className="text-red-800 dark:text-red-400">
                                                 {nf(

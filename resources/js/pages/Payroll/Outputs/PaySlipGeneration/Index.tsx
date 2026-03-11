@@ -112,28 +112,28 @@
 
         const totalDeductions = totalMandatory + totalAttendance + totalLoans;
 
-        // B&W financial document style — Times New Roman, no color
-        const serif: React.CSSProperties = {
-            fontFamily: "'Times New Roman', Times, serif",
-            color: '#000',
-            backgroundColor: '#fff',
-        };
-        const sectionLabel: React.CSSProperties = {
-            fontSize: 9,
-            fontWeight: 'bold',
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            borderBottom: '1px solid #000',
-            paddingBottom: 3,
-            margin: '0 0 6px',
-        };
-        const subtotalRow: React.CSSProperties = {
-            display: 'flex',
-            justifyContent: 'space-between',
-            borderTop: '1px solid #000',
-            marginTop: 6,
-            paddingTop: 4,
-        };
+    // print style only — Times New Roman, no color
+    const serif: React.CSSProperties = {
+        fontFamily: "'Times New Roman', Times, serif",
+        color: '#000',
+        backgroundColor: '#fff',
+    };
+    const sectionLabel: React.CSSProperties = {
+        fontSize: 9,
+        fontWeight: 'bold',
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        borderBottom: '1px solid #000',
+        paddingBottom: 3,
+        margin: '0 0 6px',
+    };
+    const subtotalRow: React.CSSProperties = {
+        display: 'flex',
+        justifyContent: 'space-between',
+        borderTop: '1px solid #000',
+        marginTop: 6,
+        paddingTop: 4,
+    };
 
         return (
             <div
@@ -203,44 +203,42 @@
                     </div>
                 </div>
 
-                {/* ── Body ── */}
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    borderBottom: '1px solid #000',
+                    fontFamily: "'Times New Roman', Times, serif",
+                }}
+            >
                 <div
                     style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        borderBottom: '1px solid #000',
-                        fontFamily: "'Times New Roman', Times, serif",
+                        padding: '16px 28px',
+                        borderRight: '1px solid #ccc',
                     }}
                 >
-                    {/* LEFT — Earnings + Attendance */}
-                    <div
-                        style={{
-                            padding: '16px 28px',
-                            borderRight: '1px solid #ccc',
-                        }}
-                    >
-                        <p style={sectionLabel}>Earnings</p>
-                        <Row label="Basic Pay" value={data.basic_pay} />
-                        <Row label="PERA" value={data.pera} />
-                        <Row label="Rice Allowance" value={data.rice_allowance} />
-                        <Row
-                            label="Uniform Allowance"
-                            value={data.uniform_allowance}
-                        />
-                        <div style={subtotalRow}>
-                            <span style={{ fontSize: 10, fontWeight: 'bold' }}>
-                                Gross Pay
-                            </span>
-                            <span
-                                style={{
-                                    fontSize: 10,
-                                    fontWeight: 'bold',
-                                    fontVariantNumeric: 'tabular-nums',
-                                }}
-                            >
-                                &#8369;{peso(grossPay)}
-                            </span>
-                        </div>
+                    <p style={sectionLabel}>Earnings</p>
+                    <Row label="Basic Pay" value={data.basic_pay} />
+                    <Row label="PERA" value={data.pera} />
+                    <Row label="Rice Allowance" value={data.rice_allowance} />
+                    <Row
+                        label="Uniform Allowance"
+                        value={data.uniform_allowance}
+                    />
+                    <div style={subtotalRow}>
+                        <span style={{ fontSize: 10, fontWeight: 'bold' }}>
+                            Gross Pay
+                        </span>
+                        <span
+                            style={{
+                                fontSize: 10,
+                                fontWeight: 'bold',
+                                fontVariantNumeric: 'tabular-nums',
+                            }}
+                        >
+                            &#8369;{peso(grossPay)}
+                        </span>
+                    </div>
 
                         <p style={{ ...sectionLabel, margin: '16px 0 6px' }}>
                             Attendance Deductions

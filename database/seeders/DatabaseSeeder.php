@@ -12,6 +12,160 @@ class DatabaseSeeder extends Seeder
     {
         // TODO: refactor to separate seeder files
 
+        // ── 0. Government Account Types ───────────────────────────────────
+        $gsisTypeId = DB::table('government_acc_types')->insertGetId([
+            'code' => 'GSIS',
+            'name' => 'Government Service Insurance System',
+            'has_employer_share' => true,
+            'computation_type' => 'rate',
+            'employee_rate' => 9.00,
+            'employer_rate' => 12.00,
+            'fixed_amount' => null,
+            // GSIS has no floor/ceiling or tier — these stay null
+            'min_contribution' => null,
+            'max_contribution' => null,
+            'lower_salary_threshold' => null,
+            'lower_rate' => null,
+            'upper_rate' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $philhealthTypeId = DB::table('government_acc_types')->insertGetId([
+            'code' => 'PHILHEALTH',
+            'name' => 'Philippine Health Insurance Corporation',
+            'has_employer_share' => true,
+            'computation_type' => 'rate',
+            'employee_rate' => 2.50,    // employee share (half of 5% total)
+            'employer_rate' => 2.50,    // employer share (half of 5% total)
+            'fixed_amount' => null,
+            'min_contribution' => 250.00,  // monthly floor — was hardcoded max(250.0, ...)
+            'max_contribution' => 2500.00, // monthly ceiling — was hardcoded min(2500.0, ...)
+            'lower_salary_threshold' => null,
+            'lower_rate' => null,
+            'upper_rate' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $pagibigTypeId = DB::table('government_acc_types')->insertGetId([
+            'code' => 'PAGIBIG',
+            'name' => 'Pag-IBIG Fund',
+            'has_employer_share' => false,
+            'computation_type' => 'fixed',
+            'employee_rate' => null,
+            'employer_rate' => null,
+            'fixed_amount' => 100.00,  // monthly cap — was hardcoded
+            'min_contribution' => null,
+            'max_contribution' => null,
+            'lower_salary_threshold' => 1500.00, // was hardcoded $monthlyBasic <= 1500
+            'lower_rate' => 1.0,     // was hardcoded 0.01 (1%)
+            'upper_rate' => 2.0,     // was hardcoded 0.02 (2%)
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $sssTypeId = DB::table('government_acc_types')->insertGetId([
+            'code' => 'SSS',
+            'name' => 'Social Security System',
+            'has_employer_share' => true,
+            'computation_type' => 'rate',
+            'employee_rate' => 4.50,
+            'employer_rate' => 9.50,
+            'fixed_amount' => null,
+            'min_contribution' => null,
+            'max_contribution' => null,
+            'lower_salary_threshold' => null,
+            'lower_rate' => null,
+            'upper_rate' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // ── 0b. Payroll Deduction Priority Order ──────────────────────────
+        DB::table('payroll_deduction_priority_order')->insert([
+            [
+                'priority'               => 1,
+                'deduction_category'     => 'government_contribution',
+                'government_acc_type_id' => $gsisTypeId,
+                'label'                  => "Gov't Contributions",
+                'examples'               => 'GSIS, PhilHealth, Pag-IBIG, Withholding Tax',
+                'cuttability'            => 'Never',
+                'created_at'             => now(),
+                'updated_at'             => now(),
+            ],
+            [
+                'priority'               => 2,
+                'deduction_category'     => 'government_loan',
+                'government_acc_type_id' => null,
+                'label'                  => "Gov't Loans",
+                'examples'               => 'GSIS MPL, GSIS Emergency Loan, Pag-IBIG MPL',
+                'cuttability'            => 'Rarely',
+                'created_at'             => now(),
+                'updated_at'             => now(),
+            ],
+            [
+                'priority'               => 3,
+                'deduction_category'     => 'internal_org_savings',
+                'government_acc_type_id' => null,
+                'label'                  => 'Org Savings & Share Capital',
+                'examples'               => 'Cooperative Savings, Share Capital Contributions',
+                'cuttability'            => 'Rarely',
+                'created_at'             => now(),
+                'updated_at'             => now(),
+            ],
+            [
+                'priority'               => 4,
+                'deduction_category'     => 'internal_org_loan',
+                'government_acc_type_id' => null,
+                'label'                  => 'Internal Org Loans',
+                'examples'               => 'Cooperative Loans, Union Emergency Loans',
+                'cuttability'            => 'Yes',
+                'created_at'             => now(),
+                'updated_at'             => now(),
+            ],
+            [
+                'priority'               => 5,
+                'deduction_category'     => 'internal_org_dues',
+                'government_acc_type_id' => null,
+                'label'                  => 'Org Dues & Premiums',
+                'examples'               => 'Union Dues, Association Membership Dues',
+                'cuttability'            => 'First_to_Cut',
+                'created_at'             => now(),
+                'updated_at'             => now(),
+            ],
+            [
+                'priority'               => 6,
+                'deduction_category'     => 'water_bill',
+                'government_acc_type_id' => null,
+                'label'                  => 'Water Bill',
+                'examples'               => 'Monthly water consumption charges',
+                'cuttability'            => 'First_to_Cut',
+                'created_at'             => now(),
+                'updated_at'             => now(),
+            ],
+            [
+                'priority'               => 7,
+                'deduction_category'     => 'other_miscellaneous',
+                'government_acc_type_id' => null,
+                'label'                  => 'Other Miscellaneous',
+                'examples'               => 'NS & ND (COA), One-time deductions',
+                'cuttability'            => 'First_to_Cut',
+                'created_at'             => now(),
+                'updated_at'             => now(),
+            ],
+        ]);
+
+        // ── 0c. Payroll Deduction Settings (operational) ──────────────────
+        DB::table('payroll_deduction_settings')->insertOrIgnore([
+            'id' => 1,
+            'working_days_divisor' => 22,
+            'minimum_take_home_pay' => 3000.00,
+            'salary_threshold' => 6000.00,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         // ── 1. Salary Grade Steps ──────────────────────────────────
         $this->call(SalaryGradeStepSeeder::class);
 
@@ -728,9 +882,9 @@ class DatabaseSeeder extends Seeder
 
             $workEmail = strtolower(
                 preg_replace('/[^a-z0-9]/', '', $firstName).'.'.
-                    preg_replace('/[^a-z0-9]/', '', $lastName).
-                    ($i > 0 ? $i : '').
-                    '@obx.gov.ph'
+                preg_replace('/[^a-z0-9]/', '', $lastName).
+                ($i > 0 ? $i : '').
+                '@obx.gov.ph'
             );
 
             // Basic info
@@ -811,16 +965,32 @@ class DatabaseSeeder extends Seeder
                 'updated_at' => now(),
             ]);
 
-            // Government accounts
-            $govAccounts = [
-                ['account_type' => 'SSS', 'account_number' => sprintf('%02d-%07d-%d', ($i % 9) + 1, $i * 1234567 % 9999999, $i % 9)],
-                ['account_type' => 'PhilHealth', 'account_number' => sprintf('%02d-%09d-%d', ($i % 9) + 11, $i * 9876543 % 999999999, $i % 9)],
-                ['account_type' => 'Pag-IBIG', 'account_number' => sprintf('%04d-%04d-%04d', ($i * 7) % 9999, ($i * 3) % 9999, ($i * 11) % 9999)],
+            // Government accounts — now uses government_acc_type_id FK
+            $govAccountsData = [
+                [
+                    'government_acc_type_id' => $sssTypeId,
+                    'account_type' => 'SSS',
+                    'account_number' => sprintf('%02d-%07d-%d', ($i % 9) + 1, $i * 1234567 % 9999999, $i % 9),
+                ],
+                [
+                    'government_acc_type_id' => $philhealthTypeId,
+                    'account_type' => 'PhilHealth',
+                    'account_number' => sprintf('%02d-%09d-%d', ($i % 9) + 11, $i * 9876543 % 999999999, $i % 9),
+                ],
+                [
+                    'government_acc_type_id' => $pagibigTypeId,
+                    'account_type' => 'Pag-IBIG',
+                    'account_number' => sprintf('%04d-%04d-%04d', ($i * 7) % 9999, ($i * 3) % 9999, ($i * 11) % 9999),
+                ],
             ];
             if ($classif === 'Regular' && $hireYear < 2015) {
-                $govAccounts[] = ['account_type' => 'GSIS', 'account_number' => sprintf('GSIS-%04d-%d', $i + 1, $hireYear)];
+                $govAccountsData[] = [
+                    'government_acc_type_id' => $gsisTypeId,
+                    'account_type' => 'GSIS',
+                    'account_number' => sprintf('GSIS-%04d-%d', $i + 1, $hireYear),
+                ];
             }
-            foreach ($govAccounts as $acct) {
+            foreach ($govAccountsData as $acct) {
                 DB::table('government_accounts')->insert(array_merge($acct, [
                     'employee_id' => $employeeId,
                     'created_at' => now(),

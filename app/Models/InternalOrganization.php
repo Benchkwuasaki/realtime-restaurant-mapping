@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InternalOrganization extends Model
 {
@@ -42,5 +43,13 @@ class InternalOrganization extends Model
     public function getRouteKeyName(): string
     {
         return 'internal_organization_id';
+    }
+    public function services(): HasMany
+    {
+        return $this->hasMany(
+            InternalOrganizationService::class,
+            'internal_organization_id',
+            'internal_organization_id'
+        );
     }
 }

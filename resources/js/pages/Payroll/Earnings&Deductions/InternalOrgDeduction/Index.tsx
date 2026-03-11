@@ -1,12 +1,10 @@
 // Internal Organization Deductions — Index.tsx
-// Handles deductions for internal organizations (Union, Cooperative, Association, etc.)
-// Designed to support multiple service types per organization (loans, savings, dues, etc.)
 
-import { useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
-import AppLayout from '@/layouts/app-layout';
 import { DataTable } from '@/components/shared/data-table/data-table';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -16,7 +14,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import {
     Select,
     SelectContent,
@@ -26,8 +23,14 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useOtherDeductionColumns } from '@/components/Payroll/Earnings&Deductions/OtherDeductionEntry/components/columns';
-import type { OtherDeduction } from '@/components/Payroll/Earnings&Deductions/OtherDeductionEntry/data/schema';
+import AppLayout from '@/layouts/app-layout';
+import { useInternalOrgDeductionColumns } from '@/pages/Payroll/Earnings&Deductions/InternalOrgDeduction/components/columns';
+import {
+    type InternalOrgDeduction,
+    type ServiceCategory,
+    SERVICE_CATEGORY_LABELS,
+    SERVICE_CATEGORY_CUTOFF,
+} from '@/pages/Payroll/Earnings&Deductions/InternalOrgDeduction/data/schema';
 import type { BreadcrumbItem } from '@/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -44,16 +47,26 @@ interface Employee {
     position?: string;
 }
 
+interface ServiceOption {
+    id: number;
+    name: string;
+    category: ServiceCategory;
+}
+
+/** { [org_id]: { [category]: ServiceOption[] } } */
+type ServicesByOrg = Record<string, Record<string, ServiceOption[]>>;
+
 interface Tab {
-    key: string; // org UUID
+    key: string;
     label: string;
     orgId: string;
 }
 
 interface Props {
-    deductions: OtherDeduction[];
-    employees: Employee[];
+    deductions: InternalOrgDeduction[];
+    employeesByOrg: Record<string, Employee[]>;
     organizations: Organization[];
+    servicesByOrg: ServicesByOrg;
 }
 
 // ── Breadcrumbs ───────────────────────────────────────────────────────────────
@@ -71,7 +84,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const makeEmptyForm = () => ({
     employee_id: '',
-    internal_organization_id: '',
+    service_category: '' as ServiceCategory | '',
+    internal_organization_service_id: '',
     description: '',
     amount: '',
     period_start: '',
@@ -85,6 +99,7 @@ interface DeductionDialogProps {
     onOpenChange: (open: boolean) => void;
     employees: Employee[];
     activeTab: Tab;
+    servicesForOrg: Record<string, ServiceOption[]>; // { [category]: services[] }
 }
 
 function DeductionDialog({
@@ -92,6 +107,7 @@ function DeductionDialog({
     onOpenChange,
     employees,
     activeTab,
+    servicesForOrg,
 }: DeductionDialogProps) {
     const [form, setForm] = useState(makeEmptyForm);
     const [submitting, setSubmitting] = useState(false);
@@ -104,6 +120,22 @@ function DeductionDialog({
         onOpenChange(value);
     };
 
+    // Available categories for this org
+    const availableCategories = Object.keys(servicesForOrg) as ServiceCategory[];
+
+    // Services under the selected category
+    const servicesForCategory: ServiceOption[] =
+        form.service_category ? (servicesForOrg[form.service_category] ?? []) : [];
+
+    // Reset service when category changes
+    const handleCategoryChange = (category: string) => {
+        setForm((f) => ({
+            ...f,
+            service_category: category as ServiceCategory,
+            internal_organization_service_id: '',
+        }));
+    };
+
     const handleSubmit = () => {
         setSubmitting(true);
         router.post(
@@ -111,7 +143,8 @@ function DeductionDialog({
             {
                 employee_id: parseInt(form.employee_id) || form.employee_id,
                 internal_organization_id: activeTab.orgId,
-                category: null,
+                internal_organization_service_id:
+                    parseInt(form.internal_organization_service_id) || null,
                 description: form.description || null,
                 amount: parseFloat(form.amount) || 0,
                 period_start: form.period_start,
@@ -128,13 +161,18 @@ function DeductionDialog({
         );
     };
 
+    const selectedService = servicesForCategory.find(
+        (s) => String(s.id) === form.internal_organization_service_id,
+    );
+
     const isValid =
-        form.employee_id &&
-        form.description &&
-        form.amount &&
+        !!form.employee_id &&
+        !!form.service_category &&
+        !!form.internal_organization_service_id &&
+        !!form.amount &&
         parseFloat(form.amount) > 0 &&
-        form.period_start &&
-        form.period_end;
+        !!form.period_start &&
+        !!form.period_end;
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -148,16 +186,8 @@ function DeductionDialog({
                 <div className="grid gap-4 py-2">
                     {/* Organization info */}
                     <div className="rounded-lg border bg-muted/40 px-4 py-3">
-                        <p className="text-xs text-muted-foreground">
-                            Organization
-                        </p>
-                        <p className="mt-0.5 text-sm font-semibold">
-                            {activeTab.label}
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">
-                            Use Description to specify the service type (e.g.,
-                            Loan, Savings, Dues, Share Capital)
-                        </p>
+                        <p className="text-xs text-muted-foreground">Organization</p>
+                        <p className="mt-0.5 text-sm font-semibold">{activeTab.label}</p>
                     </div>
 
                     {/* Employee */}
@@ -183,28 +213,82 @@ function DeductionDialog({
                         </Select>
                     </div>
 
-                    {/* Description - REQUIRED for org deductions */}
+                    {/* Step 1 — Category */}
                     <div className="grid gap-1.5">
                         <Label>
-                            Description{' '}
-                            <span className="text-destructive">*</span>
+                            Category <span className="text-destructive">*</span>
                         </Label>
+                        <Select
+                            value={form.service_category}
+                            onValueChange={handleCategoryChange}
+                            disabled={availableCategories.length === 0}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select category..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableCategories.map((cat) => (
+                                    <SelectItem key={cat} value={cat}>
+                                        {SERVICE_CATEGORY_LABELS[cat as ServiceCategory] ?? cat}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {form.service_category && (
+                            <p className="text-xs text-muted-foreground">
+                                Deducted on:{' '}
+                                <span className="font-medium">
+                                    {SERVICE_CATEGORY_CUTOFF[form.service_category as ServiceCategory]}
+                                </span>
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Step 2 — Service (depends on category) */}
+                    <div className="grid gap-1.5">
+                        <Label>
+                            Service <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                            value={form.internal_organization_service_id}
+                            onValueChange={(v) =>
+                                set('internal_organization_service_id', v)
+                            }
+                            disabled={!form.service_category || servicesForCategory.length === 0}
+                        >
+                            <SelectTrigger>
+                                <SelectValue
+                                    placeholder={
+                                        !form.service_category
+                                            ? 'Select a category first...'
+                                            : 'Select service...'
+                                    }
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {servicesForCategory.map((s) => (
+                                    <SelectItem key={s.id} value={String(s.id)}>
+                                        {s.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Description (optional) */}
+                    <div className="grid gap-1.5">
+                        <Label>Description</Label>
                         <Input
-                            placeholder="e.g., Loan Payment, Savings Contribution, Membership Dues"
+                            placeholder="Additional notes (optional)"
                             value={form.description}
                             onChange={(e) => set('description', e.target.value)}
                         />
-                        <p className="text-xs text-muted-foreground">
-                            Specify the type of deduction and any relevant
-                            details
-                        </p>
                     </div>
 
                     {/* Amount */}
                     <div className="grid gap-1.5">
                         <Label>
-                            Amount (₱){' '}
-                            <span className="text-destructive">*</span>
+                            Amount (₱) <span className="text-destructive">*</span>
                         </Label>
                         <Input
                             type="number"
@@ -220,28 +304,22 @@ function DeductionDialog({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-1.5">
                             <Label>
-                                Period Start{' '}
-                                <span className="text-destructive">*</span>
+                                Period Start <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 type="date"
                                 value={form.period_start}
-                                onChange={(e) =>
-                                    set('period_start', e.target.value)
-                                }
+                                onChange={(e) => set('period_start', e.target.value)}
                             />
                         </div>
                         <div className="grid gap-1.5">
                             <Label>
-                                Period End{' '}
-                                <span className="text-destructive">*</span>
+                                Period End <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 type="date"
                                 value={form.period_end}
-                                onChange={(e) =>
-                                    set('period_end', e.target.value)
-                                }
+                                onChange={(e) => set('period_end', e.target.value)}
                             />
                         </div>
                     </div>
@@ -250,16 +328,10 @@ function DeductionDialog({
                 <Separator />
 
                 <DialogFooter>
-                    <Button
-                        variant="outline"
-                        onClick={() => handleOpenChange(false)}
-                    >
+                    <Button variant="outline" onClick={() => handleOpenChange(false)}>
                         Cancel
                     </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={!isValid || submitting}
-                    >
+                    <Button onClick={handleSubmit} disabled={!isValid || submitting}>
                         {submitting ? 'Saving...' : 'Add Entry'}
                     </Button>
                 </DialogFooter>
@@ -272,10 +344,10 @@ function DeductionDialog({
 
 export default function Index({
     deductions = [],
-    employees = [],
+    employeesByOrg = {},
     organizations = [],
+    servicesByOrg = {},
 }: Props) {
-    // Build tab list from organizations — stringify IDs to avoid number/string mismatch
     const tabs = useMemo<Tab[]>(
         () =>
             organizations.map((org) => ({
@@ -286,8 +358,8 @@ export default function Index({
         [organizations],
     );
 
-    const [activeTabKey, setActiveTabKey] = useState<string>(() =>
-        String(tabs[0]?.key ?? ''),
+    const [activeTabKey, setActiveTabKey] = useState<string>(
+        () => String(tabs[0]?.key ?? ''),
     );
     const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -296,20 +368,30 @@ export default function Index({
         [tabs, activeTabKey],
     );
 
-    // Filter deductions by organization UUID
     const filtered = useMemo(
         () => deductions.filter((d) => String(d.tab_key) === activeTabKey),
         [deductions, activeTabKey],
     );
 
-    const handleDelete = (deduction: OtherDeduction) => {
-        router.delete(route('internal-org-deductions.destroy', deduction.id), {
-            preserveScroll: true,
-        });
+    const activeEmployees = useMemo(
+        () => employeesByOrg[activeTabKey] ?? [],
+        [employeesByOrg, activeTabKey],
+    );
+
+    const activeServices = useMemo(
+        () => servicesByOrg[activeTabKey] ?? {},
+        [servicesByOrg, activeTabKey],
+    );
+
+    const handleDelete = (deduction: InternalOrgDeduction) => {
+        router.delete(
+            route('internal-org-deductions.destroy', deduction.id),
+            { preserveScroll: true },
+        );
     };
 
     const handleAmountChange = (
-        deduction: OtherDeduction,
+        deduction: InternalOrgDeduction,
         newAmount: number,
     ) => {
         router.patch(
@@ -319,7 +401,7 @@ export default function Index({
         );
     };
 
-    const columns = useOtherDeductionColumns({
+    const columns = useInternalOrgDeductionColumns({
         onDelete: handleDelete,
         onAmountChange: handleAmountChange,
     });
@@ -360,7 +442,7 @@ export default function Index({
                     bulkDelete={{
                         route: route('internal-org-deductions.bulk-destroy'),
                         entityName: 'Deduction',
-                        getId: (row) => (row as OtherDeduction).id,
+                        getId: (row) => (row as InternalOrgDeduction).id,
                     }}
                 />
             </div>
@@ -370,8 +452,9 @@ export default function Index({
                 <DeductionDialog
                     open={dialogOpen}
                     onOpenChange={setDialogOpen}
-                    employees={employees}
+                    employees={activeEmployees}
                     activeTab={activeTab}
+                    servicesForOrg={activeServices}
                 />
             )}
         </AppLayout>

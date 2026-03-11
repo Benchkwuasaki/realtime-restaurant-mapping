@@ -1,15 +1,5 @@
-// Payroll Deduction Settings Index.tsx
+// Payroll Deduction Settings — Index.tsx
 
-import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
-import { route } from 'ziggy-js';
-import {
-    Save,
-    GripVertical,
-    Settings2,
-    ListOrdered,
-    ShieldAlert,
-} from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -17,7 +7,7 @@ import {
     PointerSensor,
     useSensor,
     useSensors,
-    DragEndEvent,
+    type DragEndEvent,
 } from '@dnd-kit/core';
 import {
     arrayMove,
@@ -27,12 +17,27 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import AppLayout from '@/layouts/app-layout';
+import { Head, router } from '@inertiajs/react';
+import {
+    Save,
+    GripVertical,
+    Settings2,
+    ListOrdered,
+    ShieldAlert,
+} from 'lucide-react';
+import { useState } from 'react';
+import { route } from 'ziggy-js';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import {
     Table,
@@ -42,24 +47,39 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 interface DeductionSettings {
+    // GSIS
     gsis_employee_rate: number;
     gsis_employer_rate: number;
+    // PhilHealth
     philhealth_rate: number;
-    pagibig_monthly: number;
+    philhealth_min: number;
+    philhealth_max: number;
+    // Pag-IBIG
+    pagibig_cap: number;
+    pagibig_lower_threshold: number;
+    pagibig_lower_rate: number;
+    pagibig_upper_rate: number;
+    // General
     working_days_divisor: number;
     [key: string]: number;
 }
 
+type Cuttability = 'Never' | 'Rarely' | 'Yes' | 'First_to_Cut';
+
 interface PriorityOrderItem {
-    id: string;
+    id: number;
     priority: number;
-    deduction_type: string;
+    deduction_category: string;
+    label: string;
     examples: string;
-    can_be_cut: string;
-    [key: string]: string | number;
+    cuttability: Cuttability;
 }
 
 interface FloorRules {
@@ -74,6 +94,8 @@ interface Props {
     floorRules?: FloorRules;
 }
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Payroll', href: '#' },
     { title: 'Configuration', href: '#' },
@@ -87,45 +109,55 @@ const DEFAULT_SETTINGS: DeductionSettings = {
     gsis_employee_rate: 9.0,
     gsis_employer_rate: 12.0,
     philhealth_rate: 2.5,
-    pagibig_monthly: 100.0,
+    philhealth_min: 250.0,
+    philhealth_max: 2500.0,
+    pagibig_cap: 100.0,
+    pagibig_lower_threshold: 1500.0,
+    pagibig_lower_rate: 1.0,
+    pagibig_upper_rate: 2.0,
     working_days_divisor: 22,
 };
 
 const DEFAULT_PRIORITY_ORDER: PriorityOrderItem[] = [
     {
-        id: '1',
+        id: 1,
         priority: 1,
-        deduction_type: "Gov't Contributions",
+        deduction_category: 'government_contribution',
+        label: "Gov't Contributions",
         examples: 'GSIS, PhilHealth, Pag-IBIG, Tax',
-        can_be_cut: 'Never',
+        cuttability: 'Never',
     },
     {
-        id: '2',
+        id: 2,
         priority: 2,
-        deduction_type: "Gov't Loans",
+        deduction_category: 'government_loan',
+        label: "Gov't Loans",
         examples: 'All GSIS Loans, Pag-IBIG Loans',
-        can_be_cut: 'Rarely',
+        cuttability: 'Rarely',
     },
     {
-        id: '3',
+        id: 3,
         priority: 3,
-        deduction_type: 'Internal Org Loans',
+        deduction_category: 'internal_org_loan',
+        label: 'Internal Org Loans',
         examples: 'AMA Loan, Y2K Loans, MKWD Loans',
-        can_be_cut: 'Yes',
+        cuttability: 'Yes',
     },
     {
-        id: '4',
+        id: 4,
         priority: 4,
-        deduction_type: 'Org Dues & Premiums',
+        deduction_category: 'internal_org_dues',
+        label: 'Org Dues & Premiums',
         examples: 'AMA Premium, Y2K Premium, Union Dues...',
-        can_be_cut: 'First to Cut',
+        cuttability: 'First_to_Cut',
     },
     {
-        id: '5',
+        id: 5,
         priority: 5,
-        deduction_type: 'Miscellaneous',
+        deduction_category: 'miscellaneous',
+        label: 'Miscellaneous',
         examples: 'Water Bill, NSGND, One-time Items',
-        can_be_cut: 'First to Cut',
+        cuttability: 'First_to_Cut',
     },
 ];
 
@@ -133,43 +165,6 @@ const DEFAULT_FLOOR_RULES: FloorRules = {
     minimum_take_home_pay: 3000,
     salary_threshold: 6000.0,
 };
-
-const CONTRIBUTION_FIELDS: {
-    key: string;
-    label: string;
-    helper: string;
-    placeholder: string;
-    step: string;
-}[] = [
-    {
-        key: 'gsis_employee_rate',
-        label: 'GSIS EMPLOYEE RATE (%)',
-        helper: 'Regular & Casual only',
-        placeholder: '0.0',
-        step: '0.1',
-    },
-    {
-        key: 'gsis_employer_rate',
-        label: 'GSIS EMPLOYER RATE (%) - MKWD',
-        helper: 'MKWD pays this share',
-        placeholder: '0.0',
-        step: '0.1',
-    },
-    {
-        key: 'philhealth_rate',
-        label: 'PhilHealth RATE (%) - MKWD',
-        helper: 'Split 50/50 Employer – Employee',
-        placeholder: '0.0',
-        step: '0.1',
-    },
-    {
-        key: 'pagibig_monthly',
-        label: 'Pag-IBIG Monthly (₱)',
-        helper: '₱50 per payroll period (15 days)',
-        placeholder: '0.00',
-        step: '0.01',
-    },
-];
 
 const TABS = [
     {
@@ -189,6 +184,52 @@ const TABS = [
     },
 ] as const;
 
+// ── Cuttability helpers ───────────────────────────────────────────────────────
+
+const CUTTABILITY_LABELS: Record<Cuttability, string> = {
+    Never: 'Never',
+    Rarely: 'Rarely',
+    Yes: 'Yes',
+    First_to_Cut: 'First to Cut',
+};
+
+const EDITABLE_OPTIONS: Cuttability[] = [
+    'Never',
+    'Rarely',
+    'Yes',
+    'First_to_Cut',
+];
+
+const ORDER: Cuttability[] = ['Never', 'Rarely', 'Yes', 'First_to_Cut'];
+const rankOf = (c: Cuttability) => ORDER.indexOf(c);
+
+function assignCuttability(items: PriorityOrderItem[]): PriorityOrderItem[] {
+    const total = items.length;
+    const pinned = items.map((item, idx) => {
+        if (idx === 0) return { ...item, cuttability: 'Never' as Cuttability };
+        if (idx === total - 1)
+            return { ...item, cuttability: 'First_to_Cut' as Cuttability };
+        return item;
+    });
+    const forward = [...pinned];
+    for (let i = 1; i < total; i++) {
+        const above = forward[i - 1].cuttability;
+        if (rankOf(forward[i].cuttability) < rankOf(above)) {
+            forward[i] = { ...forward[i], cuttability: above };
+        }
+    }
+    const backward = [...forward];
+    for (let i = total - 2; i >= 1; i--) {
+        const below = backward[i + 1].cuttability;
+        if (rankOf(backward[i].cuttability) > rankOf(below)) {
+            backward[i] = { ...backward[i], cuttability: below };
+        }
+    }
+    return backward.map((item, idx) => ({ ...item, priority: idx + 1 }));
+}
+
+// ── Shared components ─────────────────────────────────────────────────────────
+
 function SaveButton({ onClick }: { onClick: () => void }) {
     return (
         <div className="flex justify-end">
@@ -202,6 +243,46 @@ function SaveButton({ onClick }: { onClick: () => void }) {
         </div>
     );
 }
+
+// ── Reusable field component ──────────────────────────────────────────────────
+
+interface FieldProps {
+    label: string;
+    helper: string;
+    fieldKey: string;
+    form: DeductionSettings;
+    step?: string;
+    placeholder?: string;
+    onChange: (key: string, value: string) => void;
+}
+
+function ContributionField({
+    label,
+    helper,
+    fieldKey,
+    form,
+    step = '0.01',
+    placeholder = '0.00',
+    onChange,
+}: FieldProps) {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {label}
+            </Label>
+            <Input
+                type="number"
+                step={step}
+                placeholder={placeholder}
+                value={form[fieldKey]}
+                onChange={(e) => onChange(fieldKey, e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">{helper}</p>
+        </div>
+    );
+}
+
+// ── Government Contribution Rates tab ────────────────────────────────────────
 
 function GovernmentContributionRatesTab({
     settings,
@@ -223,59 +304,187 @@ function GovernmentContributionRatesTab({
         <div className="flex flex-col gap-6">
             <SaveButton onClick={handleSave} />
 
-            <Card>
+            {/* ── GSIS ──────────────────────────────────────────────────────── */}
+            <Card className="border-secondary">
                 <CardHeader>
                     <CardTitle className="text-base font-semibold">
-                        Government Contribution Rate
+                        GSIS
                     </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                        For Regular and Casual employees only. Both rates are
+                        based on the employee's monthly basic salary.
+                    </p>
                 </CardHeader>
-
                 <Separator />
-
                 <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-                        {CONTRIBUTION_FIELDS.map((field) => (
-                            <div
-                                key={field.key}
-                                className="flex flex-col gap-1.5"
-                            >
-                                <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                                    {field.label}
-                                </Label>
-                                <Input
-                                    type="number"
-                                    step={field.step}
-                                    placeholder={field.placeholder}
-                                    value={form[field.key]}
-                                    onChange={(e) =>
-                                        set(field.key, e.target.value)
-                                    }
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    {field.helper}
-                                </p>
-                            </div>
-                        ))}
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <ContributionField
+                            label="Employee Share (%)"
+                            helper="The portion deducted from the employee's pay every cut-off"
+                            fieldKey="gsis_employee_rate"
+                            form={form}
+                            step="0.1"
+                            placeholder="9.0"
+                            onChange={set}
+                        />
+                        <ContributionField
+                            label="MKWD Share (%)"
+                            helper="The portion paid by MKWD on behalf of the employee"
+                            fieldKey="gsis_employer_rate"
+                            form={form}
+                            step="0.1"
+                            placeholder="12.0"
+                            onChange={set}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* ── PhilHealth ────────────────────────────────────────────────── */}
+            <Card className="border-secondary">
+                <CardHeader>
+                    <CardTitle className="text-base font-semibold">
+                        PhilHealth
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                        The monthly premium is split equally between the
+                        employee and MKWD. A minimum and maximum deduction
+                        applies regardless of salary.
+                    </p>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <ContributionField
+                            label="Monthly Rate (%)"
+                            helper="The employee's share of the monthly premium (e.g. enter 2.5 for 2.5%)"
+                            fieldKey="philhealth_rate"
+                            form={form}
+                            step="0.01"
+                            placeholder="2.5"
+                            onChange={set}
+                        />
+                        <ContributionField
+                            label="Lowest Deduction (₱)"
+                            helper="Even for very low salaries, the deduction will not go below this amount"
+                            fieldKey="philhealth_min"
+                            form={form}
+                            step="0.01"
+                            placeholder="250.00"
+                            onChange={set}
+                        />
+                        <ContributionField
+                            label="Highest Deduction (₱)"
+                            helper="Even for very high salaries, the deduction will not exceed this amount"
+                            fieldKey="philhealth_max"
+                            form={form}
+                            step="0.01"
+                            placeholder="2500.00"
+                            onChange={set}
+                        />
                     </div>
 
-                    <Separator className="my-6" />
+                    {/* Live formula preview */}
+                    <div className="mt-4 rounded-md bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">
+                            How it computes:{' '}
+                        </span>
+                        Monthly basic × {form.philhealth_rate}%, but never less
+                        than ₱{form.philhealth_min.toLocaleString()} or more
+                        than ₱{form.philhealth_max.toLocaleString()}. Half of
+                        that is deducted each cut-off.
+                    </div>
+                </CardContent>
+            </Card>
 
-                    <div className="flex max-w-[220px] flex-col gap-1.5">
-                        <Label className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                            WORKING DAYS DIVISOR
-                        </Label>
-                        <Input
-                            type="number"
+            {/* ── Pag-IBIG ──────────────────────────────────────────────────── */}
+            <Card className="border-secondary">
+                <CardHeader>
+                    <CardTitle className="text-base font-semibold">
+                        Pag-IBIG (HDMF)
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                        The contribution rate depends on the employee's monthly
+                        salary. Employees earning below the cutoff pay a lower
+                        rate; those above pay a higher rate. The deduction will
+                        never exceed the monthly limit.
+                    </p>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+                        <ContributionField
+                            label="Salary Cutoff (₱)"
+                            helper="Employees earning this amount or less use the lower rate below"
+                            fieldKey="pagibig_lower_threshold"
+                            form={form}
+                            step="0.01"
+                            placeholder="1500.00"
+                            onChange={set}
+                        />
+                        <ContributionField
+                            label="Rate for Lower Salaries (%)"
+                            helper="Used when the employee's salary is at or below the cutoff"
+                            fieldKey="pagibig_lower_rate"
+                            form={form}
+                            step="0.01"
+                            placeholder="1.0"
+                            onChange={set}
+                        />
+                        <ContributionField
+                            label="Rate for Higher Salaries (%)"
+                            helper="Used when the employee's salary is above the cutoff"
+                            fieldKey="pagibig_upper_rate"
+                            form={form}
+                            step="0.01"
+                            placeholder="2.0"
+                            onChange={set}
+                        />
+                        <ContributionField
+                            label="Monthly Limit (₱)"
+                            helper="The most any employee will be deducted per month, no matter how high the salary"
+                            fieldKey="pagibig_cap"
+                            form={form}
+                            step="0.01"
+                            placeholder="100.00"
+                            onChange={set}
+                        />
+                    </div>
+
+                    {/* Live formula preview */}
+                    <div className="mt-4 rounded-md bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">
+                            How it computes:{' '}
+                        </span>
+                        Employees earning ₱
+                        {form.pagibig_lower_threshold.toLocaleString()} or less
+                        pay {form.pagibig_lower_rate}% of their salary. Those
+                        earning more pay {form.pagibig_upper_rate}%, but never
+                        more than ₱{form.pagibig_cap} per month. Half of that is
+                        deducted each cut-off.
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* ── Working Days Divisor ──────────────────────────────────────── */}
+            <Card className="border-secondary">
+                <CardHeader>
+                    <CardTitle className="text-base font-semibold">
+                        General Settings
+                    </CardTitle>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-6">
+                    <div className="max-w-[220px]">
+                        <ContributionField
+                            label="Working Days Divisor"
+                            helper="Used to compute daily rate from monthly basic (standard: 22)"
+                            fieldKey="working_days_divisor"
+                            form={form}
                             step="1"
                             placeholder="22"
-                            value={form.working_days_divisor}
-                            onChange={(e) =>
-                                set('working_days_divisor', e.target.value)
-                            }
+                            onChange={set}
                         />
-                        <p className="text-xs text-muted-foreground">
-                            Used for daily rate (standard: 22)
-                        </p>
                     </div>
                 </CardContent>
             </Card>
@@ -283,7 +492,21 @@ function GovernmentContributionRatesTab({
     );
 }
 
-function SortableRow({ item }: { item: PriorityOrderItem }) {
+// ── Priority Order tab ────────────────────────────────────────────────────────
+
+interface SortableRowProps {
+    item: PriorityOrderItem;
+    isFirst: boolean;
+    isLast: boolean;
+    onCuttabilityChange: (id: number, value: Cuttability) => void;
+}
+
+function SortableRow({
+    item,
+    isFirst,
+    isLast,
+    onCuttabilityChange,
+}: SortableRowProps) {
     const {
         attributes,
         listeners,
@@ -300,6 +523,8 @@ function SortableRow({ item }: { item: PriorityOrderItem }) {
         zIndex: isDragging ? 10 : undefined,
     };
 
+    const isLocked = isFirst || isLast;
+
     return (
         <TableRow ref={setNodeRef} style={style} className="hover:bg-muted/40">
             <TableCell className="w-10">
@@ -315,27 +540,52 @@ function SortableRow({ item }: { item: PriorityOrderItem }) {
             <TableCell className="text-sm text-muted-foreground">
                 {item.priority}
             </TableCell>
-            <TableCell className="text-sm">{item.deduction_type}</TableCell>
+            <TableCell className="text-sm">{item.label}</TableCell>
             <TableCell className="text-sm text-muted-foreground">
                 {item.examples}
             </TableCell>
-            <TableCell className="text-sm text-muted-foreground">
-                {item.can_be_cut}
+            <TableCell className="text-sm">
+                {isLocked ? (
+                    <span className="text-muted-foreground">
+                        {CUTTABILITY_LABELS[item.cuttability]}
+                    </span>
+                ) : (
+                    <Select
+                        value={item.cuttability}
+                        onValueChange={(v) =>
+                            onCuttabilityChange(item.id, v as Cuttability)
+                        }
+                    >
+                        <SelectTrigger className="h-7 w-32 text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {EDITABLE_OPTIONS.map((opt) => (
+                                <SelectItem
+                                    key={opt}
+                                    value={opt}
+                                    className="text-xs"
+                                >
+                                    {CUTTABILITY_LABELS[opt]}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
             </TableCell>
         </TableRow>
     );
 }
 
-// TODO: Make it based on the Internal Organizations and Government Organizations
-// Currently pre defined but then need to specify it more on the deduction types hehe
-// Hmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
 function PriorityOrderTab({
     priorityOrder,
 }: {
     priorityOrder: PriorityOrderItem[];
 }) {
-    const [items, setItems] = useState<PriorityOrderItem[]>(
-        priorityOrder.map((item, idx) => ({ ...item, priority: idx + 1 })),
+    const [items, setItems] = useState<PriorityOrderItem[]>(() =>
+        assignCuttability(
+            priorityOrder.map((item, idx) => ({ ...item, priority: idx + 1 })),
+        ),
     );
 
     const sensors = useSensors(
@@ -353,6 +603,22 @@ function PriorityOrderTab({
             const oldIndex = prev.findIndex((i) => i.id === active.id);
             const newIndex = prev.findIndex((i) => i.id === over.id);
             const reordered = arrayMove(prev, oldIndex, newIndex);
+            return assignCuttability(reordered);
+        });
+    };
+
+    const handleCuttabilityChange = (id: number, value: Cuttability) => {
+        setItems((prev) => {
+            const updated = prev.map((item) =>
+                item.id === id ? { ...item, cuttability: value } : item,
+            );
+            const first = updated[0];
+            const last = updated[updated.length - 1];
+            const middle = updated.slice(1, updated.length - 1);
+            const sorted = [...middle].sort(
+                (a, b) => rankOf(a.cuttability) - rankOf(b.cuttability),
+            );
+            const reordered = [first, ...sorted, last];
             return reordered.map((item, idx) => ({
                 ...item,
                 priority: idx + 1,
@@ -363,7 +629,12 @@ function PriorityOrderTab({
     const handleSave = () => {
         router.put(
             route('payroll.deduction-settings.priority-order.update'),
-            { priority_order: items.map((i) => ({ ...i })) },
+            {
+                ordered_ids: items.map((i) => i.id),
+                cuttability: Object.fromEntries(
+                    items.map((i) => [i.id, i.cuttability]),
+                ),
+            },
             { preserveScroll: true },
         );
     };
@@ -372,7 +643,7 @@ function PriorityOrderTab({
         <div className="flex flex-col gap-6">
             <SaveButton onClick={handleSave} />
 
-            <Card>
+            <Card className="border-secondary">
                 <CardHeader>
                     <CardTitle className="text-base font-semibold">
                         Deduction Priority Order
@@ -410,10 +681,15 @@ function PriorityOrderTab({
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {items.map((item) => (
+                                    {items.map((item, idx) => (
                                         <SortableRow
                                             key={item.id}
                                             item={item}
+                                            isFirst={idx === 0}
+                                            isLast={idx === items.length - 1}
+                                            onCuttabilityChange={
+                                                handleCuttabilityChange
+                                            }
                                         />
                                     ))}
                                 </TableBody>
@@ -425,6 +701,8 @@ function PriorityOrderTab({
         </div>
     );
 }
+
+// ── Floor Rules tab ───────────────────────────────────────────────────────────
 
 function FloorRulesTab({ floorRules }: { floorRules: FloorRules }) {
     const [form, setForm] = useState<FloorRules>({ ...floorRules });
@@ -444,7 +722,7 @@ function FloorRulesTab({ floorRules }: { floorRules: FloorRules }) {
         <div className="flex flex-col gap-6">
             <SaveButton onClick={handleSave} />
 
-            <Card>
+            <Card className="border-secondary">
                 <CardHeader>
                     <CardTitle className="text-base font-semibold">
                         Floor Rules
@@ -488,7 +766,7 @@ function FloorRulesTab({ floorRules }: { floorRules: FloorRules }) {
                                 }
                             />
                             <p className="text-xs text-muted-foreground">
-                                Reference Threshold of employee per monthly
+                                Reference threshold of employee per monthly
                                 salary
                             </p>
                         </div>
@@ -498,6 +776,8 @@ function FloorRulesTab({ floorRules }: { floorRules: FloorRules }) {
         </div>
     );
 }
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Index({
     settings = DEFAULT_SETTINGS,

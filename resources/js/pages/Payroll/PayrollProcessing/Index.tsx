@@ -106,15 +106,18 @@ interface ComputedRecord {
     late_minutes: number;
     late_deduction: number;
 
-    // Hardcoded organizational names. Please fix or remove if not needed
-    // Always base on the daabase
     gsis_mpl: number;
     gsis_emergency: number;
     pag_ibig_mpl: number;
-    ama_y2k_union: number;
+    ama_y2k_union: number;      // org dues + org loans (2nd cut-off) + NS&ND/Misc
     water_bill: number;
-    internal_org_deductions: number;
+    // Savings + Share_Capital — deducted on BOTH cut-offs
+    internal_org_savings: number;
+    // Dues + Org Loans — 2nd cut-off only
+    internal_org_second: number;
+    internal_org_deductions: number; // total of savings + second (for display)
     other_deductions: number;
+    // Per-item breakdown for org dues (no loans here anymore)
     internal_org_items: Array<{
         id: number;
         org_name: string;
@@ -406,7 +409,10 @@ export default function Index({
                         r.ama_y2k_union +
                         r.water_bill +
                         r.absent_deduction +
-                        r.late_deduction,
+                        r.late_deduction +
+                        (r.internal_org_savings ?? 0),
+                    internalOrgSavings: r.internal_org_savings ?? 0,
+                    internalOrgSecond: r.internal_org_second ?? 0,
                     internalOrgDeductions: r.internal_org_deductions ?? 0,
                     otherDeductionsMisc: r.other_deductions ?? 0,
                     attendanceDeduction:
@@ -436,6 +442,8 @@ export default function Index({
                 pagibig: 0,
                 tax: 0,
                 otherDeductions: 0,
+                internalOrgSavings: 0,
+                internalOrgSecond: 0,
                 internalOrgDeductions: 0,
                 otherDeductionsMisc: 0,
                 attendanceDeduction: 0,
@@ -892,9 +900,14 @@ export default function Index({
             group: "Priority 2 — Gov't Loans",
         },
         {
+            key: 'internal_org_savings',
+            label: 'Org Savings / Share Capital',
+            group: 'Priority 3 — Org Savings (both cut-offs)',
+        },
+        {
             key: 'ama_y2k_union',
-            label: 'AMA / Y2K / Union / Org Dues',
-            group: 'Priority 3–4 — Org Loans & Dues',
+            label: 'AMA / Y2K / Union / Org Dues & Loans',
+            group: 'Priority 4 — Org Dues & Loans',
         },
         {
             key: 'water_bill',
@@ -940,6 +953,7 @@ export default function Index({
         const waived = floorWaivers[employeeId] ?? [];
         const waivedItems = itemWaivers[employeeId] ?? [];
 
+        // Column-level waivers (flat amounts from raw record)
         const columnWaivedAmt = WAIVABLE_DEDUCTIONS.filter((d) =>
             waived.includes(d.key),
         ).reduce((sum, d) => sum + ((raw as any)[d.key] ?? 0), 0);
@@ -1022,6 +1036,8 @@ export default function Index({
                 pag_ibig_mpl: r.pag_ibig_mpl,
                 ama_y2k_union: r.ama_y2k_union,
                 water_bill: r.water_bill,
+                internal_org_savings: r.internal_org_savings ?? 0,
+                internal_org_second: r.internal_org_second ?? 0,
                 waived: floorWaivers[r.employee_id] ?? [],
                 waived_item_ids: (itemWaivers[r.employee_id] ?? []).map((k) =>
                     parseInt(k.split(':')[1]),
@@ -1835,7 +1851,7 @@ export default function Index({
                                 <>
                                     <div className="overflow-x-auto rounded-lg border">
                                         <table className="w-full border-collapse text-sm">
-                                            <thead>
+                                            <thead className='items-center'>
                                                 {/* Group header row */}
                                                 <tr className="text-xs font-semibold tracking-wide uppercase">
                                                     <th
@@ -1846,7 +1862,7 @@ export default function Index({
                                                     </th>
                                                     <th
                                                         rowSpan={2}
-                                                        className="border-r border-b bg-slate-100 px-3 py-2 text-left text-slate-600"
+                                                        className="border-r border-b text-center bg-slate-100 px-3 py-2 text-slate-600"
                                                     >
                                                         Employee Name
                                                     </th>
@@ -1859,19 +1875,19 @@ export default function Index({
                                                     </th>
                                                     {/* Deductions group */}
                                                     <th
-                                                        colSpan={9}
+                                                        colSpan={10}
                                                         className="border-r border-b bg-red-50 px-3 py-1.5 text-center text-red-700"
                                                     >
                                                         Deductions{' '}
-                                                        <span className="font-normal text-red-400 normal-case">
+                                                        {/* <span className="font-normal text-red-400 normal-case">
                                                             (2nd cut-off, based
                                                             on monthly salary)
-                                                        </span>
+                                                        </span> */}
                                                     </th>
                                                     {/* Net Pay */}
                                                     <th
                                                         rowSpan={2}
-                                                        className="border-r border-b bg-green-50 px-3 py-2 text-right text-green-700"
+                                                        className="border-r border-b bg-green-50 px-3 py-2 text-center text-green-700"
                                                     >
                                                         Net Pay
                                                     </th>
@@ -1885,56 +1901,62 @@ export default function Index({
                                                 {/* Sub-header row */}
                                                 <tr className="text-[11px] font-medium text-slate-600">
                                                     {/* Earnings sub-cols */}
-                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-right">
+                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center">
                                                         <div>Basic Pay</div>
                                                         <div className="text-[10px] font-normal text-blue-400">
                                                             semi-monthly
                                                         </div>
                                                     </th>
-                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-right">
+                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center">
                                                         Allowances
                                                     </th>
-                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-right font-semibold">
+                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center font-semibold">
                                                         Gross Pay
                                                     </th>
                                                     {/* Deductions sub-cols */}
-                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-right">
+                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
                                                         <div>Absent</div>
                                                         <div className="text-[10px] font-normal text-orange-400">
                                                             days / amt
                                                         </div>
                                                     </th>
-                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-right">
+                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
                                                         <div>Tardy</div>
                                                         <div className="text-[10px] font-normal text-orange-400">
                                                             mins / amt
                                                         </div>
                                                     </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-right">
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
                                                         GSIS
                                                     </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-right">
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
                                                         PhilHealth
                                                     </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-right">
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
                                                         Pag-IBIG
                                                     </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-right">
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
                                                         Tax
                                                     </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-right">
-                                                        <div>Internal Org</div>
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
+                                                        <div>Org Savings</div>
                                                         <div className="text-[10px] font-normal text-red-400">
-                                                            union, coop
+                                                            both cut-offs
                                                         </div>
                                                     </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-right">
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
+                                                        <div>Org Dues &amp; Loans</div>
+                                                        <div className="text-[10px] font-normal text-red-400">
+                                                            2nd cut-off
+                                                        </div>
+                                                    </th>
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
                                                         <div>Other Ded.</div>
                                                         <div className="text-[10px] font-normal text-red-400">
                                                             water, misc
                                                         </div>
                                                     </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-right font-semibold">
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center font-semibold">
                                                         Total Ded.
                                                     </th>
                                                 </tr>
@@ -2043,7 +2065,12 @@ export default function Index({
                                                             </td>
                                                             <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
                                                                 {peso(
-                                                                    employee.internalOrgDeductions,
+                                                                    employee.internalOrgSavings,
+                                                                )}
+                                                            </td>
+                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
+                                                                {peso(
+                                                                    employee.internalOrgDeductions - employee.internalOrgSavings,
                                                                 )}
                                                             </td>
                                                             <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
@@ -2244,7 +2271,17 @@ export default function Index({
                                                             currentEmployees.reduce(
                                                                 (s, e) =>
                                                                     s +
-                                                                    e.internalOrgDeductions,
+                                                                    e.internalOrgSavings,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    (e.internalOrgDeductions - e.internalOrgSavings),
                                                                 0,
                                                             ),
                                                         )}
@@ -2609,6 +2646,52 @@ export default function Index({
                                                                             waived.includes(
                                                                                 d.key,
                                                                             );
+
+                                                                        // ── internal_org_savings: simple waivable row (no sub-items) ─────────
+                                                                        if (
+                                                                            d.key ===
+                                                                            'internal_org_savings'
+                                                                        ) {
+                                                                            return (
+                                                                                <tr
+                                                                                    key={d.key}
+                                                                                    className={`border-b transition-colors ${isWaived ? 'bg-amber-50/60' : 'bg-white hover:bg-slate-50'}`}
+                                                                                >
+                                                                                    <td className="px-3 py-2.5 text-center">
+                                                                                        <Checkbox
+                                                                                            checked={!isWaived}
+                                                                                            onCheckedChange={() =>
+                                                                                                toggleWaiver(employee.id, d.key)
+                                                                                            }
+                                                                                        />
+                                                                                    </td>
+                                                                                    <td
+                                                                                        className={`px-3 py-2.5 font-medium ${isWaived ? 'text-slate-400 line-through' : 'text-slate-700'}`}
+                                                                                    >
+                                                                                        {d.label}
+                                                                                    </td>
+                                                                                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                                                                                        {d.group}
+                                                                                    </td>
+                                                                                    <td
+                                                                                        className={`px-3 py-2.5 text-right font-medium tabular-nums ${isWaived ? 'text-slate-400 line-through' : 'text-slate-700'}`}
+                                                                                    >
+                                                                                        {peso(amt)}
+                                                                                    </td>
+                                                                                    <td className="px-3 py-2.5 text-center">
+                                                                                        {isWaived ? (
+                                                                                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                                                                                                ↩ Carry fwd
+                                                                                            </span>
+                                                                                        ) : (
+                                                                                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                                                                                                Deducting
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </td>
+                                                                                </tr>
+                                                                            );
+                                                                        }
 
                                                                         // ── ama_y2k_union: group header + per-item sub-rows ──────────────────
                                                                         if (
@@ -3785,11 +3868,25 @@ export default function Index({
                                         </>
                                     )}
 
-                                    {/* Org Loans & Dues */}
+                                    {/* Org Savings / Share Capital (both cut-offs) */}
+                                    {(raw.internal_org_savings ?? 0) > 0 && (
+                                        <>
+                                            <p className="mt-3 mb-1 text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
+                                                Org Savings
+                                            </p>
+                                            <RowLine
+                                                label="Savings / Share Capital"
+                                                amount={raw.internal_org_savings}
+                                                waived={waived.includes('internal_org_savings')}
+                                            />
+                                        </>
+                                    )}
+
+                                    {/* Org Dues & Loans */}
                                     {orgItemsWithStatus.length > 0 && (
                                         <>
                                             <p className="mt-3 mb-1 text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
-                                                Org Loans &amp; Dues
+                                                Org Dues &amp; Loans
                                             </p>
                                             {orgItemsWithStatus.map((item) => (
                                                 <div
