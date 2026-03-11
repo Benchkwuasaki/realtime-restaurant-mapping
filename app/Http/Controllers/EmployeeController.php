@@ -763,8 +763,8 @@ class EmployeeController extends Controller
         ]);
 
         $employee->seminarsAndTrainings()->create([
-            'seminar_name' => $request->seminar_training_name,
-            'organizer' => $request->filled('venue') ? $request->venue : null,
+            'seminar_name' => $request->seminar_training_name, // ← should be $request->seminar_name
+            'organizer' => $request->venue,
             'date_attended' => $request->filled('date_attended') ? $request->date_attended : null,
         ]);
 
@@ -877,8 +877,11 @@ class EmployeeController extends Controller
         return back()->with('success', 'Avatar updated successfully.');
     }
 
+
     public function storeFile(Request $request, Employee $employee)
     {
+
+
         $request->validate([
             'file' => ['required', 'file', 'max:25600'], // 25MB
         ]);

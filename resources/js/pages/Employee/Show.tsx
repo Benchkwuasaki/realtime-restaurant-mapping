@@ -275,14 +275,14 @@ function fmtTime(t?: string): string {
         : t.slice(0, 5)
     const [h, m] = slice.split(":").map(Number)
     const ampm = h >= 12 ? "PM" : "AM"
-    const h12  = h % 12 || 12
+    const h12 = h % 12 || 12
     return `${h12}:${String(m).padStart(2, "0")} ${ampm}`
 }
 
 function fmtMinutes(mins?: number | null): string {
     if (mins == null) return "—"
     if (mins < 60) return `${mins}m`
-    const h   = Math.floor(mins / 60)
+    const h = Math.floor(mins / 60)
     const rem = mins % 60
     return rem > 0 ? `${h}h ${rem}m` : `${h}h`
 }
@@ -293,12 +293,12 @@ async function getCroppedImg(
 ): Promise<Blob> {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image()
-        img.onload  = () => resolve(img)
+        img.onload = () => resolve(img)
         img.onerror = reject
-        img.src     = imageSrc
+        img.src = imageSrc
     })
     const canvas = document.createElement("canvas")
-    canvas.width  = croppedAreaPixels.width
+    canvas.width = croppedAreaPixels.width
     canvas.height = croppedAreaPixels.height
     const ctx = canvas.getContext("2d")!
     ctx.drawImage(
@@ -321,18 +321,18 @@ async function getCroppedImg(
 
 // Attendance status
 const STATUS_BADGE: Record<string, string> = {
-    PRESENT:  "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60",
+    PRESENT: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60",
     HALF_DAY: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border-sky-200/60 dark:border-sky-800/60",
-    ABSENT:   "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/60",
+    ABSENT: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/60",
     ON_LEAVE: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-400 border-violet-200/60 dark:border-violet-800/60",
-    LATE:     "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/60",
+    LATE: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/60",
 }
 const STATUS_LABEL: Record<string, string> = {
-    PRESENT:  "Present",
+    PRESENT: "Present",
     HALF_DAY: "Half Day",
-    ABSENT:   "Absent",
+    ABSENT: "Absent",
     ON_LEAVE: "On Leave",
-    LATE:     "Late",
+    LATE: "Late",
 }
 
 function statusKey(raw?: string): string {
@@ -452,30 +452,30 @@ function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatu
 // ─── Basic Info Edit Dialog ────────────────────────────────────────────────────
 
 function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; open: boolean; onClose: () => void }) {
-    const basic        = employee.basic_info
+    const basic = employee.basic_info
     const firstAddress = (basic?.addresses ?? [])[0]
 
     const [form, setForm] = useState({
-        first_name:     basic?.first_name ?? "",
-        last_name:      basic?.last_name ?? "",
-        middle_name:    basic?.middle_name ?? "",
+        first_name: basic?.first_name ?? "",
+        last_name: basic?.last_name ?? "",
+        middle_name: basic?.middle_name ?? "",
         name_extension: basic?.name_extension ?? "",
-        birth_date:     toInputDate(basic?.birth_date),
-        sex:            basic?.sex !== undefined ? String(Number(basic.sex)) : "",
-        civil_status:   basic?.civil_status ?? "",
+        birth_date: toInputDate(basic?.birth_date),
+        sex: basic?.sex !== undefined ? String(Number(basic.sex)) : "",
+        civil_status: basic?.civil_status ?? "",
         place_of_birth: basic?.place_of_birth ?? "",
         personal_email: basic?.personal_email ?? "",
-        phone_number:   basic?.phone_number ?? "",
+        phone_number: basic?.phone_number ?? "",
         street_address: firstAddress?.street_address ?? "",
-        city:           firstAddress?.city ?? "",
-        state:          firstAddress?.state ?? "",
-        zip_code:       firstAddress?.zip_code ?? "",
+        city: firstAddress?.city ?? "",
+        state: firstAddress?.state ?? "",
+        zip_code: firstAddress?.zip_code ?? "",
     })
-    const set  = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+    const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
     const save = () => router.put(route("employee.update", employee.employee_id), form, {
         preserveScroll: true,
         onSuccess: () => { toast.success("Basic information updated successfully."); onClose() },
-        onError:   () => toast.error("Failed to update basic information. Please try again."),
+        onError: () => toast.error("Failed to update basic information. Please try again."),
     })
 
     return (
@@ -537,7 +537,7 @@ function SalaryEditDialog({ employee, open, onClose }: { employee: Employee; ope
     const save = () => router.put(route("employee.update", employee.employee_id), form, {
         preserveScroll: true,
         onSuccess: () => { toast.success("Salary classification updated successfully."); onClose() },
-        onError:   () => toast.error("Failed to update salary classification. Please try again."),
+        onError: () => toast.error("Failed to update salary classification. Please try again."),
     })
 
     return (
@@ -582,36 +582,36 @@ type EditField =
     | null
 
 const employmentFieldLabels: Record<NonNullable<EditField>, string> = {
-    position:                 "Position updated successfully.",
-    date_hired:               "Date hired updated successfully.",
+    position: "Position updated successfully.",
+    date_hired: "Date hired updated successfully.",
     unit_division_department: "Unit / Division / Department updated.",
-    employment_classification:"Employment classification updated successfully.",
-    date_applied:             "Date applied updated successfully.",
-    work_schedule:            "Work schedule updated successfully.",
-    break_time:               "Break time updated successfully.",
+    employment_classification: "Employment classification updated successfully.",
+    date_applied: "Date applied updated successfully.",
+    work_schedule: "Work schedule updated successfully.",
+    break_time: "Break time updated successfully.",
 }
 
 function EmploymentEditDialog({ employee, field, onClose, items }: {
     employee: Employee; field: EditField; onClose: () => void; items: Item[]
 }) {
-    const open           = field !== null
+    const open = field !== null
     const positionGroups = useMemo(() => buildPositionGroups(items), [items])
-    const currentItemId  = employee.item?.item_id?.toString() ?? ""
+    const currentItemId = employee.item?.item_id?.toString() ?? ""
     const currentPositionName = useMemo(() =>
         items.find(i => i.item_id.toString() === currentItemId)?.position?.position_name ?? "",
         [items, currentItemId],
     )
 
     const [form, setForm] = useState({
-        item_id:               currentItemId,
+        item_id: currentItemId,
         selected_position_name: currentPositionName,
-        date_hired:            toInputDate(employee.date_hired),
-        date_applied:          toInputDate(employee.date_applied),
+        date_hired: toInputDate(employee.date_hired),
+        date_applied: toInputDate(employee.date_applied),
         employment_classification: employee.employment_classification ?? "",
-        work_schedule_start:   toInputTime(employee.work_schedule_start),
-        work_schedule_end:     toInputTime(employee.work_schedule_end),
-        break_start:           toInputTime(employee.break_start),
-        break_end:             toInputTime(employee.break_end),
+        work_schedule_start: toInputTime(employee.work_schedule_start),
+        work_schedule_end: toInputTime(employee.work_schedule_end),
+        break_start: toInputTime(employee.break_start),
+        break_end: toInputTime(employee.break_end),
     })
 
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
@@ -639,27 +639,27 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 
     const save = () => {
         let data: Record<string, string> = {}
-        if (field === "position")                  data = { item_id: form.item_id }
-        if (field === "date_hired")                data = { date_hired: form.date_hired }
-        if (field === "date_applied")              data = { date_applied: form.date_applied }
+        if (field === "position") data = { item_id: form.item_id }
+        if (field === "date_hired") data = { date_hired: form.date_hired }
+        if (field === "date_applied") data = { date_applied: form.date_applied }
         if (field === "employment_classification") data = { employment_classification: form.employment_classification }
-        if (field === "work_schedule")             data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
-        if (field === "break_time")                data = { break_start: form.break_start, break_end: form.break_end }
+        if (field === "work_schedule") data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
+        if (field === "break_time") data = { break_start: form.break_start, break_end: form.break_end }
         router.put(route("employee.update", employee.employee_id), data, {
             preserveScroll: true,
             onSuccess: () => { toast.success(field ? employmentFieldLabels[field] : "Updated successfully."); onClose() },
-            onError:   () => toast.error("Failed to save changes. Please try again."),
+            onError: () => toast.error("Failed to save changes. Please try again."),
         })
     }
 
     const titles: Record<NonNullable<EditField>, string> = {
-        position:                 "Edit Position",
-        date_hired:               "Edit Date Hired",
+        position: "Edit Position",
+        date_hired: "Edit Date Hired",
         unit_division_department: "Unit / Division / Department",
-        employment_classification:"Edit Employment Classification",
-        date_applied:             "Edit Date Applied",
-        work_schedule:            "Edit Work Schedule",
-        break_time:               "Edit Break Time",
+        employment_classification: "Edit Employment Classification",
+        date_applied: "Edit Date Applied",
+        work_schedule: "Edit Work Schedule",
+        break_time: "Edit Break Time",
     }
 
     return (
@@ -815,27 +815,27 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 // ─── Employment Tab ───────────────────────────────────────────────────────────
 
 function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: Item[] }) {
-    const position  = employee.item?.position
+    const position = employee.item?.position
     const [editField, setEditField] = useState<EditField>(null)
-    const orgs      = employee.internal_organizations ?? []
+    const orgs = employee.internal_organizations ?? []
 
     const toggleStatus = () => router.patch(route("employee.toggleStatus", employee.employee_id), {}, {
         preserveScroll: true,
         onSuccess: () => toast.success(`Employee marked as ${employee.status ? "inactive" : "active"}.`),
-        onError:   () => toast.error("Failed to update employee status. Please try again."),
+        onError: () => toast.error("Failed to update employee status. Please try again."),
     })
 
     return (
         <div className="p-3 sm:p-5 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <DetailCard title="Position"                  value={position?.position_name}           onEdit={() => setEditField("position")} />
-                <DetailCard title="Date Hired"               value={fmt(employee.date_hired)}           onEdit={() => setEditField("date_hired")} />
+                <DetailCard title="Position" value={position?.position_name} onEdit={() => setEditField("position")} />
+                <DetailCard title="Date Hired" value={fmt(employee.date_hired)} onEdit={() => setEditField("date_hired")} />
                 <DetailCard title="Status" isStatus statusValue={employee.status} onToggleStatus={toggleStatus} />
-                <DetailCard title="Unit"                     value={position?.unit?.unit_name}          onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Division"                 value={position?.division?.division_name}  onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Department"               value={position?.department?.department_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Unit" value={position?.unit?.unit_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Division" value={position?.division?.division_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Department" value={position?.department?.department_name} onEdit={() => setEditField("unit_division_department")} />
                 <DetailCard title="Employment Classification" value={employee.employment_classification} onEdit={() => setEditField("employment_classification")} />
-                <DetailCard title="Date Applied"             value={fmt(employee.date_applied)}         onEdit={() => setEditField("date_applied")} />
+                <DetailCard title="Date Applied" value={fmt(employee.date_applied)} onEdit={() => setEditField("date_applied")} />
                 <DetailCard
                     title="Work Schedule"
                     value={employee.work_schedule_start && employee.work_schedule_end
@@ -885,7 +885,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
 // ─── Compensation Tab ─────────────────────────────────────────────────────────
 
 function CompensationTab({ employee }: { employee: Employee }) {
-    const sgs        = employee.salary_grade_step
+    const sgs = employee.salary_grade_step
     const allowances = employee.allowances ?? []
     const [salaryEditOpen, setSalaryEditOpen] = useState(false)
 
@@ -945,7 +945,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
 // ─── Leave Information Tab ────────────────────────────────────────────────────
 
 function LeaveInformationTab({ employee }: { employee: Employee }) {
-    const data  = (employee.leave_balances ?? []) as LeaveBalanceRow[]
+    const data = (employee.leave_balances ?? []) as LeaveBalanceRow[]
     const table = useReactTable({ data, columns: leaveBalanceColumns, getCoreRowModel: getCoreRowModel() })
 
     return (
@@ -1002,9 +1002,9 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
     return (
         <div className="flex flex-col gap-1.5">
             {slips.map(slip => {
-                const isPersonal      = slip.purpose_type === "personal"
-                const isReturned      = slip.return_status === "returned"
-                const isDeducted      = isPersonal && isReturned && slip.minutes_gone != null && hasTimedOut
+                const isPersonal = slip.purpose_type === "personal"
+                const isReturned = slip.return_status === "returned"
+                const isDeducted = isPersonal && isReturned && slip.minutes_gone != null && hasTimedOut
                 const isPendingDeduct = isPersonal && isReturned && slip.minutes_gone != null && !hasTimedOut
 
                 return (
@@ -1020,16 +1020,16 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                                 <PurposeBadge type={slip.purpose_type} />
-                                <ReturnBadge  status={slip.return_status} />
+                                <ReturnBadge status={slip.return_status} />
                             </div>
                         </div>
 
                         {/* Time grid */}
                         <div className="grid grid-cols-3 gap-px bg-border/40">
                             {[
-                                { label: "Left At",     value: fmtTime(slip.time_out) },
+                                { label: "Left At", value: fmtTime(slip.time_out) },
                                 { label: "Returned At", value: slip.time_returned ? fmtTime(slip.time_returned) : "—" },
-                                { label: "Duration",    value: slip.minutes_gone != null ? fmtMinutes(slip.minutes_gone) : "—", highlight: isDeducted },
+                                { label: "Duration", value: slip.minutes_gone != null ? fmtMinutes(slip.minutes_gone) : "—", highlight: isDeducted },
                             ].map(({ label, value, highlight }) => (
                                 <div key={label} className="flex flex-col gap-0.5 px-3 py-2 bg-background">
                                     <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
@@ -1040,13 +1040,12 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
 
                         {/* Footer notice */}
                         {isPersonal ? (
-                            <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold ${
-                                isDeducted
-                                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800/60"
-                                    : isPendingDeduct
-                                        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800/60"
-                                        : "bg-muted/30 text-muted-foreground border-t border-border/40"
-                            }`}>
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold ${isDeducted
+                                ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800/60"
+                                : isPendingDeduct
+                                    ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800/60"
+                                    : "bg-muted/30 text-muted-foreground border-t border-border/40"
+                                }`}>
                                 <AlertTriangle className="w-3 h-3 shrink-0" />
                                 {isDeducted
                                     ? `${fmtMinutes(slip.minutes_gone)} deducted from work hours`
@@ -1072,10 +1071,10 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
 function AttendanceRow({ record }: { record: AttendanceRecord }) {
     const [expanded, setExpanded] = useState(false)
 
-    const slips       = record.whereabout_slips ?? []
+    const slips = record.whereabout_slips ?? []
     const hasTimedOut = !!record.time_out
-    const isLate      = (record.late_minutes ?? 0) > 0
-    const hasSlips    = slips.length > 0
+    const isLate = (record.late_minutes ?? 0) > 0
+    const hasSlips = slips.length > 0
 
     const personalDeductionMins = hasTimedOut
         ? slips
@@ -1098,7 +1097,7 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
                 <td className="w-8 pl-3 py-2.5">
                     {hasSlips
                         ? expanded
-                            ? <ChevronDown  className="w-3.5 h-3.5 text-muted-foreground" />
+                            ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                             : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                         : <span className="w-3.5 h-3.5 block" />}
                 </td>
@@ -1157,25 +1156,30 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
 function AttendanceRecordTab({ employee }: { employee: Employee }) {
     const records = (employee.attendance_records ?? []) as AttendanceRecord[]
 
-    const [dateFrom, setDateFrom] = useState("")
-    const [dateTo,   setDateTo]   = useState("")
+    const today = new Date()
+    const oneMonthAgo = new Date(today)
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    const toDateStr = (d: Date) => d.toISOString().slice(0, 10)
+
+    const [dateFrom, setDateFrom] = useState(toDateStr(oneMonthAgo))
+    const [dateTo, setDateTo] = useState(toDateStr(today))
 
     const from = dateFrom ? toLocalDate(dateFrom) : null
-    const to   = dateTo   ? toLocalDate(dateTo)   : null
+    const to = dateTo ? toLocalDate(dateTo) : null
 
     const filtered = records.filter(r => {
         const d = toLocalDate(r.date)
         if (from && d < from) return false
-        if (to   && d > to)   return false
+        if (to && d > to) return false
         return true
     })
 
     // Summary counts
     const stats = [
-        { label: "Present",  count: records.filter(r => statusKey(r.status) === "PRESENT").length,                       cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60" },
-        { label: "Half Day", count: records.filter(r => statusKey(r.status) === "HALF_DAY").length,                       cls: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border-sky-200/60 dark:border-sky-800/60" },
-        { label: "Absent",   count: records.filter(r => statusKey(r.status) === "ABSENT").length,                         cls: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/60" },
-        { label: "Late",     count: records.filter(r => (r.late_minutes ?? 0) > 0).length,                               cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/60" },
+        { label: "Present", count: records.filter(r => statusKey(r.status) === "PRESENT").length, cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60" },
+        { label: "Half Day", count: records.filter(r => statusKey(r.status) === "HALF_DAY").length, cls: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border-sky-200/60 dark:border-sky-800/60" },
+        { label: "Absent", count: records.filter(r => statusKey(r.status) === "ABSENT").length, cls: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/60" },
+        { label: "Late", count: records.filter(r => (r.late_minutes ?? 0) > 0).length, cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/60" },
     ]
 
     return (
@@ -1212,7 +1216,7 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
                             <span className="text-xs text-muted-foreground font-medium shrink-0">Filter</span>
                             <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-7 text-xs w-36" />
                             <span className="text-muted-foreground text-xs">—</span>
-                            <Input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   className="h-7 text-xs w-36" />
+                            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-7 text-xs w-36" />
                             {(dateFrom || dateTo) && (
                                 <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => { setDateFrom(""); setDateTo("") }}>
                                     <X className="w-3 h-3 mr-1" /> Clear
@@ -1271,7 +1275,7 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
 const STANDARD_GOV_ID_TYPES = ["GSIS", "PhilHealth", "Pag-IBIG", "TIN"]
 
 function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
-    const govAccounts  = employee.government_accounts ?? []
+    const govAccounts = employee.government_accounts ?? []
     const eligibilities = employee.eligibility_information ?? []
 
     const [visibleIds, setVisibleIds] = useState<Record<string, boolean>>({})
@@ -1296,7 +1300,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 {
                     preserveScroll: true,
                     onSuccess: () => { toast.success(`${accountType} number updated successfully.`); setGovDialog(p => ({ ...p, open: false })) },
-                    onError:   () => toast.error("Failed to update government account. Please try again."),
+                    onError: () => toast.error("Failed to update government account. Please try again."),
                 },
             )
         } else {
@@ -1306,7 +1310,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 {
                     preserveScroll: true,
                     onSuccess: () => { toast.success(`${accountType} number added successfully.`); setGovDialog(p => ({ ...p, open: false })) },
-                    onError:   () => toast.error("Failed to add government account. Please try again."),
+                    onError: () => toast.error("Failed to add government account. Please try again."),
                 },
             )
         }
@@ -1320,12 +1324,12 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
             {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Government account deleted."); setDeleteGovId(null) },
-                onError:   () => toast.error("Failed to delete government account. Please try again."),
+                onError: () => toast.error("Failed to delete government account. Please try again."),
             },
         )
     }
 
-    const accountMap  = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
+    const accountMap = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
     const standardKeys = STANDARD_GOV_ID_TYPES.map(t => t.toLowerCase())
     const extraAccounts = govAccounts.filter(g => !standardKeys.includes(g.account_type.toLowerCase()))
 
@@ -1340,13 +1344,13 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
             router.put(route("employee.eligibility.update", { employee: employee.employee_id, eligibility: eligDialog.id }), data, {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Eligibility updated successfully."); setEligDialog(p => ({ ...p, open: false })) },
-                onError:   () => toast.error("Failed to update eligibility. Please try again."),
+                onError: () => toast.error("Failed to update eligibility. Please try again."),
             })
         } else {
             router.post(route("employee.eligibility.store", employee.employee_id), data, {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Eligibility added successfully."); setEligDialog(p => ({ ...p, open: false })) },
-                onError:   () => toast.error("Failed to add eligibility. Please try again."),
+                onError: () => toast.error("Failed to add eligibility. Please try again."),
             })
         }
     }
@@ -1363,7 +1367,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 </div>
                 <div className="divide-y divide-border">
                     {STANDARD_GOV_ID_TYPES.map(type => {
-                        const key     = type.toLowerCase()
+                        const key = type.toLowerCase()
                         const account = accountMap[key]
                         const isVisible = visibleIds[key]
                         return (
@@ -1449,7 +1453,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                             {govDialog.id
                                 ? `Edit ${govDialog.type} Number`
                                 : govDialog.mode === "custom" ? "Add Government ID"
-                                : `Add ${govDialog.type} Number`}
+                                    : `Add ${govDialog.type} Number`}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="py-2 space-y-3">
@@ -1521,10 +1525,10 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
 // ─── Background Information Tab ───────────────────────────────────────────────
 
 function BackgroundInformationTab({ employee }: { employee: Employee }) {
-    const basic       = employee.basic_info
+    const basic = employee.basic_info
     const familyMembers = basic?.family_info ?? []
-    const educations  = basic?.educations ?? []
-    const seminars    = employee.seminarsAndTrainings ?? []
+    const educations = basic?.educations ?? []
+    const seminars = employee.seminarsAndTrainings ?? []
     const serviceRecs = employee.serviceRecords ?? []
 
     const [familyDialog, setFamilyDialog] = useState<{
@@ -1537,34 +1541,34 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const openFamilyDialog = (member?: FamilyMember, index?: number) =>
         setFamilyDialog({
             open: true, index,
-            full_name:      member?.full_name ?? "",
-            relationship:   member?.relationship ?? "",
+            full_name: member?.full_name ?? "",
+            relationship: member?.relationship ?? "",
             contact_number: member?.contact_number ?? "",
-            sex:            member?.sex !== undefined ? String(Number(member.sex)) : "",
-            date_of_birth:  toInputDate(member?.date_of_birth),
+            sex: member?.sex !== undefined ? String(Number(member.sex)) : "",
+            date_of_birth: toInputDate(member?.date_of_birth),
             place_of_birth: member?.place_of_birth ?? "",
         })
 
     const saveFamilyMember = () => {
         const data = {
-            full_name:      familyDialog.full_name,
-            relationship:   familyDialog.relationship,
+            full_name: familyDialog.full_name,
+            relationship: familyDialog.relationship,
             contact_number: familyDialog.contact_number,
-            sex:            familyDialog.sex,
-            date_of_birth:  familyDialog.date_of_birth || null,
+            sex: familyDialog.sex,
+            date_of_birth: familyDialog.date_of_birth || null,
             place_of_birth: familyDialog.place_of_birth,
         }
         if (familyDialog.index !== undefined) {
             router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Family member updated successfully."); setFamilyDialog(p => ({ ...p, open: false })) },
-                onError:   () => toast.error("Failed to update family member. Please try again."),
+                onError: () => toast.error("Failed to update family member. Please try again."),
             })
         } else {
             router.post(route("employee.family.store", employee.employee_id), data, {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Family member added successfully."); setFamilyDialog(p => ({ ...p, open: false })) },
-                onError:   () => toast.error("Failed to add family member. Please try again."),
+                onError: () => toast.error("Failed to add family member. Please try again."),
             })
         }
     }
@@ -1573,7 +1577,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
         router.delete(route("employee.family.destroy", { employee: employee.employee_id, index: deleteFamilyIndex }), {
             preserveScroll: true,
             onSuccess: () => { toast.success("Family member removed."); setDeleteFamilyIndex(null) },
-            onError:   () => toast.error("Failed to remove family member. Please try again."),
+            onError: () => toast.error("Failed to remove family member. Please try again."),
         })
     }
 
@@ -1592,13 +1596,13 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             router.put(route("employee.education.update", { employee: employee.employee_id, index: educDialog.index }), data, {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Education record updated successfully."); setEducDialog(p => ({ ...p, open: false })) },
-                onError:   () => toast.error("Failed to update education record. Please try again."),
+                onError: () => toast.error("Failed to update education record. Please try again."),
             })
         } else {
             router.post(route("employee.education.store", employee.employee_id), data, {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Education record added successfully."); setEducDialog(p => ({ ...p, open: false })) },
-                onError:   () => toast.error("Failed to add education record. Please try again."),
+                onError: () => toast.error("Failed to add education record. Please try again."),
             })
         }
     }
@@ -1607,7 +1611,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
         router.delete(route("employee.education.destroy", { employee: employee.employee_id, index: deleteEducIndex }), {
             preserveScroll: true,
             onSuccess: () => { toast.success("Education record deleted."); setDeleteEducIndex(null) },
-            onError:   () => toast.error("Failed to delete education record. Please try again."),
+            onError: () => toast.error("Failed to delete education record. Please try again."),
         })
     }
 
@@ -1632,13 +1636,13 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Seminar / training updated successfully."); setSeminarDialog(p => ({ ...p, open: false })) },
-                onError:   () => toast.error("Failed to update seminar. Please try again."),
+                onError: () => toast.error("Failed to update seminar. Please try again."),
             })
         } else {
             router.post(route("employee.seminar.store", employee.employee_id), data, {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Seminar / training added successfully."); setSeminarDialog(p => ({ ...p, open: false })) },
-                onError:   () => toast.error("Failed to add seminar. Please try again."),
+                onError: () => toast.error("Failed to add seminar. Please try again."),
             })
         }
     }
@@ -1647,7 +1651,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
         router.delete(route("employee.seminar.destroy", { employee: employee.employee_id, seminar: deleteSeminarId }), {
             preserveScroll: true,
             onSuccess: () => { toast.success("Seminar / training deleted."); setDeleteSeminarId(null) },
-            onError:   () => toast.error("Failed to delete seminar. Please try again."),
+            onError: () => toast.error("Failed to delete seminar. Please try again."),
         })
     }
 
@@ -1665,13 +1669,13 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             router.put(route("employee.service-record.update", { employee: employee.employee_id, record: serviceDialog.id }), data, {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Service record updated successfully."); setServiceDialog(p => ({ ...p, open: false })) },
-                onError:   () => toast.error("Failed to update service record. Please try again."),
+                onError: () => toast.error("Failed to update service record. Please try again."),
             })
         } else {
             router.post(route("employee.service-record.store", employee.employee_id), data, {
                 preserveScroll: true,
                 onSuccess: () => { toast.success("Service record added successfully."); setServiceDialog(p => ({ ...p, open: false })) },
-                onError:   () => toast.error("Failed to add service record. Please try again."),
+                onError: () => toast.error("Failed to add service record. Please try again."),
             })
         }
     }
@@ -1680,7 +1684,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
         router.delete(route("employee.service-record.destroy", { employee: employee.employee_id, record: deleteServiceId }), {
             preserveScroll: true,
             onSuccess: () => { toast.success("Service record deleted."); setDeleteServiceId(null) },
-            onError:   () => toast.error("Failed to delete service record. Please try again."),
+            onError: () => toast.error("Failed to delete service record. Please try again."),
         })
     }
 
@@ -1942,9 +1946,9 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
             {[
                 { open: deleteFamilyIndex !== null, onClose: () => setDeleteFamilyIndex(null), onConfirm: confirmDeleteFamily, label: "family member" },
-                { open: deleteEducIndex !== null,   onClose: () => setDeleteEducIndex(null),   onConfirm: confirmDeleteEduc,   label: "education record" },
-                { open: !!deleteSeminarId,          onClose: () => setDeleteSeminarId(null),   onConfirm: confirmDeleteSeminar, label: "seminar" },
-                { open: !!deleteServiceId,          onClose: () => setDeleteServiceId(null),   onConfirm: confirmDeleteService, label: "service record" },
+                { open: deleteEducIndex !== null, onClose: () => setDeleteEducIndex(null), onConfirm: confirmDeleteEduc, label: "education record" },
+                { open: !!deleteSeminarId, onClose: () => setDeleteSeminarId(null), onConfirm: confirmDeleteSeminar, label: "seminar" },
+                { open: !!deleteServiceId, onClose: () => setDeleteServiceId(null), onConfirm: confirmDeleteService, label: "service record" },
             ].map(({ open, onClose, onConfirm, label }) => (
                 <AlertDialog key={label} open={open} onOpenChange={o => !o && onClose()}>
                     <AlertDialogContent>
@@ -1966,16 +1970,16 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 // ─── Documents Tab ────────────────────────────────────────────────────────────
 
 const FILE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
-    pdf:  { icon: "PDF",  color: "text-rose-600",   bg: "bg-rose-50 dark:bg-rose-950/40" },
-    doc:  { icon: "DOC",  color: "text-sky-600",    bg: "bg-sky-50 dark:bg-sky-950/40" },
-    docx: { icon: "DOCX", color: "text-sky-600",    bg: "bg-sky-50 dark:bg-sky-950/40" },
-    xls:  { icon: "XLS",  color: "text-emerald-600",bg: "bg-emerald-50 dark:bg-emerald-950/40" },
-    xlsx: { icon: "XLSX", color: "text-emerald-600",bg: "bg-emerald-50 dark:bg-emerald-950/40" },
-    png:  { icon: "PNG",  color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
-    jpg:  { icon: "JPG",  color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
+    pdf: { icon: "PDF", color: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950/40" },
+    doc: { icon: "DOC", color: "text-sky-600", bg: "bg-sky-50 dark:bg-sky-950/40" },
+    docx: { icon: "DOCX", color: "text-sky-600", bg: "bg-sky-50 dark:bg-sky-950/40" },
+    xls: { icon: "XLS", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
+    xlsx: { icon: "XLSX", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
+    png: { icon: "PNG", color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
+    jpg: { icon: "JPG", color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
     jpeg: { icon: "JPEG", color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
-    txt:  { icon: "TXT",  color: "text-muted-foreground", bg: "bg-muted" },
-    zip:  { icon: "ZIP",  color: "text-amber-600",  bg: "bg-amber-50 dark:bg-amber-950/40" },
+    txt: { icon: "TXT", color: "text-muted-foreground", bg: "bg-muted" },
+    zip: { icon: "ZIP", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/40" },
 }
 
 function getFileExt(name: string) { return name.split(".").pop()?.toLowerCase() ?? "" }
@@ -1984,15 +1988,15 @@ function getFileIcon(name: string) {
     return FILE_ICONS[ext] ?? { icon: ext.toUpperCase() || "FILE", color: "text-muted-foreground", bg: "bg-muted" }
 }
 function isViewable(name: string) { return ["pdf", "png", "jpg", "jpeg", "gif", "webp", "txt"].includes(getFileExt(name)) }
-function isImage(name: string)    { return ["png", "jpg", "jpeg", "gif", "webp"].includes(getFileExt(name)) }
+function isImage(name: string) { return ["png", "jpg", "jpeg", "gif", "webp"].includes(getFileExt(name)) }
 
 function DocumentsTab({ employee }: { employee: Employee }) {
     const uploadedFiles = employee.uploadedFiles ?? []
-    const fileInputRef  = React.useRef<HTMLInputElement>(null)
+    const fileInputRef = React.useRef<HTMLInputElement>(null)
     const [deleteFileId, setDeleteFileId] = useState<number | null>(null)
-    const [viewFile, setViewFile]         = useState<UploadedFile | null>(null)
-    const [uploading, setUploading]       = useState(false)
-    const [uploadError, setUploadError]   = useState<string | null>(null)
+    const [viewFile, setViewFile] = useState<UploadedFile | null>(null)
+    const [uploading, setUploading] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
 
     const MAX_FILE_SIZE = 25 * 1024 * 1024
 
@@ -2012,8 +2016,12 @@ function DocumentsTab({ employee }: { employee: Employee }) {
         router.post(route("employee.file.store", employee.employee_id), formData, {
             preserveScroll: true,
             onSuccess: () => { toast.success(`"${file.name}" uploaded successfully.`, { id: toastId }); setUploading(false) },
-            onError:   () => { toast.error("Upload failed. Please try again.", { id: toastId }); setUploadError("Upload failed. Please try again."); setUploading(false) },
-            onFinish:  () => setUploading(false),
+            onError: (errors) => {
+                const msg = errors?.file ?? "Upload failed. Please try again."
+                toast.error(msg, { id: toastId })
+                setUploadError(msg)
+                setUploading(false)
+            }, onFinish: () => setUploading(false),
         })
         e.target.value = ""
     }
@@ -2024,13 +2032,13 @@ function DocumentsTab({ employee }: { employee: Employee }) {
         router.delete(route("employee.file.destroy", { employee: employee.employee_id, file: deleteFileId }), {
             preserveScroll: true,
             onSuccess: () => { toast.success(fileName ? `"${fileName}" deleted.` : "File deleted."); setDeleteFileId(null) },
-            onError:   () => toast.error("Failed to delete file. Please try again."),
+            onError: () => toast.error("Failed to delete file. Please try again."),
         })
     }
 
     const formatBytes = (bytes: number) => {
-        if (bytes < 1024)           return bytes + " B"
-        if (bytes < 1024 * 1024)    return (bytes / 1024).toFixed(1) + " KB"
+        if (bytes < 1024) return bytes + " B"
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB"
         return (bytes / (1024 * 1024)).toFixed(2) + " MB"
     }
 
@@ -2203,7 +2211,7 @@ function AvatarPreviewDialog({ src, name, open, onClose }: { src: string; name?:
 
 // ─── Avatar file validator ────────────────────────────────────────────────────
 
-const MAX_AVATAR_SIZE     = 5 * 1024 * 1024
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/jpg"]
 
 function validateAvatarFile(file: File): string | null {
@@ -2216,21 +2224,21 @@ function validateAvatarFile(file: File): string | null {
 
 function AvatarUploadDialog({ open, onClose, onFileSelected }: { open: boolean; onClose: () => void; onFileSelected: (file: File) => void }) {
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const videoRef     = useRef<HTMLVideoElement>(null)
-    const canvasRef    = useRef<HTMLCanvasElement>(null)
-    const streamRef    = useRef<MediaStream | null>(null)
+    const videoRef = useRef<HTMLVideoElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const streamRef = useRef<MediaStream | null>(null)
 
-    const [mode, setMode]           = useState<"choose" | "camera" | "crop">("choose")
+    const [mode, setMode] = useState<"choose" | "camera" | "crop">("choose")
     const [cameraError, setCameraError] = useState<string | null>(null)
     const [cameraReady, setCameraReady] = useState(false)
-    const [fileError, setFileError]     = useState<string | null>(null)
+    const [fileError, setFileError] = useState<string | null>(null)
     const [rawImageSrc, setRawImageSrc] = useState<string | null>(null)
-    const [crop, setCrop]           = useState({ x: 0, y: 0 })
-    const [zoom, setZoom]           = useState(1)
+    const [crop, setCrop] = useState({ x: 0, y: 0 })
+    const [zoom, setZoom] = useState(1)
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
 
     const stopCamera = () => { streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null; setCameraReady(false) }
-    const goToCrop   = (src: string) => { stopCamera(); setRawImageSrc(src); setCrop({ x: 0, y: 0 }); setZoom(1); setCroppedAreaPixels(null); setMode("crop") }
+    const goToCrop = (src: string) => { stopCamera(); setRawImageSrc(src); setCrop({ x: 0, y: 0 }); setZoom(1); setCroppedAreaPixels(null); setMode("crop") }
 
     const startCamera = async () => {
         setCameraError(null); setCameraReady(false); setMode("camera")
@@ -2400,16 +2408,16 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: { open: boolean; 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ShowEmployee({ employee, items }: Props) {
-    const basic        = employee.basic_info
-    const position     = employee.item?.position
+    const basic = employee.basic_info
+    const position = employee.item?.position
     const firstAddress = (basic?.addresses ?? [])[0]
-    const addressStr   = firstAddress
+    const addressStr = firstAddress
         ? [firstAddress.street_address, firstAddress.city, firstAddress.state].filter(Boolean).join(", ")
         : undefined
 
-    const [basicEditOpen, setBasicEditOpen]       = useState(false)
+    const [basicEditOpen, setBasicEditOpen] = useState(false)
     const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false)
-    const [avatarUploadOpen, setAvatarUploadOpen]   = useState(false)
+    const [avatarUploadOpen, setAvatarUploadOpen] = useState(false)
 
     const handleAvatarFileSelected = (file: File) => {
         const toastId = toast.loading("Updating profile photo…")
@@ -2418,7 +2426,7 @@ export default function ShowEmployee({ employee, items }: Props) {
         router.post(route("employee.avatar.update", employee.employee_id), formData, {
             preserveScroll: true,
             onSuccess: () => toast.success("Profile photo updated successfully.", { id: toastId }),
-            onError:   () => toast.error("Failed to update profile photo. Please try again.", { id: toastId }),
+            onError: () => toast.error("Failed to update profile photo. Please try again.", { id: toastId }),
         })
     }
 
@@ -2432,13 +2440,13 @@ export default function ShowEmployee({ employee, items }: Props) {
     ]
 
     const tabs = [
-        { value: "employment",   label: "Employment Details",    icon: Briefcase  },
-        { value: "compensation", label: "Compensation",          icon: FileText   },
-        { value: "leave",        label: "Leave Information",     icon: Calendar   },
-        { value: "time",         label: "Attendance Record",     icon: Clock      },
-        { value: "government",   label: "Government Eligibility",icon: Landmark   },
-        { value: "background",   label: "Background Information",icon: User       },
-        { value: "documents",    label: "Documents",             icon: FolderOpen },
+        { value: "employment", label: "Employment Details", icon: Briefcase },
+        { value: "compensation", label: "Compensation", icon: FileText },
+        { value: "leave", label: "Leave Information", icon: Calendar },
+        { value: "time", label: "Attendance Record", icon: Clock },
+        { value: "government", label: "Government Eligibility", icon: Landmark },
+        { value: "background", label: "Background Information", icon: User },
+        { value: "documents", label: "Documents", icon: FolderOpen },
     ]
 
     return (
@@ -2483,15 +2491,15 @@ export default function ShowEmployee({ employee, items }: Props) {
                     <div className="flex-1 px-4 py-3">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Basic Information</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-0">
-                            <InfoRow icon={Mail}     label="Work Email"     value={employee.work_email} />
-                            <InfoRow icon={Mail}     label="Personal Email" value={basic?.personal_email} />
-                            <InfoRow icon={Briefcase}label="Work ID"        value={employee.work_id} />
-                            <InfoRow icon={Phone}    label="Contact Number" value={basic?.phone_number} />
-                            <InfoRow icon={Calendar} label="Date of Birth"  value={fmt(basic?.birth_date)} />
-                            <InfoRow icon={MapPin}   label="Place of Birth" value={basic?.place_of_birth} />
-                            <InfoRow icon={User}     label="Sex"            value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} />
-                            <InfoRow icon={Heart}    label="Civil Status"   value={cap(basic?.civil_status)} />
-                            <InfoRow icon={Home}     label="Address"        value={addressStr} />
+                            <InfoRow icon={Mail} label="Work Email" value={employee.work_email} />
+                            <InfoRow icon={Mail} label="Personal Email" value={basic?.personal_email} />
+                            <InfoRow icon={Briefcase} label="Work ID" value={employee.work_id} />
+                            <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} />
+                            <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} />
+                            <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} />
+                            <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} />
+                            <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} />
+                            <InfoRow icon={Home} label="Address" value={addressStr} />
                         </div>
                     </div>
                 </div>
@@ -2514,19 +2522,19 @@ export default function ShowEmployee({ employee, items }: Props) {
                             </TabsList>
                         </div>
 
-                        <TabsContent value="employment"   className="mt-0"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
+                        <TabsContent value="employment" className="mt-0"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
                         <TabsContent value="compensation" className="mt-0"><CompensationTab employee={employee} /></TabsContent>
-                        <TabsContent value="leave"        className="mt-0"><LeaveInformationTab employee={employee} /></TabsContent>
-                        <TabsContent value="time"         className="mt-0"><AttendanceRecordTab employee={employee} /></TabsContent>
-                        <TabsContent value="government"   className="mt-0"><GovernmentEligibilityTab employee={employee} /></TabsContent>
-                        <TabsContent value="background"   className="mt-0"><BackgroundInformationTab employee={employee} /></TabsContent>
-                        <TabsContent value="documents"    className="mt-0"><DocumentsTab employee={employee} /></TabsContent>
+                        <TabsContent value="leave" className="mt-0"><LeaveInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="time" className="mt-0"><AttendanceRecordTab employee={employee} /></TabsContent>
+                        <TabsContent value="government" className="mt-0"><GovernmentEligibilityTab employee={employee} /></TabsContent>
+                        <TabsContent value="background" className="mt-0"><BackgroundInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="documents" className="mt-0"><DocumentsTab employee={employee} /></TabsContent>
                     </Tabs>
                 </div>
             </div>
 
             <AvatarPreviewDialog src={avatarSrc} name={basic?.full_name} open={avatarPreviewOpen} onClose={() => setAvatarPreviewOpen(false)} />
-            <AvatarUploadDialog  open={avatarUploadOpen} onClose={() => setAvatarUploadOpen(false)} onFileSelected={handleAvatarFileSelected} />
+            <AvatarUploadDialog open={avatarUploadOpen} onClose={() => setAvatarUploadOpen(false)} onFileSelected={handleAvatarFileSelected} />
             <BasicInfoEditDialog employee={employee} open={basicEditOpen} onClose={() => setBasicEditOpen(false)} />
         </AppLayout>
     )

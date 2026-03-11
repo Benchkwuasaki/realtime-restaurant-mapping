@@ -146,10 +146,10 @@ function WhereaboutSlipList({
                         {/* Deduction notice */}
                         {isPersonal && (
                             <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold ${isDeducted
-                                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800/60"
-                                    : isPendingDeduction
-                                        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800/60"
-                                        : "bg-muted/30 text-muted-foreground border-t border-border/40"
+                                ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800/60"
+                                : isPendingDeduction
+                                    ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800/60"
+                                    : "bg-muted/30 text-muted-foreground border-t border-border/40"
                                 }`}>
                                 <AlertTriangle className="w-3 h-3 shrink-0" />
                                 {isDeducted
@@ -301,12 +301,21 @@ function HistoryDialog({
     open: boolean
     onClose: () => void
 }) {
-    const [dateFrom, setDateFrom] = useState("")
-    const [dateTo, setDateTo] = useState("")
+    const toDateStr = (d: Date) => d.toISOString().slice(0, 10)
 
-    // Reset filters when dialog opens
+    const getDefaultFrom = () => {
+        const d = new Date()
+        d.setMonth(d.getMonth() - 1)
+        return toDateStr(d)
+    }
+    const getDefaultTo = () => toDateStr(new Date())
+
+    const [dateFrom, setDateFrom] = useState(getDefaultFrom)
+    const [dateTo, setDateTo] = useState(getDefaultTo)
+
+    // Reset filters to last 1 month when dialog opens
     useEffect(() => {
-        if (open) { setDateFrom(""); setDateTo("") }
+        if (open) { setDateFrom(getDefaultFrom()); setDateTo(getDefaultTo()) }
     }, [open])
 
     if (!record) return null
@@ -527,9 +536,8 @@ function SettingForm({
             </div>
 
             {/* Default toggle — locked if this is the current default */}
-            <div className={`flex items-center justify-between rounded-lg border border-border px-3.5 py-3 ${
-                isExistingDefault ? "opacity-60 pointer-events-none" : ""
-            }`}>
+            <div className={`flex items-center justify-between rounded-lg border border-border px-3.5 py-3 ${isExistingDefault ? "opacity-60 pointer-events-none" : ""
+                }`}>
                 <div>
                     <p className="text-sm font-medium">Set as default</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -540,13 +548,11 @@ function SettingForm({
                 </div>
                 <div
                     onClick={() => !isExistingDefault && set("is_default", !form.is_default)}
-                    className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 cursor-pointer ${
-                        form.is_default ? "bg-primary" : "bg-muted-foreground/30"
-                    }`}
+                    className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 cursor-pointer ${form.is_default ? "bg-primary" : "bg-muted-foreground/30"
+                        }`}
                 >
-                    <div className={`w-4 h-4 rounded-full bg-primary-foreground shadow transition-transform ${
-                        form.is_default ? "translate-x-4" : "translate-x-0"
-                    }`} />
+                    <div className={`w-4 h-4 rounded-full bg-primary-foreground shadow transition-transform ${form.is_default ? "translate-x-4" : "translate-x-0"
+                        }`} />
                 </div>
             </div>
 
