@@ -17,7 +17,7 @@ export const previewRowSchema = z.object({
     avatar_url:               z.string().nullable(),
     leave_type_id:            z.number(),
     leave_type_name:          z.string(),
-    attendance_days:          z.number(),
+    minutes_worked:          z.number(),
     accrual_earned:           z.number(),
     balance_before:           z.number(),
     balance_after:            z.number(),

@@ -247,7 +247,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Divisi
         },
         {
             id: "department",
-            accessorFn: (row) => row.department?.department_name ?? "",
+            accessorFn: (row) => String(row.department?.department_id ?? ""),
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Department" />
             ),

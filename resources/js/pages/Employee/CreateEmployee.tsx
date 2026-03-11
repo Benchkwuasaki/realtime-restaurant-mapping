@@ -182,14 +182,14 @@ function isFutureDate(dateStr: string): boolean {
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
 const steps = [
-    { title: "Personal Information", description: "Step 1", icon: User },
-    { title: "Employment Details", description: "Step 2", icon: BriefcaseBusiness },
-    { title: "Address", description: "Step 3", icon: MapPin },
-    { title: "Family Information", description: "Step 4", icon: Users },
-    { title: "Government Accounts", description: "Step 5", icon: Landmark },
-    { title: "Education", description: "Step 6", icon: GraduationCap },
-    { title: "Eligibility", description: "Step 7", icon: Award },
-    { title: "Review & Submit", description: "Step 8", icon: BadgeCheck },
+    { title: "Personal Information", description: "Step 1"},
+    { title: "Employment Details", description: "Step 2" },
+    { title: "Address", description: "Step 3"  },
+    { title: "Family Information", description: "Step 4"},
+    { title: "Government Accounts", description: "Step 5"},
+    { title: "Education", description: "Step 6" },
+    { title: "Eligibility", description: "Step 7" },
+    { title: "Review & Submit", description: "Step 8" },
 ]
 
 const REQUIRED: Record<number, { field: string; label: string }[]> = {
@@ -1138,7 +1138,6 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
     const [education, setEducation] = useState<EducationRow[]>([])
     const [eligibility, setEligibility] = useState<EligibilityRow[]>([])
 
-    const CurrentIcon = steps[currentStep].icon
     const isLastStep = currentStep === steps.length - 1
 
     const { data, setData, errors } = useForm({
@@ -1358,7 +1357,6 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
                 <form onSubmit={e => e.preventDefault()}>
                     <div className="mt-8 p-6 border rounded-md">
                         <h2 className="flex items-center gap-2 text-lg font-semibold mb-6">
-                            <CurrentIcon className="w-5 h-5" />
                             {steps[currentStep].title}
                         </h2>
 
