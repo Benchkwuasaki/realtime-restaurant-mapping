@@ -12,6 +12,7 @@ use App\Models\OtherDeduction;
 use App\Models\PayrollDeductionSetting;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollRecord;
+use App\Models\PayrollDeductionPriorityOrder;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -33,6 +34,7 @@ class PayrollProcessingController extends Controller
     public function index(): Response
     {
         $this->activityLogService->createLog([
+            
             'user_id' => Auth::id(),
             'module' => 'payroll',
             'description' => 'Viewed Payroll Processing Page',
@@ -1597,7 +1599,7 @@ class PayrollProcessingController extends Controller
                                 'gsis_emergency' => $gsisEmergency,
                                 'pag_ibig_mpl' => $pagIbigMpl,
                                 'ama_y2k_union' => $amaY2kUnion,
-                                'water_bill'            => $waterBill,,
+                                'water_bill'            => $waterBill,
                                 'net_pay'               => $netPay,
                                 'floor_check_passed' => $floorCheckPassed,
                                 'hr_officer_name' => $validated['hr_officer_name'] ?? null,

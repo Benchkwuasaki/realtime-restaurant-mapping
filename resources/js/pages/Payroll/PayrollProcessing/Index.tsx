@@ -84,10 +84,6 @@ import {
 } from '@/components/Payroll/PayrollProcessing/data/types';
 import { peso } from '@/components/Payroll/PayrollProcessing/data/utils';
 
-// Where is the attendance data??
-// Check for PayrollProcessingController if it was extracted from there
-// Employee and FinalizedEmployee Classifications are imported from ./types
-// peso formatter is imported from ./utils
 
 interface ComputedRecord {
     employee_id: number;
