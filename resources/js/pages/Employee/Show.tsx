@@ -1041,10 +1041,10 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                         {/* Footer notice */}
                         {isPersonal ? (
                             <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold ${isDeducted
-                                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800/60"
-                                    : isPendingDeduct
-                                        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800/60"
-                                        : "bg-muted/30 text-muted-foreground border-t border-border/40"
+                                ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800/60"
+                                : isPendingDeduct
+                                    ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800/60"
+                                    : "bg-muted/30 text-muted-foreground border-t border-border/40"
                                 }`}>
                                 <AlertTriangle className="w-3 h-3 shrink-0" />
                                 {isDeducted
@@ -1156,8 +1156,13 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
 function AttendanceRecordTab({ employee }: { employee: Employee }) {
     const records = (employee.attendance_records ?? []) as AttendanceRecord[]
 
-    const [dateFrom, setDateFrom] = useState("")
-    const [dateTo, setDateTo] = useState("")
+    const today = new Date()
+    const oneMonthAgo = new Date(today)
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    const toDateStr = (d: Date) => d.toISOString().slice(0, 10)
+
+    const [dateFrom, setDateFrom] = useState(toDateStr(oneMonthAgo))
+    const [dateTo, setDateTo] = useState(toDateStr(today))
 
     const from = dateFrom ? toLocalDate(dateFrom) : null
     const to = dateTo ? toLocalDate(dateTo) : null
