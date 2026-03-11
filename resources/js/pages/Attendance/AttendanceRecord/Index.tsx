@@ -754,7 +754,7 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                     filters={[
                         { columnId: "status", title: "Status", options: statusOptions },
                     ]}
-                    defaultPageSize={25}
+      
                     onRowClick={row => setSelected(row.original as RecordWithHistory)}
                 />
             </div>

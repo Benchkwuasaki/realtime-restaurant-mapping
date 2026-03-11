@@ -50,7 +50,7 @@ interface SalaryGradeStep {
     salary_grade_step_id: number
     salary_grade: number
     step: number
-    monthly_salary: number
+    salary_amount: number
 }
 interface Address {
     id?: number
@@ -90,6 +90,24 @@ interface BasicInfo {
     educations?: Education[]
     family_info?: FamilyMember[]
 }
+
+interface AttendanceRecord {
+    id: number
+    date: string
+    scheduled_time_in?: string
+    scheduled_break_out?: string
+    scheduled_break_in?: string
+    scheduled_time_out?: string
+    grace_minutes?: number
+    time_in?: string
+    break_out?: string
+    break_in?: string
+    time_out?: string
+    late_minutes?: number
+    work_minutes?: number
+    status?: string
+}
+
 interface GovernmentAccount {
     government_account_id: number
     account_type: string
@@ -172,6 +190,7 @@ interface Employee {
     seminarsAndTrainings?: SeminarTraining[]
     serviceRecords?: ServiceRecord[]
     internal_organizations?: InternalOrganization[]
+    attendance_records?: AttendanceRecord[]  
 }
 interface Props {
     employee: Employee
@@ -437,7 +456,7 @@ function SalaryEditDialog({ employee, open, onClose }: { employee: Employee; ope
                         />
                         {sgs && (
                             <p className="text-xs text-muted-foreground mt-1.5">
-                                Current: SG-{sgs.salary_grade}, Step {sgs.step} — ₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                                Current: SG-{sgs.salary_grade}, Step {sgs.step} — ₱{Number(sgs.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                             </p>
                         )}
                     </div>
@@ -775,7 +794,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
                         <div className="divide-y divide-border">
                             <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Salary Grade</span><span className="text-sm font-bold text-foreground">SG-{sgs.salary_grade}</span></div>
                             <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Step Number</span><span className="text-sm font-bold text-foreground">Step {sgs.step}</span></div>
-                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Amount</span><span className="text-sm font-bold text-foreground">₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span></div>
+                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Amount</span><span className="text-sm font-bold text-foreground">₱{Number(sgs.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span></div>
                         </div>
                     ) : (
                         <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No salary data.</div>
@@ -1005,9 +1024,113 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
     )
 }
 
+function AttendanceRecordTab({ employee }: { employee: Employee }) {
+    const records = (employee as any).attendance_records as AttendanceRecord[] ?? []
+
+    const statusColor = (status?: string) => {
+        switch (status?.toLowerCase()) {
+            case "present": return "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+            case "late": return "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
+            case "absent": return "bg-destructive/10 text-destructive"
+            case "half-day": return "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+            case "on leave": return "bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
+            default: return "bg-accent text-accent-foreground"
+        }
+    }
+
+    const fmtTime = (t?: string) => {
+        if (!t) return "—"
+        return t.slice(0, 5)
+    }
+
+    const fmtMinutes = (m?: number) => {
+        if (m === undefined || m === null) return "—"
+        if (m < 60) return `${m}m`
+        const h = Math.floor(m / 60)
+        const rem = m % 60
+        return rem > 0 ? `${h}h ${rem}m` : `${h}h`
+    }
+
+    return (
+        <div className="p-3 sm:p-5 space-y-4">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Attendance Records</span>
+                    {records.length > 0 && (
+                        <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-full px-2 py-0.5">
+                            {records.length}
+                        </Badge>
+                    )}
+                </div>
+
+                {records.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-14 gap-3">
+                        <Clock className="w-10 h-10 text-muted-foreground/30" />
+                        <p className="text-sm italic text-muted-foreground">No attendance records found.</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[820px]">
+                            {/* Header */}
+                            <div className="grid grid-cols-[140px_90px_90px_90px_90px_80px_80px_100px] items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30">
+                                <span className="text-xs font-semibold text-muted-foreground">Date</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-center">Time In</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-center">Break Out</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-center">Break In</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-center">Time Out</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-center">Late</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-center">Work</span>
+                                <span className="text-xs font-semibold text-muted-foreground text-center">Status</span>
+                            </div>
+
+                            {/* Rows */}
+                            <div className="divide-y divide-border">
+                                {records.map(record => (
+                                    <div key={record.id} className="grid grid-cols-[140px_90px_90px_90px_90px_80px_80px_100px] items-center gap-2 px-5 py-3 hover:bg-muted/20 transition-colors">
+                                        <div>
+                                            <p className="text-sm font-medium text-foreground">{fmtShort(record.date)}</p>
+                                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                Sched: {fmtTime(record.scheduled_time_in)} – {fmtTime(record.scheduled_time_out)}
+                                            </p>
+                                        </div>
+                                        <span className={`text-sm text-center font-mono ${record.time_in ? "text-foreground" : "text-muted-foreground/40"}`}>
+                                            {fmtTime(record.time_in)}
+                                        </span>
+                                        <span className={`text-sm text-center font-mono ${record.break_out ? "text-foreground" : "text-muted-foreground/40"}`}>
+                                            {fmtTime(record.break_out)}
+                                        </span>
+                                        <span className={`text-sm text-center font-mono ${record.break_in ? "text-foreground" : "text-muted-foreground/40"}`}>
+                                            {fmtTime(record.break_in)}
+                                        </span>
+                                        <span className={`text-sm text-center font-mono ${record.time_out ? "text-foreground" : "text-muted-foreground/40"}`}>
+                                            {fmtTime(record.time_out)}
+                                        </span>
+                                        <span className={`text-sm text-center ${record.late_minutes ? "text-amber-600 font-semibold" : "text-muted-foreground/40"}`}>
+                                            {record.late_minutes ? fmtMinutes(record.late_minutes) : "—"}
+                                        </span>
+                                        <span className="text-sm text-center text-foreground font-medium">
+                                            {fmtMinutes(record.work_minutes)}
+                                        </span>
+                                        <div className="flex justify-center">
+                                            <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 ${statusColor(record.status)}`}>
+                                                {record.status ?? "—"}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
 // ─── Government & Eligibility Tab ─────────────────────────────────────────────
 
 const STANDARD_GOV_ID_TYPES = ["GSIS", "PhilHealth", "Pag-IBIG", "TIN"]
+
 
 function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
     const govAccounts = employee.government_accounts ?? []
@@ -1045,6 +1168,16 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 { preserveScroll: true, onSuccess: () => setGovDialog(p => ({ ...p, open: false })) }
             )
         }
+    }
+
+    const [deleteGovId, setDeleteGovId] = useState<number | null>(null)
+
+    const confirmDeleteGovAccount = () => {
+        if (!deleteGovId) return
+        router.delete(
+            route("employee.government-account.destroy", { employee: employee.employee_id, account: deleteGovId }),
+            { preserveScroll: true, onSuccess: () => setDeleteGovId(null) }
+        )
     }
 
     const accountMap = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
@@ -1110,10 +1243,11 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                             <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                                                 {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                             </button>
-                                            <Button onClick={() => openEditGovDialog(type, account)} variant={"ghost"} size={"icon-xs"}><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button onClick={() => openEditGovDialog(type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </>
                                     ) : (
-                                        <Button onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })} variant={"ghost"} size={"icon-xs"}>
+                                        <Button onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })} variant="ghost" size="icon-xs">
                                             <Plus className="w-3.5 h-3.5" />
                                         </Button>
                                     )}
@@ -1135,6 +1269,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                     </button>
                                     <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                    <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
                         )
@@ -1166,7 +1301,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                         <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
                                         <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
                                         <Badge className="text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5 shrink-0">✓ Active</Badge>
-                                        <Button onClick={() => openEligDialog(e)} variant={"ghost"} size={"icon-xs"}><Pencil className="w-3.5 h-3.5" /></Button>
+                                        <Button onClick={() => openEligDialog(e)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
                                     </div>
                                 ))}
                             </div>
@@ -1175,6 +1310,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
+            {/* Government Account Dialog */}
             <Dialog open={govDialog.open} onOpenChange={open => setGovDialog(p => ({ ...p, open }))}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -1215,6 +1351,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
+            {/* Eligibility Dialog */}
             <Dialog open={eligDialog.open} onOpenChange={open => setEligDialog(p => ({ ...p, open }))}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>{eligDialog.id ? "Edit" : "Add"} Eligibility</DialogTitle></DialogHeader>
@@ -1236,6 +1373,24 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Government Account Confirm */}
+            <AlertDialog open={!!deleteGovId} onOpenChange={o => !o && setDeleteGovId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Government Account?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently remove the account number. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteGovAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }
@@ -2223,7 +2378,7 @@ export default function ShowEmployee({ employee, items }: Props) {
         { value: "employment", label: "Employment Details", icon: Briefcase },
         { value: "compensation", label: "Compensation", icon: FileText },
         { value: "leave", label: "Leave Information", icon: Calendar },
-        { value: "time", label: "Time Records", icon: Clock },
+        { value: "time", label: "Attendance Record", icon: Clock },
         { value: "government", label: "Government Eligibility", icon: Landmark },
         { value: "background", label: "Background Information", icon: User },
         { value: "documents", label: "Documents", icon: FolderOpen },
@@ -2316,12 +2471,7 @@ export default function ShowEmployee({ employee, items }: Props) {
                         <TabsContent value="employment" className="flex-1 mt-0 overflow-y-auto"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
                         <TabsContent value="compensation" className="flex-1 mt-0 overflow-y-auto"><CompensationTab employee={employee} /></TabsContent>
                         <TabsContent value="leave" className="flex-1 mt-0 overflow-y-auto"><LeaveInformationTab employee={employee} /></TabsContent>
-                        <TabsContent value="time" className="flex-1 mt-0 overflow-y-auto">
-                            <div className="flex flex-col items-center justify-center h-64 gap-3">
-                                <Clock className="w-10 h-10 text-muted-foreground/30" />
-                                <p className="text-sm italic text-muted-foreground">Time records coming soon.</p>
-                            </div>
-                        </TabsContent>
+                        <TabsContent value="time" className="flex-1 mt-0 overflow-y-auto"><AttendanceRecordTab employee={employee} /></TabsContent>
                         <TabsContent value="government" className="flex-1 mt-0 overflow-y-auto"><GovernmentEligibilityTab employee={employee} /></TabsContent>
                         <TabsContent value="background" className="flex-1 mt-0 overflow-y-auto"><BackgroundInformationTab employee={employee} /></TabsContent>
                         <TabsContent value="documents" className="flex-1 mt-0 overflow-y-auto"><DocumentsTab employee={employee} /></TabsContent>

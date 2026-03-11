@@ -142,40 +142,42 @@ class EmployeeController extends Controller
             'addresses.*.state' => ['required', 'string', 'max:255'],
             'addresses.*.zip_code' => ['required', 'string', 'max:20'],
 
-            // ── Family Information ────────────────────────────────────────────────
-            'family_info' => ['required', 'array', 'min:1'],
-            'family_info.*.full_name' => ['required', 'string', 'max:255'],
+            // ── Family Information (optional) ─────────────────────────────────────
+            'family_info' => ['nullable', 'array'],
+            'family_info.*.full_name' => ['required_with:family_info.*', 'string', 'max:255'],
             'family_info.*.contact_number' => ['nullable', 'string', 'max:20'],
-            'family_info.*.relationship' => ['required', 'string', 'max:100'],
+            'family_info.*.relationship' => ['required_with:family_info.*', 'string', 'max:100'],
             'family_info.*.sex' => ['nullable', 'boolean'],
             'family_info.*.date_of_birth' => ['nullable', 'date'],
             'family_info.*.place_of_birth' => ['nullable', 'string', 'max:255'],
 
-            // ── Government Accounts ───────────────────────────────────────────────
-            'government_accounts' => ['required', 'array', 'min:1'],
-            'government_accounts.*.account_type' => ['required', 'string', 'max:100'],
-            'government_accounts.*.account_number' => ['required', 'string', 'max:100'],
+            // ── Government Accounts (optional) ────────────────────────────────────
+            'government_accounts' => ['nullable', 'array'],
+            'government_accounts.*.account_type' => ['required_with:government_accounts.*', 'string', 'max:100'],
+            'government_accounts.*.account_number' => ['required_with:government_accounts.*', 'string', 'max:100'],
 
-            // ── Education ─────────────────────────────────────────────────────────
-            'education' => ['required', 'array', 'min:1'],
-            'education.*.level' => ['required', 'string', 'max:100'],
-            'education.*.school_name' => ['required', 'string', 'max:255'],
+            // ── Education (optional) ──────────────────────────────────────────────
+            'education' => ['nullable', 'array'],
+            'education.*.level' => ['required_with:education.*', 'string', 'max:100'],
+            'education.*.school_name' => ['required_with:education.*', 'string', 'max:255'],
             'education.*.school_address' => ['nullable', 'string', 'max:255'],
             'education.*.graduation_date' => ['nullable', 'date'],
             'education.*.degree' => ['nullable', 'string', 'max:255'],
 
-            // ── Eligibility ───────────────────────────────────────────────────────
-            'eligibility_information' => ['required', 'array', 'min:1'],
-            'eligibility_information.*.eligibility_name' => ['required', 'string', 'max:255'],
-            'eligibility_information.*.year_passed' => ['required', 'date'],
+            // ── Eligibility (optional) ────────────────────────────────────────────
+            'eligibility_information' => ['nullable', 'array'],
+            'eligibility_information.*.eligibility_name' => ['required_with:eligibility_information.*', 'string', 'max:255'],
+            'eligibility_information.*.year_passed' => ['required_with:eligibility_information.*', 'date'],
         ]);
 
         // ── Duplicate government account type check ────────────────────────────────
-        $accountTypes = collect($request->government_accounts)->pluck('account_type');
-        if ($accountTypes->count() !== $accountTypes->unique()->count()) {
-            return back()->withErrors([
-                'government_accounts' => 'Each government account type must be unique.',
-            ])->withInput();
+        if (!empty($request->government_accounts)) {
+            $accountTypes = collect($request->government_accounts)->pluck('account_type');
+            if ($accountTypes->count() !== $accountTypes->unique()->count()) {
+                return back()->withErrors([
+                    'government_accounts' => 'Each government account type must be unique.',
+                ])->withInput();
+            }
         }
 
         DB::transaction(function () use ($request) {
@@ -198,6 +200,7 @@ class EmployeeController extends Controller
                 'item_id' => $request->item_id,
                 'salary_grade_step_id' => $request->salary_grade_step_id,
                 'employment_classification' => $request->employment_classification,
+                'work_id' => $request->work_id,
                 'work_email' => $request->work_email,
                 'password' => Hash::make($request->password),
                 'date_applied' => $request->date_applied,
@@ -219,7 +222,7 @@ class EmployeeController extends Controller
                 ]);
             }
 
-            foreach ($request->family_info as $member) {
+            foreach ($request->family_info ?? [] as $member) {
                 FamilyInfo::create([
                     'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
                     'full_name' => $member['full_name'],
@@ -231,7 +234,7 @@ class EmployeeController extends Controller
                 ]);
             }
 
-            foreach ($request->government_accounts as $account) {
+            foreach ($request->government_accounts ?? [] as $account) {
                 GovernmentAccount::create([
                     'employee_id' => $employee->employee_id,
                     'account_type' => $account['account_type'],
@@ -239,7 +242,7 @@ class EmployeeController extends Controller
                 ]);
             }
 
-            foreach ($request->education as $edu) {
+            foreach ($request->education ?? [] as $edu) {
                 EmployeeEducation::create([
                     'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
                     'level' => $edu['level'],
@@ -250,7 +253,7 @@ class EmployeeController extends Controller
                 ]);
             }
 
-            foreach ($request->eligibility_information as $eligibility) {
+            foreach ($request->eligibility_information ?? [] as $eligibility) {
                 EligibilityInformation::create([
                     'employee_id' => $employee->employee_id,
                     'eligibility_name' => $eligibility['eligibility_name'],
@@ -300,13 +303,14 @@ class EmployeeController extends Controller
             'uploadedFiles',
             'leaveBalances',
             'internalOrganizations',
+            'attendanceRecords',
         ]);
 
         return Inertia::render('Employee/Show', [
             'employee' => [
                 'employee_id' => $employee->employee_id,
                 'work_email' => $employee->work_email,
-                'work_id'     => $employee->work_id,
+                'work_id' => $employee->work_id,
                 'employment_classification' => $employee->employment_classification,
                 'date_applied' => $employee->date_applied,
                 'date_hired' => $employee->date_hired,
@@ -317,7 +321,6 @@ class EmployeeController extends Controller
                 'status' => $employee->status,
                 'avatar_url' => $employee->avatar_url,
 
-                // snake_case keys — match the TypeScript interface exactly
                 'basic_info' => $employee->basicInfo,
                 'item' => $employee->item,
                 'salary_grade_step' => $employee->salaryGradeStep,
@@ -326,8 +329,8 @@ class EmployeeController extends Controller
                 'government_accounts' => $employee->governmentAccounts,
                 'leave_balances' => $employee->leaveBalances,
                 'internal_organizations' => $employee->internalOrganizations,
+                'attendance_records' => $employee->attendanceRecords,  // ← add this
 
-                // camelCase keys — match the TypeScript interface exactly
                 'uploadedFiles' => $employee->uploadedFiles,
                 'seminarsAndTrainings' => $employee->seminarsAndTrainings->map(fn($s) => [
                     'id' => $s->employee_seminar_training_id,
@@ -511,6 +514,7 @@ class EmployeeController extends Controller
             'department' => $position?->department?->department_name ?? '—',
             'contactNumber' => $employee->basicInfo?->phone_number ?? '—',
             'email' => $employee->work_email,
+            'employmentClassification' => $employee->employment_classification ?? '—',  
             'status' => (bool) $employee->status,
         ];
     }
