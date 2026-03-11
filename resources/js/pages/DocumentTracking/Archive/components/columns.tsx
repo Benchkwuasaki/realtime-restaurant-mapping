@@ -23,35 +23,6 @@ function RequestStatusBadge({ status }: { status: string }) {
     )
 }
 
-// ─── Mobile Card ──────────────────────────────────────────────────────────────
-
-function MobileArchiveCard({ row }: { row: ArchiveRow }) {
-    return (
-        <div className="flex flex-col bg-background overflow-hidden">
-            <div className="px-4 pt-4 pb-3 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                    <span className="font-semibold text-sm text-foreground truncate">{row.title}</span>
-                    <RequestStatusBadge status={row.status} />
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Origin: <span className="font-medium text-foreground">{row.origin_office?.acronym ?? "—"}</span></span>
-                    <span>Final: <span className="font-medium text-foreground">{row.current_office?.acronym ?? "—"}</span></span>
-                </div>
-            </div>
-            <div className="px-4 py-2.5 border-t border-border bg-muted/30">
-                <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => router.visit(route("document-tracking.show", row.id))}
-                >
-                    View Details
-                </Button>
-            </div>
-        </div>
-    )
-}
-
 // ─── Columns ──────────────────────────────────────────────────────────────────
 
 export function getColumns(): DataTableColumnDef<ArchiveRow>[] {
@@ -88,7 +59,6 @@ export function getColumns(): DataTableColumnDef<ArchiveRow>[] {
             cell: ({ row }) => (
                 <span className="text-sm font-medium">{row.original.title}</span>
             ),
-            mobileCard: (row) => <MobileArchiveCard row={row} />,
         },
 
         // Origin Office
@@ -121,25 +91,6 @@ export function getColumns(): DataTableColumnDef<ArchiveRow>[] {
             header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
             cell: ({ row }) => <RequestStatusBadge status={row.original.status} />,
             filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
-        },
-
-        // Actions
-        {
-            id: "actions",
-            header: () => <span className="sr-only">Actions</span>,
-            cell: ({ row }) => (
-                <div className="flex justify-end" onClick={e => e.stopPropagation()}>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => router.visit(route("document-tracking.show", row.original.id))}
-                    >
-                        View
-                    </Button>
-                </div>
-            ),
-            enableSorting: false,
-            enableHiding: false,
         },
     ]
 }

@@ -82,7 +82,7 @@ export default function ArchiveIndex({ documents, departmentId }: Props) {
                         { columnId: "status", title: "Status", options: requestStatusOptions },
                     ]}
                     defaultPageSize={25}
-                    onRowClick={row => router.visit(route("document-tracking.show", row.original.id))}
+                    onRowClick={row => router.visit(route("document-tracking-archive.show", row.original.id))}
                 />
 
             </div>

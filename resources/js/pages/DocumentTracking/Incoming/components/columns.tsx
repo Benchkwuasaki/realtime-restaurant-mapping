@@ -1,10 +1,25 @@
 import { useState } from "react"
-import { useForm } from "@inertiajs/react"
+import { router } from "@inertiajs/react"
 import { route } from "ziggy-js"
+import {
+    MoreHorizontal,
+    PackageCheck,
+    ArrowRightCircle,
+    Undo2,
+    CheckCircle2,
+    XCircle,
+} from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
     Select,
     SelectContent,
@@ -26,7 +41,6 @@ import {
     OFFICE_STATUS_LABEL,
     OFFICE_STATUS_ICON,
     OFFICE_STATUS_DOT,
-    ACTION_CONFIG,
     getRowActions,
     type ActionType,
 } from "../data/data"
@@ -44,29 +58,36 @@ function OfficeStatusBadge({ status }: { status: string }) {
     )
 }
 
+// ─── Shared state helpers ─────────────────────────────────────────────────────
+
+interface DS { remarks: string; to_office_id: string; processing: boolean }
+const EMPTY: DS = { remarks: "", to_office_id: "", processing: false }
+
 // ─── Dialogs ──────────────────────────────────────────────────────────────────
 
 function ReceiveDialog({ documentId, open, onClose }: { documentId: number; open: boolean; onClose: () => void }) {
-    const form = useForm({ remarks: "" })
-    function submit(e: React.FormEvent) {
-        e.preventDefault()
-        form.post(route("document-tracking.receive", documentId), { onSuccess: onClose })
-    }
+    const [s, set] = useState(EMPTY)
+    const close = () => { set(EMPTY); onClose() }
+
     return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader><DialogTitle>Receive Document</DialogTitle></DialogHeader>
-                <form onSubmit={submit} className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                        Confirm that your department has received this document.
-                    </p>
-                    <div className="space-y-1.5">
-                        <Label>Remarks <span className="text-muted-foreground">(optional)</span></Label>
-                        <Textarea value={form.data.remarks} onChange={e => form.setData("remarks", e.target.value)} placeholder="Optional remarks…" rows={3} />
+        <Dialog open={open} onOpenChange={v => !v && close()}>
+            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-md">
+                <DialogHeader className="px-5 py-4 border-b">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+                        <PackageCheck className="w-4 h-4 text-blue-500" /> Receive Document
+                    </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={e => { e.preventDefault(); set(s => ({ ...s, processing: true })); router.post(route("document-tracking-incoming.receive", documentId), { remarks: s.remarks }, { onSuccess: close, onError: () => set(s => ({ ...s, processing: false })) }) }}>
+                    <div className="px-5 py-5 space-y-4">
+                        <p className="text-sm text-muted-foreground">Confirm that your department has received this document.</p>
+                        <div>
+                            <label className="block text-xs font-medium mb-1.5">Remarks <span className="text-muted-foreground font-normal">(optional)</span></label>
+                            <Textarea value={s.remarks} onChange={e => set(p => ({ ...p, remarks: e.target.value }))} placeholder="Optional remarks…" rows={3} className="text-sm resize-none" />
+                        </div>
                     </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                        <Button type="submit" disabled={form.processing}>Confirm Receipt</Button>
+                    <DialogFooter className="px-5 py-4 border-t bg-muted/30">
+                        <Button type="button" variant="outline" size="sm" onClick={close} className="text-xs">Cancel</Button>
+                        <Button type="submit" size="sm" disabled={s.processing} className="text-xs">{s.processing ? "Confirming…" : "Confirm Receipt"}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -74,38 +95,41 @@ function ReceiveDialog({ documentId, open, onClose }: { documentId: number; open
     )
 }
 
-function ForwardDialog({ documentId, departments, open, onClose }: { documentId: number; departments: Department[]; open: boolean; onClose: () => void }) {
-    const form = useForm({ to_office_id: "", remarks: "" })
-    function submit(e: React.FormEvent) {
-        e.preventDefault()
-        form.post(route("document-tracking.forward", documentId), { onSuccess: onClose })
-    }
+function ForwardDialog({ documentId, forwardOffices, open, onClose }: { documentId: number; forwardOffices: Department[]; open: boolean; onClose: () => void }) {
+    const [s, set] = useState(EMPTY)
+    const close = () => { set(EMPTY); onClose() }
+
     return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader><DialogTitle>Forward Document</DialogTitle></DialogHeader>
-                <form onSubmit={submit} className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label>Forward To <span className="text-destructive">*</span></Label>
-                        <Select value={form.data.to_office_id} onValueChange={v => form.setData("to_office_id", v)}>
-                            <SelectTrigger><SelectValue placeholder="Select department…" /></SelectTrigger>
-                            <SelectContent>
-                                {departments.map(d => (
-                                    <SelectItem key={d.department_id} value={String(d.department_id)}>
-                                        {d.department_acronym} — {d.department_name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        {form.errors.to_office_id && <p className="text-xs text-destructive">{form.errors.to_office_id}</p>}
+        <Dialog open={open} onOpenChange={v => !v && close()}>
+            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-md">
+                <DialogHeader className="px-5 py-4 border-b">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+                        <ArrowRightCircle className="w-4 h-4 text-indigo-500" /> Forward Document
+                    </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={e => { e.preventDefault(); set(s => ({ ...s, processing: true })); router.post(route("document-tracking-incoming.forward", documentId), { to_office_id: s.to_office_id, remarks: s.remarks }, { onSuccess: close, onError: () => set(s => ({ ...s, processing: false })) }) }}>
+                    <div className="px-5 py-5 space-y-4">
+                        <div>
+                            <label className="block text-xs font-medium mb-1.5">Forward To <span className="text-destructive">*</span></label>
+                            <Select value={s.to_office_id} onValueChange={v => set(p => ({ ...p, to_office_id: v }))}>
+                                <SelectTrigger className="text-sm"><SelectValue placeholder="Select department…" /></SelectTrigger>
+                                <SelectContent>
+                                    {forwardOffices.map(d => (
+                                        <SelectItem key={d.department_id} value={String(d.department_id)}>
+                                            {d.department_acronym} — {d.department_name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium mb-1.5">Remarks <span className="text-muted-foreground font-normal">(optional)</span></label>
+                            <Textarea value={s.remarks} onChange={e => set(p => ({ ...p, remarks: e.target.value }))} placeholder="Optional forwarding note…" rows={3} className="text-sm resize-none" />
+                        </div>
                     </div>
-                    <div className="space-y-1.5">
-                        <Label>Remarks <span className="text-muted-foreground">(optional)</span></Label>
-                        <Textarea value={form.data.remarks} onChange={e => form.setData("remarks", e.target.value)} placeholder="Optional forwarding note…" rows={3} />
-                    </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                        <Button type="submit" disabled={form.processing || !form.data.to_office_id}>Forward</Button>
+                    <DialogFooter className="px-5 py-4 border-t bg-muted/30">
+                        <Button type="button" variant="outline" size="sm" onClick={close} className="text-xs">Cancel</Button>
+                        <Button type="submit" size="sm" disabled={s.processing || !s.to_office_id} className="text-xs">{s.processing ? "Forwarding…" : "Forward"}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -113,27 +137,47 @@ function ForwardDialog({ documentId, departments, open, onClose }: { documentId:
     )
 }
 
-function ReturnDialog({ documentId, open, onClose }: { documentId: number; open: boolean; onClose: () => void }) {
-    const form = useForm({ remarks: "" })
-    function submit(e: React.FormEvent) {
-        e.preventDefault()
-        form.post(route("document-tracking.return", documentId), { onSuccess: onClose })
-    }
+function ReturnDialog({ documentId, returnOffices, open, onClose }: { documentId: number; returnOffices: Department[]; open: boolean; onClose: () => void }) {
+    const [s, set] = useState(EMPTY)
+    const close = () => { set(EMPTY); onClose() }
+
     return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader><DialogTitle>Return Document</DialogTitle></DialogHeader>
-                <form onSubmit={submit} className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                        The document will be returned to the department that last sent it here.
-                    </p>
-                    <div className="space-y-1.5">
-                        <Label>Remarks <span className="text-muted-foreground">(optional)</span></Label>
-                        <Textarea value={form.data.remarks} onChange={e => form.setData("remarks", e.target.value)} placeholder="Reason for returning…" rows={3} />
+        <Dialog open={open} onOpenChange={v => !v && close()}>
+            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-md">
+                <DialogHeader className="px-5 py-4 border-b">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+                        <Undo2 className="w-4 h-4 text-yellow-500" /> Return Document
+                    </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={e => { e.preventDefault(); set(s => ({ ...s, processing: true })); router.post(route("document-tracking-incoming.return", documentId), { to_office_id: s.to_office_id, remarks: s.remarks }, { onSuccess: close, onError: () => set(s => ({ ...s, processing: false })) }) }}>
+                    <div className="px-5 py-5 space-y-4">
+                        <p className="text-sm text-muted-foreground">Select which department to return this document to. Only departments that have previously handled it are listed.</p>
+                        <div>
+                            <label className="block text-xs font-medium mb-1.5">Return To <span className="text-destructive">*</span></label>
+                            {returnOffices.length === 0
+                                ? <p className="text-xs text-muted-foreground italic">No previous departments found.</p>
+                                : (
+                                    <Select value={s.to_office_id} onValueChange={v => set(p => ({ ...p, to_office_id: v }))}>
+                                        <SelectTrigger className="text-sm"><SelectValue placeholder="Select department…" /></SelectTrigger>
+                                        <SelectContent>
+                                            {returnOffices.map(d => (
+                                                <SelectItem key={d.department_id} value={String(d.department_id)}>
+                                                    {d.department_acronym} — {d.department_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )
+                            }
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium mb-1.5">Remarks <span className="text-muted-foreground font-normal">(optional)</span></label>
+                            <Textarea value={s.remarks} onChange={e => set(p => ({ ...p, remarks: e.target.value }))} placeholder="Reason for returning…" rows={3} className="text-sm resize-none" />
+                        </div>
                     </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                        <Button type="submit" variant="secondary" disabled={form.processing}>Return</Button>
+                    <DialogFooter className="px-5 py-4 border-t bg-muted/30">
+                        <Button type="button" variant="outline" size="sm" onClick={close} className="text-xs">Cancel</Button>
+                        <Button type="submit" variant="secondary" size="sm" disabled={s.processing || !s.to_office_id || returnOffices.length === 0} className="text-xs">{s.processing ? "Returning…" : "Return"}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -142,24 +186,28 @@ function ReturnDialog({ documentId, open, onClose }: { documentId: number; open:
 }
 
 function CompleteDialog({ documentId, open, onClose }: { documentId: number; open: boolean; onClose: () => void }) {
-    const form = useForm({ remarks: "" })
-    function submit(e: React.FormEvent) {
-        e.preventDefault()
-        form.post(route("document-tracking.complete", documentId), { onSuccess: onClose })
-    }
+    const [s, set] = useState(EMPTY)
+    const close = () => { set(EMPTY); onClose() }
+
     return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader><DialogTitle>Complete Request</DialogTitle></DialogHeader>
-                <form onSubmit={submit} className="space-y-4">
-                    <p className="text-sm text-muted-foreground">Mark this request as completed. This will close the request.</p>
-                    <div className="space-y-1.5">
-                        <Label>Remarks <span className="text-muted-foreground">(optional)</span></Label>
-                        <Textarea value={form.data.remarks} onChange={e => form.setData("remarks", e.target.value)} placeholder="Optional closing remarks…" rows={3} />
+        <Dialog open={open} onOpenChange={v => !v && close()}>
+            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-md">
+                <DialogHeader className="px-5 py-4 border-b">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" /> Complete Request
+                    </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={e => { e.preventDefault(); set(s => ({ ...s, processing: true })); router.post(route("document-tracking-incoming.complete", documentId), { remarks: s.remarks }, { onSuccess: close, onError: () => set(s => ({ ...s, processing: false })) }) }}>
+                    <div className="px-5 py-5 space-y-4">
+                        <p className="text-sm text-muted-foreground">Mark this request as completed. It will be moved to the archive.</p>
+                        <div>
+                            <label className="block text-xs font-medium mb-1.5">Remarks <span className="text-muted-foreground font-normal">(optional)</span></label>
+                            <Textarea value={s.remarks} onChange={e => set(p => ({ ...p, remarks: e.target.value }))} placeholder="Optional closing remarks…" rows={3} className="text-sm resize-none" />
+                        </div>
                     </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                        <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white" disabled={form.processing}>Mark Complete</Button>
+                    <DialogFooter className="px-5 py-4 border-t bg-muted/30">
+                        <Button type="button" variant="outline" size="sm" onClick={close} className="text-xs">Cancel</Button>
+                        <Button type="submit" size="sm" disabled={s.processing} className="bg-green-600 hover:bg-green-700 text-white text-xs">{s.processing ? "Completing…" : "Mark Complete"}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -168,26 +216,30 @@ function CompleteDialog({ documentId, open, onClose }: { documentId: number; ope
 }
 
 function CancelDialog({ documentId, open, onClose }: { documentId: number; open: boolean; onClose: () => void }) {
-    const form = useForm({ remarks: "" })
-    function submit(e: React.FormEvent) {
-        e.preventDefault()
-        form.post(route("document-tracking.cancel", documentId), { onSuccess: onClose })
-    }
+    const [s, set] = useState(EMPTY)
+    const close = () => { set(EMPTY); onClose() }
+
     return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader><DialogTitle>Cancel Request</DialogTitle></DialogHeader>
-                <form onSubmit={submit} className="space-y-4">
-                    <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3">
-                        <p className="text-sm font-medium text-destructive">This will permanently cancel the request. This action cannot be undone.</p>
+        <Dialog open={open} onOpenChange={v => !v && close()}>
+            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-md">
+                <DialogHeader className="px-5 py-4 border-b">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+                        <XCircle className="w-4 h-4 text-destructive" /> Cancel Request
+                    </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={e => { e.preventDefault(); set(s => ({ ...s, processing: true })); router.post(route("document-tracking-incoming.cancel", documentId), { remarks: s.remarks }, { onSuccess: close, onError: () => set(s => ({ ...s, processing: false })) }) }}>
+                    <div className="px-5 py-5 space-y-4">
+                        <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3">
+                            <p className="text-sm font-medium text-destructive">This will permanently cancel the request and move it to the archive. This action cannot be undone.</p>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium mb-1.5">Reason <span className="text-muted-foreground font-normal">(optional)</span></label>
+                            <Textarea value={s.remarks} onChange={e => set(p => ({ ...p, remarks: e.target.value }))} placeholder="Reason for cancellation…" rows={3} className="text-sm resize-none" />
+                        </div>
                     </div>
-                    <div className="space-y-1.5">
-                        <Label>Reason <span className="text-muted-foreground">(optional)</span></Label>
-                        <Textarea value={form.data.remarks} onChange={e => form.setData("remarks", e.target.value)} placeholder="Reason for cancellation…" rows={3} />
-                    </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={onClose}>Keep Request</Button>
-                        <Button type="submit" variant="destructive" disabled={form.processing}>Cancel Request</Button>
+                    <DialogFooter className="px-5 py-4 border-t bg-muted/30">
+                        <Button type="button" variant="outline" size="sm" onClick={close} className="text-xs">Keep Request</Button>
+                        <Button type="submit" variant="destructive" size="sm" disabled={s.processing} className="text-xs">{s.processing ? "Cancelling…" : "Cancel Request"}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -196,26 +248,61 @@ function CancelDialog({ documentId, open, onClose }: { documentId: number; open:
 }
 
 // ─── Action Cell ──────────────────────────────────────────────────────────────
-// Each row manages its own dialog state independently.
 
-function ActionCell({ row, departments }: { row: IncomingRow; departments: Department[] }) {
+function ActionCell({ row }: { row: IncomingRow }) {
     const [open, setOpen] = useState<ActionType | null>(null)
     const actions = getRowActions(row)
 
+    if (actions.length === 0) return null
+
+    const isPending = row.office_status === "pending_receipt"
+    const isReceived = row.office_status === "received"
+
     return (
-        <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
-            {actions.map(action => {
-                const cfg = ACTION_CONFIG[action]
-                return (
-                    <Button key={action} size="sm" className={cfg.className} onClick={() => setOpen(action)}>
-                        {cfg.label}
+        <div onClick={e => e.stopPropagation()}>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 data-[state=open]:bg-muted">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Open actions</span>
                     </Button>
-                )
-            })}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+
+                    {isPending && (
+                        <DropdownMenuItem onClick={() => setOpen("receive")} className="gap-2 cursor-pointer">
+                            <PackageCheck className="w-4 h-4 text-blue-500" />
+                            Receive
+                        </DropdownMenuItem>
+                    )}
+
+                    {isReceived && (<>
+                        <DropdownMenuItem onClick={() => setOpen("complete")} className="gap-2 cursor-pointer">
+                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            Mark Complete
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setOpen("forward")} className="gap-2 cursor-pointer">
+                            <ArrowRightCircle className="w-4 h-4 text-indigo-500" />
+                            Forward
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setOpen("return")} className="gap-2 cursor-pointer">
+                            <Undo2 className="w-4 h-4 text-yellow-500" />
+                            Return
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setOpen("cancel")} className="gap-2 cursor-pointer text-destructive focus:text-destructive">
+                            <XCircle className="w-4 h-4" />
+                            Cancel Request
+                        </DropdownMenuItem>
+                    </>)}
+                </DropdownMenuContent>
+            </DropdownMenu>
 
             <ReceiveDialog documentId={row.id} open={open === "receive"} onClose={() => setOpen(null)} />
-            <ForwardDialog documentId={row.id} departments={departments} open={open === "forward"} onClose={() => setOpen(null)} />
-            <ReturnDialog documentId={row.id} open={open === "return"} onClose={() => setOpen(null)} />
+            <ForwardDialog documentId={row.id} forwardOffices={row.forward_offices} open={open === "forward"} onClose={() => setOpen(null)} />
+            <ReturnDialog documentId={row.id} returnOffices={row.return_offices} open={open === "return"} onClose={() => setOpen(null)} />
             <CompleteDialog documentId={row.id} open={open === "complete"} onClose={() => setOpen(null)} />
             <CancelDialog documentId={row.id} open={open === "cancel"} onClose={() => setOpen(null)} />
         </div>
@@ -224,14 +311,16 @@ function ActionCell({ row, departments }: { row: IncomingRow; departments: Depar
 
 // ─── Mobile Card ──────────────────────────────────────────────────────────────
 
-function MobileIncomingCard({ row, departments }: { row: IncomingRow; departments: Department[] }) {
+function MobileIncomingCard({ row }: { row: IncomingRow }) {
     const [open, setOpen] = useState<ActionType | null>(null)
     const actions = getRowActions(row)
+
+    const isPending = row.office_status === "pending_receipt"
+    const isReceived = row.office_status === "received"
 
     return (
         <div className="flex flex-col bg-background overflow-hidden">
             <div className="px-4 pt-4 pb-3 space-y-2">
-                {/* Title + badge */}
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
                         <span className={`w-2 h-2 rounded-full shrink-0 ${OFFICE_STATUS_DOT[row.office_status] ?? "bg-muted-foreground"}`} />
@@ -239,31 +328,51 @@ function MobileIncomingCard({ row, departments }: { row: IncomingRow; department
                     </div>
                     <OfficeStatusBadge status={row.office_status} />
                 </div>
-
-                {/* Meta row */}
                 <div className="flex items-center justify-between pl-3.5 text-xs text-muted-foreground">
                     <span>From: <span className="font-medium text-foreground">{row.from_office?.acronym ?? "—"}</span></span>
                     <span>{row.days_stayed}</span>
                 </div>
             </div>
 
-            {/* Action footer */}
             {actions.length > 0 && (
-                <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/30 flex-wrap">
-                    {actions.map(action => {
-                        const cfg = ACTION_CONFIG[action]
-                        return (
-                            <Button key={action} size="sm" className={cfg.className} onClick={() => setOpen(action)}>
-                                {cfg.label}
+                <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/30">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="outline" className="text-xs gap-1.5">
+                                Actions <MoreHorizontal className="w-3.5 h-3.5" />
                             </Button>
-                        )
-                    })}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                            <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {isPending && (
+                                <DropdownMenuItem onClick={() => setOpen("receive")} className="gap-2 cursor-pointer">
+                                    <PackageCheck className="w-4 h-4 text-blue-500" /> Receive
+                                </DropdownMenuItem>
+                            )}
+                            {isReceived && (<>
+                                <DropdownMenuItem onClick={() => setOpen("complete")} className="gap-2 cursor-pointer">
+                                    <CheckCircle2 className="w-4 h-4 text-green-500" /> Mark Complete
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setOpen("forward")} className="gap-2 cursor-pointer">
+                                    <ArrowRightCircle className="w-4 h-4 text-indigo-500" /> Forward
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setOpen("return")} className="gap-2 cursor-pointer">
+                                    <Undo2 className="w-4 h-4 text-yellow-500" /> Return
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setOpen("cancel")} className="gap-2 cursor-pointer text-destructive focus:text-destructive">
+                                    <XCircle className="w-4 h-4" /> Cancel Request
+                                </DropdownMenuItem>
+                            </>)}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             )}
 
             <ReceiveDialog documentId={row.id} open={open === "receive"} onClose={() => setOpen(null)} />
-            <ForwardDialog documentId={row.id} departments={departments} open={open === "forward"} onClose={() => setOpen(null)} />
-            <ReturnDialog documentId={row.id} open={open === "return"} onClose={() => setOpen(null)} />
+            <ForwardDialog documentId={row.id} forwardOffices={row.forward_offices} open={open === "forward"} onClose={() => setOpen(null)} />
+            <ReturnDialog documentId={row.id} returnOffices={row.return_offices} open={open === "return"} onClose={() => setOpen(null)} />
             <CompleteDialog documentId={row.id} open={open === "complete"} onClose={() => setOpen(null)} />
             <CancelDialog documentId={row.id} open={open === "cancel"} onClose={() => setOpen(null)} />
         </div>
@@ -272,9 +381,8 @@ function MobileIncomingCard({ row, departments }: { row: IncomingRow; department
 
 // ─── Columns ──────────────────────────────────────────────────────────────────
 
-export function getColumns(departments: Department[]): DataTableColumnDef<IncomingRow>[] {
+export function getColumns(): DataTableColumnDef<IncomingRow>[] {
     return [
-        // Select
         {
             id: "select",
             header: ({ table }) => (
@@ -297,39 +405,27 @@ export function getColumns(departments: Department[]): DataTableColumnDef<Incomi
             enableSorting: false,
             enableHiding: false,
         },
-
-        // Title
         {
             id: "title",
             accessorKey: "title",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
-            cell: ({ row }) => (
-                <span className="text-sm font-medium">{row.original.title}</span>
-            ),
-            mobileCard: (row) => <MobileIncomingCard row={row} departments={departments} />,
+            cell: ({ row }) => <span className="text-sm font-medium">{row.original.title}</span>,
+            mobileCard: (row) => <MobileIncomingCard row={row} />,
         },
-
-        // From Office
         {
             id: "from_office",
             accessorFn: row => row.from_office?.acronym ?? "",
             header: ({ column }) => <DataTableColumnHeader column={column} title="From Office" />,
             cell: ({ row }) => (
-                <span className="text-sm text-muted-foreground">
-                    {row.original.from_office?.acronym ?? "—"}
-                </span>
+                <span className="text-sm text-muted-foreground">{row.original.from_office?.acronym ?? "—"}</span>
             ),
         },
-
-        // Office Status
         {
             accessorKey: "office_status",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
             cell: ({ row }) => <OfficeStatusBadge status={row.original.office_status} />,
             filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
         },
-
-        // Days Stayed
         {
             accessorKey: "days_stayed",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Days Stayed" />,
@@ -338,12 +434,10 @@ export function getColumns(departments: Department[]): DataTableColumnDef<Incomi
             ),
             enableSorting: false,
         },
-
-        // Actions
         {
             id: "actions",
             header: () => <span className="sr-only">Actions</span>,
-            cell: ({ row }) => <ActionCell row={row.original} departments={departments} />,
+            cell: ({ row }) => <ActionCell row={row.original} />,
             enableSorting: false,
             enableHiding: false,
         },

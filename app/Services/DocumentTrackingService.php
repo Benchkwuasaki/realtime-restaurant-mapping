@@ -104,24 +104,17 @@ class DocumentTrackingService
     }
 
     /**
-     * Return to whoever last sent it here.
-     * Looks up the most recent forwarded/returned action targeting this office.
+     * Return the document to a department that has previously touched it.
+     * The frontend passes an explicit to_office_id chosen by the user.
      *
-     * @param array{remarks: ?string} $data
+     * @param array{to_office_id: int, remarks: ?string} $data
      */
     public function return(User $user, DocumentTracking $document, array $data): void
     {
         $officeId = $this->resolveUserDepartmentId($user);
         $this->assertIsCurrentHolder($document, $officeId);
 
-        // Find the office that last sent the document to us
-        $previous = $document->actions()
-            ->whereIn('action', ['forwarded', 'returned'])
-            ->where('to_office_id', $officeId)
-            ->latest('acted_at')
-            ->first();
-
-        $returnToId = $previous?->from_office_id ?? $document->origin_office_id;
+        $returnToId = (int) $data['to_office_id'];
 
         DB::transaction(function () use ($user, $document, $officeId, $returnToId, $data) {
             $document->update([

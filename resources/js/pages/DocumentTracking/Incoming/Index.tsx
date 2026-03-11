@@ -1,4 +1,4 @@
-import { Head, router } from "@inertiajs/react"
+import { Head, router, usePage } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import { FileText, Clock, CheckCircle2, Plus } from "lucide-react"
 import AppLayout from "@/layouts/app-layout"
@@ -8,14 +8,13 @@ import { Button } from "@/components/ui/button"
 import type { BreadcrumbItem } from "@/types"
 import { getColumns } from "./components/columns"
 import { officeStatusOptions } from "./data/data"
-import { type IncomingRow, type Department } from "./data/schema"
+import { type IncomingRow } from "./data/schema"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
     documents: IncomingRow[]
     departmentId: number
-    departments: Department[]
 }
 
 // ─── Breadcrumbs ──────────────────────────────────────────────────────────────
@@ -27,12 +26,14 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function IncomingIndex({ documents, departmentId, departments }: Props) {
+export default function IncomingIndex({ documents, departmentId }: Props) {
+    const { props } = usePage<{ flash?: { success?: string } }>()
+
     const pendingReceipt = documents.filter(d => d.office_status === "pending_receipt").length
     const received = documents.filter(d => d.office_status === "received").length
     const total = documents.length
 
-    const columns = getColumns(departments)
+    const columns = getColumns()
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -50,6 +51,13 @@ export default function IncomingIndex({ documents, departmentId, departments }: 
                         </p>
                     </div>
                 </div>
+
+                {/* Flash message */}
+                {props.flash?.success && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
+                        {props.flash.success}
+                    </div>
+                )}
 
                 {/* Stat cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

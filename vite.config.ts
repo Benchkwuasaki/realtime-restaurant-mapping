@@ -18,7 +18,10 @@ export default defineConfig({
         }),
         tailwindcss(),
     ],
-    
+    server: {
+        port: 5174,
+        strictPort: true,
+    },
     esbuild: {
         jsx: 'automatic',
     },

@@ -6,6 +6,12 @@ export const officeSchema = z.object({
     acronym: z.string(),
 })
 
+export const departmentSchema = z.object({
+    department_id: z.number(),
+    department_name: z.string(),
+    department_acronym: z.string(),
+})
+
 export const incomingRowSchema = z.object({
     id: z.number(),
     title: z.string(),
@@ -15,14 +21,11 @@ export const incomingRowSchema = z.object({
     days_stayed: z.string(),
     origin_office_id: z.number(),
     current_office_id: z.number(),
-})
-
-export const departmentSchema = z.object({
-    department_id: z.number(),
-    department_name: z.string(),
-    department_acronym: z.string(),
+    // Per-document office lists computed by the controller
+    forward_offices: z.array(departmentSchema).default([]),
+    return_offices: z.array(departmentSchema).default([]),
 })
 
 export type Office = z.infer<typeof officeSchema>
-export type IncomingRow = z.infer<typeof incomingRowSchema>
 export type Department = z.infer<typeof departmentSchema>
+export type IncomingRow = z.infer<typeof incomingRowSchema>

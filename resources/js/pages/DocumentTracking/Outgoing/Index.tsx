@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Head, router, useForm, usePage } from "@inertiajs/react"
+import { Head, router, usePage } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import { FileText, GitBranch, Building2, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -27,6 +27,7 @@ import type { BreadcrumbItem } from "@/types"
 import { getColumns } from "./components/columns"
 import { officeStatusOptions } from "./data/data"
 import { type OutgoingRow, type Department } from "./data/schema"
+import { tr } from "date-fns/locale"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,21 +61,28 @@ interface NewRequestModalProps {
 }
 
 function NewRequestModal({ open, departments, onClose }: NewRequestModalProps) {
-    const { data, setData, post, processing, errors, reset } = useForm({
-        title: "",
-        notes: "",
-        to_office_id: "",
-        remarks: "",
-    })
+    const [form, setForm] = useState({ title: "", notes: "", to_office_id: "", remarks: "" })
+    const [errors, setErrors] = useState<Record<string, string>>({})
+    const [processing, setProcessing] = useState(false)
 
     function handleClose() {
-        reset()
+        setForm({ title: "", notes: "", to_office_id: "", remarks: "" })
+        setErrors({})
+        setProcessing(false)
         onClose()
     }
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
-        post(route("document-tracking-outgoing.store"), { onSuccess: handleClose })
+        setProcessing(true)
+        router.post(
+            route("document-tracking-outgoing.store"),
+            form,
+            {
+                onSuccess: handleClose,
+                onError: (errs) => { setErrors(errs); setProcessing(false) },
+            },
+        )
     }
 
     return (
@@ -97,8 +105,8 @@ function NewRequestModal({ open, departments, onClose }: NewRequestModalProps) {
                             </label>
                             <Input
                                 id="title"
-                                value={data.title}
-                                onChange={e => setData("title", e.target.value)}
+                                value={form.title}
+                                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                                 placeholder="e.g. Budget Approval Request"
                                 className="text-sm"
                             />
@@ -111,8 +119,8 @@ function NewRequestModal({ open, departments, onClose }: NewRequestModalProps) {
                                 Forward To <span className="text-destructive">*</span>
                             </label>
                             <Select
-                                value={data.to_office_id}
-                                onValueChange={v => setData("to_office_id", v)}
+                                value={form.to_office_id}
+                                onValueChange={v => setForm(f => ({ ...f, to_office_id: v }))}
                             >
                                 <SelectTrigger id="to_office_id" className="text-sm">
                                     <SelectValue placeholder="Select department…" />
@@ -131,13 +139,12 @@ function NewRequestModal({ open, departments, onClose }: NewRequestModalProps) {
                         {/* Notes */}
                         <div>
                             <label htmlFor="notes" className="block text-xs font-medium text-foreground mb-1.5">
-                                Notes
-                                <span className="ml-1 text-muted-foreground font-normal">(optional)</span>
+                                Notes <span className="text-muted-foreground font-normal">(optional)</span>
                             </label>
                             <Textarea
                                 id="notes"
-                                value={data.notes}
-                                onChange={e => setData("notes", e.target.value)}
+                                value={form.notes}
+                                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                                 placeholder="Additional context or details about this request…"
                                 rows={3}
                                 className="text-sm resize-none"
@@ -145,16 +152,15 @@ function NewRequestModal({ open, departments, onClose }: NewRequestModalProps) {
                             <FieldError message={errors.notes} />
                         </div>
 
-                        {/* Remarks */}
+                        {/* Forwarding Remarks */}
                         <div>
                             <label htmlFor="remarks" className="block text-xs font-medium text-foreground mb-1.5">
-                                Forwarding Remarks
-                                <span className="ml-1 text-muted-foreground font-normal">(optional)</span>
+                                Forwarding Remarks <span className="text-muted-foreground font-normal">(optional)</span>
                             </label>
                             <Textarea
                                 id="remarks"
-                                value={data.remarks}
-                                onChange={e => setData("remarks", e.target.value)}
+                                value={form.remarks}
+                                onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))}
                                 placeholder="Any note to include with the initial forward…"
                                 rows={2}
                                 className="text-sm resize-none"
@@ -171,7 +177,7 @@ function NewRequestModal({ open, departments, onClose }: NewRequestModalProps) {
                         <Button
                             type="submit"
                             size="sm"
-                            disabled={processing || !data.title || !data.to_office_id}
+                            disabled={processing || !form.title || !form.to_office_id}
                             className="text-xs"
                         >
                             {processing ? "Submitting…" : "Create & Forward"}
@@ -199,10 +205,6 @@ export default function OutgoingIndex({ ourOffice, otherOffices, departmentId, d
     const ourTotal = ourOffice.length
     const otherTotal = otherOffices.length
 
-    function openCreate() {
-        setModalOpen(true)
-    }
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Outgoing Requests" />
@@ -219,7 +221,7 @@ export default function OutgoingIndex({ ourOffice, otherOffices, departmentId, d
                     </div>
                 </div>
 
-                {/* Flash message */}
+                {/* Flash */}
                 {props.flash?.success && (
                     <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
                         {props.flash.success}
@@ -271,7 +273,7 @@ export default function OutgoingIndex({ ourOffice, otherOffices, departmentId, d
                     </nav>
                 </div>
 
-                {/* Table — key forces remount on tab switch so filters/search reset */}
+                {/* Table */}
                 <DataTable
                     key={tab}
                     columns={columns}
@@ -282,17 +284,16 @@ export default function OutgoingIndex({ ourOffice, otherOffices, departmentId, d
                     filters={[
                         { columnId: "office_status", title: "Status", options: officeStatusOptions },
                     ]}
-                    addButton={{
-                        label: "New Request",
-                        onClick: openCreate,
-                    }}
                     defaultPageSize={25}
                     onRowClick={row => router.visit(route("document-tracking.show", row.original.id))}
+                    addButton={{
+                        label: 'New Request',
+                        onClick: () => setModalOpen(true),
+                    }}
                 />
 
             </div>
 
-            {/* New Request Modal */}
             <NewRequestModal
                 open={modalOpen}
                 departments={departments}
