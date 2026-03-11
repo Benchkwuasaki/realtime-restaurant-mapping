@@ -99,18 +99,18 @@ class PayrollProcessingController extends Controller
                 'hr_officer_name' => 'nullable|string|max:255',
                 'attendance' => 'nullable|array',
                 'attendance.*.employee_id' => 'required|integer|exists:employees,employee_id',
-                'attendance.*.absent_days' => 'required|numeric|min:0|max:31',  // float: HALF_DAY = 0.5
+                'attendance.*.absent_days' => 'required|numeric|min:0|max:31',
                 'attendance.*.half_days' => 'nullable|integer|min:0',
                 'attendance.*.late_minutes' => 'required|integer|min:0',
+
                 // ── Updated attendance fields from new attendance system ──────
                 'attendance.*.undertime_minutes' => 'nullable|integer|min:0',
                 'attendance.*.total_overtime_hours' => 'nullable|numeric|min:0',
                 'attendance.*.total_work_days' => 'nullable|integer|min:0',
                 'attendance.*.total_work_hours' => 'nullable|numeric|min:0',
-                'attendance.*.total_hours_worked' => 'nullable|numeric|min:0', // legacy alias
+                'attendance.*.total_hours_worked' => 'nullable|numeric|min:0',
+
                 // ── Slip deductions ───────────────────────────────────────────
-                // personal_slip_minutes → chargeable; deducted from payroll.
-                // official_slip_minutes → authorised;  NOT deducted.
                 'attendance.*.personal_slip_minutes' => 'nullable|integer|min:0',
                 'attendance.*.official_slip_minutes' => 'nullable|integer|min:0',
             ]);
@@ -162,7 +162,7 @@ class PayrollProcessingController extends Controller
                         + $data['absent_deduction']
                         + $data['late_deduction']
                         + ($data['undertime_deduction'] ?? 0)
-                        + ($data['personal_slip_deduction'] ?? 0)  // was missing — caused Total Ded. ≠ Gross − Net Pay
+                        + ($data['personal_slip_deduction'] ?? 0)
                         + $data['gsis_mpl']
                         + $data['gsis_emergency']
                         + $data['pag_ibig_mpl']
@@ -214,72 +214,6 @@ class PayrollProcessingController extends Controller
             ]);
         }
     }
-
-    // public function register(): Response
-    // {
-    //     $this->activityLogService->createLog([
-    //         'user_id' => Auth::id(),
-    //         'module' => 'payroll',
-    //         'description' => 'Viewed Payroll Register Page',
-    //     ]);
-
-    //     return Inertia::render('Payroll/Register/Index');
-    // }
-
-    // public function paySlip(): Response
-    // {
-    //     $this->activityLogService->createLog([
-    //         'user_id' => Auth::id(),
-    //         'module' => 'payroll',
-    //         'description' => 'Viewed Pay Slip Generation Page',
-    //     ]);
-
-    //     return Inertia::render('Payroll/PaySlipGeneration/Index');
-    // }
-
-    // public function allowances(): Response
-    // {
-    //     $this->activityLogService->createLog([
-    //         'user_id' => Auth::id(),
-    //         'module' => 'payroll',
-    //         'description' => 'Viewed Allowances Management Page',
-    //     ]);
-
-    //     return Inertia::render('Payroll/AllowancesManagement/Index');
-    // }
-
-    // public function loanEntry(): Response
-    // {
-    //     $this->activityLogService->createLog([
-    //         'user_id' => Auth::id(),
-    //         'module' => 'payroll',
-    //         'description' => 'Viewed Loan Entry Page',
-    //     ]);
-
-    //     return Inertia::render('Payroll/LoanEntry/Index');
-    // }
-
-    // public function otherDeductions(): Response
-    // {
-    //     $this->activityLogService->createLog([
-    //         'user_id' => Auth::id(),
-    //         'module' => 'payroll',
-    //         'description' => 'Viewed Other Deduction Entry Page',
-    //     ]);
-
-    //     return Inertia::render('Payroll/OtherDeductionEntry/Index');
-    // }
-
-    // public function deductionSettings(): Response
-    // {
-    //     $this->activityLogService->createLog([
-    //         'user_id' => Auth::id(),
-    //         'module' => 'payroll',
-    //         'description' => 'Viewed Payroll Deduction Settings Page',
-    //     ]);
-
-    //     return Inertia::render('Payroll/PayrollDeductionSettings/Index');
-    // }
 
     /**
      * Create a new payroll period (must not overlap existing ones).
@@ -341,6 +275,7 @@ class PayrollProcessingController extends Controller
 
     /**
      * Step 1 — Early duplicate check.
+     * TODO: A single employee must not have more than one payroll record for the same payroll period and payroll classification.
      */
     public function checkDuplicate(Request $request): \Illuminate\Http\JsonResponse
     {
@@ -417,7 +352,6 @@ class PayrollProcessingController extends Controller
             $start = Carbon::parse($validated['start_date'])->startOfDay();
             $end = Carbon::parse($validated['end_date'])->endOfDay();
 
-            // ── Build list of working dates (Mon–Fri, excluding holidays) ─────
             try {
                 $holidays = DB::table('holidays')
                     ->whereBetween('holiday_date', [$start->toDateString(), $end->toDateString()])
@@ -452,7 +386,6 @@ class PayrollProcessingController extends Controller
                 return response()->json([]);
             }
 
-            // ── Load employees filtered by type ───────────────────────────────
             $empQuery = Employee::where('status', true)
                 ->select(['employee_id', 'employment_classification']);
 
@@ -467,15 +400,6 @@ class PayrollProcessingController extends Controller
             }
 
             // ── Fetch attendance records ──────────────────────────────────────
-            //
-            // Confirmed columns (from AttendanceRecord.php $fillable / $casts):
-            //   date          DATE     — the calendar day
-            //   status        ENUM     — 'PRESENT' | 'HALF_DAY' | 'ABSENT'
-            //   late_minutes  INT      — minutes late (null when absent)
-            //   work_minutes  INT      — total minutes worked that day (null when absent)
-            //
-            // Slip data (personal / official) is NOT stored in attendance_records.
-            // It lives in the whereabout_slips table and is queried separately below.
             try {
                 $rows = DB::table('attendance_records')
                     ->whereIn('employee_id', $employeeIds)
@@ -508,25 +432,7 @@ class PayrollProcessingController extends Controller
             // ── Query whereabout_slips for personal / official slip minutes ──────
             //
             // Slip deductions are stored in a separate whereabout_slips table, NOT
-            // in attendance_records. We build a lookup map:
-            //   $slipMinutesByEmployee[employee_id][date]['personal'] = int
-            //   $slipMinutesByEmployee[employee_id][date]['official'] = int
-            //
-            // ⚠️  The query below uses column names that are ASSUMED based on the
-            //     WhereaoutSlip model (not yet reviewed). Verify and adjust:
-            //       - Table name:        whereabout_slips
-            //       - Type column:       slip_type  (values: 'Personal' | 'Official')
-            //       - Date column:       date       (the calendar day of the slip)
-            //       - Duration column:   duration_minutes  (integer minutes)
-            //     Once WhereaoutSlip.php is shared these assumptions will be corrected.
-            // ── Confirmed schema (WhereaboutSlip.php) ────────────────────────────
-            //   Table:        whereabout_slips
-            //   employee_id   FK to employees
-            //   date_filed    DATE  — the day the slip was filed / absence occurred
-            //   purpose_type  ENUM  — 'personal' | 'official'
-            //   minutes_gone  INT   — computed on logReturn; null until returned
-            //   return_status       — only 'returned' rows are complete and billable
-            //
+            // in attendance_records.
             // Only include slips where:
             //   return_status = 'returned'  (employee has come back)
             //   minutes_gone  IS NOT NULL   (duration is known)
@@ -568,8 +474,6 @@ class PayrollProcessingController extends Controller
                     }
                 }
             } catch (\Exception $e) {
-                // If whereabout_slips is inaccessible, default all slip minutes to 0.
-                // Payroll will still proceed; HR can enter slip values manually in Step 2.
                 Log::warning('whereabout_slips query failed (slips defaulted to 0): '.$e->getMessage());
                 $slipMinutesByEmployee = [];
             }
@@ -602,7 +506,6 @@ class PayrollProcessingController extends Controller
                 $officialSlipMinutes = 0;
 
                 foreach ($workingDates as $date) {
-                    // No record at all for this working day → absent.
                     if (! $empRecords->has($date)) {
                         $absentDays += 1.0;
 
@@ -611,7 +514,6 @@ class PayrollProcessingController extends Controller
 
                     $record = $empRecords->get($date);
 
-                    // Record exists but status is ABSENT.
                     if ($record->status === 'ABSENT') {
                         $absentDays += 1.0;
 
@@ -619,12 +521,9 @@ class PayrollProcessingController extends Controller
                     }
 
                     // ── Attended day (PRESENT or HALF_DAY) ───────────────────
-                    // work_minutes is the confirmed column (AttendanceRecord.php).
                     $dayLate = max(0, (int) $record->late_minutes);
                     $dayWorkMinutes = max(0, (int) $record->work_minutes);
 
-                    // Slip minutes for this date are sourced from whereabout_slips,
-                    // not from attendance_records. See the pre-built lookup map above.
                     $dayPersonalSlip = (int) ($slipMinutesByEmployee[$empId][$date]['personal'] ?? 0);
                     $dayOfficialSlip = (int) ($slipMinutesByEmployee[$empId][$date]['official'] ?? 0);
 
@@ -639,9 +538,9 @@ class PayrollProcessingController extends Controller
                     // within the worked half. Using 480 would double-count the unworked half:
                     // once via absentDeduction and again via undertimeDeduction.
                     $isHalfDay = $record->status === 'HALF_DAY';
-                    $fullExpectedMinutes = 8 * 60; // 480 min standard government workday
+                    $fullExpectedMinutes = 8 * 60;
                     $effectiveExpectedMinutes = $isHalfDay
-                        ? (int) round($fullExpectedMinutes / 2)  // 240 min for half-day
+                        ? (int) round($fullExpectedMinutes / 2)
                         : $fullExpectedMinutes;
 
                     $dayUndertime = max(
@@ -671,19 +570,24 @@ class PayrollProcessingController extends Controller
                 $result[] = [
                     'employee_id' => $empId,
                     // ── Absence metrics ──────────────────────────────────────
-                    'absent_days' => $absentDays,          // float (0.5 = half-day)
-                    'half_days' => $halfDays,             // integer count of HALF_DAY records
+                    'absent_days' => $absentDays,
+                    'half_days' => $halfDays,
+
                     // ── Time-deviation metrics ───────────────────────────────
                     'late_minutes' => $lateMinutes,
-                    'undertime_minutes' => $undertimeMinutes,     // derived, not stored in DB
+                    'undertime_minutes' => $undertimeMinutes,
+
                     // ── Work metrics ─────────────────────────────────────────
                     'total_work_days' => $totalWorkDays,
                     'total_work_hours' => round($totalWorkHours, 2),
-                    'total_hours_worked' => round($totalWorkHours, 2), // alias for legacy callers
+                    'total_hours_worked' => round($totalWorkHours, 2),
+
                     // ── Slip deductions ──────────────────────────────────────
-                    'personal_slip_minutes' => $personalSlipMinutes,  // chargeable → deducted from pay
-                    'official_slip_minutes' => $officialSlipMinutes,  // authorised → display only
+                    'personal_slip_minutes' => $personalSlipMinutes,
+                    'official_slip_minutes' => $officialSlipMinutes,
+
                     // ── Overtime (not stored; HR enters manually in Step 2) ─
+                    // Remove this. Overtime is converted to Leave Credits
                     'total_overtime_hours' => 0.0,
                 ];
             }
@@ -723,16 +627,14 @@ class PayrollProcessingController extends Controller
             'hr_officer_name' => 'nullable|string|max:255',
             'attendance' => 'nullable|array',
             'attendance.*.employee_id' => 'required|integer|exists:employees,employee_id',
-            'attendance.*.absent_days' => 'required|numeric|min:0|max:31',  // float: HALF_DAY = 0.5
+            'attendance.*.absent_days' => 'required|numeric|min:0|max:31',
             'attendance.*.half_days' => 'nullable|integer|min:0',
             'attendance.*.late_minutes' => 'required|integer|min:0',
-            // ── Updated attendance fields from new attendance system ──────
             'attendance.*.undertime_minutes' => 'nullable|integer|min:0',
             'attendance.*.total_overtime_hours' => 'nullable|numeric|min:0',
             'attendance.*.total_work_days' => 'nullable|integer|min:0',
             'attendance.*.total_work_hours' => 'nullable|numeric|min:0',
-            'attendance.*.total_hours_worked' => 'nullable|numeric|min:0', // legacy alias
-            // ── Slip deductions ───────────────────────────────────────────
+            'attendance.*.total_hours_worked' => 'nullable|numeric|min:0',
             'attendance.*.personal_slip_minutes' => 'nullable|integer|min:0',
             'attendance.*.official_slip_minutes' => 'nullable|integer|min:0',
         ]);
@@ -894,25 +796,17 @@ class PayrollProcessingController extends Controller
             = $this->resolveAllowances($employee, $mandatoryAllowances);
 
         // ── 3. Absent / Late / Undertime / Overtime / Slip ───────────────────
-        // Extract all attendance metrics from the updated attendance system.
-        // absent_days is a float: PRESENT=0, HALF_DAY=0.5, ABSENT=1.0 per day.
-        // personal_slip_minutes → chargeable; deducted proportionally from salary.
-        // official_slip_minutes → authorised;  NEVER generates a payroll deduction.
         $absentDays = (float) ($attendance['absent_days'] ?? 0);
-        // half_days is the integer count of HALF_DAY records.
-        // absent_days already includes 0.5 per half-day, so half_day_deduction
-        // is a display-only sub-breakdown of absentDeduction — NOT a separate charge.
         $halfDays = (int) ($attendance['half_days'] ?? 0);
         $lateMinutes = (int) ($attendance['late_minutes'] ?? 0);
         $undertimeMinutes = (int) ($attendance['undertime_minutes'] ?? 0);
         $overtimeHours = (float) ($attendance['total_overtime_hours'] ?? 0.0);
         $totalWorkDays = (int) ($attendance['total_work_days'] ?? 0);
-        // Prefer the new 'total_work_hours' key; fall back to legacy 'total_hours_worked'.
         $totalHoursWorked = (float) ($attendance['total_work_hours']
                                       ?? $attendance['total_hours_worked']
                                       ?? 0.0);
         $personalSlipMinutes = (int) ($attendance['personal_slip_minutes'] ?? 0);
-        $officialSlipMinutes = (int) ($attendance['official_slip_minutes'] ?? 0); // for display only
+        $officialSlipMinutes = (int) ($attendance['official_slip_minutes'] ?? 0);
 
         // Log a warning when attendance data looks suspicious so HR can investigate.
         if ($absentDays > 0 && $totalWorkDays > 0 && ($absentDays + $totalWorkDays) > 31) {
@@ -929,9 +823,8 @@ class PayrollProcessingController extends Controller
             ? round($monthlyBasic / $settings->working_days_divisor, 6)
             : 0.0;
 
-        // Derive work minutes per day from the employee's stored schedule.
-        // Falls back to standard Philippine government 8-hour (480-minute) day.
-        $workMinutesPerDay = 8 * 60; // default: 480 minutes
+        // TODO: Should 8 be dynamic??
+        $workMinutesPerDay = 8 * 60;
 
         $schedStart = $employee->work_schedule_start; // e.g. "08:00:00"
         $schedEnd = $employee->work_schedule_end;   // e.g. "17:00:00"
@@ -951,29 +844,20 @@ class PayrollProcessingController extends Controller
 
         // ── Attendance-based deductions ───────────────────────────────────────
         $absentDeduction = round($absentDays * $dailyRate, 2);
-        // half_day_deduction is the portion of absentDeduction attributable to
-        // half-days (0.5 × dailyRate per half-day). It is display-only — already
-        // included in absentDeduction, so must NOT be added to totalDeductions.
         $halfDayDeduction = round($halfDays * $dailyRate * 0.5, 2);
         $lateDeduction = round($lateMinutes * $minuteRate, 2);
-        // Undertime deduction uses the same per-minute rate as late deduction.
         $undertimeDeduction = round($undertimeMinutes * $minuteRate, 2);
 
         // ── Personal Slip deduction ───────────────────────────────────────────
-        // Personal slips are chargeable: the employee's salary is reduced by the
-        // equivalent minutes worked under the slip.
-        // Official slips are authorised — $officialSlipMinutes is tracked for
-        // reporting but MUST NOT produce a deduction.
+
         $personalSlipDeduction = round($personalSlipMinutes * $minuteRate, 2);
 
         // ── Overtime pay ──────────────────────────────────────────────────────
-        // Philippine Civil Service: regular overtime = 125% of hourly rate.
-        // Hourly rate = (monthly_basic / working_days_divisor) / (work_minutes_per_day / 60).
+        // TODO: Can be removed since currently, overtime is converted to Leave Credits
         $hourlyRate = $workMinutesPerDay > 0 ? round($dailyRate / ($workMinutesPerDay / 60), 6) : 0.0;
         $overtimePay = round($overtimeHours * $hourlyRate * 1.25, 2);
 
         // ── 4. Gross Pay ──────────────────────────────────────────────────────
-        // Overtime pay is added to gross because it is additional earned income.
         $gross = $basicPay + $pera + $riceAllowance + $uniformAllowance + $overtimePay;
 
         // ── 5. Statutory Deductions ───────────────────────────────────────────
@@ -1011,11 +895,10 @@ class PayrollProcessingController extends Controller
         $withholdingTax = $monthlyWithholdingTax;
 
         // ── Internal Org Deductions ───────────────────────────────────────────
-        // Fetched for all cut-offs — service_category determines when each applies
-
+        // 2nd cut off only
         $internalOrgItems = [];
-        $internalOrgSavings = 0.0; // Savings + Share_Capital → both cut-offs
-        $internalOrgSecond = 0.0; // Loan + Dues             → 2nd cut-off only
+        $internalOrgSavings = 0.0;
+        $internalOrgSecond = 0.0;
         $internalOrgTotal = 0.0;
 
         $internalOrgDeductions = InternalOrgDeduction::with([
@@ -1033,7 +916,6 @@ class PayrollProcessingController extends Controller
 
             $isBothCutOff = in_array($category, InternalOrganizationService::BOTH_CUTOFF_CATEGORIES);
 
-            // Legacy rows with no service linked default to 2nd cut-off only
             $isSecondOnly = is_null($category)
                 || in_array($category, InternalOrganizationService::SECOND_CUTOFF_ONLY_CATEGORIES);
 
@@ -1093,8 +975,6 @@ class PayrollProcessingController extends Controller
                 } elseif (in_array($sourceLower, ['pag-ibig', 'pagibig', 'hdmf'])) {
                     $pagIbigMpl += (float) $loan->semi_monthly_deduction;
                 } elseif ($loan->isInternalOrg()) {
-                    // Internal org loans go into the ama_y2k_union bucket
-                    // (2nd cut-off only, same as org dues)
                     $amt = (float) $loan->semi_monthly_deduction;
                     $amaY2kUnion += $amt;
                     $internalOrgLoanTotal += $amt;
@@ -1131,7 +1011,7 @@ class PayrollProcessingController extends Controller
                 ];
             }
 
-            $amaY2kUnion += $internalOrgSecond; // ← org dues from internal orgs (2nd cut-off)
+            $amaY2kUnion += $internalOrgSecond;
         }
 
         // ── 7. Priority-order floor rule ──────────────────────────────────────
@@ -1154,9 +1034,6 @@ class PayrollProcessingController extends Controller
         $priorityRows = PayrollDeductionPriorityOrder::ordered();
         $floor = (float) $settings->minimum_take_home_pay;
 
-        // ── Fallback: if priority table is not seeded, skip floor bucketing ──
-        // All pre-computed deduction amounts are used as-is; floor check is
-        // purely informational (same as the legacy behaviour).
         if ($priorityRows->isEmpty()) {
             if ($isSecondCutOff) {
                 $rawNetPay = $gross - $absentDeduction - $lateDeduction - $undertimeDeduction

@@ -96,51 +96,36 @@ interface ComputedRecord {
     pera: number;
     rice_allowance: number;
     uniform_allowance: number;
-    /** Overtime pay added to gross (computed from total_overtime_hours × hourly rate × 1.25) */
     overtime_pay: number;
-    /** Half-day count (separate from absent_days — deducted at 0.5 × daily rate) */
     half_days: number;
-    /** Half-day deduction = half_days × daily_rate × 0.5 */
     half_day_deduction: number;
-    /** Personal slip minutes (chargeable — deducted at per-minute rate) */
     personal_slip_minutes: number;
-    /** Personal slip deduction = personal_slip_minutes × per-minute rate */
     personal_slip_deduction: number;
-    /** Official slip minutes (display only — no deduction) */
     official_slip_minutes: number;
     gross_pay: number;
     gsis_premium: number;
     philhealth: number;
     pag_ibig: number;
     withholding_tax: number;
-    /** Full-day absents only (HALF_DAY is tracked separately in half_days) */
     absent_days: number;
     absent_deduction: number;
     late_minutes: number;
     late_deduction: number;
-    /** Undertime minutes from updated attendance system */
     undertime_minutes: number;
-    /** Undertime deduction = undertime_minutes × per-minute rate */
     undertime_deduction: number;
-    /** Total days actually worked within the payroll period */
     total_work_days: number;
-    /** Total hours worked (sum of daily total_hours_worked from attendance records) */
     total_hours_worked: number;
-    /** Total overtime hours (sum of overtime_minutes ÷ 60) */
     total_overtime_hours: number;
 
     gsis_mpl: number;
     gsis_emergency: number;
     pag_ibig_mpl: number;
-    ama_y2k_union: number; // org dues + org loans (2nd cut-off) + NS&ND/Misc
+    ama_y2k_union: number;
     water_bill: number;
-    // Savings + Share_Capital — deducted on BOTH cut-offs
     internal_org_savings: number;
-    // Dues + Org Loans — 2nd cut-off only
     internal_org_second: number;
-    internal_org_deductions: number; // total of savings + second (for display)
+    internal_org_deductions: number;
     other_deductions: number;
-    // Per-item breakdown for org dues (no loans here anymore)
     internal_org_items: Array<{
         id: number;
         org_name: string;
@@ -504,7 +489,8 @@ export default function Index({
                     internalOrgSavings: r.internal_org_savings ?? 0,
                     internalOrgSecond: r.internal_org_second ?? 0,
                     internalOrgDeductions: r.internal_org_deductions ?? 0,
-                    otherDeductionsMisc: r.other_deductions ?? 0,
+                    otherDeductionsMisc:
+                        (r.other_deductions ?? 0) + (r.water_bill ?? 0),
                     attendanceDeduction:
                         (r.absent_deduction ?? 0) +
                         (r.half_day_deduction ?? 0) +
@@ -2079,7 +2065,7 @@ export default function Index({
                                                     </th>
                                                     {/* Deductions group — half-day, undertime, personal slip cols */}
                                                     <th
-                                                        colSpan={13}
+                                                        colSpan={12}
                                                         className="border-r border-b bg-red-50 px-3 py-1.5 text-center text-red-700"
                                                     >
                                                         Deductions{' '}
@@ -2147,12 +2133,12 @@ export default function Index({
                                                         </div>
                                                     </th>
                                                     {/* Official Slip sub-col — display only, no deduction */}
-                                                    <th className="border-r border-b bg-slate-50 px-3 py-1.5 text-center">
+                                                    {/* <th className="border-r border-b bg-slate-50 px-3 py-1.5 text-center">
                                                         <div>Official Slip</div>
                                                         <div className="text-[10px] font-normal text-slate-400">
                                                             mins · exempt
                                                         </div>
-                                                    </th>
+                                                    </th> */}
                                                     <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
                                                         GSIS
                                                     </th>
@@ -2367,7 +2353,7 @@ export default function Index({
                                                                 )}
                                                             </td>
                                                             {/* Official Slip — read-only, no deduction applied */}
-                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                            {/* <td className="border-r px-3 py-2.5 text-right tabular-nums">
                                                                 {(employee.officialSlipMinutes ??
                                                                     0) > 0 ? (
                                                                     <div>
@@ -2385,7 +2371,7 @@ export default function Index({
                                                                         —
                                                                     </span>
                                                                 )}
-                                                            </td>
+                                                            </td> */}
                                                             <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
                                                                 {peso(
                                                                     employee.gsis,
@@ -2595,7 +2581,7 @@ export default function Index({
                                                         )}
                                                     </td>
                                                     {/* Official Slip total — shows total exempt minutes */}
-                                                    <td className="border-r px-3 py-2.5 text-right text-slate-400 tabular-nums">
+                                                    {/* <td className="border-r px-3 py-2.5 text-right text-slate-400 tabular-nums">
                                                         <div className="text-[11px]">
                                                             {currentEmployees.reduce(
                                                                 (s, e) =>
@@ -2609,7 +2595,7 @@ export default function Index({
                                                         <div className="text-[11px] italic">
                                                             exempt
                                                         </div>
-                                                    </td>
+                                                    </td> */}
                                                     <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
                                                         {peso(
                                                             currentEmployees.reduce(
@@ -4266,13 +4252,13 @@ export default function Index({
                                                     }
                                                 />
                                             )}
-                                            {(raw.official_slip_minutes ?? 0) >
+                                            {/* {(raw.official_slip_minutes ?? 0) >
                                                 0 && (
                                                 <RowLine
                                                     label={`Official Slip (${raw.official_slip_minutes ?? 0} min — authorized, no deduction)`}
                                                     amount={0}
                                                 />
-                                            )}
+                                            )} */}
                                         </>
                                     )}
 
