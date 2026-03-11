@@ -1,8 +1,8 @@
 "use client"
 
+import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
 
-import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { type LeaveApplication } from "../data/schema"

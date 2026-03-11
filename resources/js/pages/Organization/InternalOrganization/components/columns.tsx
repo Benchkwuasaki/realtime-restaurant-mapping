@@ -30,6 +30,37 @@ interface ColumnOptions {
     onEdit: (org: InternalOrganization) => void
 }
 
+// ─── Status Toggle Badge ───────────────────────────────────────────────────────
+
+function StatusBadge({ org }: { org: InternalOrganization }) {
+    const [processing, setProcessing] = useState(false)
+
+    function handleToggle(e: React.MouseEvent) {
+        e.stopPropagation()
+        setProcessing(true)
+        router.patch(
+            route("internal-organization.toggle-status", org.internal_organization_id),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setProcessing(false),
+            }
+        )
+    }
+
+    return (
+        <Badge
+            asChild
+            variant={org.status ? "default" : "destructive"}
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+        >
+            <button onClick={handleToggle} disabled={processing}>
+                {processing ? "Saving…" : org.status ? "Active" : "Inactive"}
+            </button>
+        </Badge>
+    )
+}
+
 // ─── Mobile Delete Confirm Dialog ─────────────────────────────────────────────
 
 interface DeleteConfirmDialogProps {
@@ -121,7 +152,9 @@ function MobileOrgCard({ row, onEdit }: MobileOrgCardProps) {
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-muted-foreground">{row.type}</span>
+                        <span className="text-xs text-muted-foreground">
+                            {row.org_type?.internal_org_type ?? "—"}
+                        </span>
                         {row.head && (
                             <span className="text-xs text-muted-foreground">· {row.head}</span>
                         )}
@@ -228,7 +261,8 @@ export const columns = ({ onEdit }: ColumnOptions): ColumnDef<InternalOrganizati
         ),
     },
     {
-        accessorKey: "type",
+        id: "type",
+        accessorFn: (row) => row.org_type?.internal_org_type ?? "—",
         header: ({ column }) => (
             <DataTableColumnHeader column={column} title="Type" />
         ),
