@@ -56,9 +56,8 @@ function StatusBadge({ employee }: { employee: Employee }) {
     <Badge
       variant={isActive ? "default" : "destructive"}
       onClick={handleClick}
-      className={`min-w-[70px] justify-center transition-opacity ${
-        isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:opacity-80"
-      }`}
+      className={`min-w-[70px] justify-center transition-opacity ${isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:opacity-80"
+        }`}
     >
       {isActive ? "Active" : "Inactive"}
     </Badge>
@@ -169,6 +168,17 @@ export const columns: DataTableColumnDef<Employee>[] = [
     ),
     cell: ({ row }) => (
       <div className="min-w-[160px]">{row.getValue("email")}</div>
+    ),
+    enableSorting: true,
+    enableHiding: true,
+  },
+  {
+    accessorKey: "employmentClassification",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Classification" />
+    ),
+    cell: ({ row }) => (
+      <div className="min-w-[120px]">{row.getValue("employmentClassification")}</div>
     ),
     enableSorting: true,
     enableHiding: true,

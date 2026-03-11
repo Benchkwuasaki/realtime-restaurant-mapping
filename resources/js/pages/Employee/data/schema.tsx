@@ -9,6 +9,7 @@ export const employeeSchema = z.object({
   department: z.string(),
   contactNumber: z.string(),
   email: z.string(),
+  employmentClassification: z.string(), 
   status: z.boolean(), 
 })
 
