@@ -295,6 +295,10 @@ export default function Index({
                 official_slip_minutes: number;
                 total_work_days: number;
                 total_hours_worked: number;
+                /** Total work hours — mirrors total_hours_worked for AttendanceRecord compatibility */
+                total_work_hours: number;
+                /** Total overtime hours (sum of overtime_minutes ÷ 60) */
+                total_overtime_hours: number;
             }
         >
     >({});
@@ -365,11 +369,15 @@ export default function Index({
             number,
             {
                 absent_days: number;
+                half_days: number;
                 late_minutes: number;
                 undertime_minutes: number;
-                total_overtime_hours: number;
+                personal_slip_minutes: number;
+                official_slip_minutes: number;
                 total_work_days: number;
                 total_hours_worked: number;
+                total_work_hours: number;
+                total_overtime_hours: number;
             }
         > = {};
         filteredEmployees.forEach((e) => {
@@ -382,6 +390,8 @@ export default function Index({
                 official_slip_minutes: 0,
                 total_work_days: 0,
                 total_hours_worked: 0,
+                total_work_hours: 0,
+                total_overtime_hours: 0,
             };
         });
         setAttendance(init);
@@ -862,8 +872,12 @@ export default function Index({
                                     personal_slip_minutes ?? 0,
                                 official_slip_minutes:
                                     official_slip_minutes ?? 0,
-                                total_work_days: total_work_days ?? 0,
+                                total_work_days: Math.round(
+                                    total_work_days ?? 0,
+                                ),
                                 total_hours_worked: total_hours_worked ?? 0,
+                                total_work_hours: total_hours_worked ?? 0,
+                                total_overtime_hours: 0,
                             };
                         },
                     );
@@ -931,7 +945,9 @@ export default function Index({
             | 'undertime_minutes'
             | 'personal_slip_minutes'
             | 'official_slip_minutes'
-            | 'total_work_days',
+            | 'total_work_days'
+            | 'total_work_hours'
+            | 'total_overtime_hours',
         value: string,
     ) => {
         setAttendance((prev) => ({
@@ -1004,9 +1020,8 @@ export default function Index({
                         0,
                         attendance[id]?.official_slip_minutes ?? 0,
                     ),
-                    total_work_days: Math.max(
-                        0,
-                        attendance[id]?.total_work_days ?? 0,
+                    total_work_days: Math.round(
+                        Math.max(0, attendance[id]?.total_work_days ?? 0),
                     ),
                     total_hours_worked: Math.max(
                         0,
@@ -1953,7 +1968,7 @@ export default function Index({
                  * This step requires a two-row grouped header:
                  *
                  *   Row 1 (group labels):  #  | Employee | ── Earnings ──── | ──────────────── Deductions ──────────────── | Net Pay | Remarks
-                 *   Row 2 (sub-columns):             | Basic Pay | Allowances | Gross | Absent | Tardy | GSIS | PH | PI | Tax | Org | Other | Total |
+                 *   Row 2 (sub-columns):             | Basic Pay | Allowances | Gross | Absent | Late | Undertime | Personal Slip | Official Slip | GSIS | PH | PI | Tax | Org | Other | Total |
                  *
                  * These groups use colSpan/rowSpan with distinct background
                  * colour bands (blue for Earnings, red for Deductions, green
@@ -2113,7 +2128,7 @@ export default function Index({
                                                         </div>
                                                     </th>
                                                     <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
-                                                        <div>Tardy</div>
+                                                        <div>Late</div>
                                                         <div className="text-[10px] font-normal text-orange-400">
                                                             mins / amt
                                                         </div>
@@ -2124,18 +2139,18 @@ export default function Index({
                                                             mins / amt
                                                         </div>
                                                     </th>
-                                                    {/* Half-Day sub-col */}
-                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
-                                                        <div>Half-Day</div>
-                                                        <div className="text-[10px] font-normal text-orange-400">
-                                                            days / amt
-                                                        </div>
-                                                    </th>
                                                     {/* Personal Slip sub-col */}
                                                     <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
                                                         <div>Personal Slip</div>
                                                         <div className="text-[10px] font-normal text-orange-400">
                                                             mins / amt
+                                                        </div>
+                                                    </th>
+                                                    {/* Official Slip sub-col — display only, no deduction */}
+                                                    <th className="border-r border-b bg-slate-50 px-3 py-1.5 text-center">
+                                                        <div>Official Slip</div>
+                                                        <div className="text-[10px] font-normal text-slate-400">
+                                                            mins · exempt
                                                         </div>
                                                     </th>
                                                     <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
@@ -2240,20 +2255,41 @@ export default function Index({
                                                                 )}
                                                             </td>
                                                             {/* Deductions */}
-                                                            {/* Absent */}
+                                                            {/* Absent — shows full absents + half-days breakdown */}
                                                             <td className="border-r px-3 py-2.5 text-right tabular-nums">
                                                                 {employee.absentDays >
                                                                 0 ? (
                                                                     <div>
                                                                         <div className="text-[11px] text-orange-500">
-                                                                            {
-                                                                                employee.absentDays
-                                                                            }{' '}
-                                                                            day
-                                                                            {employee.absentDays !==
-                                                                            1
-                                                                                ? 's'
-                                                                                : ''}
+                                                                            {(() => {
+                                                                                const fullAbsent =
+                                                                                    employee.absentDays -
+                                                                                    (employee.halfDays ??
+                                                                                        0) *
+                                                                                        0.5;
+                                                                                const halfDays =
+                                                                                    employee.halfDays ??
+                                                                                    0;
+                                                                                const parts: string[] =
+                                                                                    [];
+                                                                                if (
+                                                                                    fullAbsent >
+                                                                                    0
+                                                                                )
+                                                                                    parts.push(
+                                                                                        `${fullAbsent} absent`,
+                                                                                    );
+                                                                                if (
+                                                                                    halfDays >
+                                                                                    0
+                                                                                )
+                                                                                    parts.push(
+                                                                                        `${halfDays} half-day${halfDays !== 1 ? 's' : ''}`,
+                                                                                    );
+                                                                                return parts.join(
+                                                                                    ' + ',
+                                                                                );
+                                                                            })()}
                                                                         </div>
                                                                         <div className="font-medium text-orange-600">
                                                                             {peso(
@@ -2267,79 +2303,45 @@ export default function Index({
                                                                     </span>
                                                                 )}
                                                             </td>
-                                                            {/* Tardy */}
+                                                            {/* Late */}
                                                             <td className="border-r px-3 py-2.5 text-right tabular-nums">
-                                                                {employee.lateMinutes >
-                                                                0 ? (
-                                                                    <div>
-                                                                        <div className="text-[11px] text-orange-500">
-                                                                            {
-                                                                                employee.lateMinutes
-                                                                            }{' '}
-                                                                            min
-                                                                        </div>
-                                                                        <div className="font-medium text-orange-600">
-                                                                            {peso(
-                                                                                employee.lateDeduction,
-                                                                            )}
-                                                                        </div>
+                                                                <div>
+                                                                    <div
+                                                                        className={`text-[11px] ${employee.lateMinutes > 0 ? 'text-orange-500' : 'text-slate-400'}`}
+                                                                    >
+                                                                        {
+                                                                            employee.lateMinutes
+                                                                        }{' '}
+                                                                        min
                                                                     </div>
-                                                                ) : (
-                                                                    <span className="text-slate-400">
-                                                                        —
-                                                                    </span>
-                                                                )}
+                                                                    <div
+                                                                        className={`font-medium ${employee.lateMinutes > 0 ? 'text-orange-600' : 'text-slate-400'}`}
+                                                                    >
+                                                                        {peso(
+                                                                            employee.lateDeduction,
+                                                                        )}
+                                                                    </div>
+                                                                </div>
                                                             </td>
                                                             {/* Undertime */}
                                                             <td className="border-r px-3 py-2.5 text-right tabular-nums">
-                                                                {(employee.undertimeMinutes ??
-                                                                    0) > 0 ? (
-                                                                    <div>
-                                                                        <div className="text-[11px] text-orange-500">
-                                                                            {employee.undertimeMinutes ??
-                                                                                0}{' '}
-                                                                            min
-                                                                        </div>
-                                                                        <div className="font-medium text-orange-600">
-                                                                            {peso(
-                                                                                employee.undertimeDeduction ??
-                                                                                    0,
-                                                                            )}
-                                                                        </div>
+                                                                <div>
+                                                                    <div
+                                                                        className={`text-[11px] ${(employee.undertimeMinutes ?? 0) > 0 ? 'text-orange-500' : 'text-slate-400'}`}
+                                                                    >
+                                                                        {employee.undertimeMinutes ??
+                                                                            0}{' '}
+                                                                        min
                                                                     </div>
-                                                                ) : (
-                                                                    <span className="text-slate-400">
-                                                                        —
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            {/* Half-Day */}
-                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
-                                                                {(employee.halfDays ??
-                                                                    0) > 0 ? (
-                                                                    <div>
-                                                                        <div className="text-[11px] text-orange-500">
-                                                                            {employee.halfDays ??
-                                                                                0}{' '}
-                                                                            day
-                                                                            {(employee.halfDays ??
-                                                                                0) !==
-                                                                            1
-                                                                                ? 's'
-                                                                                : ''}
-                                                                        </div>
-                                                                        <div className="font-medium text-orange-600">
-                                                                            {peso(
-                                                                                employee.halfDayDeduction ??
-                                                                                    0,
-                                                                            )}
-                                                                        </div>
+                                                                    <div
+                                                                        className={`font-medium ${(employee.undertimeMinutes ?? 0) > 0 ? 'text-orange-600' : 'text-slate-400'}`}
+                                                                    >
+                                                                        {peso(
+                                                                            employee.undertimeDeduction ??
+                                                                                0,
+                                                                        )}
                                                                     </div>
-                                                                ) : (
-                                                                    <span className="text-slate-400">
-                                                                        —
-                                                                    </span>
-                                                                )}
+                                                                </div>
                                                             </td>
                                                             {/* Personal Slip */}
                                                             <td className="border-r px-3 py-2.5 text-right tabular-nums">
@@ -2356,6 +2358,26 @@ export default function Index({
                                                                                 employee.personalSlipDeduction ??
                                                                                     0,
                                                                             )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            {/* Official Slip — read-only, no deduction applied */}
+                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                {(employee.officialSlipMinutes ??
+                                                                    0) > 0 ? (
+                                                                    <div>
+                                                                        <div className="text-[11px] text-slate-500">
+                                                                            {employee.officialSlipMinutes ??
+                                                                                0}{' '}
+                                                                            min
+                                                                        </div>
+                                                                        <div className="text-[11px] font-medium text-slate-400 italic">
+                                                                            exempt
                                                                         </div>
                                                                     </div>
                                                                 ) : (
@@ -2566,22 +2588,27 @@ export default function Index({
                                                             currentEmployees.reduce(
                                                                 (s, e) =>
                                                                     s +
-                                                                    (e.halfDayDeduction ??
-                                                                        0),
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
                                                                     (e.personalSlipDeduction ??
                                                                         0),
                                                                 0,
                                                             ),
                                                         )}
+                                                    </td>
+                                                    {/* Official Slip total — shows total exempt minutes */}
+                                                    <td className="border-r px-3 py-2.5 text-right text-slate-400 tabular-nums">
+                                                        <div className="text-[11px]">
+                                                            {currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    (e.officialSlipMinutes ??
+                                                                        0),
+                                                                0,
+                                                            )}{' '}
+                                                            min
+                                                        </div>
+                                                        <div className="text-[11px] italic">
+                                                            exempt
+                                                        </div>
                                                     </td>
                                                     <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
                                                         {peso(

@@ -162,6 +162,7 @@ class PayrollProcessingController extends Controller
                         + $data['absent_deduction']
                         + $data['late_deduction']
                         + ($data['undertime_deduction'] ?? 0)
+                        + ($data['personal_slip_deduction'] ?? 0)  // was missing — caused Total Ded. ≠ Gross − Net Pay
                         + $data['gsis_mpl']
                         + $data['gsis_emergency']
                         + $data['pag_ibig_mpl']
@@ -631,10 +632,21 @@ class PayrollProcessingController extends Controller
                     // Both slip types are subtracted so neither is double-counted.
                     // Personal slip deduction is applied separately in computeForEmployee.
                     // Official slips are authorised and never generate a deduction.
-                    $expectedMinutes = 8 * 60; // 480 min standard government workday
+                    //
+                    // HALF_DAY records use 240 min (half the standard day) as the expected
+                    // window. The absent penalty (absent_days += 0.5) already covers the
+                    // unworked first half; undertime here only captures any further shortfall
+                    // within the worked half. Using 480 would double-count the unworked half:
+                    // once via absentDeduction and again via undertimeDeduction.
+                    $isHalfDay = $record->status === 'HALF_DAY';
+                    $fullExpectedMinutes = 8 * 60; // 480 min standard government workday
+                    $effectiveExpectedMinutes = $isHalfDay
+                        ? (int) round($fullExpectedMinutes / 2)  // 240 min for half-day
+                        : $fullExpectedMinutes;
+
                     $dayUndertime = max(
                         0,
-                        $expectedMinutes - $dayWorkMinutes - $dayLate - $dayPersonalSlip - $dayOfficialSlip
+                        $effectiveExpectedMinutes - $dayWorkMinutes - $dayLate - $dayPersonalSlip - $dayOfficialSlip
                     );
 
                     $lateMinutes += $dayLate;
@@ -644,7 +656,7 @@ class PayrollProcessingController extends Controller
                     $officialSlipMinutes += $dayOfficialSlip;
 
                     // HALF_DAY — 0.5 absent, 0.5 worked.
-                    if ($record->status === 'HALF_DAY') {
+                    if ($isHalfDay) {
                         $absentDays += 0.5;
                         $totalWorkDays += 0.5;
                         $halfDays++;
