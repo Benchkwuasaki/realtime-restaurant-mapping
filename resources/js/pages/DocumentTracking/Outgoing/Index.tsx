@@ -264,7 +264,7 @@ export default function OutgoingIndex({ ourOffice, otherOffices, departmentId, d
                                 )}
                                 onClick={() => setTab(t)}
                             >
-                                {t === "our" ? "Our Office" : "Other Offices"}
+                                {t === "our" ? "My Requests" : "Forwards"}
                                 <span className="ml-1.5 text-xs text-muted-foreground tabular-nums">
                                     ({t === "our" ? ourTotal : otherTotal})
                                 </span>

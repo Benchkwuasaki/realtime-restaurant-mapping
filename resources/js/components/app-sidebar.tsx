@@ -30,9 +30,12 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/use-auth"
+import { url } from "node_modules/zod/v4/classic/external.cjs"
+import { title } from "process"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { hasRole } = useAuth()
+  const { user, hasRole } = useAuth()
 
   const data = {
     navMain: [
@@ -273,7 +276,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="h-auto min-h-0 py-3">
               <Link
-                href="/dashboard"
+                href={route('dashboard')}
                 className="flex items-center gap-3 px-2"
               >
                 <img
@@ -281,7 +284,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   alt="Metro Kidapawan Water District Logo"
                   className="h-12 w-12 object-contain shrink-0"
                 />
-
                 <div
                   className="h-12 flex flex-col justify-between leading-none font-bold"
                   aria-label="MKWD"
@@ -293,7 +295,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarHeader>      <SidebarContent>
+
+        {(() => {
+          const { unit, division, department } = user?.offices ?? {}
+          const office = unit?.name ? unit : division?.name ? division : department?.name ? department : null
+          if (!office) return null
+          return (
+            <div className="px-3 pb-2 flex items-center gap-1.5">
+              <Building2 className="size-3 shrink-0 text-muted-foreground" />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs text-muted-foreground truncate cursor-default">
+                      {office.acronym ?? office.name}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{office.name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )
+        })()}
+      </SidebarHeader>
+      <SidebarContent>
         <NavMain items={data.navMain} />
         {/* <NavProjects projects={data.projects} /> */}
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
