@@ -1,15 +1,24 @@
-
 import { Head, router } from "@inertiajs/react"
 import Cropper from "react-easy-crop"
 import {
     Pencil, Mail, Phone, Calendar, MapPin, User, Heart, Home,
     Briefcase, Clock, FileText, Landmark, Camera, XCircle,
-    Eye, EyeOff, Plus, Trash2, Save, ChevronUp,
-    Pen, Upload, Download, FolderOpen,
+    Eye, EyeOff, Plus, Trash2, Save, ChevronDown, ChevronRight,
+    Pen, Upload, Download, FolderOpen, AlertTriangle, Timer,
+    ClipboardList,
 } from "lucide-react"
 import { useState, useMemo, useRef } from "react"
 import React from "react"
 import { route } from "ziggy-js"
+import { toast } from "sonner"
+import { format } from "date-fns"
+import {
+    useReactTable,
+    getCoreRowModel,
+    flexRender,
+} from "@tanstack/react-table"
+import { leaveBalanceColumns } from "./components/leave-balance-columns"
+import type { LeaveBalance as LeaveBalanceRow } from "./data/leave-balance-schema"
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -27,6 +36,7 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { X } from "lucide-react"
 import AppLayout from "@/layouts/app-layout"
 import { type BreadcrumbItem } from "@/types"
 
@@ -91,6 +101,16 @@ interface BasicInfo {
     family_info?: FamilyMember[]
 }
 
+interface WhereaboutSlip {
+    whereabout_slip_id: number
+    purpose_type: "personal" | "official"
+    purpose_description: string
+    time_out?: string
+    time_returned?: string
+    return_status: "returned" | "not_returned"
+    minutes_gone?: number
+}
+
 interface AttendanceRecord {
     id: number
     date: string
@@ -106,6 +126,7 @@ interface AttendanceRecord {
     late_minutes?: number
     work_minutes?: number
     status?: string
+    whereabout_slips?: WhereaboutSlip[]
 }
 
 interface GovernmentAccount {
@@ -121,23 +142,6 @@ interface EligibilityInfo {
 interface Allowance {
     allowance_type: string
     amount: number
-}
-interface LeaveBalance {
-    id: number
-    leave_type: string
-    remaining: number
-    used: number
-}
-interface LeaveAvailment {
-    id: number
-    employee_name: string
-    employee_avatar?: string
-    leave_type: string
-    leave_date_start: string
-    leave_date_end: string
-    duration: number
-    date_filed: string
-    status: "Approved" | "Pending" | "Rejected"
 }
 interface UploadedFile {
     id: number
@@ -184,13 +188,12 @@ interface Employee {
     allowances?: Allowance[]
     eligibility_information?: EligibilityInfo[]
     government_accounts?: GovernmentAccount[]
-    leave_balances?: LeaveBalance[]
-    leave_availments?: LeaveAvailment[]
+    leave_balances?: LeaveBalanceRow[]
     uploadedFiles?: UploadedFile[]
     seminarsAndTrainings?: SeminarTraining[]
     serviceRecords?: ServiceRecord[]
     internal_organizations?: InternalOrganization[]
-    attendance_records?: AttendanceRecord[]  
+    attendance_records?: AttendanceRecord[]
 }
 interface Props {
     employee: Employee
@@ -249,21 +252,53 @@ function toInputDate(date?: string) {
     if (!date) return ""
     return date.slice(0, 10)
 }
-
 function toInputTime(t?: string): string {
     if (!t) return ""
-    return t.slice(0, 5)   // "08:30:00" → "08:30"
+    return t.slice(0, 5)
 }
 
-async function getCroppedImg(imageSrc: string, croppedAreaPixels: { x: number; y: number; width: number; height: number }): Promise<Blob> {
+// Convert YYYY-MM-DD or full ISO to local-midnight Date (avoids UTC offset trap)
+function toLocalDate(s: string): Date {
+    if (s.length > 10) {
+        const d = new Date(s)
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    }
+    const [y, m, d] = s.split("-").map(Number)
+    return new Date(y, m - 1, d)
+}
+
+// Format time string "HH:MM" or "HH:MM:SS" → "h:MM AM/PM"
+function fmtTime(t?: string): string {
+    if (!t) return "—"
+    const slice = t.length > 8
+        ? new Date(t).toTimeString().slice(0, 5)
+        : t.slice(0, 5)
+    const [h, m] = slice.split(":").map(Number)
+    const ampm = h >= 12 ? "PM" : "AM"
+    const h12  = h % 12 || 12
+    return `${h12}:${String(m).padStart(2, "0")} ${ampm}`
+}
+
+function fmtMinutes(mins?: number | null): string {
+    if (mins == null) return "—"
+    if (mins < 60) return `${mins}m`
+    const h   = Math.floor(mins / 60)
+    const rem = mins % 60
+    return rem > 0 ? `${h}h ${rem}m` : `${h}h`
+}
+
+async function getCroppedImg(
+    imageSrc: string,
+    croppedAreaPixels: { x: number; y: number; width: number; height: number },
+): Promise<Blob> {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image()
-        img.onload = () => resolve(img)
+        img.onload  = () => resolve(img)
         img.onerror = reject
-        img.src = imageSrc
+        img.src     = imageSrc
     })
     const canvas = document.createElement("canvas")
-    canvas.width = croppedAreaPixels.width
+    canvas.width  = croppedAreaPixels.width
     canvas.height = croppedAreaPixels.height
     const ctx = canvas.getContext("2d")!
     ctx.drawImage(
@@ -274,8 +309,73 @@ async function getCroppedImg(imageSrc: string, croppedAreaPixels: { x: number; y
         croppedAreaPixels.width, croppedAreaPixels.height,
     )
     return new Promise((resolve, reject) =>
-        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Canvas is empty")), "image/jpeg", 0.92)
+        canvas.toBlob(
+            blob => (blob ? resolve(blob) : reject(new Error("Canvas is empty"))),
+            "image/jpeg",
+            0.92,
+        ),
     )
+}
+
+// ─── Themed badge helpers ─────────────────────────────────────────────────────
+
+// Attendance status
+const STATUS_BADGE: Record<string, string> = {
+    PRESENT:  "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60",
+    HALF_DAY: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border-sky-200/60 dark:border-sky-800/60",
+    ABSENT:   "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/60",
+    ON_LEAVE: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-400 border-violet-200/60 dark:border-violet-800/60",
+    LATE:     "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/60",
+}
+const STATUS_LABEL: Record<string, string> = {
+    PRESENT:  "Present",
+    HALF_DAY: "Half Day",
+    ABSENT:   "Absent",
+    ON_LEAVE: "On Leave",
+    LATE:     "Late",
+}
+
+function statusKey(raw?: string): string {
+    return (raw ?? "ABSENT").toUpperCase().replace(/[-\s]/g, "_")
+}
+
+function StatusBadge({ status }: { status?: string }) {
+    const key = statusKey(status)
+    return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${STATUS_BADGE[key] ?? "bg-muted text-muted-foreground border-border"}`}>
+            {STATUS_LABEL[key] ?? (status ?? "—")}
+        </span>
+    )
+}
+
+// Purpose type badge
+function PurposeBadge({ type }: { type: "personal" | "official" }) {
+    return type === "personal"
+        ? <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">Personal</span>
+        : <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">Official</span>
+}
+
+// Return status badge
+function ReturnBadge({ status }: { status: "returned" | "not_returned" }) {
+    return status === "returned"
+        ? <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">Returned</span>
+        : <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">Not Returned</span>
+}
+
+// Employment / generic value badge (primary-tinted)
+function ValueBadge({ value }: { value: string }) {
+    return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground max-w-full truncate">
+            {value}
+        </span>
+    )
+}
+
+// Active / Inactive badge
+function ActiveBadge({ active }: { active: boolean }) {
+    return active
+        ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">Active</span>
+        : <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/60">Inactive</span>
 }
 
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
@@ -316,34 +416,25 @@ function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatu
                 {isStatus ? (
                     <Switch checked={statusValue} onCheckedChange={onToggleStatus} className="scale-90" />
                 ) : onEdit ? (
-                    <Button size={'icon-xs'} onClick={onEdit} variant={"ghost"}>
+                    <Button size={"icon-xs"} onClick={onEdit} variant={"ghost"}>
                         <Pencil className="w-3 h-3" />
                     </Button>
                 ) : null}
             </div>
             <div className="flex items-center gap-2">
                 {isStatus ? (
-                    statusValue ? (
-                        <>
-                            <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                            </div>
-                            <Badge className="text-xs font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5">Active</Badge>
-                        </>
-                    ) : (
-                        <>
-                            <div className="w-5 h-5 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center shrink-0">
-                                <div className="w-2 h-2 rounded-full bg-destructive" />
-                            </div>
-                            <Badge className="text-xs font-semibold bg-destructive/10 text-destructive border-0 rounded-md px-2.5 py-0.5">Inactive</Badge>
-                        </>
-                    )
+                    <>
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${statusValue ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-rose-500/10 border border-rose-500/20"}`}>
+                            <div className={`w-2 h-2 rounded-full ${statusValue ? "bg-emerald-500" : "bg-rose-500"}`} />
+                        </div>
+                        <ActiveBadge active={statusValue ?? false} />
+                    </>
                 ) : value ? (
                     <>
                         <div className="w-5 h-5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                             <div className="w-2 h-2 rounded-full bg-primary" />
                         </div>
-                        <Badge className="text-xs font-semibold bg-primary text-primary-foreground border-0 rounded-md px-2.5 py-0.5 max-w-full truncate">{value}</Badge>
+                        <ValueBadge value={value} />
                     </>
                 ) : (
                     <>
@@ -361,27 +452,31 @@ function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatu
 // ─── Basic Info Edit Dialog ────────────────────────────────────────────────────
 
 function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; open: boolean; onClose: () => void }) {
-    const basic = employee.basic_info
+    const basic        = employee.basic_info
     const firstAddress = (basic?.addresses ?? [])[0]
 
     const [form, setForm] = useState({
-        first_name: basic?.first_name ?? "",
-        last_name: basic?.last_name ?? "",
-        middle_name: basic?.middle_name ?? "",
+        first_name:     basic?.first_name ?? "",
+        last_name:      basic?.last_name ?? "",
+        middle_name:    basic?.middle_name ?? "",
         name_extension: basic?.name_extension ?? "",
-        birth_date: toInputDate(basic?.birth_date),
-        sex: basic?.sex !== undefined ? String(Number(basic.sex)) : "",
-        civil_status: basic?.civil_status ?? "",
+        birth_date:     toInputDate(basic?.birth_date),
+        sex:            basic?.sex !== undefined ? String(Number(basic.sex)) : "",
+        civil_status:   basic?.civil_status ?? "",
         place_of_birth: basic?.place_of_birth ?? "",
         personal_email: basic?.personal_email ?? "",
-        phone_number: basic?.phone_number ?? "",
+        phone_number:   basic?.phone_number ?? "",
         street_address: firstAddress?.street_address ?? "",
-        city: firstAddress?.city ?? "",
-        state: firstAddress?.state ?? "",
-        zip_code: firstAddress?.zip_code ?? "",
+        city:           firstAddress?.city ?? "",
+        state:          firstAddress?.state ?? "",
+        zip_code:       firstAddress?.zip_code ?? "",
     })
-    const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
-    const save = () => router.put(route("employee.update", employee.employee_id), form, { preserveScroll: true, onSuccess: onClose })
+    const set  = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+    const save = () => router.put(route("employee.update", employee.employee_id), form, {
+        preserveScroll: true,
+        onSuccess: () => { toast.success("Basic information updated successfully."); onClose() },
+        onError:   () => toast.error("Failed to update basic information. Please try again."),
+    })
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -439,7 +534,11 @@ function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; 
 function SalaryEditDialog({ employee, open, onClose }: { employee: Employee; open: boolean; onClose: () => void }) {
     const sgs = employee.salary_grade_step
     const [form, setForm] = useState({ salary_grade_step_id: sgs?.salary_grade_step_id?.toString() ?? "" })
-    const save = () => router.put(route("employee.update", employee.employee_id), form, { preserveScroll: true, onSuccess: onClose })
+    const save = () => router.put(route("employee.update", employee.employee_id), form, {
+        preserveScroll: true,
+        onSuccess: () => { toast.success("Salary classification updated successfully."); onClose() },
+        onError:   () => toast.error("Failed to update salary classification. Please try again."),
+    })
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -482,29 +581,37 @@ type EditField =
     | "break_time"
     | null
 
+const employmentFieldLabels: Record<NonNullable<EditField>, string> = {
+    position:                 "Position updated successfully.",
+    date_hired:               "Date hired updated successfully.",
+    unit_division_department: "Unit / Division / Department updated.",
+    employment_classification:"Employment classification updated successfully.",
+    date_applied:             "Date applied updated successfully.",
+    work_schedule:            "Work schedule updated successfully.",
+    break_time:               "Break time updated successfully.",
+}
+
 function EmploymentEditDialog({ employee, field, onClose, items }: {
-    employee: Employee
-    field: EditField
-    onClose: () => void
-    items: Item[]
+    employee: Employee; field: EditField; onClose: () => void; items: Item[]
 }) {
-    const open = field !== null
+    const open           = field !== null
     const positionGroups = useMemo(() => buildPositionGroups(items), [items])
-    const currentItemId = employee.item?.item_id?.toString() ?? ""
-    const currentPositionName = useMemo(() => {
-        return items.find(i => i.item_id.toString() === currentItemId)?.position?.position_name ?? ""
-    }, [items, currentItemId])
+    const currentItemId  = employee.item?.item_id?.toString() ?? ""
+    const currentPositionName = useMemo(() =>
+        items.find(i => i.item_id.toString() === currentItemId)?.position?.position_name ?? "",
+        [items, currentItemId],
+    )
 
     const [form, setForm] = useState({
-        item_id: currentItemId,
+        item_id:               currentItemId,
         selected_position_name: currentPositionName,
-        date_hired: toInputDate(employee.date_hired),
-        date_applied: toInputDate(employee.date_applied),
+        date_hired:            toInputDate(employee.date_hired),
+        date_applied:          toInputDate(employee.date_applied),
         employment_classification: employee.employment_classification ?? "",
-        work_schedule_start: toInputTime(employee.work_schedule_start),
-        work_schedule_end: toInputTime(employee.work_schedule_end),
-        break_start: toInputTime(employee.break_start),
-        break_end: toInputTime(employee.break_end),
+        work_schedule_start:   toInputTime(employee.work_schedule_start),
+        work_schedule_end:     toInputTime(employee.work_schedule_end),
+        break_start:           toInputTime(employee.break_start),
+        break_end:             toInputTime(employee.break_end),
     })
 
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
@@ -527,37 +634,38 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 
     const selectedGroup = useMemo(() =>
         positionGroups.find(g => g.positionName === form.selected_position_name),
-        [positionGroups, form.selected_position_name]
+        [positionGroups, form.selected_position_name],
     )
 
     const save = () => {
         let data: Record<string, string> = {}
-        if (field === "position") data = { item_id: form.item_id }
-        if (field === "date_hired") data = { date_hired: form.date_hired }
-        if (field === "date_applied") data = { date_applied: form.date_applied }
+        if (field === "position")                  data = { item_id: form.item_id }
+        if (field === "date_hired")                data = { date_hired: form.date_hired }
+        if (field === "date_applied")              data = { date_applied: form.date_applied }
         if (field === "employment_classification") data = { employment_classification: form.employment_classification }
-        if (field === "work_schedule") data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
-        if (field === "break_time") data = { break_start: form.break_start, break_end: form.break_end }
-        router.put(route("employee.update", employee.employee_id), data, { preserveScroll: true, onSuccess: onClose })
+        if (field === "work_schedule")             data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
+        if (field === "break_time")                data = { break_start: form.break_start, break_end: form.break_end }
+        router.put(route("employee.update", employee.employee_id), data, {
+            preserveScroll: true,
+            onSuccess: () => { toast.success(field ? employmentFieldLabels[field] : "Updated successfully."); onClose() },
+            onError:   () => toast.error("Failed to save changes. Please try again."),
+        })
     }
 
     const titles: Record<NonNullable<EditField>, string> = {
-        position: "Edit Position",
-        date_hired: "Edit Date Hired",
+        position:                 "Edit Position",
+        date_hired:               "Edit Date Hired",
         unit_division_department: "Unit / Division / Department",
-        employment_classification: "Edit Employment Classification",
-        date_applied: "Edit Date Applied",
-        work_schedule: "Edit Work Schedule",
-        break_time: "Edit Break Time",
+        employment_classification:"Edit Employment Classification",
+        date_applied:             "Edit Date Applied",
+        work_schedule:            "Edit Work Schedule",
+        break_time:               "Edit Break Time",
     }
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                    <DialogTitle>{field ? titles[field] : ""}</DialogTitle>
-                </DialogHeader>
-
+                <DialogHeader><DialogTitle>{field ? titles[field] : ""}</DialogTitle></DialogHeader>
                 <div className="py-2 space-y-3">
                     {field === "position" && (
                         <div className="space-y-3">
@@ -575,11 +683,11 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                                         <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.positionName}</span>
                                                         {grp.totalSlots > 1 && (
                                                             isDisabled
-                                                                ? <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">Full</Badge>
-                                                                : <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2 py-0.5 shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
+                                                                ? <span className="text-[10px] font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 rounded-md shrink-0">Full</span>
+                                                                : <span className="text-[10px] font-semibold bg-accent text-accent-foreground px-2 py-0.5 rounded-md shrink-0">{grp.availableSlots}/{grp.totalSlots} open</span>
                                                         )}
                                                         {grp.totalSlots === 1 && isDisabled && (
-                                                            <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">Full</Badge>
+                                                            <span className="text-[10px] font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 rounded-md shrink-0">Full</span>
                                                         )}
                                                     </div>
                                                 </SelectItem>
@@ -601,26 +709,25 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                     {selectedGroup.position.department && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Department</span>
-                                            <span className="text-xs font-medium text-foreground">{selectedGroup.position.department.department_name}</span>
+                                            <span className="text-xs font-medium">{selectedGroup.position.department.department_name}</span>
                                         </div>
                                     )}
                                     {selectedGroup.position.division && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Division</span>
-                                            <span className="text-xs font-medium text-foreground">{selectedGroup.position.division.division_name}</span>
+                                            <span className="text-xs font-medium">{selectedGroup.position.division.division_name}</span>
                                         </div>
                                     )}
                                     {selectedGroup.position.unit && (
                                         <div className="flex justify-between px-4 py-2">
                                             <span className="text-xs text-muted-foreground">Unit</span>
-                                            <span className="text-xs font-medium text-foreground">{selectedGroup.position.unit.unit_name}</span>
+                                            <span className="text-xs font-medium">{selectedGroup.position.unit.unit_name}</span>
                                         </div>
                                     )}
                                 </div>
                             )}
                         </div>
                     )}
-
                     {field === "date_hired" && (
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Hired</Label>
@@ -635,15 +742,15 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                             <div className="rounded-lg border border-border divide-y divide-border">
                                 <div className="flex justify-between px-4 py-2.5">
                                     <span className="text-sm text-muted-foreground">Unit</span>
-                                    <span className="text-sm font-medium text-foreground">{employee.item?.position?.unit?.unit_name ?? "—"}</span>
+                                    <span className="text-sm font-medium">{employee.item?.position?.unit?.unit_name ?? "—"}</span>
                                 </div>
                                 <div className="flex justify-between px-4 py-2.5">
                                     <span className="text-sm text-muted-foreground">Division</span>
-                                    <span className="text-sm font-medium text-foreground">{employee.item?.position?.division?.division_name ?? "—"}</span>
+                                    <span className="text-sm font-medium">{employee.item?.position?.division?.division_name ?? "—"}</span>
                                 </div>
                                 <div className="flex justify-between px-4 py-2.5">
                                     <span className="text-sm text-muted-foreground">Department</span>
-                                    <span className="text-sm font-medium text-foreground">{employee.item?.position?.department?.department_name ?? "—"}</span>
+                                    <span className="text-sm font-medium">{employee.item?.position?.department?.department_name ?? "—"}</span>
                                 </div>
                             </div>
                         </div>
@@ -692,7 +799,6 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                         </div>
                     )}
                 </div>
-
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
                     {field !== "unit_division_department" && (
@@ -709,23 +815,27 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
 // ─── Employment Tab ───────────────────────────────────────────────────────────
 
 function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: Item[] }) {
-    const position = employee.item?.position
+    const position  = employee.item?.position
     const [editField, setEditField] = useState<EditField>(null)
-    const orgs = employee.internal_organizations ?? []
-    const toggleStatus = () => router.patch(route("employee.toggleStatus", employee.employee_id), {}, { preserveScroll: true })
+    const orgs      = employee.internal_organizations ?? []
+
+    const toggleStatus = () => router.patch(route("employee.toggleStatus", employee.employee_id), {}, {
+        preserveScroll: true,
+        onSuccess: () => toast.success(`Employee marked as ${employee.status ? "inactive" : "active"}.`),
+        onError:   () => toast.error("Failed to update employee status. Please try again."),
+    })
 
     return (
         <div className="p-3 sm:p-5 space-y-4">
-            {/* Responsive grid: 1 col on mobile, 2 on sm, 3 on lg */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <DetailCard title="Position" value={position?.position_name} onEdit={() => setEditField("position")} />
-                <DetailCard title="Date Hired" value={fmt(employee.date_hired)} onEdit={() => setEditField("date_hired")} />
+                <DetailCard title="Position"                  value={position?.position_name}           onEdit={() => setEditField("position")} />
+                <DetailCard title="Date Hired"               value={fmt(employee.date_hired)}           onEdit={() => setEditField("date_hired")} />
                 <DetailCard title="Status" isStatus statusValue={employee.status} onToggleStatus={toggleStatus} />
-                <DetailCard title="Unit" value={position?.unit?.unit_name} onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Division" value={position?.division?.division_name} onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Department" value={position?.department?.department_name} onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Unit"                     value={position?.unit?.unit_name}          onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Division"                 value={position?.division?.division_name}  onEdit={() => setEditField("unit_division_department")} />
+                <DetailCard title="Department"               value={position?.department?.department_name} onEdit={() => setEditField("unit_division_department")} />
                 <DetailCard title="Employment Classification" value={employee.employment_classification} onEdit={() => setEditField("employment_classification")} />
-                <DetailCard title="Date Applied" value={fmt(employee.date_applied)} onEdit={() => setEditField("date_applied")} />
+                <DetailCard title="Date Applied"             value={fmt(employee.date_applied)}         onEdit={() => setEditField("date_applied")} />
                 <DetailCard
                     title="Work Schedule"
                     value={employee.work_schedule_start && employee.work_schedule_end
@@ -758,9 +868,9 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                                     <p className="text-sm font-medium text-foreground">{org.name}</p>
                                     <p className="text-xs text-muted-foreground">{org.code}</p>
                                 </div>
-                                <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2.5 py-0.5 shrink-0">
+                                <span className="text-[10px] font-semibold bg-accent text-accent-foreground px-2.5 py-0.5 rounded-md shrink-0">
                                     {org.type}
-                                </Badge>
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -775,26 +885,23 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
 // ─── Compensation Tab ─────────────────────────────────────────────────────────
 
 function CompensationTab({ employee }: { employee: Employee }) {
-    const sgs = employee.salary_grade_step
+    const sgs        = employee.salary_grade_step
     const allowances = employee.allowances ?? []
     const [salaryEditOpen, setSalaryEditOpen] = useState(false)
 
     return (
         <div className="p-3 sm:p-5 space-y-4">
-            {/* Stack on mobile, side-by-side on md+ */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-card border border-border rounded-xl overflow-hidden">
                     <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                         <span className="text-sm font-bold text-foreground">Salary Classification</span>
-                        <Button onClick={() => setSalaryEditOpen(true)} variant="ghost" size="icon-xs">
-                            <Pen className="w-3 h-3" />
-                        </Button>
+                        <Button onClick={() => setSalaryEditOpen(true)} variant="ghost" size="icon-xs"><Pen className="w-3 h-3" /></Button>
                     </div>
                     {sgs ? (
                         <div className="divide-y divide-border">
-                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Salary Grade</span><span className="text-sm font-bold text-foreground">SG-{sgs.salary_grade}</span></div>
-                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Step Number</span><span className="text-sm font-bold text-foreground">Step {sgs.step}</span></div>
-                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Amount</span><span className="text-sm font-bold text-foreground">₱{Number(sgs.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span></div>
+                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Salary Grade</span><span className="text-sm font-bold">SG-{sgs.salary_grade}</span></div>
+                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Step Number</span><span className="text-sm font-bold">Step {sgs.step}</span></div>
+                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Amount</span><span className="text-sm font-bold">₱{Number(sgs.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span></div>
                         </div>
                     ) : (
                         <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No salary data.</div>
@@ -802,7 +909,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
                 </div>
 
                 <div className="bg-card border border-border rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                    <div className="px-4 sm:px-5 py-3.5 border-b border-border">
                         <span className="text-sm font-bold text-foreground">Allowances</span>
                     </div>
                     {allowances.length > 0 ? (
@@ -811,8 +918,8 @@ function CompensationTab({ employee }: { employee: Employee }) {
                                 <div key={i} className="flex items-center justify-between px-4 sm:px-5 py-3">
                                     <span className="text-sm text-muted-foreground">{a.allowance_type}</span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-foreground">₱{Number(a.amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
-                                        <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2 py-0.5">Present</Badge>
+                                        <span className="text-sm font-bold">₱{Number(a.amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
+                                        <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-md">Present</span>
                                     </div>
                                 </div>
                             ))}
@@ -824,7 +931,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
             </div>
 
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                <div className="px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Payroll Data</span>
                 </div>
                 <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No payroll data available.</div>
@@ -838,288 +945,320 @@ function CompensationTab({ employee }: { employee: Employee }) {
 // ─── Leave Information Tab ────────────────────────────────────────────────────
 
 function LeaveInformationTab({ employee }: { employee: Employee }) {
-    const balances = employee.leave_balances ?? []
-    const availments = employee.leave_availments ?? []
-
-    const [balanceDialog, setBalanceDialog] = useState<{
-        open: boolean; id?: number; leave_type: string; remaining: string; used: string
-    }>({ open: false, leave_type: "", remaining: "", used: "" })
-    const [deleteBalanceId, setDeleteBalanceId] = useState<number | null>(null)
-
-    const openBalanceDialog = (b?: LeaveBalance) => setBalanceDialog({
-        open: true, id: b?.id,
-        leave_type: b?.leave_type ?? "",
-        remaining: b?.remaining?.toString() ?? "",
-        used: b?.used?.toString() ?? "",
-    })
-
-    const saveBalance = () => {
-        const data = {
-            leave_type: balanceDialog.leave_type,
-            remaining: parseFloat(balanceDialog.remaining),
-            used: parseFloat(balanceDialog.used),
-        }
-        if (balanceDialog.id) {
-            router.put(
-                route("employee.leave-balance.update", { employee: employee.employee_id, balance: balanceDialog.id }),
-                data,
-                { preserveScroll: true, onSuccess: () => setBalanceDialog(p => ({ ...p, open: false })) }
-            )
-        } else {
-            router.post(
-                route("employee.leave-balance.store", employee.employee_id),
-                data,
-                { preserveScroll: true, onSuccess: () => setBalanceDialog(p => ({ ...p, open: false })) }
-            )
-        }
-    }
-
-    const confirmDeleteBalance = () => {
-        if (!deleteBalanceId) return
-        router.delete(
-            route("employee.leave-balance.destroy", { employee: employee.employee_id, balance: deleteBalanceId }),
-            { preserveScroll: true, onSuccess: () => setDeleteBalanceId(null) }
-        )
-    }
+    const data  = (employee.leave_balances ?? []) as LeaveBalanceRow[]
+    const table = useReactTable({ data, columns: leaveBalanceColumns, getCoreRowModel: getCoreRowModel() })
 
     return (
         <div className="p-3 sm:p-5 space-y-5">
-            {/* Leave Balances */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Leave Balances</span>
-                    <button onClick={() => openBalanceDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
-                        <Plus className="w-4 h-4" />
-                    </button>
+                    {data.length > 0 && (
+                        <span className="text-[10px] font-semibold bg-accent text-accent-foreground px-2 py-0.5 rounded-full">{data.length}</span>
+                    )}
                 </div>
-                {balances.length === 0 ? (
-                    <div className="px-5 py-8 text-center">
-                        <p className="text-sm text-muted-foreground italic mb-3">No leave balances on file.</p>
-                        <Button variant="outline" size="sm" onClick={() => openBalanceDialog()} className="gap-1.5">
-                            <Plus className="w-3.5 h-3.5" /> Add Leave Balance
-                        </Button>
+                {data.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-14 gap-3">
+                        <Calendar className="w-10 h-10 text-muted-foreground/30" />
+                        <p className="text-sm italic text-muted-foreground">No leave balances on file.</p>
                     </div>
                 ) : (
-                    /* Horizontal scroll on small screens */
                     <div className="overflow-x-auto">
-                        <div className="min-w-[480px]">
-                            <div className="grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30">
-                                <div className="w-5" />
-                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Type <ChevronUp className="w-3 h-3" /></span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Remaining</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Used</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
-                            </div>
-                            <div className="divide-y divide-border">
-                                {balances.map(b => (
-                                    <div key={b.id} className="grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-3 hover:bg-muted/20 transition-colors group/row">
-                                        <Checkbox className="w-4 h-4" />
-                                        <span className="text-sm text-muted-foreground">{b.leave_type}</span>
-                                        <span className="text-sm text-foreground font-medium text-right">{b.remaining}</span>
-                                        <span className="text-sm text-foreground font-medium text-right">{b.used}</span>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button onClick={() => openBalanceDialog(b)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button onClick={() => setDeleteBalanceId(b.id)} variant="ghost" size="icon-xs"><Trash2 className="w-3.5 h-3.5" /></Button>
-                                        </div>
-                                    </div>
+                        <table className="w-full min-w-[520px]">
+                            <thead>
+                                {table.getHeaderGroups().map(hg => (
+                                    <tr key={hg.id} className="border-b border-border bg-muted/30">
+                                        {hg.headers.map((header, i) => (
+                                            <th key={header.id} className={`px-5 py-2.5 font-normal ${i === 0 ? "text-left" : "text-right"}`}>
+                                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                            </th>
+                                        ))}
+                                    </tr>
                                 ))}
-                            </div>
-                        </div>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {table.getRowModel().rows.map(row => (
+                                    <tr key={row.id} className="hover:bg-muted/20 transition-colors">
+                                        {row.getVisibleCells().map((cell, i) => (
+                                            <td key={cell.id} className={`px-5 py-3 ${i === 0 ? "text-left" : "text-right"}`}>
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
-
-            {/* Leave Availments */}
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
-                    <span className="text-sm font-bold text-foreground">Leave Availments</span>
-                    <button className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
-                        <Plus className="w-4 h-4" />
-                    </button>
-                </div>
-                {availments.length === 0 ? (
-                    <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No leave availments on record.</div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <div className="min-w-[700px]">
-                            <div className="grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30">
-                                <div className="w-5" />
-                                <div className="w-8" />
-                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Type <ChevronUp className="w-3 h-3" /></span>
-                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Leave Date <ChevronUp className="w-3 h-3" /></span>
-                                <span className="text-xs font-semibold text-muted-foreground">Duration</span>
-                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Date Filed <ChevronUp className="w-3 h-3" /></span>
-                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">Status <ChevronUp className="w-3 h-3" /></span>
-                            </div>
-                            <div className="divide-y divide-border">
-                                {availments.map(a => (
-                                    <div key={a.id} className="grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                        <Checkbox className="w-4 h-4" />
-                                        <div className="w-8 h-8 rounded-full overflow-hidden bg-muted border border-border shrink-0">
-                                            <img
-                                                src={a.employee_avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(a.employee_name)}&background=5854cc&color=fff&size=32`}
-                                                alt={a.employee_name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm text-foreground font-medium truncate">{a.employee_name}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{a.leave_type}</p>
-                                        </div>
-                                        <span className="text-sm text-muted-foreground">{fmtShort(a.leave_date_start)} — {fmtShort(a.leave_date_end)}</span>
-                                        <span className="text-sm text-foreground font-medium">{a.duration} days</span>
-                                        <span className="text-sm text-muted-foreground">{fmtShort(a.date_filed)}</span>
-                                        <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 w-fit ${a.status === "Approved" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" :
-                                            a.status === "Pending" ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" :
-                                                "bg-destructive/10 text-destructive"
-                                            }`}>● {a.status}</Badge>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <Dialog open={balanceDialog.open} onOpenChange={open => setBalanceDialog(p => ({ ...p, open }))}>
-                <DialogContent className="sm:max-w-sm">
-                    <DialogHeader><DialogTitle>{balanceDialog.id ? "Edit" : "Add"} Leave Balance</DialogTitle></DialogHeader>
-                    <div className="space-y-3 py-2">
-                        <div>
-                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Leave Type</Label>
-                            <Select value={balanceDialog.leave_type} onValueChange={v => setBalanceDialog(p => ({ ...p, leave_type: v }))}>
-                                <SelectTrigger><SelectValue placeholder="Select leave type…" /></SelectTrigger>
-                                <SelectContent>
-                                    {["Vacation Leave", "Sick Leave", "Special Leave", "Bereavement Leave", "Maternity/Paternity Leave", "Privilege Leave"].map(t => (
-                                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Remaining</Label><Input type="number" step="0.1" value={balanceDialog.remaining} onChange={e => setBalanceDialog(p => ({ ...p, remaining: e.target.value }))} /></div>
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Used</Label><Input type="number" step="0.1" value={balanceDialog.used} onChange={e => setBalanceDialog(p => ({ ...p, used: e.target.value }))} /></div>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setBalanceDialog(p => ({ ...p, open: false }))}>Cancel</Button>
-                        <Button onClick={saveBalance} disabled={!balanceDialog.leave_type}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <AlertDialog open={!!deleteBalanceId} onOpenChange={open => !open && setDeleteBalanceId(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Leave Balance</AlertDialogTitle>
-                        <AlertDialogDescription>Are you sure you want to delete this leave balance? This cannot be undone.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDeleteBalance} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     )
 }
 
+// ─── Whereabout Slip List ─────────────────────────────────────────────────────
+
+function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; hasTimedOut: boolean }) {
+    if (slips.length === 0) return null
+    return (
+        <div className="flex flex-col gap-1.5">
+            {slips.map(slip => {
+                const isPersonal      = slip.purpose_type === "personal"
+                const isReturned      = slip.return_status === "returned"
+                const isDeducted      = isPersonal && isReturned && slip.minutes_gone != null && hasTimedOut
+                const isPendingDeduct = isPersonal && isReturned && slip.minutes_gone != null && !hasTimedOut
+
+                return (
+                    <div
+                        key={slip.whereabout_slip_id}
+                        className={`rounded-lg border bg-background overflow-hidden ${isDeducted ? "border-rose-300 dark:border-rose-800" : "border-border"}`}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/20">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+                                <span className="text-xs font-medium truncate max-w-[220px]">{slip.purpose_description}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <PurposeBadge type={slip.purpose_type} />
+                                <ReturnBadge  status={slip.return_status} />
+                            </div>
+                        </div>
+
+                        {/* Time grid */}
+                        <div className="grid grid-cols-3 gap-px bg-border/40">
+                            {[
+                                { label: "Left At",     value: fmtTime(slip.time_out) },
+                                { label: "Returned At", value: slip.time_returned ? fmtTime(slip.time_returned) : "—" },
+                                { label: "Duration",    value: slip.minutes_gone != null ? fmtMinutes(slip.minutes_gone) : "—", highlight: isDeducted },
+                            ].map(({ label, value, highlight }) => (
+                                <div key={label} className="flex flex-col gap-0.5 px-3 py-2 bg-background">
+                                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
+                                    <span className={`text-xs font-mono font-medium ${highlight ? "text-rose-600 dark:text-rose-400" : ""}`}>{value}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Footer notice */}
+                        {isPersonal ? (
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold ${
+                                isDeducted
+                                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800/60"
+                                    : isPendingDeduct
+                                        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800/60"
+                                        : "bg-muted/30 text-muted-foreground border-t border-border/40"
+                            }`}>
+                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                {isDeducted
+                                    ? `${fmtMinutes(slip.minutes_gone)} deducted from work hours`
+                                    : isPendingDeduct
+                                        ? "Will be deducted once employee clocks out"
+                                        : "No deduction — employee has not returned yet"}
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/40 bg-muted/10">
+                                <ClipboardList className="w-3 h-3 shrink-0" />
+                                Official — no deduction applied
+                            </div>
+                        )}
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
+
+// ─── Attendance Table Row ─────────────────────────────────────────────────────
+
+function AttendanceRow({ record }: { record: AttendanceRecord }) {
+    const [expanded, setExpanded] = useState(false)
+
+    const slips       = record.whereabout_slips ?? []
+    const hasTimedOut = !!record.time_out
+    const isLate      = (record.late_minutes ?? 0) > 0
+    const hasSlips    = slips.length > 0
+
+    const personalDeductionMins = hasTimedOut
+        ? slips
+            .filter(s => s.purpose_type === "personal" && s.return_status === "returned" && s.minutes_gone != null)
+            .reduce((sum, s) => sum + (s.minutes_gone ?? 0), 0)
+        : 0
+
+    const dateLabel = (() => {
+        try { return format(toLocalDate(record.date), "EEE, MMM d, yyyy") }
+        catch { return record.date }
+    })()
+
+    return (
+        <>
+            <tr
+                className={`border-b border-border/50 transition-colors ${hasSlips ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20"} ${expanded ? "bg-muted/30" : ""}`}
+                onClick={() => hasSlips && setExpanded(e => !e)}
+            >
+                {/* Expand toggle */}
+                <td className="w-8 pl-3 py-2.5">
+                    {hasSlips
+                        ? expanded
+                            ? <ChevronDown  className="w-3.5 h-3.5 text-muted-foreground" />
+                            : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                        : <span className="w-3.5 h-3.5 block" />}
+                </td>
+                {/* Date */}
+                <td className="py-2.5 pr-4 text-xs font-medium whitespace-nowrap">{dateLabel}</td>
+                {/* Status */}
+                <td className="py-2.5 pr-4"><StatusBadge status={record.status} /></td>
+                {/* Time In */}
+                <td className="py-2.5 pr-4">
+                    <span className={`text-xs font-mono ${isLate ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-foreground"}`}>
+                        {fmtTime(record.time_in)}
+                    </span>
+                </td>
+                {/* Break Out */}
+                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{fmtTime(record.break_out)}</td>
+                {/* Break In */}
+                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{fmtTime(record.break_in)}</td>
+                {/* Time Out */}
+                <td className="py-2.5 pr-4 text-xs font-mono text-foreground">{fmtTime(record.time_out)}</td>
+                {/* Work Hours */}
+                <td className="py-2.5 pr-4 text-xs font-mono font-semibold">{fmtMinutes(record.work_minutes)}</td>
+                {/* Late */}
+                <td className="py-2.5 pr-4">
+                    {isLate
+                        ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">{fmtMinutes(record.late_minutes)}</span>
+                        : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
+                </td>
+                {/* Slip Deduction */}
+                <td className="py-2.5 pr-3">
+                    {personalDeductionMins > 0
+                        ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">-{fmtMinutes(personalDeductionMins)}</span>
+                        : slips.some(s => s.purpose_type === "personal" && s.return_status === "returned" && !hasTimedOut)
+                            ? <span className="text-[10px] text-amber-500 font-semibold">Pending</span>
+                            : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
+                </td>
+            </tr>
+
+            {/* Expanded slips */}
+            {expanded && hasSlips && (
+                <tr className="bg-muted/10 border-b border-border/50">
+                    <td colSpan={10} className="px-4 pb-3 pt-2">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
+                            <ClipboardList className="w-3 h-3" />
+                            Whereabout Slips
+                        </div>
+                        <WhereaboutSlipList slips={slips} hasTimedOut={hasTimedOut} />
+                    </td>
+                </tr>
+            )}
+        </>
+    )
+}
+
+// ─── Attendance Record Tab ────────────────────────────────────────────────────
+
 function AttendanceRecordTab({ employee }: { employee: Employee }) {
-    const records = (employee as any).attendance_records as AttendanceRecord[] ?? []
+    const records = (employee.attendance_records ?? []) as AttendanceRecord[]
 
-    const statusColor = (status?: string) => {
-        switch (status?.toLowerCase()) {
-            case "present": return "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
-            case "late": return "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
-            case "absent": return "bg-destructive/10 text-destructive"
-            case "half-day": return "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
-            case "on leave": return "bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
-            default: return "bg-accent text-accent-foreground"
-        }
-    }
+    const [dateFrom, setDateFrom] = useState("")
+    const [dateTo,   setDateTo]   = useState("")
 
-    const fmtTime = (t?: string) => {
-        if (!t) return "—"
-        return t.slice(0, 5)
-    }
+    const from = dateFrom ? toLocalDate(dateFrom) : null
+    const to   = dateTo   ? toLocalDate(dateTo)   : null
 
-    const fmtMinutes = (m?: number) => {
-        if (m === undefined || m === null) return "—"
-        if (m < 60) return `${m}m`
-        const h = Math.floor(m / 60)
-        const rem = m % 60
-        return rem > 0 ? `${h}h ${rem}m` : `${h}h`
-    }
+    const filtered = records.filter(r => {
+        const d = toLocalDate(r.date)
+        if (from && d < from) return false
+        if (to   && d > to)   return false
+        return true
+    })
+
+    // Summary counts
+    const stats = [
+        { label: "Present",  count: records.filter(r => statusKey(r.status) === "PRESENT").length,                       cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60" },
+        { label: "Half Day", count: records.filter(r => statusKey(r.status) === "HALF_DAY").length,                       cls: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border-sky-200/60 dark:border-sky-800/60" },
+        { label: "Absent",   count: records.filter(r => statusKey(r.status) === "ABSENT").length,                         cls: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/60" },
+        { label: "Late",     count: records.filter(r => (r.late_minutes ?? 0) > 0).length,                               cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/60" },
+    ]
 
     return (
         <div className="p-3 sm:p-5 space-y-4">
+
+            {/* Stat strip */}
+            {records.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {stats.map(({ label, count, cls }) => (
+                        <div key={label} className="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground font-medium">{label}</span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${cls}`}>{count}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Main card */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
-                    <span className="text-sm font-bold text-foreground">Attendance Records</span>
+
+                {/* Header + filters */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-border">
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-sm font-bold text-foreground">Attendance Records</span>
+                        {records.length > 0 && (
+                            <span className="text-[10px] font-semibold bg-accent text-accent-foreground px-2 py-0.5 rounded-full">
+                                {filtered.length}{filtered.length !== records.length && ` / ${records.length}`}
+                            </span>
+                        )}
+                    </div>
+
                     {records.length > 0 && (
-                        <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-full px-2 py-0.5">
-                            {records.length}
-                        </Badge>
+                        <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
+                            <span className="text-xs text-muted-foreground font-medium shrink-0">Filter</span>
+                            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-7 text-xs w-36" />
+                            <span className="text-muted-foreground text-xs">—</span>
+                            <Input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   className="h-7 text-xs w-36" />
+                            {(dateFrom || dateTo) && (
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => { setDateFrom(""); setDateTo("") }}>
+                                    <X className="w-3 h-3 mr-1" /> Clear
+                                </Button>
+                            )}
+                        </div>
                     )}
                 </div>
 
+                {/* Empty / filtered-empty / table */}
                 {records.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-14 gap-3">
                         <Clock className="w-10 h-10 text-muted-foreground/30" />
                         <p className="text-sm italic text-muted-foreground">No attendance records found.</p>
                     </div>
+                ) : filtered.length === 0 ? (
+                    <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                        No records match the selected date range.
+                    </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <div className="min-w-[820px]">
-                            {/* Header */}
-                            <div className="grid grid-cols-[140px_90px_90px_90px_90px_80px_80px_100px] items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30">
-                                <span className="text-xs font-semibold text-muted-foreground">Date</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-center">Time In</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-center">Break Out</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-center">Break In</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-center">Time Out</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-center">Late</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-center">Work</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-center">Status</span>
-                            </div>
-
-                            {/* Rows */}
-                            <div className="divide-y divide-border">
-                                {records.map(record => (
-                                    <div key={record.id} className="grid grid-cols-[140px_90px_90px_90px_90px_80px_80px_100px] items-center gap-2 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                        <div>
-                                            <p className="text-sm font-medium text-foreground">{fmtShort(record.date)}</p>
-                                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                                                Sched: {fmtTime(record.scheduled_time_in)} – {fmtTime(record.scheduled_time_out)}
-                                            </p>
-                                        </div>
-                                        <span className={`text-sm text-center font-mono ${record.time_in ? "text-foreground" : "text-muted-foreground/40"}`}>
-                                            {fmtTime(record.time_in)}
-                                        </span>
-                                        <span className={`text-sm text-center font-mono ${record.break_out ? "text-foreground" : "text-muted-foreground/40"}`}>
-                                            {fmtTime(record.break_out)}
-                                        </span>
-                                        <span className={`text-sm text-center font-mono ${record.break_in ? "text-foreground" : "text-muted-foreground/40"}`}>
-                                            {fmtTime(record.break_in)}
-                                        </span>
-                                        <span className={`text-sm text-center font-mono ${record.time_out ? "text-foreground" : "text-muted-foreground/40"}`}>
-                                            {fmtTime(record.time_out)}
-                                        </span>
-                                        <span className={`text-sm text-center ${record.late_minutes ? "text-amber-600 font-semibold" : "text-muted-foreground/40"}`}>
-                                            {record.late_minutes ? fmtMinutes(record.late_minutes) : "—"}
-                                        </span>
-                                        <span className="text-sm text-center text-foreground font-medium">
-                                            {fmtMinutes(record.work_minutes)}
-                                        </span>
-                                        <div className="flex justify-center">
-                                            <Badge className={`text-[10px] font-bold border-0 rounded-full px-2.5 py-0.5 ${statusColor(record.status)}`}>
-                                                {record.status ?? "—"}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                    <div className="overflow-auto max-h-[590px]">
+                        <table className="w-full text-sm border-collapse min-w-[760px]">
+                            <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
+                                <tr className="border-b border-border">
+                                    <th className="w-8 pl-3 py-2.5" />
+                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Date</th>
+                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
+                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Time In</th>
+                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Break (Out)</th>
+                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Break (In)</th>
+                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Time Out</th>
+                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                        <span className="flex items-center gap-1"><Timer className="w-3 h-3" /> Work Hrs</span>
+                                    </th>
+                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                        <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Late</span>
+                                    </th>
+                                    <th className="py-2.5 pr-3 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                        <span className="flex items-center gap-1"><ClipboardList className="w-3 h-3" /> Slip Ded.</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filtered.map(r => <AttendanceRow key={r.id ?? r.date} record={r} />)}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
@@ -1131,9 +1270,8 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
 
 const STANDARD_GOV_ID_TYPES = ["GSIS", "PhilHealth", "Pag-IBIG", "TIN"]
 
-
 function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
-    const govAccounts = employee.government_accounts ?? []
+    const govAccounts  = employee.government_accounts ?? []
     const eligibilities = employee.eligibility_information ?? []
 
     const [visibleIds, setVisibleIds] = useState<Record<string, boolean>>({})
@@ -1147,69 +1285,69 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
     const openEditGovDialog = (type: string, existing: GovernmentAccount) =>
         setGovDialog({ open: true, mode: "standard", type, id: existing.government_account_id, value: existing.account_number, customTypeName: "" })
 
-    const openAddCustomDialog = () =>
-        setGovDialog({ open: true, mode: "custom", type: "", id: undefined, value: "", customTypeName: "" })
-
     const saveGovAccount = () => {
         if (!govDialog.value.trim()) return
         const accountType = govDialog.mode === "custom" ? govDialog.customTypeName : govDialog.type
         if (!accountType.trim()) return
-
         if (govDialog.id) {
             router.put(
                 route("employee.government-account.update", { employee: employee.employee_id, account: govDialog.id }),
                 { account_number: govDialog.value },
-                { preserveScroll: true, onSuccess: () => setGovDialog(p => ({ ...p, open: false })) }
+                {
+                    preserveScroll: true,
+                    onSuccess: () => { toast.success(`${accountType} number updated successfully.`); setGovDialog(p => ({ ...p, open: false })) },
+                    onError:   () => toast.error("Failed to update government account. Please try again."),
+                },
             )
         } else {
             router.post(
                 route("employee.government-account.store", employee.employee_id),
                 { account_type: accountType, account_number: govDialog.value },
-                { preserveScroll: true, onSuccess: () => setGovDialog(p => ({ ...p, open: false })) }
+                {
+                    preserveScroll: true,
+                    onSuccess: () => { toast.success(`${accountType} number added successfully.`); setGovDialog(p => ({ ...p, open: false })) },
+                    onError:   () => toast.error("Failed to add government account. Please try again."),
+                },
             )
         }
     }
 
     const [deleteGovId, setDeleteGovId] = useState<number | null>(null)
-
     const confirmDeleteGovAccount = () => {
         if (!deleteGovId) return
         router.delete(
             route("employee.government-account.destroy", { employee: employee.employee_id, account: deleteGovId }),
-            { preserveScroll: true, onSuccess: () => setDeleteGovId(null) }
+            {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Government account deleted."); setDeleteGovId(null) },
+                onError:   () => toast.error("Failed to delete government account. Please try again."),
+            },
         )
     }
 
-    const accountMap = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
+    const accountMap  = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
     const standardKeys = STANDARD_GOV_ID_TYPES.map(t => t.toLowerCase())
     const extraAccounts = govAccounts.filter(g => !standardKeys.includes(g.account_type.toLowerCase()))
 
     const [eligDialog, setEligDialog] = useState<{ open: boolean; id?: number; name: string; year: string }>
         ({ open: false, name: "", year: "" })
-
     const openEligDialog = (existing?: EligibilityInfo) =>
-        setEligDialog({
-            open: true,
-            id: existing?.eligibility_information_id,
-            name: existing?.eligibility_name ?? "",
-            year: existing?.year_passed?.slice(0, 10) ?? "",
-        })
-
+        setEligDialog({ open: true, id: existing?.eligibility_information_id, name: existing?.eligibility_name ?? "", year: existing?.year_passed?.slice(0, 10) ?? "" })
     const saveEligibility = () => {
         if (!eligDialog.name.trim()) return
         const data = { eligibility_name: eligDialog.name, year_passed: eligDialog.year || null }
         if (eligDialog.id) {
-            router.put(
-                route("employee.eligibility.update", { employee: employee.employee_id, eligibility: eligDialog.id }),
-                data,
-                { preserveScroll: true, onSuccess: () => setEligDialog(p => ({ ...p, open: false })) }
-            )
+            router.put(route("employee.eligibility.update", { employee: employee.employee_id, eligibility: eligDialog.id }), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Eligibility updated successfully."); setEligDialog(p => ({ ...p, open: false })) },
+                onError:   () => toast.error("Failed to update eligibility. Please try again."),
+            })
         } else {
-            router.post(
-                route("employee.eligibility.store", employee.employee_id),
-                data,
-                { preserveScroll: true, onSuccess: () => setEligDialog(p => ({ ...p, open: false })) }
-            )
+            router.post(route("employee.eligibility.store", employee.employee_id), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Eligibility added successfully."); setEligDialog(p => ({ ...p, open: false })) },
+                onError:   () => toast.error("Failed to add eligibility. Please try again."),
+            })
         }
     }
 
@@ -1219,13 +1357,13 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Government ID Numbers</span>
-                    <button onClick={openAddCustomDialog} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                    <button onClick={() => setGovDialog({ open: true, mode: "custom", type: "", id: undefined, value: "", customTypeName: "" })} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
                         <Plus className="w-4 h-4" />
                     </button>
                 </div>
                 <div className="divide-y divide-border">
                     {STANDARD_GOV_ID_TYPES.map(type => {
-                        const key = type.toLowerCase()
+                        const key     = type.toLowerCase()
                         const account = accountMap[key]
                         const isVisible = visibleIds[key]
                         return (
@@ -1234,8 +1372,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 <span className="flex-1 text-sm text-muted-foreground font-mono tracking-widest min-w-0 truncate">
                                     {account
                                         ? (isVisible ? account.account_number : "•".repeat(10))
-                                        : <span className="italic text-muted-foreground/40 font-sans tracking-normal text-xs">Not provided</span>
-                                    }
+                                        : <span className="italic text-muted-foreground/40 font-sans tracking-normal text-xs">Not provided</span>}
                                 </span>
                                 <div className="flex items-center gap-1 shrink-0">
                                     {account ? (
@@ -1244,12 +1381,10 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                                 {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                             </button>
                                             <Button onClick={() => openEditGovDialog(type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                            <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </>
                                     ) : (
-                                        <Button onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })} variant="ghost" size="icon-xs">
-                                            <Plus className="w-3.5 h-3.5" />
-                                        </Button>
+                                        <Button onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })} variant="ghost" size="icon-xs"><Plus className="w-3.5 h-3.5" /></Button>
                                     )}
                                 </div>
                             </div>
@@ -1269,7 +1404,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                     </button>
                                     <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
-                                    <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
                         )
@@ -1288,23 +1423,19 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 {eligibilities.length === 0 ? (
                     <div className="px-5 py-8 text-center">
                         <p className="text-sm text-muted-foreground italic mb-3">No eligibility records on file.</p>
-                        <Button variant="outline" size="sm" onClick={() => openEligDialog()} className="gap-1.5">
-                            <Plus className="w-3.5 h-3.5" />Add Eligibility
-                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => openEligDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" />Add Eligibility</Button>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <div className="min-w-[480px]">
-                            <div className="divide-y divide-border">
-                                {eligibilities.map(e => (
-                                    <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3">
-                                        <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
-                                        <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
-                                        <Badge className="text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border-0 rounded-md px-2.5 py-0.5 shrink-0">✓ Active</Badge>
-                                        <Button onClick={() => openEligDialog(e)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="min-w-[480px] divide-y divide-border">
+                            {eligibilities.map(e => (
+                                <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3">
+                                    <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
+                                    <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
+                                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 px-2.5 py-0.5 rounded-md shrink-0">✓ Active</span>
+                                    <Button onClick={() => openEligDialog(e)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -1317,10 +1448,8 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         <DialogTitle>
                             {govDialog.id
                                 ? `Edit ${govDialog.type} Number`
-                                : govDialog.mode === "custom"
-                                    ? "Add Government ID"
-                                    : `Add ${govDialog.type} Number`
-                            }
+                                : govDialog.mode === "custom" ? "Add Government ID"
+                                : `Add ${govDialog.type} Number`}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="py-2 space-y-3">
@@ -1367,27 +1496,21 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setEligDialog(p => ({ ...p, open: false }))}>Cancel</Button>
-                        <Button onClick={saveEligibility} disabled={!eligDialog.name.trim()}>
-                            <Save className="w-3.5 h-3.5 mr-1.5" />Save
-                        </Button>
+                        <Button onClick={saveEligibility} disabled={!eligDialog.name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Government Account Confirm */}
+            {/* Delete Confirm */}
             <AlertDialog open={!!deleteGovId} onOpenChange={o => !o && setDeleteGovId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Government Account?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently remove the account number. This action cannot be undone.
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>This will permanently remove the account number. This action cannot be undone.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDeleteGovAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Delete
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={confirmDeleteGovAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -1398,10 +1521,10 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
 // ─── Background Information Tab ───────────────────────────────────────────────
 
 function BackgroundInformationTab({ employee }: { employee: Employee }) {
-    const basic = employee.basic_info
+    const basic       = employee.basic_info
     const familyMembers = basic?.family_info ?? []
-    const educations = basic?.educations ?? []
-    const seminars = employee.seminarsAndTrainings ?? []
+    const educations  = basic?.educations ?? []
+    const seminars    = employee.seminarsAndTrainings ?? []
     const serviceRecs = employee.serviceRecords ?? []
 
     const [familyDialog, setFamilyDialog] = useState<{
@@ -1414,32 +1537,44 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const openFamilyDialog = (member?: FamilyMember, index?: number) =>
         setFamilyDialog({
             open: true, index,
-            full_name: member?.full_name ?? "",
-            relationship: member?.relationship ?? "",
+            full_name:      member?.full_name ?? "",
+            relationship:   member?.relationship ?? "",
             contact_number: member?.contact_number ?? "",
-            sex: member?.sex !== undefined ? String(Number(member.sex)) : "",
-            date_of_birth: toInputDate(member?.date_of_birth),
+            sex:            member?.sex !== undefined ? String(Number(member.sex)) : "",
+            date_of_birth:  toInputDate(member?.date_of_birth),
             place_of_birth: member?.place_of_birth ?? "",
         })
 
     const saveFamilyMember = () => {
         const data = {
-            full_name: familyDialog.full_name,
-            relationship: familyDialog.relationship,
+            full_name:      familyDialog.full_name,
+            relationship:   familyDialog.relationship,
             contact_number: familyDialog.contact_number,
-            sex: familyDialog.sex,
-            date_of_birth: familyDialog.date_of_birth || null,
+            sex:            familyDialog.sex,
+            date_of_birth:  familyDialog.date_of_birth || null,
             place_of_birth: familyDialog.place_of_birth,
         }
         if (familyDialog.index !== undefined) {
-            router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, { preserveScroll: true, onSuccess: () => setFamilyDialog(p => ({ ...p, open: false })) })
+            router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Family member updated successfully."); setFamilyDialog(p => ({ ...p, open: false })) },
+                onError:   () => toast.error("Failed to update family member. Please try again."),
+            })
         } else {
-            router.post(route("employee.family.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setFamilyDialog(p => ({ ...p, open: false })) })
+            router.post(route("employee.family.store", employee.employee_id), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Family member added successfully."); setFamilyDialog(p => ({ ...p, open: false })) },
+                onError:   () => toast.error("Failed to add family member. Please try again."),
+            })
         }
     }
     const confirmDeleteFamily = () => {
         if (deleteFamilyIndex === null) return
-        router.delete(route("employee.family.destroy", { employee: employee.employee_id, index: deleteFamilyIndex }), { preserveScroll: true, onSuccess: () => setDeleteFamilyIndex(null) })
+        router.delete(route("employee.family.destroy", { employee: employee.employee_id, index: deleteFamilyIndex }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success("Family member removed."); setDeleteFamilyIndex(null) },
+            onError:   () => toast.error("Failed to remove family member. Please try again."),
+        })
     }
 
     const [educDialog, setEducDialog] = useState<{
@@ -1454,14 +1589,26 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const saveEducation = () => {
         const data = { level: educDialog.level, school_name: educDialog.school_name, school_address: educDialog.school_address, degree: educDialog.degree, graduation_date: educDialog.graduation_date || null }
         if (educDialog.index !== undefined) {
-            router.put(route("employee.education.update", { employee: employee.employee_id, index: educDialog.index }), data, { preserveScroll: true, onSuccess: () => setEducDialog(p => ({ ...p, open: false })) })
+            router.put(route("employee.education.update", { employee: employee.employee_id, index: educDialog.index }), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Education record updated successfully."); setEducDialog(p => ({ ...p, open: false })) },
+                onError:   () => toast.error("Failed to update education record. Please try again."),
+            })
         } else {
-            router.post(route("employee.education.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setEducDialog(p => ({ ...p, open: false })) })
+            router.post(route("employee.education.store", employee.employee_id), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Education record added successfully."); setEducDialog(p => ({ ...p, open: false })) },
+                onError:   () => toast.error("Failed to add education record. Please try again."),
+            })
         }
     }
     const confirmDeleteEduc = () => {
         if (deleteEducIndex === null) return
-        router.delete(route("employee.education.destroy", { employee: employee.employee_id, index: deleteEducIndex }), { preserveScroll: true, onSuccess: () => setDeleteEducIndex(null) })
+        router.delete(route("employee.education.destroy", { employee: employee.employee_id, index: deleteEducIndex }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success("Education record deleted."); setDeleteEducIndex(null) },
+            onError:   () => toast.error("Failed to delete education record. Please try again."),
+        })
     }
 
     const educByLevel = educations.reduce<Record<string, Education[]>>((acc, edu) => {
@@ -1482,14 +1629,26 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const saveSeminar = () => {
         const data = { seminar_name: seminarDialog.seminar_name, venue: seminarDialog.venue, date_attended: seminarDialog.date_attended || null }
         if (seminarDialog.id) {
-            router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, { preserveScroll: true, onSuccess: () => setSeminarDialog(p => ({ ...p, open: false })) })
+            router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Seminar / training updated successfully."); setSeminarDialog(p => ({ ...p, open: false })) },
+                onError:   () => toast.error("Failed to update seminar. Please try again."),
+            })
         } else {
-            router.post(route("employee.seminar.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setSeminarDialog(p => ({ ...p, open: false })) })
+            router.post(route("employee.seminar.store", employee.employee_id), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Seminar / training added successfully."); setSeminarDialog(p => ({ ...p, open: false })) },
+                onError:   () => toast.error("Failed to add seminar. Please try again."),
+            })
         }
     }
     const confirmDeleteSeminar = () => {
         if (!deleteSeminarId) return
-        router.delete(route("employee.seminar.destroy", { employee: employee.employee_id, seminar: deleteSeminarId }), { preserveScroll: true, onSuccess: () => setDeleteSeminarId(null) })
+        router.delete(route("employee.seminar.destroy", { employee: employee.employee_id, seminar: deleteSeminarId }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success("Seminar / training deleted."); setDeleteSeminarId(null) },
+            onError:   () => toast.error("Failed to delete seminar. Please try again."),
+        })
     }
 
     const [serviceDialog, setServiceDialog] = useState<{
@@ -1503,14 +1662,26 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const saveServiceRecord = () => {
         const data = { position_name: serviceDialog.position_name, department_name: serviceDialog.department_name, year_start: serviceDialog.year_start, year_end: serviceDialog.year_end }
         if (serviceDialog.id) {
-            router.put(route("employee.service-record.update", { employee: employee.employee_id, record: serviceDialog.id }), data, { preserveScroll: true, onSuccess: () => setServiceDialog(p => ({ ...p, open: false })) })
+            router.put(route("employee.service-record.update", { employee: employee.employee_id, record: serviceDialog.id }), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Service record updated successfully."); setServiceDialog(p => ({ ...p, open: false })) },
+                onError:   () => toast.error("Failed to update service record. Please try again."),
+            })
         } else {
-            router.post(route("employee.service-record.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => setServiceDialog(p => ({ ...p, open: false })) })
+            router.post(route("employee.service-record.store", employee.employee_id), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Service record added successfully."); setServiceDialog(p => ({ ...p, open: false })) },
+                onError:   () => toast.error("Failed to add service record. Please try again."),
+            })
         }
     }
     const confirmDeleteService = () => {
         if (!deleteServiceId) return
-        router.delete(route("employee.service-record.destroy", { employee: employee.employee_id, record: deleteServiceId }), { preserveScroll: true, onSuccess: () => setDeleteServiceId(null) })
+        router.delete(route("employee.service-record.destroy", { employee: employee.employee_id, record: deleteServiceId }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success("Service record deleted."); setDeleteServiceId(null) },
+            onError:   () => toast.error("Failed to delete service record. Please try again."),
+        })
     }
 
     return (
@@ -1519,9 +1690,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Family Information</span>
-                    <button onClick={() => openFamilyDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
-                        <Plus className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => openFamilyDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
                 </div>
                 {familyMembers.length === 0 ? (
                     <div className="px-5 py-8 text-center">
@@ -1533,12 +1702,9 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <div className="min-w-[640px]">
                             <div className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
                                 <div className="w-4" />
-                                <span className="text-xs font-semibold text-muted-foreground">Full Name</span>
-                                <span className="text-xs font-semibold text-muted-foreground">Relationship</span>
-                                <span className="text-xs font-semibold text-muted-foreground">Sex</span>
-                                <span className="text-xs font-semibold text-muted-foreground">Date of Birth</span>
-                                <span className="text-xs font-semibold text-muted-foreground">Place of Birth</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                                {["Full Name", "Relationship", "Sex", "Date of Birth", "Place of Birth", ""].map(h => (
+                                    <span key={h} className="text-xs font-semibold text-muted-foreground">{h}</span>
+                                ))}
                             </div>
                             <div className="divide-y divide-border">
                                 {familyMembers.map((member, i) => (
@@ -1551,7 +1717,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                         <span className="text-sm text-muted-foreground truncate">{member.place_of_birth ?? "—"}</span>
                                         <div className="flex items-center justify-end gap-1">
                                             <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteFamilyIndex(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </div>
                                     </div>
                                 ))}
@@ -1590,7 +1756,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                                     <span className="text-sm text-muted-foreground text-right">{edu.graduation_date ? new Date(edu.graduation_date).getFullYear() : "—"}</span>
                                                     <div className="flex items-center justify-end gap-1">
                                                         <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteEducIndex(globalIndex)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteEducIndex(globalIndex)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                                     </div>
                                                 </div>
                                             )
@@ -1619,10 +1785,9 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <div className="min-w-[520px]">
                             <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
                                 <div className="w-4" />
-                                <span className="text-xs font-semibold text-muted-foreground">Seminar / Training</span>
-                                <span className="text-xs font-semibold text-muted-foreground">Organizer</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Date Attended</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                                {["Seminar / Training", "Organizer", "Date Attended", ""].map(h => (
+                                    <span key={h} className={`text-xs font-semibold text-muted-foreground ${h === "Date Attended" ? "text-right" : ""}`}>{h}</span>
+                                ))}
                             </div>
                             <div className="divide-y divide-border">
                                 {seminars.map(s => (
@@ -1633,7 +1798,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                         <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
                                         <div className="flex items-center justify-end gap-1">
                                             <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </div>
                                     </div>
                                 ))}
@@ -1659,10 +1824,9 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         <div className="min-w-[480px]">
                             <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
                                 <div className="w-4" />
-                                <span className="text-xs font-semibold text-muted-foreground">Position</span>
-                                <span className="text-xs font-semibold text-muted-foreground">Department</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Duration</span>
-                                <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                                {["Position", "Department", "Duration", ""].map(h => (
+                                    <span key={h} className={`text-xs font-semibold text-muted-foreground ${h === "Duration" ? "text-right" : ""}`}>{h}</span>
+                                ))}
                             </div>
                             <div className="divide-y divide-border">
                                 {serviceRecs.map(s => (
@@ -1673,7 +1837,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                         <span className="text-sm text-muted-foreground text-right">{s.year_start && s.year_end ? `${s.year_start}–${s.year_end}` : s.year_start ?? "—"}</span>
                                         <div className="flex items-center justify-end gap-1">
                                             <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </div>
                                     </div>
                                 ))}
@@ -1683,7 +1847,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* Dialogs */}
+            {/* ── All dialogs ── */}
             <Dialog open={familyDialog.open} onOpenChange={o => setFamilyDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>{familyDialog.index !== undefined ? "Edit" : "Add"} Family Member</DialogTitle></DialogHeader>
@@ -1747,7 +1911,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widests mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, venue: e.target.value }))} /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label><Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
                     </div>
@@ -1778,9 +1942,9 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
             {[
                 { open: deleteFamilyIndex !== null, onClose: () => setDeleteFamilyIndex(null), onConfirm: confirmDeleteFamily, label: "family member" },
-                { open: deleteEducIndex !== null, onClose: () => setDeleteEducIndex(null), onConfirm: confirmDeleteEduc, label: "education record" },
-                { open: !!deleteSeminarId, onClose: () => setDeleteSeminarId(null), onConfirm: confirmDeleteSeminar, label: "seminar" },
-                { open: !!deleteServiceId, onClose: () => setDeleteServiceId(null), onConfirm: confirmDeleteService, label: "service record" },
+                { open: deleteEducIndex !== null,   onClose: () => setDeleteEducIndex(null),   onConfirm: confirmDeleteEduc,   label: "education record" },
+                { open: !!deleteSeminarId,          onClose: () => setDeleteSeminarId(null),   onConfirm: confirmDeleteSeminar, label: "seminar" },
+                { open: !!deleteServiceId,          onClose: () => setDeleteServiceId(null),   onConfirm: confirmDeleteService, label: "service record" },
             ].map(({ open, onClose, onConfirm, label }) => (
                 <AlertDialog key={label} open={open} onOpenChange={o => !o && onClose()}>
                     <AlertDialogContent>
@@ -1801,105 +1965,90 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
 // ─── Documents Tab ────────────────────────────────────────────────────────────
 
-
 const FILE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
-    pdf: { icon: "PDF", color: "text-red-600", bg: "bg-red-50 dark:bg-red-950/40" },
-    doc: { icon: "DOC", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/40" },
-    docx: { icon: "DOCX", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/40" },
-    xls: { icon: "XLS", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
-    xlsx: { icon: "XLSX", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
-    png: { icon: "PNG", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/40" },
-    jpg: { icon: "JPG", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/40" },
-    jpeg: { icon: "JPEG", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/40" },
-    txt: { icon: "TXT", color: "text-muted-foreground", bg: "bg-muted" },
-    zip: { icon: "ZIP", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/40" },
+    pdf:  { icon: "PDF",  color: "text-rose-600",   bg: "bg-rose-50 dark:bg-rose-950/40" },
+    doc:  { icon: "DOC",  color: "text-sky-600",    bg: "bg-sky-50 dark:bg-sky-950/40" },
+    docx: { icon: "DOCX", color: "text-sky-600",    bg: "bg-sky-50 dark:bg-sky-950/40" },
+    xls:  { icon: "XLS",  color: "text-emerald-600",bg: "bg-emerald-50 dark:bg-emerald-950/40" },
+    xlsx: { icon: "XLSX", color: "text-emerald-600",bg: "bg-emerald-50 dark:bg-emerald-950/40" },
+    png:  { icon: "PNG",  color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
+    jpg:  { icon: "JPG",  color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
+    jpeg: { icon: "JPEG", color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
+    txt:  { icon: "TXT",  color: "text-muted-foreground", bg: "bg-muted" },
+    zip:  { icon: "ZIP",  color: "text-amber-600",  bg: "bg-amber-50 dark:bg-amber-950/40" },
 }
 
-function getFileExt(name: string) {
-    return name.split(".").pop()?.toLowerCase() ?? ""
-}
-
+function getFileExt(name: string) { return name.split(".").pop()?.toLowerCase() ?? "" }
 function getFileIcon(name: string) {
     const ext = getFileExt(name)
     return FILE_ICONS[ext] ?? { icon: ext.toUpperCase() || "FILE", color: "text-muted-foreground", bg: "bg-muted" }
 }
-
-function isViewable(name: string) {
-    return ["pdf", "png", "jpg", "jpeg", "gif", "webp", "txt"].includes(getFileExt(name))
-}
-
-function isImage(name: string) {
-    return ["png", "jpg", "jpeg", "gif", "webp"].includes(getFileExt(name))
-}
+function isViewable(name: string) { return ["pdf", "png", "jpg", "jpeg", "gif", "webp", "txt"].includes(getFileExt(name)) }
+function isImage(name: string)    { return ["png", "jpg", "jpeg", "gif", "webp"].includes(getFileExt(name)) }
 
 function DocumentsTab({ employee }: { employee: Employee }) {
     const uploadedFiles = employee.uploadedFiles ?? []
-    const fileInputRef = React.useRef<HTMLInputElement>(null)
+    const fileInputRef  = React.useRef<HTMLInputElement>(null)
     const [deleteFileId, setDeleteFileId] = useState<number | null>(null)
-    const [viewFile, setViewFile] = useState<UploadedFile | null>(null)
-    const [uploading, setUploading] = useState(false)
-    const [uploadError, setUploadError] = useState<string | null>(null)
+    const [viewFile, setViewFile]         = useState<UploadedFile | null>(null)
+    const [uploading, setUploading]       = useState(false)
+    const [uploadError, setUploadError]   = useState<string | null>(null)
 
-    const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB
+    const MAX_FILE_SIZE = 25 * 1024 * 1024
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
-
         if (file.size > MAX_FILE_SIZE) {
             setUploadError(`File is too large. Maximum size is 25 MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)} MB.`)
             e.target.value = ""
             return
         }
-
         setUploadError(null)
         setUploading(true)
+        const toastId = toast.loading(`Uploading "${file.name}"…`)
         const formData = new FormData()
         formData.append("file", file)
         router.post(route("employee.file.store", employee.employee_id), formData, {
             preserveScroll: true,
-            onFinish: () => setUploading(false),
-            onError: () => {
-                setUploadError("Upload failed. Please try again.")
-                setUploading(false)
-            },
+            onSuccess: () => { toast.success(`"${file.name}" uploaded successfully.`, { id: toastId }); setUploading(false) },
+            onError:   () => { toast.error("Upload failed. Please try again.", { id: toastId }); setUploadError("Upload failed. Please try again."); setUploading(false) },
+            onFinish:  () => setUploading(false),
         })
         e.target.value = ""
     }
 
     const confirmDeleteFile = () => {
         if (!deleteFileId) return
-        router.delete(
-            route("employee.file.destroy", { employee: employee.employee_id, file: deleteFileId }),
-            { preserveScroll: true, onSuccess: () => setDeleteFileId(null) }
-        )
+        const fileName = uploadedFiles.find(f => f.id === deleteFileId)?.file_name
+        router.delete(route("employee.file.destroy", { employee: employee.employee_id, file: deleteFileId }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success(fileName ? `"${fileName}" deleted.` : "File deleted."); setDeleteFileId(null) },
+            onError:   () => toast.error("Failed to delete file. Please try again."),
+        })
     }
 
     const formatBytes = (bytes: number) => {
-        if (bytes < 1024) return bytes + " B"
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB"
+        if (bytes < 1024)           return bytes + " B"
+        if (bytes < 1024 * 1024)    return (bytes / 1024).toFixed(1) + " KB"
         return (bytes / (1024 * 1024)).toFixed(2) + " MB"
     }
 
     return (
         <div className="p-3 sm:p-5 space-y-4">
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-
-                {/* ── Header ── */}
+                {/* Header */}
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-foreground">Uploaded Files</span>
                         {uploadedFiles.length > 0 && (
-                            <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-full px-2 py-0.5">
-                                {uploadedFiles.length}
-                            </Badge>
+                            <span className="text-[10px] font-semibold bg-accent text-accent-foreground px-2 py-0.5 rounded-full">{uploadedFiles.length}</span>
                         )}
                     </div>
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        title="Upload file"
                     >
                         <Upload className="w-3.5 h-3.5" />
                         {uploading ? "Uploading…" : "Upload"}
@@ -1907,27 +2056,23 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                     <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
                 </div>
 
-                {/* ── Upload error ── */}
+                {/* Upload error */}
                 {uploadError && (
-                    <div className="mx-4 sm:mx-5 mt-3 rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-2.5">
-                        <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm text-destructive leading-snug">{uploadError}</p>
-                        </div>
-                        <button onClick={() => setUploadError(null)} className="text-destructive/60 hover:text-destructive transition-colors shrink-0">
+                    <div className="mx-4 sm:mx-5 mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 px-4 py-3 flex items-start gap-2.5">
+                        <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                        <p className="flex-1 text-sm text-rose-700 dark:text-rose-400 leading-snug">{uploadError}</p>
+                        <button onClick={() => setUploadError(null)} className="text-rose-400 hover:text-rose-600 transition-colors shrink-0">
                             <XCircle className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 )}
 
-                {/* ── Size hint ── */}
+                {/* Size hint */}
                 <div className="px-4 sm:px-5 py-2 border-b border-border bg-muted/20">
-                    <p className="text-[11px] text-muted-foreground">
-                        Maximum file size: <span className="font-semibold">25 MB</span>. All file types accepted.
-                    </p>
+                    <p className="text-[11px] text-muted-foreground">Maximum file size: <span className="font-semibold">25 MB</span>. All file types accepted.</p>
                 </div>
 
-                {/* ── Empty state ── */}
+                {/* Empty state */}
                 {uploadedFiles.length === 0 ? (
                     <div className="px-5 py-14 text-center">
                         <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
@@ -1940,7 +2085,6 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    /* ── File list ── */
                     <div className="divide-y divide-border">
                         {uploadedFiles.map(file => {
                             const { icon, color, bg } = getFileIcon(file.file_name)
@@ -1951,12 +2095,9 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                     className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/20 transition-colors group cursor-pointer"
                                     onClick={() => canView ? setViewFile(file) : window.open(file.file_url, "_blank")}
                                 >
-                                    {/* File type badge */}
                                     <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                                         <span className={`text-[9px] font-black ${color} tracking-tight`}>{icon}</span>
                                     </div>
-
-                                    {/* File info — takes all remaining space */}
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-foreground truncate leading-snug">{file.file_name}</p>
                                         <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
@@ -1964,29 +2105,17 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                             <span className="hidden sm:inline">·</span>
                                             <span className="hidden sm:inline">{fmtShort(file.created_at)}</span>
                                         </p>
-                                        {/* Date shown below name on mobile */}
                                         <p className="text-xs text-muted-foreground sm:hidden mt-0.5">{fmtShort(file.created_at)}</p>
                                     </div>
-
-                                    {/* Actions */}
-                                    <div
-                                        className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                                        onClick={e => e.stopPropagation()}
-                                    >
+                                    <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                                         {canView && (
                                             <a href={file.file_url} download={file.file_name} target="_blank" rel="noreferrer">
-                                                <Button variant="ghost" size="icon-xs" title="Download"
-                                                    className="text-muted-foreground hover:text-primary w-8 h-8 sm:w-7 sm:h-7">
+                                                <Button variant="ghost" size="icon-xs" title="Download" className="text-muted-foreground hover:text-primary w-8 h-8 sm:w-7 sm:h-7">
                                                     <Download className="w-3.5 h-3.5" />
                                                 </Button>
                                             </a>
                                         )}
-                                        <Button
-                                            variant="ghost" size="icon-xs"
-                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-8 h-8 sm:w-7 sm:h-7"
-                                            onClick={() => setDeleteFileId(file.id)}
-                                            title="Delete"
-                                        >
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 w-8 h-8 sm:w-7 sm:h-7" onClick={() => setDeleteFileId(file.id)} title="Delete">
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
                                     </div>
@@ -1997,7 +2126,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* ── View / Preview Dialog ── */}
+            {/* View / Preview Dialog */}
             <Dialog open={!!viewFile} onOpenChange={o => !o && setViewFile(null)}>
                 <DialogContent className="sm:max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl">
                     <DialogHeader className="px-5 py-4 border-b border-border shrink-0 flex flex-row items-center justify-between">
@@ -2016,55 +2145,36 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                             </div>
                         </div>
                     </DialogHeader>
-
-                    {/* Preview body */}
                     <div className="flex-1 overflow-auto bg-muted/30 min-h-0" style={{ maxHeight: "calc(90vh - 80px)" }}>
                         {viewFile && isImage(viewFile.file_name) && (
                             <div className="flex items-center justify-center p-6 min-h-64">
-                                <img
-                                    src={viewFile.file_url}
-                                    alt={viewFile.file_name}
-                                    className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-lg"
-                                />
+                                <img src={viewFile.file_url} alt={viewFile.file_name} className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-lg" />
                             </div>
                         )}
                         {viewFile && getFileExt(viewFile.file_name) === "pdf" && (
-                            <iframe
-                                src={viewFile.file_url}
-                                className="w-full"
-                                style={{ height: "calc(90vh - 80px)" }}
-                                title={viewFile.file_name}
-                            />
+                            <iframe src={viewFile.file_url} className="w-full" style={{ height: "calc(90vh - 80px)" }} title={viewFile.file_name} />
                         )}
                         {viewFile && getFileExt(viewFile.file_name) === "txt" && (
                             <div className="p-6">
-                                <iframe
-                                    src={viewFile.file_url}
-                                    className="w-full min-h-96 rounded-xl border border-border bg-card"
-                                    title={viewFile.file_name}
-                                />
+                                <iframe src={viewFile.file_url} className="w-full min-h-96 rounded-xl border border-border bg-card" title={viewFile.file_name} />
                             </div>
                         )}
                     </div>
                 </DialogContent>
             </Dialog>
 
-            {/* ── Delete Confirm ── */}
+            {/* Delete Confirm */}
             <AlertDialog open={!!deleteFileId} onOpenChange={o => !o && setDeleteFileId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete File?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete <span className="font-semibold text-foreground">
-                                {uploadedFiles.find(f => f.id === deleteFileId)?.file_name}
-                            </span>. This action cannot be undone.
+                            This will permanently delete <span className="font-semibold text-foreground">{uploadedFiles.find(f => f.id === deleteFileId)?.file_name}</span>. This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDeleteFile} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Delete
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={confirmDeleteFile} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -2074,9 +2184,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 
 // ─── Avatar Preview Dialog ────────────────────────────────────────────────────
 
-function AvatarPreviewDialog({ src, name, open, onClose }: {
-    src: string; name?: string; open: boolean; onClose: () => void
-}) {
+function AvatarPreviewDialog({ src, name, open, onClose }: { src: string; name?: string; open: boolean; onClose: () => void }) {
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-xs p-0 overflow-hidden rounded-2xl border border-border shadow-2xl gap-0">
@@ -2095,7 +2203,7 @@ function AvatarPreviewDialog({ src, name, open, onClose }: {
 
 // ─── Avatar file validator ────────────────────────────────────────────────────
 
-const MAX_AVATAR_SIZE = 5 * 1024 * 1024
+const MAX_AVATAR_SIZE     = 5 * 1024 * 1024
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/jpg"]
 
 function validateAvatarFile(file: File): string | null {
@@ -2106,60 +2214,36 @@ function validateAvatarFile(file: File): string | null {
 
 // ─── Avatar Upload Dialog ─────────────────────────────────────────────────────
 
-function AvatarUploadDialog({ open, onClose, onFileSelected }: {
-    open: boolean; onClose: () => void; onFileSelected: (file: File) => void
-}) {
+function AvatarUploadDialog({ open, onClose, onFileSelected }: { open: boolean; onClose: () => void; onFileSelected: (file: File) => void }) {
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const videoRef = useRef<HTMLVideoElement>(null)
-    const canvasRef = useRef<HTMLCanvasElement>(null)
-    const streamRef = useRef<MediaStream | null>(null)
+    const videoRef     = useRef<HTMLVideoElement>(null)
+    const canvasRef    = useRef<HTMLCanvasElement>(null)
+    const streamRef    = useRef<MediaStream | null>(null)
 
-    const [mode, setMode] = useState<"choose" | "camera" | "crop">("choose")
+    const [mode, setMode]           = useState<"choose" | "camera" | "crop">("choose")
     const [cameraError, setCameraError] = useState<string | null>(null)
     const [cameraReady, setCameraReady] = useState(false)
-    const [fileError, setFileError] = useState<string | null>(null)
-
-    // Crop state
+    const [fileError, setFileError]     = useState<string | null>(null)
     const [rawImageSrc, setRawImageSrc] = useState<string | null>(null)
-    const [crop, setCrop] = useState({ x: 0, y: 0 })
-    const [zoom, setZoom] = useState(1)
+    const [crop, setCrop]           = useState({ x: 0, y: 0 })
+    const [zoom, setZoom]           = useState(1)
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
 
-    const stopCamera = () => {
-        streamRef.current?.getTracks().forEach(t => t.stop())
-        streamRef.current = null
-        setCameraReady(false)
-    }
-
-    const goToCrop = (src: string) => {
-        stopCamera()
-        setRawImageSrc(src)
-        setCrop({ x: 0, y: 0 })
-        setZoom(1)
-        setCroppedAreaPixels(null)
-        setMode("crop")
-    }
+    const stopCamera = () => { streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null; setCameraReady(false) }
+    const goToCrop   = (src: string) => { stopCamera(); setRawImageSrc(src); setCrop({ x: 0, y: 0 }); setZoom(1); setCroppedAreaPixels(null); setMode("crop") }
 
     const startCamera = async () => {
-        setCameraError(null)
-        setCameraReady(false)
-        setMode("camera")
+        setCameraError(null); setCameraReady(false); setMode("camera")
         try {
             const permission = await navigator.permissions.query({ name: "camera" as PermissionName })
-            if (permission.state === "denied") {
-                setCameraError("Camera access was blocked. Please enable it in your browser or device settings, then try again.")
-                return
-            }
-        } catch { /* Permissions API not supported */ }
+            if (permission.state === "denied") { setCameraError("Camera access was blocked. Please enable it in your browser or device settings, then try again."); return }
+        } catch { /* not supported */ }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
             streamRef.current = stream
             if (videoRef.current) {
                 videoRef.current.srcObject = stream
-                videoRef.current.onloadedmetadata = () => {
-                    videoRef.current?.play()
-                    setCameraReady(true)
-                }
+                videoRef.current.onloadedmetadata = () => { videoRef.current?.play(); setCameraReady(true) }
             }
         } catch (err: any) {
             if (err?.name === "NotAllowedError") setCameraError("Camera permission was denied. Please allow access when prompted, or use 'Select Image' instead.")
@@ -2169,19 +2253,15 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
     }
 
     const capturePhoto = () => {
-        const video = videoRef.current
-        const canvas = canvasRef.current
+        const video = videoRef.current; const canvas = canvasRef.current
         if (!video || !canvas) return
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight
         canvas.getContext("2d")?.drawImage(video, 0, 0)
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.92)
-        goToCrop(dataUrl)
+        goToCrop(canvas.toDataURL("image/jpeg", 0.92))
     }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file) return
+        const file = e.target.files?.[0]; if (!file) return
         const error = validateAvatarFile(file)
         if (error) { setFileError(error); e.target.value = ""; return }
         setFileError(null)
@@ -2195,30 +2275,16 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
         if (!rawImageSrc || !croppedAreaPixels) return
         try {
             const blob = await getCroppedImg(rawImageSrc, croppedAreaPixels)
-            const file = new File([blob], "avatar-cropped.jpg", { type: "image/jpeg" })
-            onFileSelected(file)
+            onFileSelected(new File([blob], "avatar-cropped.jpg", { type: "image/jpeg" }))
             handleClose()
         } catch {
             setCameraError("Failed to crop image. Please try again.")
+            toast.error("Failed to crop image. Please try again.")
         }
     }
 
-    const handleClose = () => {
-        stopCamera()
-        setMode("choose")
-        setCameraError(null)
-        setFileError(null)
-        setRawImageSrc(null)
-        onClose()
-    }
-
-    const backToChoose = () => {
-        stopCamera()
-        setRawImageSrc(null)
-        setMode("choose")
-        setCameraError(null)
-        setFileError(null)
-    }
+    const handleClose = () => { stopCamera(); setMode("choose"); setCameraError(null); setFileError(null); setRawImageSrc(null); onClose() }
+    const backToChoose = () => { stopCamera(); setRawImageSrc(null); setMode("choose"); setCameraError(null); setFileError(null) }
 
     return (
         <Dialog open={open} onOpenChange={v => !v && handleClose()}>
@@ -2229,7 +2295,7 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                     </DialogTitle>
                 </DialogHeader>
 
-                {/* ── Choose mode ── */}
+                {/* Choose */}
                 {mode === "choose" && (
                     <div className="px-5 py-5 space-y-4">
                         <p className="text-sm text-muted-foreground">Choose how you'd like to update your profile photo.</p>
@@ -2239,7 +2305,7 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                                     <Upload className="w-5 h-5 text-primary" />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-sm font-semibold text-foreground">Select Image</p>
+                                    <p className="text-sm font-semibold">Select Image</p>
                                     <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">Choose from device</p>
                                 </div>
                             </button>
@@ -2248,30 +2314,30 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                                     <Camera className="w-5 h-5 text-primary" />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-sm font-semibold text-foreground">Take a Photo</p>
+                                    <p className="text-sm font-semibold">Take a Photo</p>
                                     <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">Use your camera</p>
                                 </div>
                             </button>
                         </div>
                         <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png" className="hidden" onChange={handleFileChange} />
                         {fileError && (
-                            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-2.5">
-                                <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                                <p className="text-sm text-destructive leading-snug">{fileError}</p>
+                            <div className="rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 px-4 py-3 flex items-start gap-2.5">
+                                <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                <p className="text-sm text-rose-700 dark:text-rose-400 leading-snug">{fileError}</p>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* ── Camera mode ── */}
+                {/* Camera */}
                 {mode === "camera" && (
                     <div className="px-5 py-5 space-y-4">
                         {cameraError ? (
-                            <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-center space-y-3">
-                                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-                                    <XCircle className="w-5 h-5 text-destructive" />
+                            <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 p-4 text-center space-y-3">
+                                <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center mx-auto">
+                                    <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                                 </div>
-                                <p className="text-sm text-destructive leading-snug">{cameraError}</p>
+                                <p className="text-sm text-rose-700 dark:text-rose-400 leading-snug">{cameraError}</p>
                             </div>
                         ) : (
                             <div className="relative rounded-xl overflow-hidden bg-black aspect-square shadow-inner">
@@ -2292,19 +2358,14 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                         <canvas ref={canvasRef} className="hidden" />
                         <div className="flex gap-2.5">
                             <Button variant="outline" className="flex-1" onClick={backToChoose}>Back</Button>
-                            {!cameraError && (
-                                <Button className="flex-1" onClick={capturePhoto} disabled={!cameraReady}>
-                                    <Camera className="w-3.5 h-3.5 mr-1.5" />Capture
-                                </Button>
-                            )}
+                            {!cameraError && <Button className="flex-1" onClick={capturePhoto} disabled={!cameraReady}><Camera className="w-3.5 h-3.5 mr-1.5" />Capture</Button>}
                         </div>
                     </div>
                 )}
 
-                {/* ── Crop mode ── */}
+                {/* Crop */}
                 {mode === "crop" && rawImageSrc && (
                     <div className="px-5 py-5 space-y-4">
-                        {/* Crop area */}
                         <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-black">
                             <Cropper
                                 image={rawImageSrc}
@@ -2315,28 +2376,19 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
                                 showGrid={false}
                                 onCropChange={setCrop}
                                 onZoomChange={setZoom}
-                                onCropComplete={(_croppedArea, croppedAreaPixels) => setCroppedAreaPixels(croppedAreaPixels)}
+                                onCropComplete={(_area, pixels) => setCroppedAreaPixels(pixels)}
                             />
                         </div>
-                        {/* Zoom slider */}
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground font-medium">Zoom</span>
                                 <span className="text-xs text-muted-foreground">{zoom.toFixed(1)}×</span>
                             </div>
-                            <input
-                                type="range"
-                                min={1} max={3} step={0.05}
-                                value={zoom}
-                                onChange={e => setZoom(Number(e.target.value))}
-                                className="w-full accent-primary cursor-pointer"
-                            />
+                            <input type="range" min={1} max={3} step={0.05} value={zoom} onChange={e => setZoom(Number(e.target.value))} className="w-full accent-primary cursor-pointer" />
                         </div>
                         <div className="flex gap-2.5">
                             <Button variant="outline" className="flex-1" onClick={backToChoose}>Back</Button>
-                            <Button className="flex-1" onClick={applyCrop}>
-                                <Save className="w-3.5 h-3.5 mr-1.5" />Apply Crop
-                            </Button>
+                            <Button className="flex-1" onClick={applyCrop}><Save className="w-3.5 h-3.5 mr-1.5" />Apply Crop</Button>
                         </div>
                     </div>
                 )}
@@ -2348,21 +2400,26 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ShowEmployee({ employee, items }: Props) {
-    const basic = employee.basic_info
-    const position = employee.item?.position
+    const basic        = employee.basic_info
+    const position     = employee.item?.position
     const firstAddress = (basic?.addresses ?? [])[0]
-    const addressStr = firstAddress
+    const addressStr   = firstAddress
         ? [firstAddress.street_address, firstAddress.city, firstAddress.state].filter(Boolean).join(", ")
         : undefined
 
-    const [basicEditOpen, setBasicEditOpen] = useState(false)
+    const [basicEditOpen, setBasicEditOpen]       = useState(false)
     const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false)
-    const [avatarUploadOpen, setAvatarUploadOpen] = useState(false)
+    const [avatarUploadOpen, setAvatarUploadOpen]   = useState(false)
 
     const handleAvatarFileSelected = (file: File) => {
+        const toastId = toast.loading("Updating profile photo…")
         const formData = new FormData()
         formData.append("avatar", file)
-        router.post(route("employee.avatar.update", employee.employee_id), formData, { preserveScroll: true })
+        router.post(route("employee.avatar.update", employee.employee_id), formData, {
+            preserveScroll: true,
+            onSuccess: () => toast.success("Profile photo updated successfully.", { id: toastId }),
+            onError:   () => toast.error("Failed to update profile photo. Please try again.", { id: toastId }),
+        })
     }
 
     const avatarSrc =
@@ -2375,26 +2432,22 @@ export default function ShowEmployee({ employee, items }: Props) {
     ]
 
     const tabs = [
-        { value: "employment", label: "Employment Details", icon: Briefcase },
-        { value: "compensation", label: "Compensation", icon: FileText },
-        { value: "leave", label: "Leave Information", icon: Calendar },
-        { value: "time", label: "Attendance Record", icon: Clock },
-        { value: "government", label: "Government Eligibility", icon: Landmark },
-        { value: "background", label: "Background Information", icon: User },
-        { value: "documents", label: "Documents", icon: FolderOpen },
+        { value: "employment",   label: "Employment Details",    icon: Briefcase  },
+        { value: "compensation", label: "Compensation",          icon: FileText   },
+        { value: "leave",        label: "Leave Information",     icon: Calendar   },
+        { value: "time",         label: "Attendance Record",     icon: Clock      },
+        { value: "government",   label: "Government Eligibility",icon: Landmark   },
+        { value: "background",   label: "Background Information",icon: User       },
+        { value: "documents",    label: "Documents",             icon: FolderOpen },
     ]
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${basic?.full_name ?? "Employee"} — Profile`} />
 
-            {/*
-             * Outer wrapper: stacks vertically on mobile, side-by-side on lg+
-             * p-3 on mobile, p-5 on sm+
-             */}
-            <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 p-3 sm:p-5 min-h-full bg-background">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 p-3 sm:p-5 bg-background">
 
-                {/* ── Left Panel ── full-width on mobile, fixed 288px on lg+ */}
+                {/* ── Left Panel ── */}
                 <div className="w-full lg:w-72 shrink-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
                     <div className="relative flex flex-col items-center pt-8 pb-5 px-5 bg-gradient-to-b from-accent/30 to-card border-b border-border">
                         <div className="absolute top-3 right-3">
@@ -2422,36 +2475,30 @@ export default function ShowEmployee({ employee, items }: Props) {
                             <h1 className="text-base font-bold text-foreground leading-tight">{basic?.full_name ?? "—"}</h1>
                             <p className="text-xs text-primary font-semibold mt-0.5">{position?.position_name ?? "No Position Assigned"}</p>
                         </div>
-                        <Badge className={`mt-2.5 text-[10px] font-bold border-0 rounded-full px-3 py-0.5 ${employee.status ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
-                            {employee.status ? "● Active" : "● Inactive"}
-                        </Badge>
+                        <div className="mt-2.5">
+                            <ActiveBadge active={employee.status} />
+                        </div>
                     </div>
 
-                    {/*
-                     * On mobile the info rows sit below the avatar in a 2-column
-                     * grid so they don't take up too much vertical space.
-                     * On lg+ they revert to a single-column stacked list.
-                     */}
-                    <div className="flex-1 px-4 py-3 overflow-y-auto">
+                    <div className="flex-1 px-4 py-3">
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Basic Information</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-0">
-                            <InfoRow icon={Mail} label="Work Email" value={employee.work_email} />
-                            <InfoRow icon={Mail} label="Personal Email" value={basic?.personal_email} />
-                            <InfoRow icon={Briefcase} label="Work ID" value={employee.work_id} />
-                            <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} />
-                            <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} />
-                            <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} />
-                            <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} />
-                            <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} />
-                            <InfoRow icon={Home} label="Address" value={addressStr} />
+                            <InfoRow icon={Mail}     label="Work Email"     value={employee.work_email} />
+                            <InfoRow icon={Mail}     label="Personal Email" value={basic?.personal_email} />
+                            <InfoRow icon={Briefcase}label="Work ID"        value={employee.work_id} />
+                            <InfoRow icon={Phone}    label="Contact Number" value={basic?.phone_number} />
+                            <InfoRow icon={Calendar} label="Date of Birth"  value={fmt(basic?.birth_date)} />
+                            <InfoRow icon={MapPin}   label="Place of Birth" value={basic?.place_of_birth} />
+                            <InfoRow icon={User}     label="Sex"            value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} />
+                            <InfoRow icon={Heart}    label="Civil Status"   value={cap(basic?.civil_status)} />
+                            <InfoRow icon={Home}     label="Address"        value={addressStr} />
                         </div>
                     </div>
                 </div>
 
-                {/* ── Right Panel ── takes remaining width, min-w-0 prevents overflow */}
-                <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col min-w-0">
-                    <Tabs defaultValue="employment" className="flex flex-col flex-1">
-                        {/* Horizontally scrollable tab bar on all screen sizes */}
+                {/* ── Right Panel ── */}
+                <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm min-w-0">
+                    <Tabs defaultValue="employment">
                         <div className="border-b border-border px-2 sm:px-4 pt-1 shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                             <TabsList className="h-auto bg-transparent gap-0 p-0 flex flex-nowrap w-max min-w-full">
                                 {tabs.map(({ value, label, icon: Icon }) => (
@@ -2461,26 +2508,25 @@ export default function ShowEmployee({ employee, items }: Props) {
                                         className="relative flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap"
                                     >
                                         <Icon className="w-3.5 h-3.5 shrink-0" />
-                                        {/* Hide label text on very small screens, show icon only */}
                                         <span className="hidden xs:inline sm:inline">{label}</span>
                                     </TabsTrigger>
                                 ))}
                             </TabsList>
                         </div>
 
-                        <TabsContent value="employment" className="flex-1 mt-0 overflow-y-auto"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
-                        <TabsContent value="compensation" className="flex-1 mt-0 overflow-y-auto"><CompensationTab employee={employee} /></TabsContent>
-                        <TabsContent value="leave" className="flex-1 mt-0 overflow-y-auto"><LeaveInformationTab employee={employee} /></TabsContent>
-                        <TabsContent value="time" className="flex-1 mt-0 overflow-y-auto"><AttendanceRecordTab employee={employee} /></TabsContent>
-                        <TabsContent value="government" className="flex-1 mt-0 overflow-y-auto"><GovernmentEligibilityTab employee={employee} /></TabsContent>
-                        <TabsContent value="background" className="flex-1 mt-0 overflow-y-auto"><BackgroundInformationTab employee={employee} /></TabsContent>
-                        <TabsContent value="documents" className="flex-1 mt-0 overflow-y-auto"><DocumentsTab employee={employee} /></TabsContent>
+                        <TabsContent value="employment"   className="mt-0"><EmploymentDetailsTab employee={employee} items={items} /></TabsContent>
+                        <TabsContent value="compensation" className="mt-0"><CompensationTab employee={employee} /></TabsContent>
+                        <TabsContent value="leave"        className="mt-0"><LeaveInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="time"         className="mt-0"><AttendanceRecordTab employee={employee} /></TabsContent>
+                        <TabsContent value="government"   className="mt-0"><GovernmentEligibilityTab employee={employee} /></TabsContent>
+                        <TabsContent value="background"   className="mt-0"><BackgroundInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="documents"    className="mt-0"><DocumentsTab employee={employee} /></TabsContent>
                     </Tabs>
                 </div>
             </div>
 
             <AvatarPreviewDialog src={avatarSrc} name={basic?.full_name} open={avatarPreviewOpen} onClose={() => setAvatarPreviewOpen(false)} />
-            <AvatarUploadDialog open={avatarUploadOpen} onClose={() => setAvatarUploadOpen(false)} onFileSelected={handleAvatarFileSelected} />
+            <AvatarUploadDialog  open={avatarUploadOpen} onClose={() => setAvatarUploadOpen(false)} onFileSelected={handleAvatarFileSelected} />
             <BasicInfoEditDialog employee={employee} open={basicEditOpen} onClose={() => setBasicEditOpen(false)} />
         </AppLayout>
     )

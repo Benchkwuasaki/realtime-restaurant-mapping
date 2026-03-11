@@ -1,7 +1,6 @@
 import { format, parseISO } from "date-fns"
 import { AlertTriangle, Clock, Coffee, Timer, LogIn, ClipboardList } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
 import {
@@ -10,6 +9,14 @@ import {
 } from "../data/data"
 import { type AttendanceRecord } from "../data/schema"
 
+// ─── Themed badge helpers ─────────────────────────────────────────────────────
+
+function PurposeBadge({ type }: { type: "personal" | "official" }) {
+    return type === "personal"
+        ? <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">Personal</span>
+        : <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">Official</span>
+}
+
 // ─── Time cell ────────────────────────────────────────────────────────────────
 
 function TimeCell({ actual, isLate = false }: { actual: string | null; isLate?: boolean }) {
@@ -17,7 +24,7 @@ function TimeCell({ actual, isLate = false }: { actual: string | null; isLate?: 
         <span className="text-muted-foreground/40 tabular-nums font-mono text-sm">—</span>
     )
     return (
-        <span className={`font-mono tabular-nums text-sm ${isLate ? "text-destructive" : ""}`}>
+        <span className={`font-mono tabular-nums text-sm ${isLate ? "text-rose-600 dark:text-rose-400" : ""}`}>
             {fmtTime(actual)}
         </span>
     )
@@ -30,7 +37,7 @@ function TimeInCell({ record }: { record: AttendanceRecord }) {
 
     if (record.time_in) {
         return (
-            <span className={`font-mono tabular-nums text-sm ${isLate ? "text-destructive" : ""}`}>
+            <span className={`font-mono tabular-nums text-sm ${isLate ? "text-rose-600 dark:text-rose-400" : ""}`}>
                 {fmtTime(record.time_in)}
             </span>
         )
@@ -48,7 +55,7 @@ function TimeInCell({ record }: { record: AttendanceRecord }) {
     return <span className="text-muted-foreground/40 tabular-nums font-mono text-sm">—</span>
 }
 
-// ─── Whereabout slip badge ────────────────────────────────────────────────────
+// ─── Whereabout slip cell ─────────────────────────────────────────────────────
 
 function WhereaboutSlipCell({ record }: { record: AttendanceRecord }) {
     const slips = record.whereabout_slips ?? []
@@ -64,22 +71,14 @@ function WhereaboutSlipCell({ record }: { record: AttendanceRecord }) {
     return (
         <div className="flex items-center gap-1.5 flex-wrap">
             {/* Count badge */}
-            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/60">
                 <ClipboardList className="w-3 h-3" />
                 {slips.length}
             </span>
 
             {/* Purpose type badges */}
-            {hasPersonal && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                    Personal
-                </Badge>
-            )}
-            {hasOfficial && (
-                <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4">
-                    Official
-                </Badge>
-            )}
+            {hasPersonal && <PurposeBadge type="personal" />}
+            {hasOfficial && <PurposeBadge type="official" />}
 
             {/* Pending return warning */}
             {hasPending && (
@@ -110,7 +109,7 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
                         <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[status] ?? "bg-muted-foreground"}`} />
                         <span className="font-semibold text-sm text-foreground truncate">{name}</span>
                     </div>
-                    <span className={`inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_PILL[status] ?? "bg-muted text-muted-foreground"}`}>
+                    <span className={`inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_PILL[status] ?? "bg-muted text-muted-foreground border-border"}`}>
                         <Icon className="w-2.5 h-2.5" />
                         {STATUS_LABEL[status]}
                     </span>
@@ -129,7 +128,7 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
                     <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 shrink-0" />
                         {row.time_in ? (
-                            <span className={`font-mono ${isLate ? "text-destructive" : ""}`}>
+                            <span className={`font-mono ${isLate ? "text-rose-600 dark:text-rose-400" : ""}`}>
                                 {fmtTime(row.time_in)}
                             </span>
                         ) : row.break_out ? (
@@ -145,7 +144,7 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
                         <span className="text-muted-foreground/40">out</span>
                     </div>
                     {isLate && (
-                        <div className="flex items-center gap-1 text-destructive col-span-2">
+                        <div className="flex items-center gap-1 text-rose-600 dark:text-rose-400 col-span-2">
                             <AlertTriangle className="w-3 h-3 shrink-0" />
                             <span className="font-semibold">{fmtMinutes(row.late_minutes)} late</span>
                         </div>
@@ -155,12 +154,12 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
                 {/* Whereabout slips */}
                 {slips.length > 0 && (
                     <div className="pl-3.5 flex items-center gap-1.5 flex-wrap">
-                        <ClipboardList className="w-3 h-3 text-blue-500" />
-                        <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">
+                        <ClipboardList className="w-3 h-3 text-sky-500" />
+                        <span className="text-[11px] text-sky-600 dark:text-sky-400 font-medium">
                             {slips.length} whereabout slip{slips.length > 1 ? "s" : ""}
                         </span>
                         {slips.some(s => s.return_status === "not_returned") && (
-                            <span className="text-[10px] text-amber-600 font-semibold">· Pending return</span>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">· Pending return</span>
                         )}
                     </div>
                 )}
@@ -294,7 +293,7 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
                 if (!late || late === 0)
                     return <span className="text-muted-foreground/40 text-sm">—</span>
                 return (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
                         <AlertTriangle className="w-3 h-3" />
                         {fmtMinutes(late)}
                     </span>
@@ -329,7 +328,7 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
                 const s    = row.original.status
                 const Icon = STATUS_ICON[s] ?? STATUS_ICON.ABSENT
                 return (
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border-0 ${STATUS_PILL[s] ?? "bg-muted text-muted-foreground"}`}>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${STATUS_PILL[s] ?? "bg-muted text-muted-foreground border-border"}`}>
                         <Icon className="w-3 h-3" />
                         {STATUS_LABEL[s]}
                     </span>

@@ -99,10 +99,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: route('attendance-record.index'),
           },
           {
-            title: "Attendance Settings",
-            url: route('attendance-settings.index'),
-          },
-          {
             title: "Whereabout Slip",
             url: route('whereabout-slip.index'),
           },

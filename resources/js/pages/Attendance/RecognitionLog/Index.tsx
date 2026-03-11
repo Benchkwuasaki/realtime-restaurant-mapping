@@ -1,6 +1,5 @@
 import { Head, router } from "@inertiajs/react"
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
-import axios from "axios"
 import {
     Search, CalendarDays, WifiOff, Loader2, Radio,
     LogIn, LogOut, Coffee, ArrowUpFromLine, X,
@@ -773,7 +772,6 @@ export default function RecognitionLogIndex({
     }
 
     const [records, setRecords] = useState<AttendanceLog[]>(() => toArray(initialAttendances))
-    const [refreshing, setRefreshing] = useState(false)
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
     const [newIds, setNewIds] = useState<Set<number>>(new Set())
 
@@ -812,18 +810,6 @@ export default function RecognitionLogIndex({
         setRecords(prev => prev.map(r => r.id === updated.id ? { ...r, time_type: updated.time_type } : r))
         setSelectedRecord(prev => prev?.id === updated.id ? { ...prev, time_type: updated.time_type } : prev)
     })
-
-    const fetchRecords = useCallback(async (targetDate: string) => {
-        setRefreshing(true)
-        try {
-            const res = await axios.get<{ attendances: AttendanceLog[] }>(
-                route("recognition-logs.index"),
-                { params: { date: targetDate, json: 1 } }
-            )
-            setRecords(toArray(res.data.attendances ?? []))
-            setLastUpdated(new Date())
-        } catch { /* silently fail */ } finally { setRefreshing(false) }
-    }, [])
 
     const [search, setSearch] = useState("")
     const filtered = useMemo(() => records.filter(r => matchesSearch(r, search)), [records, search])
@@ -896,12 +882,6 @@ export default function RecognitionLogIndex({
                                 <span className="hidden sm:inline">Today</span>
                             </Button>
                         )}
-                        <Button
-                            variant="outline" size="sm" className="h-9 w-9 p-0"
-                            onClick={() => fetchRecords(date)} disabled={refreshing} title="Refresh now"
-                        >
-                            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-                        </Button>
                     </div>
                 </div>
 
@@ -946,7 +926,6 @@ export default function RecognitionLogIndex({
                                     Detection Log
                                 </p>
                                 <div className="flex items-center gap-1.5">
-                                    {refreshing && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
                                     <span className="text-xs text-muted-foreground tabular-nums">
                                         {filtered.length}{search ? ` / ${records.length}` : ""} detection{filtered.length !== 1 ? "s" : ""}
                                     </span>
