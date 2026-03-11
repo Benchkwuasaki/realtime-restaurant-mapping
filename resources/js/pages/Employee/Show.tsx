@@ -404,9 +404,6 @@ function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatu
                     </>
                 ) : value ? (
                     <>
-                        <div className="w-5 h-5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                            <div className="w-2 h-2 rounded-full bg-primary" />
-                        </div>
                         <ValueBadge value={value} />
                     </>
                 ) : (
