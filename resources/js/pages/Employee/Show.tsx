@@ -868,7 +868,7 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Leave Balances</span>
-                    {data.length > 0 && <Badge variant="secondary" className="text-[10px] rounded-full">{data.length}</Badge>}
+                    {data.length > 0 && <Badge variant="outline" className="text-[10px] rounded-full">{data.length}</Badge>}
                 </div>
                 {data.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-14 gap-3">
@@ -1100,7 +1100,7 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
                     <div className="flex items-center gap-2 shrink-0">
                         <span className="text-sm font-bold text-foreground">Attendance Records</span>
                         {records.length > 0 && (
-                            <Badge variant="secondary" className="text-[10px] rounded-full">
+                            <Badge variant="outline" className="text-[10px] rounded-full">
                                 {filtered.length}{filtered.length !== records.length && ` / ${records.length}`}
                             </Badge>
                         )}
@@ -1846,10 +1846,10 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-foreground">Uploaded Files</span>
-                        {uploadedFiles.length > 0 && <Badge variant="secondary" className="text-[10px] rounded-full">{uploadedFiles.length}</Badge>}
+                        {uploadedFiles.length > 0 && <Badge variant="default" className="text-[10px] rounded-full">{uploadedFiles.length}</Badge>}
                     </div>
                     <Button
-                        variant="secondary"
+                        variant="default"
                         size="sm"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
