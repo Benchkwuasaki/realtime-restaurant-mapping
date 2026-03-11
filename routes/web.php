@@ -1,19 +1,25 @@
 <?php
 
+// Merged: Payroll branch (base) + newer Attendance implementation from main
+
 use App\Http\Controllers\ActivityLogsController;
+use App\Http\Controllers\AllowanceManagementController;
 use App\Http\Controllers\AnnouncementController;
-use App\Http\Controllers\AttendanceLogController;
-use App\Http\Controllers\AttendanceRecordController;
-use App\Http\Controllers\AttendanceReportController;
-use App\Http\Controllers\AttendanceSettingController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AttendanceLogController;       // from main (newer recognition logs)
+use App\Http\Controllers\AttendanceRecordController;    // from main (NEW)
+use App\Http\Controllers\AttendanceReportController;    // from main (NEW)
+use App\Http\Controllers\AttendanceSettingController;   // from main (NEW)
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmploymentClassificationController;
+use App\Http\Controllers\GovernmentRemittanceReportController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\InternalOrganizationController;
+use App\Http\Controllers\InternalOrgDeductionController;
 use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\LeaveAccrualController;
 use App\Http\Controllers\LeaveApplicationController;
@@ -21,14 +27,23 @@ use App\Http\Controllers\LeaveCalendarController;
 use App\Http\Controllers\LeaveEntitlementController;
 use App\Http\Controllers\LeaveSettingsController;
 use App\Http\Controllers\LeaveTypeController;
-use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\LoanEntryController;
+use App\Http\Controllers\OtherDeductionEntryController;
+use App\Http\Controllers\PayrollDeductionSettingsController;
+use App\Http\Controllers\PayrollProcessingController;
+use App\Http\Controllers\PayrollRegisterController;
+use App\Http\Controllers\PaySlipGenerationController;
 use App\Http\Controllers\PositionController;
-// Leave
+// ⚠️ TODO: Confirm if RecognitionLogController was renamed to AttendanceLogController.
+//          If yes, remove this import and swap the route below to use AttendanceLogController.
+use App\Http\Controllers\RecognitionLogController;
+use App\Http\Controllers\ReportsAndAnalyticsController;
+use App\Http\Controllers\SalaryGradeTableController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\WhereaboutSlipController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-// reports and analytics
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
@@ -37,18 +52,19 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    // Dashboard Routes
+/*
+|--------------------------------------------------------------------------
+| Authenticated Routes
+|--------------------------------------------------------------------------
+*/
+Route::group(['middleware' => ['auth', 'verified']], function () {
+
+    // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Attendance Routes
-    Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
-        Route::get('/', [WhereaboutSlipController::class, 'index'])->name('index');
-        Route::post('/', [WhereaboutSlipController::class, 'store'])->name('store');
-        Route::put('/{whereaboutSlip}', [WhereaboutSlipController::class, 'update'])->name('update');
-        Route::put('/{whereaboutSlip}/return', [WhereaboutSlipController::class, 'logReturn'])->name('log-return');
-        Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
-        Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
+    // User Routes
+    Route::prefix('users')->name('user.')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('index');
     });
 
     /*
@@ -68,6 +84,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
 
         Route::post('/{employee}/avatar', [EmployeeController::class, 'updateAvatar'])->name('avatar.update');
+
         // Employment Classifications
         Route::prefix('employment-classifications')->name('employment-classification.')->group(function () {
             Route::post('/', [EmploymentClassificationController::class, 'store'])->name('store');
@@ -100,10 +117,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{employee}/seminar/{seminar}', [EmployeeController::class, 'updateSeminar'])->name('seminar.update');
         Route::delete('/{employee}/seminar/{seminar}', [EmployeeController::class, 'destroySeminar'])->name('seminar.destroy');
 
-        Route::post('/{employee}/files', [EmployeeController::class, 'storeFile'])
-            ->name('file.store');
-        Route::delete('/{employee}/files/{file}', [EmployeeController::class, 'destroyFile'])
-            ->name('file.destroy');
+        // Files
+        Route::post('/{employee}/files', [EmployeeController::class, 'storeFile'])->name('file.store');
+        Route::delete('/{employee}/files/{file}', [EmployeeController::class, 'destroyFile'])->name('file.destroy');
 
         // Service Records
         Route::post('/{employee}/service-record', [EmployeeController::class, 'storeServiceRecord'])->name('service-record.store');
@@ -190,6 +206,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Position employees
     Route::get('organization/position/{position}/employees', [PositionController::class, 'employees'])
         ->name('position.employees');
+
     Route::prefix('organization/job-order-positions')->name('job-order-position.')->group(function () {
         Route::get('/', [JobOrderPositionController::class, 'index'])->name('index');
         Route::post('/', [JobOrderPositionController::class, 'store'])->name('store');
@@ -200,7 +217,37 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Attendance - Whereabout Slip
+    | Organization - Organizational Chart
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/organization/organizational_chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
+    Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - API calls
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('attendance')->name('attendance.')->group(function () {
+        Route::post('/clock-in', [AttendanceController::class, 'clockIn'])->name('clock-in');
+        Route::post('/enroll', [AttendanceController::class, 'enroll'])->name('enroll');
+        Route::post('/detect', [AttendanceController::class, 'detect'])->name('detect');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - Recognition Logs
+    | ⚠️ TODO: Doc 3 uses RecognitionLogController, Doc 4 uses AttendanceLogController
+    |          for this same route. Confirm which is correct and remove the other.
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
+        Route::get('/', [RecognitionLogController::class, 'index'])->name('index'); // ⚠️ swap to AttendanceLogController if renamed
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - Whereabout Slips
     |--------------------------------------------------------------------------
     */
     Route::prefix('attendance/whereabout-slips')->name('whereabout-slip.')->group(function () {
@@ -211,6 +258,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{whereaboutSlip}', [WhereaboutSlipController::class, 'destroy'])->name('destroy');
         Route::delete('/', [WhereaboutSlipController::class, 'bulkDestroy'])->name('bulk-destroy');
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - Records (from main - NEW)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('attendance/records', [AttendanceRecordController::class, 'index'])
+        ->name('attendance-record.index');
+    Route::post('attendance/records/recompute', [AttendanceRecordController::class, 'recompute'])
+        ->name('attendance-record.recompute');
+    Route::post('attendance/records/sync-absent', [AttendanceRecordController::class, 'syncAbsent'])
+        ->name('attendance-record.sync-absent');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance - Settings (from main - NEW)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('attendance/settings', [AttendanceSettingController::class, 'index'])
+        ->name('attendance-settings.index');
+    Route::post('attendance/settings', [AttendanceSettingController::class, 'store'])
+        ->name('attendance-settings.store');
+    Route::put('attendance/settings/{attendanceSetting}', [AttendanceSettingController::class, 'update'])
+        ->name('attendance-settings.update');
+    Route::delete('attendance/settings/{attendanceSetting}', [AttendanceSettingController::class, 'destroy'])
+        ->name('attendance-settings.destroy');
 
     /*
     |--------------------------------------------------------------------------
@@ -229,10 +302,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('leave')->name('leave.')->group(function () {
         Route::get('/leave-calendar', [LeaveCalendarController::class, 'index'])->name('leave-calendar');
 
-        // leave setting
+        // Leave Settings
         Route::get('/leave-settings', [LeaveSettingsController::class, 'index'])->name('leave-settings');
 
-        // leave types
+        // Leave Types
         Route::prefix('leave-type')->name('leave-type.')->group(function () {
             Route::post('/', [LeaveTypeController::class, 'store'])->name('store');
             Route::put('/{leave}', [LeaveTypeController::class, 'update'])->name('update');
@@ -240,7 +313,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/', [LeaveTypeController::class, 'bulkDestroy'])->name('bulk-destroy');
         });
 
-        // leave entitlement
+        // Leave Entitlements
         Route::prefix('leave-entitlement')->name('leave-entitlement.')->group(function () {
             Route::post('/', [LeaveEntitlementController::class, 'store'])->name('store');
             Route::put('/{entitlement}', [LeaveEntitlementController::class, 'update'])->name('update');
@@ -248,87 +321,135 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/', [LeaveEntitlementController::class, 'bulkDestroy'])->name('bulk-destroy');
         });
 
+        // Leave Accrual
         Route::prefix('accrual')->name('accrual.')->group(function () {
             Route::get('/', [LeaveAccrualController::class, 'index'])->name('index');
             Route::get('/preview', [LeaveAccrualController::class, 'preview'])->name('preview');
             Route::post('/confirm', [LeaveAccrualController::class, 'confirm'])->name('confirm');
             Route::post('/post', [LeaveAccrualController::class, 'post'])->name('post');
-            Route::get('/posted', [LeaveAccrualController::class, 'posted'])->name('posted');
+            Route::get('/posted', [LeaveAccrualController::class, 'posted'])->name('posted');       // from main (NEW)
             Route::get('/history', [LeaveAccrualController::class, 'history'])->name('history');
-            Route::get('/balances', [LeaveAccrualController::class, 'balances'])->name('balances');
+            Route::get('/balances', [LeaveAccrualController::class, 'balances'])->name('balances'); // from main (NEW)
         });
 
+        // Leave Application
         Route::get('/leave-application', [LeaveApplicationController::class, 'index'])->name('leave-application.index');
-
     });
-
-    // Payroll routes
-    Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
 
     /*
     |--------------------------------------------------------------------------
-    | Document Tracking
+    | Payroll
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('payroll')->group(function () {
+
+        // Payroll Processing
+        Route::get('/', [PayrollProcessingController::class, 'index'])->name('payroll.index');
+
+        // Payroll Register
+        Route::prefix('payroll-register')->name('payroll-register.')->group(function () {
+            Route::get('/', [PayrollRegisterController::class, 'index'])->name('index');
+            Route::get('/{period}', [PayrollRegisterController::class, 'show'])->name('show');
+        });
+
+        Route::get('/check-duplicate', [PayrollProcessingController::class, 'checkDuplicate'])->name('check-duplicate');
+
+        // Government Remittance Report
+        Route::get('/governmentremittancereport', [GovernmentRemittanceReportController::class, 'index'])
+            ->name('governmentremittancereport.index');
+
+        // Pay Slip Generation
+        Route::get('/payslip-generation', [PaySlipGenerationController::class, 'index'])
+            ->name('payslipgeneration.index');
+
+        // Processing API endpoints
+        Route::post('/process-new', [PayrollProcessingController::class, 'processNew'])->name('payroll.process-new');
+        Route::post('/finalize', [PayrollProcessingController::class, 'finalizePayroll'])->name('payroll.finalize');
+        Route::get('/attendance-summary', [PayrollProcessingController::class, 'attendanceSummary'])->name('payroll.attendance-summary');
+
+        // Payroll Period Management
+        Route::prefix('periods')->name('payroll.periods.')->group(function () {
+            Route::post('/', [PayrollProcessingController::class, 'storePeriod'])->name('store');
+            Route::delete('/{period}', [PayrollProcessingController::class, 'destroyPeriod'])->name('destroy');
+            Route::post('/{period}/process', [PayrollProcessingController::class, 'process'])->name('process');
+            Route::post('/{period}/post', [PayrollProcessingController::class, 'postPeriod'])->name('post');
+            Route::post('/{period}/lock', [PayrollProcessingController::class, 'lockPeriod'])->name('lock');
+        });
+
+        // Earnings & Deductions
+        Route::prefix('earnings-deductions')->group(function () {
+
+            Route::prefix('allowance')->name('allowancemanagement.')->group(function () {
+                Route::get('/', [AllowanceManagementController::class, 'index'])->name('index');
+                Route::post('/', [AllowanceManagementController::class, 'store'])->name('store');
+                Route::put('/{allowance}', [AllowanceManagementController::class, 'update'])->name('update');
+                Route::delete('/{allowance}', [AllowanceManagementController::class, 'destroy'])->name('destroy');
+            });
+
+            Route::prefix('loan-entry')->name('loanentry.')->group(function () {
+                Route::get('/', [LoanEntryController::class, 'index'])->name('index');
+                Route::post('/', [LoanEntryController::class, 'store'])->name('store');
+                Route::put('/{loan}', [LoanEntryController::class, 'update'])->name('update');
+                Route::delete('/{loan}', [LoanEntryController::class, 'destroy'])->name('destroy');
+            });
+
+            Route::prefix('internal-org-deductions')->name('internal-org-deductions.')->group(function () {
+                Route::get('/', [InternalOrgDeductionController::class, 'index'])->name('index');
+                Route::post('/', [InternalOrgDeductionController::class, 'store'])->name('store');
+                Route::delete('/bulk-destroy', [InternalOrgDeductionController::class, 'bulkDestroy'])->name('bulk-destroy');
+                Route::patch('/{internalOrgDeduction}/amount', [InternalOrgDeductionController::class, 'updateAmount'])->name('updateAmount');
+                Route::delete('/{internalOrgDeduction}', [InternalOrgDeductionController::class, 'destroy'])->name('destroy');
+            });
+
+            Route::prefix('other-deductions')->name('otherdeductions.')->group(function () {
+                Route::get('/', [OtherDeductionEntryController::class, 'index'])->name('index');
+                Route::post('/', [OtherDeductionEntryController::class, 'store'])->name('store');
+                Route::delete('/bulk-destroy', [OtherDeductionEntryController::class, 'bulkDestroy'])->name('bulk-destroy');
+                Route::patch('/{otherDeduction}/amount', [OtherDeductionEntryController::class, 'updateAmount'])->name('updateAmount');
+                Route::delete('/{otherDeduction}', [OtherDeductionEntryController::class, 'destroy'])->name('destroy');
+            });
+        });
+
+        // Configuration
+        Route::prefix('configuration')->group(function () {
+
+            Route::prefix('deduction-settings')->name('payroll.deduction-settings.')->group(function () {
+                Route::get('/', [PayrollDeductionSettingsController::class, 'index'])->name('index');
+                Route::put('/', [PayrollDeductionSettingsController::class, 'update'])->name('update');
+                Route::put('/priority-order', [PayrollDeductionSettingsController::class, 'updatePriorityOrder'])->name('priority-order.update');
+                Route::put('/floor-rules', [PayrollDeductionSettingsController::class, 'updateFloorRules'])->name('floor-rules.update');
+            });
+
+            Route::prefix('salary-grade')->name('payroll.salary-grade.')->group(function () {
+                Route::get('/', [SalaryGradeTableController::class, 'index'])->name('index');
+                Route::post('/', [SalaryGradeTableController::class, 'store'])->name('store');
+                Route::get('/{salaryGrade}', [SalaryGradeTableController::class, 'show'])->name('show');
+                Route::put('/{salaryGrade}', [SalaryGradeTableController::class, 'update'])->name('update');
+                Route::delete('/{salaryGrade}', [SalaryGradeTableController::class, 'destroy'])->name('destroy');
+                Route::post('/{salaryGrade}/activate', [SalaryGradeTableController::class, 'activate'])->name('activate');
+            });
+        });
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | System
     |--------------------------------------------------------------------------
     */
     Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Reports and Analytics
-    |--------------------------------------------------------------------------
-    */
+    Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
+
+    // Attendance Report (from main - NEW)
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
         Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
-
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Announcements
-    |--------------------------------------------------------------------------
-    */
     Route::prefix('announcement')->name('announcement.')->group(function () {
         Route::get('/', [AnnouncementController::class, 'index'])->name('index');
     });
 
-    // Organizational Chart
-    Route::get('/organization/organizational_chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
-    Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
-
-    Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
-        Route::get('/', [AttendanceLogController::class, 'index'])->name('index');
-    });
-
-    /*
-|--------------------------------------------------------------------------
-| Attendance - Records (computed daily attendance)
-|--------------------------------------------------------------------------
-*/
-    // Attendance Records
-    Route::get('attendance/records', [AttendanceRecordController::class, 'index'])
-        ->name('attendance-record.index');
-    Route::post('attendance/records/recompute', [AttendanceRecordController::class, 'recompute'])
-        ->name('attendance-record.recompute');
-    Route::post('attendance/records/sync-absent', [AttendanceRecordController::class, 'syncAbsent'])
-        ->name('attendance-record.sync-absent');
-
-    // Attendance Settings (full CRUD)
-    Route::get('attendance/settings', [AttendanceSettingController::class, 'index'])
-        ->name('attendance-settings.index');
-
-    Route::post('attendance/settings', [AttendanceSettingController::class, 'store'])
-        ->name('attendance-settings.store');
-
-    Route::put('attendance/settings/{attendanceSetting}', [AttendanceSettingController::class, 'update'])
-        ->name('attendance-settings.update');
-
-    Route::delete('attendance/settings/{attendanceSetting}', [AttendanceSettingController::class, 'destroy'])
-        ->name('attendance-settings.destroy');
-
-    // Activity Logs Routes
-
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
-
 });
 
 require __DIR__.'/settings.php';

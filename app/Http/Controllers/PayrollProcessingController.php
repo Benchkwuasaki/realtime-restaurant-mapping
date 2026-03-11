@@ -490,7 +490,7 @@ class PayrollProcessingController extends Controller
 
                 foreach ($workingDates as $date) {
                     // No attendance record at all for this working day → absent.
-                    if (!$empRecords->has($date)) {
+                    if (! $empRecords->has($date)) {
                         $absentDays++;
 
                         continue;
@@ -895,11 +895,11 @@ class PayrollProcessingController extends Controller
                     $amaY2kUnion += $amt;
                     $internalOrgLoanTotal += $amt;
                     $otherDeductionItems[] = [
-                        'id'          => $loan->id,
-                        'category'    => 'internal_org_loan',
-                        'description' => $loan->loan_type . ' — ' . $loan->source,
-                        'amount'      => $amt,
-                        'type'        => 'other',
+                        'id' => $loan->id,
+                        'category' => 'internal_org_loan',
+                        'description' => $loan->loan_type.' — '.$loan->source,
+                        'amount' => $amt,
+                        'type' => 'other',
                     ];
                 }
             }
@@ -948,7 +948,7 @@ class PayrollProcessingController extends Controller
         // Statutory contributions (government_contribution) are Never cuttable.
 
         $priorityRows = PayrollDeductionPriorityOrder::ordered();
-        $floor        = (float) $settings->minimum_take_home_pay;
+        $floor = (float) $settings->minimum_take_home_pay;
 
         // ── Fallback: if priority table is not seeded, skip floor bucketing ──
         // All pre-computed deduction amounts are used as-is; floor check is
@@ -973,40 +973,40 @@ class PayrollProcessingController extends Controller
             $floorCutAmount = 0.0;
 
             return [
-                'basic_pay'               => $basicPay,
-                'pera'                    => $pera,
-                'rice_allowance'          => $riceAllowance,
-                'uniform_allowance'       => $uniformAllowance,
-                'gsis_premium'            => $gsisPremium,
-                'philhealth'              => $philhealth,
-                'pag_ibig'                => $pagIbig,
-                'withholding_tax'         => $withholdingTax,
-                'absent_days'             => $absentDays,
-                'absent_deduction'        => $absentDeduction,
-                'late_minutes'            => $lateMinutes,
-                'late_deduction'          => $lateDeduction,
-                'gsis_mpl'                => round($gsisMpl, 2),
-                'gsis_emergency'          => round($gsisEmergency, 2),
-                'pag_ibig_mpl'            => round($pagIbigMpl, 2),
-                'ama_y2k_union'           => round($amaY2kUnion, 2),
-                'water_bill'              => round($waterBill, 2),
+                'basic_pay' => $basicPay,
+                'pera' => $pera,
+                'rice_allowance' => $riceAllowance,
+                'uniform_allowance' => $uniformAllowance,
+                'gsis_premium' => $gsisPremium,
+                'philhealth' => $philhealth,
+                'pag_ibig' => $pagIbig,
+                'withholding_tax' => $withholdingTax,
+                'absent_days' => $absentDays,
+                'absent_deduction' => $absentDeduction,
+                'late_minutes' => $lateMinutes,
+                'late_deduction' => $lateDeduction,
+                'gsis_mpl' => round($gsisMpl, 2),
+                'gsis_emergency' => round($gsisEmergency, 2),
+                'pag_ibig_mpl' => round($pagIbigMpl, 2),
+                'ama_y2k_union' => round($amaY2kUnion, 2),
+                'water_bill' => round($waterBill, 2),
                 'internal_org_deductions' => round($internalOrgSavings + $internalOrgSecond + $internalOrgLoanTotal, 2),
-                'internal_org_savings'    => round($internalOrgSavings, 2),
-                'internal_org_second'     => round($internalOrgSecond + $internalOrgLoanTotal, 2),
-                'other_deductions'        => round(
+                'internal_org_savings' => round($internalOrgSavings, 2),
+                'internal_org_second' => round($internalOrgSecond + $internalOrgLoanTotal, 2),
+                'other_deductions' => round(
                     collect($otherDeductionItems)
                         ->where('type', 'other')
                         ->where('category', '!=', 'internal_org_loan')
                         ->sum('amount'),
                     2
                 ),
-                'internal_org_items'      => $internalOrgItems,
-                'other_deduction_items'   => $otherDeductionItems,
-                'net_pay'                 => $netPay,
-                'floor_check_passed'      => $floorCheckPassed,
-                'floor_cut_amount'        => $floorCutAmount,
-                'status'                  => 'draft',
-                'hr_officer_name'         => $hrOfficerName,
+                'internal_org_items' => $internalOrgItems,
+                'other_deduction_items' => $otherDeductionItems,
+                'net_pay' => $netPay,
+                'floor_check_passed' => $floorCheckPassed,
+                'floor_cut_amount' => $floorCutAmount,
+                'status' => 'draft',
+                'hr_officer_name' => $hrOfficerName,
             ];
         }
 
@@ -1033,26 +1033,20 @@ class PayrollProcessingController extends Controller
             }
 
             $amount = match ($cat) {
-                PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_LOAN
-                    => $gsisMpl + $gsisEmergency + $pagIbigMpl,
+                PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_LOAN => $gsisMpl + $gsisEmergency + $pagIbigMpl,
 
-                PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_SAVINGS
-                    => $internalOrgSavings,
+                PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_SAVINGS => $internalOrgSavings,
 
                 // Internal org loans live in ama_y2k_union; org dues are the
                 // $internalOrgSecond portion.  We separate them here so each
                 // category can have its own cuttability and priority.
-                PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_LOAN
-                    => $isSecondCutOff ? $internalOrgLoanTotal : 0.0,
+                PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_LOAN => $isSecondCutOff ? $internalOrgLoanTotal : 0.0,
 
-                PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_DUES
-                    => $isSecondCutOff ? $internalOrgSecond : 0.0,
+                PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_DUES => $isSecondCutOff ? $internalOrgSecond : 0.0,
 
-                PayrollDeductionPriorityOrder::CATEGORY_WATER_BILL
-                    => $waterBill,
+                PayrollDeductionPriorityOrder::CATEGORY_WATER_BILL => $waterBill,
 
-                PayrollDeductionPriorityOrder::CATEGORY_OTHER_MISCELLANEOUS
-                    => $isSecondCutOff
+                PayrollDeductionPriorityOrder::CATEGORY_OTHER_MISCELLANEOUS => $isSecondCutOff
                         ? collect($otherDeductionItems)
                             ->where('type', 'other')
                             ->where('category', '!=', 'internal_org_loan')
@@ -1067,18 +1061,18 @@ class PayrollProcessingController extends Controller
             }
 
             $buckets[] = [
-                'category'    => $cat,
-                'amount'      => $amount,
+                'category' => $cat,
+                'amount' => $amount,
                 'cuttability' => $row->cuttability,
-                'effective'   => $amount, // may be zeroed below
+                'effective' => $amount, // may be zeroed below
             ];
         }
 
         // Separate into normal-priority and first-to-cut groups.
         // First_to_Cut buckets are attempted last even if their DB priority
         // would place them earlier — this is the defining behaviour.
-        $normalBuckets  = array_filter($buckets, fn($b) => $b['cuttability'] !== PayrollDeductionPriorityOrder::CUT_FIRST_TO_CUT);
-        $firstCutBuckets = array_filter($buckets, fn($b) => $b['cuttability'] === PayrollDeductionPriorityOrder::CUT_FIRST_TO_CUT);
+        $normalBuckets = array_filter($buckets, fn ($b) => $b['cuttability'] !== PayrollDeductionPriorityOrder::CUT_FIRST_TO_CUT);
+        $firstCutBuckets = array_filter($buckets, fn ($b) => $b['cuttability'] === PayrollDeductionPriorityOrder::CUT_FIRST_TO_CUT);
 
         $floorCheckPassed = true;
 
@@ -1090,6 +1084,7 @@ class PayrollProcessingController extends Controller
                 // Always apply — never zeroed.
                 $runningBalance -= $amt;
                 $bucket['effective'] = $amt;
+
                 return;
             }
 
@@ -1100,14 +1095,16 @@ class PayrollProcessingController extends Controller
                     $floorCheckPassed = false;
                 } else {
                     $runningBalance -= $amt;
-                    $bucket['effective'] = ($runningBalance >= $floor) ? $amt : (function () use (&$runningBalance, $amt, $floor): float {
+                    $bucket['effective'] = ($runningBalance >= $floor) ? $amt : (function () use (&$runningBalance, $floor): float {
                         // Partial cut: apply only what keeps us at floor.
                         $canApply = max(0.0, $runningBalance - $floor);
                         $runningBalance -= $canApply;
                         $floorCheckPassed = false;
+
                         return $canApply;
                     })();
                 }
+
                 return;
             }
 
@@ -1143,20 +1140,20 @@ class PayrollProcessingController extends Controller
             $effectiveByCategory[$b['category']] = ($effectiveByCategory[$b['category']] ?? 0.0) + $b['effective'];
         }
 
-        $govLoanEffective    = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_LOAN]      ?? ($gsisMpl + $gsisEmergency + $pagIbigMpl);
+        $govLoanEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_LOAN] ?? ($gsisMpl + $gsisEmergency + $pagIbigMpl);
         $orgSavingsEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_SAVINGS] ?? $internalOrgSavings;
-        $orgLoanEffective    = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_LOAN]    ?? $internalOrgLoanTotal;
-        $orgDuesEffective    = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_DUES]    ?? $internalOrgSecond;
-        $waterBillEffective  = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_WATER_BILL]           ?? $waterBill;
-        $otherMiscEffective  = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_OTHER_MISCELLANEOUS]  ?? 0.0;
+        $orgLoanEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_LOAN] ?? $internalOrgLoanTotal;
+        $orgDuesEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_DUES] ?? $internalOrgSecond;
+        $waterBillEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_WATER_BILL] ?? $waterBill;
+        $otherMiscEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_OTHER_MISCELLANEOUS] ?? 0.0;
 
         // Redistribute gov loan effective amount back to individual loan buckets
         // proportionally (preserves per-loan column values in the return array).
         $rawGovLoan = $gsisMpl + $gsisEmergency + $pagIbigMpl;
         $govLoanRatio = $rawGovLoan > 0 ? $govLoanEffective / $rawGovLoan : 1.0;
-        $gsisMpl      = round($gsisMpl * $govLoanRatio, 2);
+        $gsisMpl = round($gsisMpl * $govLoanRatio, 2);
         $gsisEmergency = round($gsisEmergency * $govLoanRatio, 2);
-        $pagIbigMpl   = round($pagIbigMpl * $govLoanRatio, 2);
+        $pagIbigMpl = round($pagIbigMpl * $govLoanRatio, 2);
 
         $internalOrgSavings = round($orgSavingsEffective, 2);
 
@@ -1164,7 +1161,7 @@ class PayrollProcessingController extends Controller
         // $internalOrgSecond again here, it was already included in the raw
         // $amaY2kUnion but the effective value comes from the bucket result.
         $amaY2kUnion = round($orgLoanEffective + $orgDuesEffective + $otherMiscEffective, 2);
-        $waterBill   = round($waterBillEffective, 2);
+        $waterBill = round($waterBillEffective, 2);
 
         // ── 8. Net Pay ────────────────────────────────────────────────────────
         $totalDeductions = $gsisPremium + $philhealth + $pagIbig + $withholdingTax
@@ -1202,8 +1199,8 @@ class PayrollProcessingController extends Controller
             'ama_y2k_union' => round($amaY2kUnion, 2),
             'water_bill' => round($waterBill, 2),
             'internal_org_deductions' => round($orgSavingsEffective + $orgDuesEffective + $orgLoanEffective, 2),
-            'internal_org_savings'    => round($orgSavingsEffective, 2),
-            'internal_org_second'     => round($orgDuesEffective + $orgLoanEffective, 2),
+            'internal_org_savings' => round($orgSavingsEffective, 2),
+            'internal_org_second' => round($orgDuesEffective + $orgLoanEffective, 2),
             'other_deductions' => round($otherMiscEffective, 2),
             'internal_org_items' => $internalOrgItems,
             'other_deduction_items' => $otherDeductionItems,
@@ -1597,8 +1594,8 @@ class PayrollProcessingController extends Controller
                                 'gsis_emergency' => $gsisEmergency,
                                 'pag_ibig_mpl' => $pagIbigMpl,
                                 'ama_y2k_union' => $amaY2kUnion,
-                                'water_bill'            => $waterBill,,
-                                'net_pay'               => $netPay,
+                                'water_bill' => $waterBill,
+                                'net_pay' => $netPay,
                                 'floor_check_passed' => $floorCheckPassed,
                                 'hr_officer_name' => $validated['hr_officer_name'] ?? null,
                                 'status' => 'draft',

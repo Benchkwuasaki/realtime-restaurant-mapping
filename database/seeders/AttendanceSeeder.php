@@ -46,11 +46,15 @@ use Illuminate\Support\Facades\DB;
 class AttendanceSeeder extends Seeder
 {
     // ── Schedule constants ────────────────────────────────────────────────────
-    private const SCHED_IN        = '08:00:00';
+    private const SCHED_IN = '08:00:00';
+
     private const SCHED_BREAK_OUT = '12:00:00';
-    private const SCHED_BREAK_IN  = '13:00:00';
-    private const SCHED_OUT       = '17:00:00';
-    private const BREAK_DURATION  = 60;
+
+    private const SCHED_BREAK_IN = '13:00:00';
+
+    private const SCHED_OUT = '17:00:00';
+
+    private const BREAK_DURATION = 60;
 
     // Cached supervisor employee_id used for whereabout slip FK fields.
     private int $supervisorId;
@@ -63,7 +67,7 @@ class AttendanceSeeder extends Seeder
             [
                 'early_time_in_minutes' => 60,
                 'late_time_out_minutes' => 60,
-                'is_default'            => false,
+                'is_default' => false,
             ]
         );
 
@@ -82,6 +86,7 @@ class AttendanceSeeder extends Seeder
 
         if ($employees->isEmpty()) {
             $this->command->error('No employees found. Please seed employees first.');
+
             return;
         }
 
@@ -93,16 +98,16 @@ class AttendanceSeeder extends Seeder
         $this->command->info("Found {$count} employee(s). Seeding 1 month of records…");
 
         // ── 3. Build date range: last 30 days, weekdays only ──────────────────
-        $today     = Carbon::today('Asia/Manila');
+        $today = Carbon::today('Asia/Manila');
         $startDate = $today->copy()->subDays(29);
 
         /** @var Carbon[] $workdays */
         $workdays = collect(CarbonPeriod::create($startDate, $today))
-            ->filter(fn(Carbon $d) => $d->isWeekday())
+            ->filter(fn (Carbon $d) => $d->isWeekday())
             ->values()
             ->all();
 
-        $this->command->info('Workdays in range: ' . count($workdays));
+        $this->command->info('Workdays in range: '.count($workdays));
 
         // ── 4. Scenario list ──────────────────────────────────────────────────
         $scenarios = [
@@ -116,13 +121,13 @@ class AttendanceSeeder extends Seeder
                     '17:05:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => '07:55:00',
-                    'break_out'    => '12:00:00',
-                    'break_in'     => '13:00:00',
-                    'time_out'     => '17:05:00',
+                    'time_in' => '07:55:00',
+                    'break_out' => '12:00:00',
+                    'break_in' => '13:00:00',
+                    'time_out' => '17:05:00',
                     'late_minutes' => 0,
                     'work_minutes' => 480,
-                    'status'       => 'PRESENT',
+                    'status' => 'PRESENT',
                 ]);
             },
 
@@ -133,13 +138,13 @@ class AttendanceSeeder extends Seeder
                     '17:00:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => '09:30:00',
-                    'break_out'    => null,
-                    'break_in'     => null,
-                    'time_out'     => '17:00:00',
+                    'time_in' => '09:30:00',
+                    'break_out' => null,
+                    'break_in' => null,
+                    'time_out' => '17:00:00',
                     'late_minutes' => 90,
                     'work_minutes' => 450,
-                    'status'       => 'PRESENT',
+                    'status' => 'PRESENT',
                 ]);
             },
 
@@ -152,22 +157,22 @@ class AttendanceSeeder extends Seeder
                     '17:00:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => '08:00:00',
-                    'break_out'    => '12:00:00',
-                    'break_in'     => '13:00:00',
-                    'time_out'     => '17:00:00',
+                    'time_in' => '08:00:00',
+                    'break_out' => '12:00:00',
+                    'break_in' => '13:00:00',
+                    'time_out' => '17:00:00',
                     'late_minutes' => 0,
                     'work_minutes' => 435,
-                    'status'       => 'PRESENT',
+                    'status' => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
-                    'purpose_type'        => 'personal',
+                    'purpose_type' => 'personal',
                     'purpose_description' => 'Bank errand',
-                    'time_out'            => '10:00:00',
-                    'time_returned'       => '10:45:00',
-                    'minutes_gone'        => 45,
-                    'status'              => 'done',
-                    'return_status'       => 'returned',
+                    'time_out' => '10:00:00',
+                    'time_returned' => '10:45:00',
+                    'minutes_gone' => 45,
+                    'status' => 'done',
+                    'return_status' => 'returned',
                 ]);
             },
 
@@ -180,22 +185,22 @@ class AttendanceSeeder extends Seeder
                     '17:00:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => '08:30:00',
-                    'break_out'    => '12:00:00',
-                    'break_in'     => '13:00:00',
-                    'time_out'     => '17:00:00',
+                    'time_in' => '08:30:00',
+                    'break_out' => '12:00:00',
+                    'break_in' => '13:00:00',
+                    'time_out' => '17:00:00',
                     'late_minutes' => 30,
                     'work_minutes' => 420,
-                    'status'       => 'PRESENT',
+                    'status' => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
-                    'purpose_type'        => 'personal',
+                    'purpose_type' => 'personal',
                     'purpose_description' => 'Dental appointment',
-                    'time_out'            => '14:00:00',
-                    'time_returned'       => '14:30:00',
-                    'minutes_gone'        => 30,
-                    'status'              => 'done',
-                    'return_status'       => 'returned',
+                    'time_out' => '14:00:00',
+                    'time_returned' => '14:30:00',
+                    'minutes_gone' => 30,
+                    'status' => 'done',
+                    'return_status' => 'returned',
                 ]);
             },
 
@@ -208,22 +213,22 @@ class AttendanceSeeder extends Seeder
                     '17:00:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => '08:00:00',
-                    'break_out'    => '12:00:00',
-                    'break_in'     => '13:00:00',
-                    'time_out'     => '17:00:00',
+                    'time_in' => '08:00:00',
+                    'break_out' => '12:00:00',
+                    'break_in' => '13:00:00',
+                    'time_out' => '17:00:00',
                     'late_minutes' => 0,
                     'work_minutes' => 480,
-                    'status'       => 'PRESENT',
+                    'status' => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
-                    'purpose_type'        => 'official',
+                    'purpose_type' => 'official',
                     'purpose_description' => 'City Hall document pickup',
-                    'time_out'            => '14:00:00',
-                    'time_returned'       => '15:00:00',
-                    'minutes_gone'        => 60,
-                    'status'              => 'done',
-                    'return_status'       => 'returned',
+                    'time_out' => '14:00:00',
+                    'time_returned' => '15:00:00',
+                    'minutes_gone' => 60,
+                    'status' => 'done',
+                    'return_status' => 'returned',
                 ]);
             },
 
@@ -236,31 +241,31 @@ class AttendanceSeeder extends Seeder
                     '17:00:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => '08:00:00',
-                    'break_out'    => '12:00:00',
-                    'break_in'     => '13:00:00',
-                    'time_out'     => '17:00:00',
+                    'time_in' => '08:00:00',
+                    'break_out' => '12:00:00',
+                    'break_in' => '13:00:00',
+                    'time_out' => '17:00:00',
                     'late_minutes' => 0,
                     'work_minutes' => 450,
-                    'status'       => 'PRESENT',
+                    'status' => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
-                    'purpose_type'        => 'personal',
+                    'purpose_type' => 'personal',
                     'purpose_description' => 'Personal errand downtown',
-                    'time_out'            => '09:00:00',
-                    'time_returned'       => '09:30:00',
-                    'minutes_gone'        => 30,
-                    'status'              => 'done',
-                    'return_status'       => 'returned',
+                    'time_out' => '09:00:00',
+                    'time_returned' => '09:30:00',
+                    'minutes_gone' => 30,
+                    'status' => 'done',
+                    'return_status' => 'returned',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
-                    'purpose_type'        => 'official',
+                    'purpose_type' => 'official',
                     'purpose_description' => 'Inter-office courier delivery',
-                    'time_out'            => '14:00:00',
-                    'time_returned'       => '14:45:00',
-                    'minutes_gone'        => 45,
-                    'status'              => 'done',
-                    'return_status'       => 'returned',
+                    'time_out' => '14:00:00',
+                    'time_returned' => '14:45:00',
+                    'minutes_gone' => 45,
+                    'status' => 'done',
+                    'return_status' => 'returned',
                 ]);
             },
 
@@ -273,31 +278,31 @@ class AttendanceSeeder extends Seeder
                     '17:00:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => '08:00:00',
-                    'break_out'    => '12:00:00',
-                    'break_in'     => '13:00:00',
-                    'time_out'     => '17:00:00',
+                    'time_in' => '08:00:00',
+                    'break_out' => '12:00:00',
+                    'break_in' => '13:00:00',
+                    'time_out' => '17:00:00',
                     'late_minutes' => 0,
                     'work_minutes' => 435,
-                    'status'       => 'PRESENT',
+                    'status' => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
-                    'purpose_type'        => 'personal',
+                    'purpose_type' => 'personal',
                     'purpose_description' => 'Quick pharmacy run',
-                    'time_out'            => '09:00:00',
-                    'time_returned'       => '09:20:00',
-                    'minutes_gone'        => 20,
-                    'status'              => 'done',
-                    'return_status'       => 'returned',
+                    'time_out' => '09:00:00',
+                    'time_returned' => '09:20:00',
+                    'minutes_gone' => 20,
+                    'status' => 'done',
+                    'return_status' => 'returned',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
-                    'purpose_type'        => 'personal',
+                    'purpose_type' => 'personal',
                     'purpose_description' => 'School pickup (child)',
-                    'time_out'            => '15:00:00',
-                    'time_returned'       => '15:25:00',
-                    'minutes_gone'        => 25,
-                    'status'              => 'done',
-                    'return_status'       => 'returned',
+                    'time_out' => '15:00:00',
+                    'time_returned' => '15:25:00',
+                    'minutes_gone' => 25,
+                    'status' => 'done',
+                    'return_status' => 'returned',
                 ]);
             },
 
@@ -305,22 +310,22 @@ class AttendanceSeeder extends Seeder
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, ['08:00:00']);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => '08:00:00',
-                    'break_out'    => null,
-                    'break_in'     => null,
-                    'time_out'     => null,
+                    'time_in' => '08:00:00',
+                    'break_out' => null,
+                    'break_in' => null,
+                    'time_out' => null,
                     'late_minutes' => 0,
                     'work_minutes' => null,
-                    'status'       => 'PRESENT',
+                    'status' => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
-                    'purpose_type'        => 'personal',
+                    'purpose_type' => 'personal',
                     'purpose_description' => 'Personal errand (AM)',
-                    'time_out'            => '09:00:00',
-                    'time_returned'       => '09:35:00',
-                    'minutes_gone'        => 35,
-                    'status'              => 'done',
-                    'return_status'       => 'returned',
+                    'time_out' => '09:00:00',
+                    'time_returned' => '09:35:00',
+                    'minutes_gone' => 35,
+                    'status' => 'done',
+                    'return_status' => 'returned',
                 ]);
             },
 
@@ -328,22 +333,22 @@ class AttendanceSeeder extends Seeder
             function (Employee $emp, string $date, bool $isToday) {
                 $this->insertLogs($emp->employee_id, $date, ['08:00:00']);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => '08:00:00',
-                    'break_out'    => null,
-                    'break_in'     => null,
-                    'time_out'     => null,
+                    'time_in' => '08:00:00',
+                    'break_out' => null,
+                    'break_in' => null,
+                    'time_out' => null,
                     'late_minutes' => 0,
                     'work_minutes' => null,
-                    'status'       => 'PRESENT',
+                    'status' => 'PRESENT',
                 ]);
                 $this->insertSlip($emp->employee_id, $date, [
-                    'purpose_type'        => 'personal',
+                    'purpose_type' => 'personal',
                     'purpose_description' => 'Personal errand',
-                    'time_out'            => '10:00:00',
-                    'time_returned'       => null,
-                    'minutes_gone'        => null,
-                    'status'              => 'pending',
-                    'return_status'       => 'not_returned',
+                    'time_out' => '10:00:00',
+                    'time_returned' => null,
+                    'minutes_gone' => null,
+                    'status' => 'pending',
+                    'return_status' => 'not_returned',
                 ]);
             },
 
@@ -354,13 +359,13 @@ class AttendanceSeeder extends Seeder
                     '12:00:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => '08:00:00',
-                    'break_out'    => '12:00:00',
-                    'break_in'     => null,
-                    'time_out'     => null,
+                    'time_in' => '08:00:00',
+                    'break_out' => '12:00:00',
+                    'break_in' => null,
+                    'time_out' => null,
                     'late_minutes' => 0,
                     'work_minutes' => 240,
-                    'status'       => 'HALF_DAY',
+                    'status' => 'HALF_DAY',
                 ]);
             },
 
@@ -371,26 +376,26 @@ class AttendanceSeeder extends Seeder
                     '17:00:00',
                 ]);
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => null,
-                    'break_out'    => null,
-                    'break_in'     => '13:00:00',
-                    'time_out'     => '17:00:00',
+                    'time_in' => null,
+                    'break_out' => null,
+                    'break_in' => '13:00:00',
+                    'time_out' => '17:00:00',
                     'late_minutes' => null,
                     'work_minutes' => 240,
-                    'status'       => 'HALF_DAY',
+                    'status' => 'HALF_DAY',
                 ]);
             },
 
             // 12. ABSENT · No logs at all
             function (Employee $emp, string $date, bool $isToday) {
                 $this->upsertRecord($emp, $date, [
-                    'time_in'      => null,
-                    'break_out'    => null,
-                    'break_in'     => null,
-                    'time_out'     => null,
+                    'time_in' => null,
+                    'break_out' => null,
+                    'break_in' => null,
+                    'time_out' => null,
                     'late_minutes' => null,
                     'work_minutes' => null,
-                    'status'       => 'ABSENT',
+                    'status' => 'ABSENT',
                 ]);
             },
         ];
@@ -402,7 +407,7 @@ class AttendanceSeeder extends Seeder
             $this->command->line("  Seeding [{$emp->work_id}] {$emp->full_name}…");
 
             foreach ($workdays as $dayIndex => $carbon) {
-                $date    = $carbon->toDateString();
+                $date = $carbon->toDateString();
                 $isToday = $carbon->isToday();
 
                 $scenarioIndex = ($dayIndex + $empIndex * 3) % count($scenarios);
@@ -416,7 +421,7 @@ class AttendanceSeeder extends Seeder
             }
         }
 
-        $this->command->info("Done. {$total} records seeded across " . count($workdays) . ' workdays.');
+        $this->command->info("Done. {$total} records seeded across ".count($workdays).' workdays.');
         $this->command->warn('Run [php artisan queue:work] if you want the jobs to also update attendance_records from raw logs.');
     }
 
@@ -445,14 +450,14 @@ class AttendanceSeeder extends Seeder
         AttendanceRecord::updateOrCreate(
             [
                 'employee_id' => $emp->employee_id,
-                'date'        => $date,
+                'date' => $date,
             ],
             array_merge([
-                'scheduled_time_in'    => self::SCHED_IN,
-                'scheduled_break_out'  => self::SCHED_BREAK_OUT,
-                'scheduled_break_in'   => self::SCHED_BREAK_IN,
-                'scheduled_time_out'   => self::SCHED_OUT,
-                'grace_minutes'        => 0,
+                'scheduled_time_in' => self::SCHED_IN,
+                'scheduled_break_out' => self::SCHED_BREAK_OUT,
+                'scheduled_break_in' => self::SCHED_BREAK_IN,
+                'scheduled_time_out' => self::SCHED_OUT,
+                'grace_minutes' => 0,
             ], $fields)
         );
     }
@@ -468,12 +473,12 @@ class AttendanceSeeder extends Seeder
     {
         WhereaboutSlip::create(array_merge(
             [
-                'employee_id'              => $employeeId,
-                'date_filed'               => $date,
+                'employee_id' => $employeeId,
+                'date_filed' => $date,
                 'reviewed_and_noted_by_id' => $this->supervisorId,
-                'approved_by_id'           => $this->supervisorId,
-                'attested_by_id'           => $this->supervisorId,
-                'time_noted'               => $fields['time_out'],
+                'approved_by_id' => $this->supervisorId,
+                'attested_by_id' => $this->supervisorId,
+                'time_noted' => $fields['time_out'],
             ],
             $fields
         ));

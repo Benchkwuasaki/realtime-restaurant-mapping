@@ -88,23 +88,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 title: 'Attendance',
                 url: null,
                 icon: FileCheck2,
-                show: isAdminOrHR,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin'),
                 items: [
                     {
-                        title: 'Recognition Logs',
+                        title: 'Attendance Logs',
                         url: route('recognition-logs.index'),
+                    },
+                    {
+                        title: 'Attendance Record',
+                        url: route('attendance-record.index'),
+                    },
+                    {
+                        title: 'Attendance Settings',
+                        url: route('attendance-settings.index'),
                     },
                     {
                         title: 'Whereabout Slip',
                         url: route('whereabout-slip.index'),
                     },
-                    { title: 'Holiday Management', url: '/holiday' },
+                    {
+                        title: 'Holiday Management',
+                        url: '/holiday',
+                    },
                     {
                         title: 'Overtime Entry',
                         url: '/organization/overtime_entry',
                     },
                 ],
             },
+
             {
                 title: 'Leave',
                 url: '/leave',
@@ -246,7 +261,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     className="h-12 w-12 shrink-0 object-contain"
                                 />
                                 <div
-                                    className="flex h-12 flex-col justify-between font-bold leading-none"
+                                    className="flex h-12 flex-col justify-between leading-none font-bold"
                                     aria-label="MKWD"
                                 >
                                     <p>Metro Kidapawan</p>
