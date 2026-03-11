@@ -4,32 +4,30 @@ namespace App\Http\Controllers;
 
 use App\Models\Department;
 use App\Models\Item;
+use App\Models\Position;
 use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Position;
-
 use Inertia\Inertia;
 
 class DepartmentController extends Controller
 {
     public function __construct(
         protected ActivityLogService $activityLogService
-    ) {
-    }
+    ) {}
 
     public function index()
     {
         $departments = Department::with('divisions')->get();
 
-        $mappedDepartments = $departments->map(fn(Department $department) => [
+        $mappedDepartments = $departments->map(fn (Department $department) => [
             'department_id' => $department->department_id,
             'department_name' => $department->department_name,
             'department_acronym' => $department->department_acronym,
             'department_description' => $department->department_description,
             'divisions' => $department->divisions
-                ->map(fn($division) => [
+                ->map(fn ($division) => [
                     'division_id' => $division->division_id,
                     'division_name' => $division->division_name,
                 ])
@@ -44,7 +42,7 @@ class DepartmentController extends Controller
         return Inertia::render('Organization/Department/Index', [
             'departments' => $mappedDepartments,
             'totalDepartments' => $departments->count(),
-            'totalDivisions' => $departments->sum(fn($d) => $d->divisions->count()),
+            'totalDivisions' => $departments->sum(fn ($d) => $d->divisions->count()),
         ]);
     }
 
@@ -76,14 +74,14 @@ class DepartmentController extends Controller
             'department_id' => $department->department_id,
             'division_id' => null,
             'unit_id' => null,
-            'position_name' => 'Head of ' . $department->department_name . ' Department',
+            'position_name' => 'Head of '.$department->department_name.' Department',
             'position_type' => 'Regular',
         ]);
 
         $itemNumber = Item::where('item_name', 'like', '%Department Head%')->count();
 
         $headPosition->items()->create([
-            'item_name' => 'Department Head Item ' . $itemNumber,
+            'item_name' => 'Department Head Item '.$itemNumber,
         ]);
 
         return redirect()->route('department.index')
@@ -122,14 +120,14 @@ class DepartmentController extends Controller
         Department::whereIn('department_id', $request->ids)->delete();
 
         return redirect()->route('department.index')
-            ->with('success', count($request->ids) . ' department(s) deleted successfully.');
+            ->with('success', count($request->ids).' department(s) deleted successfully.');
     }
 
     public function cleanDepartmentName(string $name): string
     {
         if (preg_match('/^Department of\s+/i', $name)) {
             $name = preg_replace('/^Department of\s+/i', '', $name);
-        }elseif (preg_match('/\s+Department$/i', $name)) {
+        } elseif (preg_match('/\s+Department$/i', $name)) {
             $name = preg_replace('/\s+Department$/i', '', $name);
         }
 

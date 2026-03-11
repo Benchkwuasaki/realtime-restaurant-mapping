@@ -1,24 +1,25 @@
 <?php
 
-namespace App\Http\Controllers;
+// namespace App\Http\Controllers;
 
-use App\Services\ActivityLogService;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
+// use App\Services\ActivityLogService;
+// use Illuminate\Http\Request;
+// use Illuminate\Support\Facades\Auth;
+// use Inertia\Inertia;
 
-class PayrollController extends Controller
-{
-    public function __construct(protected ActivityLogService $activityLogService) {}
+// class PayrollController extends Controller
+// {
+//     public function __construct(protected ActivityLogService $activityLogService) {}
 
+//     public function index()
+//     {
+//         $this->activityLogService->createLog([
+//             'user_id' => Auth::id(),
+//             'module' => 'payroll',
+//             'description' => 'Viewed Payroll Page',
+//         ]);
+//         return Inertia::render('Payroll/Index');
+//     }
+// }
 
-    public function index()
-    {
-        $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'payroll',
-            'activity' => 'Viewed Payroll Page',
-        ]);
-        return Inertia::render('Payroll/Index');
-    }
-}
+// Doens't need hehe. Please take note of this

@@ -4,7 +4,15 @@ import { router } from '@inertiajs/react';
 import type { BreadcrumbItem } from '@/types';
 import { route } from 'ziggy-js';
 import { useState, useEffect } from 'react';
-import { CalendarDays, Clock, CheckCircle, XCircle, AlertCircle, Pencil, Trash2 } from 'lucide-react';
+import {
+    CalendarDays,
+    Clock,
+    CheckCircle,
+    XCircle,
+    AlertCircle,
+    Pencil,
+    Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DataTable } from '@/components/shared/data-table/data-table';
@@ -38,7 +46,11 @@ import {
 } from '@/components/ui/select';
 import { format, parse, isValid } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
@@ -64,8 +76,6 @@ interface Employee {
     sl_balance?: number | string;
 }
 
-
-
 interface LeaveType {
     leave_type_id: number;
     leave_type_name: string;
@@ -85,7 +95,8 @@ type Props = {
 
 function computeWorkingDays(start: string, end: string): number {
     if (!start || !end) return 0;
-    const s = new Date(start), e = new Date(end);
+    const s = new Date(start),
+        e = new Date(end);
     if (e < s) return 0;
     let n = 0;
     const cur = new Date(s);
@@ -98,7 +109,11 @@ function computeWorkingDays(start: string, end: string): number {
 }
 
 function todayLabel() {
-    return new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    return new Date().toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+    });
 }
 
 function toDisplay(iso: string): string {
@@ -113,8 +128,8 @@ function toDisplay(iso: string): string {
 function FieldError({ message }: { message?: string }) {
     if (!message) return null;
     return (
-        <p className="flex items-center gap-1 text-xs text-destructive mt-1">
-            <AlertCircle className="w-3 h-3 shrink-0" />
+        <p className="text-destructive mt-1 flex items-center gap-1 text-xs">
+            <AlertCircle className="h-3 w-3 shrink-0" />
             {message}
         </p>
     );
@@ -122,9 +137,16 @@ function FieldError({ message }: { message?: string }) {
 
 // ─── Date Picker (shadcn Popover + Calendar) ──────────────────────────────────
 
-function DateInput({ value, onChange, placeholder = 'mm/dd/yyyy', disabled = false }: {
-    value: string; onChange: (isoValue: string) => void;
-    placeholder?: string; disabled?: boolean;
+function DateInput({
+    value,
+    onChange,
+    placeholder = 'mm/dd/yyyy',
+    disabled = false,
+}: {
+    value: string;
+    onChange: (isoValue: string) => void;
+    placeholder?: string;
+    disabled?: boolean;
 }) {
     // value is stored as yyyy-mm-dd; display as mm/dd/yyyy
     const parsed = value ? parse(value, 'yyyy-MM-dd', new Date()) : undefined;
@@ -137,12 +159,12 @@ function DateInput({ value, onChange, placeholder = 'mm/dd/yyyy', disabled = fal
                     type="button"
                     disabled={disabled}
                     className={cn(
-                        'w-full flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-left',
-                        'focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed',
-                        !selected && 'text-muted-foreground'
+                        'border-input bg-background flex w-full items-center gap-2 rounded-md border px-3 py-1.5 text-left text-sm',
+                        'focus:ring-ring focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-50',
+                        !selected && 'text-muted-foreground',
                     )}
                 >
-                    <CalendarIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                    <CalendarIcon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
                     {selected ? format(selected, 'MM/dd/yyyy') : placeholder}
                 </button>
             </PopoverTrigger>
@@ -150,7 +172,9 @@ function DateInput({ value, onChange, placeholder = 'mm/dd/yyyy', disabled = fal
                 <Calendar
                     mode="single"
                     selected={selected}
-                    onSelect={day => onChange(day ? format(day, 'yyyy-MM-dd') : '')}
+                    onSelect={(day) =>
+                        onChange(day ? format(day, 'yyyy-MM-dd') : '')
+                    }
                     initialFocus
                 />
             </PopoverContent>
@@ -160,28 +184,51 @@ function DateInput({ value, onChange, placeholder = 'mm/dd/yyyy', disabled = fal
 
 // ─── Square Checkbox ──────────────────────────────────────────────────────────
 
-function SqCheck({ checked, onChange, label, law, disabled = false }: {
-    checked: boolean; onChange: () => void;
-    label: string; law?: string; disabled?: boolean;
+function SqCheck({
+    checked,
+    onChange,
+    label,
+    law,
+    disabled = false,
+}: {
+    checked: boolean;
+    onChange: () => void;
+    label: string;
+    law?: string;
+    disabled?: boolean;
 }) {
     return (
         <label
-            className={`flex items-start gap-2 py-0.5 select-none
-                ${disabled ? 'opacity-30 pointer-events-none' : 'cursor-pointer'}`}
+            className={`flex select-none items-start gap-2 py-0.5 ${disabled ? 'pointer-events-none opacity-30' : 'cursor-pointer'}`}
             onClick={onChange}
         >
-            <span className={`mt-px w-3 h-3 shrink-0 border flex items-center justify-center rounded-sm
-                transition-colors ${checked ? 'bg-primary border-primary' : 'border-input bg-background'}`}>
+            <span
+                className={`mt-px flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border transition-colors ${checked ? 'bg-primary border-primary' : 'border-input bg-background'}`}
+            >
                 {checked && (
-                    <svg className="w-2 h-2 text-primary-foreground" viewBox="0 0 10 8" fill="none">
-                        <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8"
-                            strokeLinecap="round" strokeLinejoin="round" />
+                    <svg
+                        className="text-primary-foreground h-2 w-2"
+                        viewBox="0 0 10 8"
+                        fill="none"
+                    >
+                        <path
+                            d="M1 4l3 3 5-6"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
                     </svg>
                 )}
             </span>
-            <span className="text-xs leading-snug text-foreground">
+            <span className="text-foreground text-xs leading-snug">
                 {label}
-                {law && <span className="text-muted-foreground text-[10px]"> ({law})</span>}
+                {law && (
+                    <span className="text-muted-foreground text-[10px]">
+                        {' '}
+                        ({law})
+                    </span>
+                )}
             </span>
         </label>
     );
@@ -189,37 +236,61 @@ function SqCheck({ checked, onChange, label, law, disabled = false }: {
 
 // ─── Typography helpers ───────────────────────────────────────────────────────
 
-const SH     = ({ children }: { children: React.ReactNode }) => <p className="text-xs font-semibold text-foreground mb-2">{children}</p>;
-const Sub    = ({ children }: { children: React.ReactNode }) => <p className="text-xs font-medium text-muted-foreground mb-1.5">{children}</p>;
-const Italic = ({ children }: { children: React.ReactNode }) => <p className="text-[10.5px] italic text-muted-foreground mb-1">{children}</p>;
+const SH = ({ children }: { children: React.ReactNode }) => (
+    <p className="text-foreground mb-2 text-xs font-semibold">{children}</p>
+);
+const Sub = ({ children }: { children: React.ReactNode }) => (
+    <p className="text-muted-foreground mb-1.5 text-xs font-medium">
+        {children}
+    </p>
+);
+const Italic = ({ children }: { children: React.ReactNode }) => (
+    <p className="text-muted-foreground mb-1 text-[10.5px] italic">
+        {children}
+    </p>
+);
 
 // ─── Officer Signature Block ──────────────────────────────────────────────────
 
-function OfficerBlock({ label, value, onChange, employees }: {
-    label: string; value: string; onChange: (v: string) => void; employees: Employee[];
+function OfficerBlock({
+    label,
+    value,
+    onChange,
+    employees,
+}: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    employees: Employee[];
 }) {
-    const selected = employees.find(o => String(o.employee_id) === value);
-    const displayName = (emp: Employee) => emp.last_name
-        ? `${emp.last_name}, ${emp.first_name ?? ''} ${emp.middle_name ?? ''}`.trim()
-        : emp.employee_name;
+    const selected = employees.find((o) => String(o.employee_id) === value);
+    const displayName = (emp: Employee) =>
+        emp.last_name
+            ? `${emp.last_name}, ${emp.first_name ?? ''} ${emp.middle_name ?? ''}`.trim()
+            : emp.employee_name;
 
     return (
-        <div className="flex flex-col items-center mt-6">
+        <div className="mt-6 flex flex-col items-center">
             <div className="w-56">
                 <Select value={value} onValueChange={onChange}>
-                    <SelectTrigger className="h-7 text-xs border-0 border-b border-border rounded-none px-0 shadow-none bg-transparent focus:ring-0 justify-center">
+                    <SelectTrigger className="border-border h-7 justify-center rounded-none border-0 border-b bg-transparent px-0 text-xs shadow-none focus:ring-0">
                         <SelectValue placeholder={`Select ${label}…`} />
                     </SelectTrigger>
                     <SelectContent className="max-h-60 text-xs">
-                        {employees.map(o => (
-                            <SelectItem key={o.employee_id} value={String(o.employee_id)}>
+                        {employees.map((o) => (
+                            <SelectItem
+                                key={o.employee_id}
+                                value={String(o.employee_id)}
+                            >
                                 {displayName(o)}
                             </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
             </div>
-            <p className="text-[10px] italic text-muted-foreground">({label})</p>
+            <p className="text-muted-foreground text-[10px] italic">
+                ({label})
+            </p>
         </div>
     );
 }
@@ -227,31 +298,94 @@ function OfficerBlock({ label, value, onChange, employees }: {
 // ─── Instructions Gate ────────────────────────────────────────────────────────
 
 const INSTRUCTIONS = [
-    { n: 1,  t: 'Vacation leave*',                                    b: 'It shall be filed five (5) days in advance, whenever possible. Vacation leave within the Philippines or abroad shall be indicated for purposes of securing travel authority.' },
-    { n: 2,  t: 'Mandatory/Forced leave',                             b: 'Annual five-day vacation leave shall be forfeited if not taken during the year. Availment of one (1) day or more VL shall be considered for complying the mandatory/forced leave.' },
-    { n: 3,  t: 'Sick leave*',                                        b: "Filed immediately upon employee's return. If filed in advance or exceeding five (5) days, accompanied by a medical certificate or affidavit." },
-    { n: 4,  t: 'Maternity leave* – 105 days',                        b: "Proof of pregnancy e.g. ultrasound, doctor's certificate. Accomplished CS Form No. 6a if needed." },
-    { n: 5,  t: 'Paternity leave – 7 days',                           b: "Proof of child's delivery e.g. birth certificate, medical certificate and marriage contract." },
-    { n: 6,  t: 'Special Privilege leave – 3 days',                   b: 'Filed/approved at least one (1) week prior to availment. Indicate if within the Philippines or abroad.' },
-    { n: 7,  t: 'Solo Parent leave – 7 days',                         b: 'Filed in advance or whenever possible five (5) days before going on such leave with updated Solo Parent ID.' },
-    { n: 8,  t: 'Study leave* – up to 6 months',                      b: "Shall meet the agency's internal requirements. Contract between the agency head and the employee concerned." },
-    { n: 9,  t: 'VAWC leave – 10 days',                               b: 'File in advance or immediately upon return. Requires Barangay Protection Order, TPO/PPO, or certification from Punong Barangay/Prosecutor.' },
-    { n: 10, t: 'Rehabilitation leave* – up to 6 months',             b: 'Within one (1) week from the accident. Requires police report, medical certificate, and concurrence of a government physician.' },
-    { n: 11, t: 'Special leave benefits for women* – up to 2 months', b: 'File at least five (5) days prior to scheduled gynecological surgery. Medical certificate from attending surgeon required.' },
-    { n: 12, t: 'Special Emergency (Calamity) leave – up to 5 days',  b: 'Maximum five (5) straight working days or staggered within thirty (30) days of the calamity. Enjoyed once a year only.' },
-    { n: 13, t: 'Monetization of leave credits',                      b: 'Application for monetization of 50% or more of accumulated leave credits with letter request stating valid reasons.' },
-    { n: 14, t: 'Terminal leave*',                                     b: "Proof of employee's resignation, retirement, or separation from the service." },
-    { n: 15, t: 'Adoption Leave',                                      b: 'Filed with an authenticated copy of the Pre-Adoptive Placement Authority issued by the DSWD.' },
+    {
+        n: 1,
+        t: 'Vacation leave*',
+        b: 'It shall be filed five (5) days in advance, whenever possible. Vacation leave within the Philippines or abroad shall be indicated for purposes of securing travel authority.',
+    },
+    {
+        n: 2,
+        t: 'Mandatory/Forced leave',
+        b: 'Annual five-day vacation leave shall be forfeited if not taken during the year. Availment of one (1) day or more VL shall be considered for complying the mandatory/forced leave.',
+    },
+    {
+        n: 3,
+        t: 'Sick leave*',
+        b: "Filed immediately upon employee's return. If filed in advance or exceeding five (5) days, accompanied by a medical certificate or affidavit.",
+    },
+    {
+        n: 4,
+        t: 'Maternity leave* – 105 days',
+        b: "Proof of pregnancy e.g. ultrasound, doctor's certificate. Accomplished CS Form No. 6a if needed.",
+    },
+    {
+        n: 5,
+        t: 'Paternity leave – 7 days',
+        b: "Proof of child's delivery e.g. birth certificate, medical certificate and marriage contract.",
+    },
+    {
+        n: 6,
+        t: 'Special Privilege leave – 3 days',
+        b: 'Filed/approved at least one (1) week prior to availment. Indicate if within the Philippines or abroad.',
+    },
+    {
+        n: 7,
+        t: 'Solo Parent leave – 7 days',
+        b: 'Filed in advance or whenever possible five (5) days before going on such leave with updated Solo Parent ID.',
+    },
+    {
+        n: 8,
+        t: 'Study leave* – up to 6 months',
+        b: "Shall meet the agency's internal requirements. Contract between the agency head and the employee concerned.",
+    },
+    {
+        n: 9,
+        t: 'VAWC leave – 10 days',
+        b: 'File in advance or immediately upon return. Requires Barangay Protection Order, TPO/PPO, or certification from Punong Barangay/Prosecutor.',
+    },
+    {
+        n: 10,
+        t: 'Rehabilitation leave* – up to 6 months',
+        b: 'Within one (1) week from the accident. Requires police report, medical certificate, and concurrence of a government physician.',
+    },
+    {
+        n: 11,
+        t: 'Special leave benefits for women* – up to 2 months',
+        b: 'File at least five (5) days prior to scheduled gynecological surgery. Medical certificate from attending surgeon required.',
+    },
+    {
+        n: 12,
+        t: 'Special Emergency (Calamity) leave – up to 5 days',
+        b: 'Maximum five (5) straight working days or staggered within thirty (30) days of the calamity. Enjoyed once a year only.',
+    },
+    {
+        n: 13,
+        t: 'Monetization of leave credits',
+        b: 'Application for monetization of 50% or more of accumulated leave credits with letter request stating valid reasons.',
+    },
+    {
+        n: 14,
+        t: 'Terminal leave*',
+        b: "Proof of employee's resignation, retirement, or separation from the service.",
+    },
+    {
+        n: 15,
+        t: 'Adoption Leave',
+        b: 'Filed with an authenticated copy of the Pre-Adoptive Placement Authority issued by the DSWD.',
+    },
 ];
 
 function InstructionsGate({ onAcknowledge }: { onAcknowledge: () => void }) {
     const [checked, setChecked] = useState(false);
     return (
-        <div className="flex flex-col h-full overflow-hidden">
-            <div className="px-5 py-3 border-b border-secondary">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                    Application for any type of leave shall be made on this Form and to be{' '}
-                    <span className="font-semibold text-foreground underline">accomplished at least in duplicate</span>{' '}
+        <div className="flex h-full flex-col overflow-hidden">
+            <div className="border-secondary border-b px-5 py-3">
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                    Application for any type of leave shall be made on this Form
+                    and to be{' '}
+                    <span className="text-foreground font-semibold underline">
+                        accomplished at least in duplicate
+                    </span>{' '}
                     with documentary requirements, as follows:
                 </p>
             </div>
@@ -259,27 +393,46 @@ function InstructionsGate({ onAcknowledge }: { onAcknowledge: () => void }) {
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     {INSTRUCTIONS.map(({ n, t, b }) => (
                         <div key={n} className="flex gap-2 text-xs">
-                            <span className="font-semibold text-foreground w-5 shrink-0">{n}.</span>
+                            <span className="text-foreground w-5 shrink-0 font-semibold">
+                                {n}.
+                            </span>
                             <div>
-                                <p className="font-semibold text-foreground mb-0.5">{t}</p>
-                                <p className="text-muted-foreground leading-relaxed">{b}</p>
+                                <p className="text-foreground mb-0.5 font-semibold">
+                                    {t}
+                                </p>
+                                <p className="text-muted-foreground leading-relaxed">
+                                    {b}
+                                </p>
                             </div>
                         </div>
                     ))}
                 </div>
-                <p className="text-[10px] text-muted-foreground italic mt-4 pt-4 border-t border-secondary">
-                    * For leave of absence for thirty (30) calendar days or more and terminal leave, application shall be accompanied by a clearance from money, property and work-related accountabilities (CSC MC No. 2, s. 1985).
+                <p className="text-muted-foreground border-secondary mt-4 border-t pt-4 text-[10px] italic">
+                    * For leave of absence for thirty (30) calendar days or more
+                    and terminal leave, application shall be accompanied by a
+                    clearance from money, property and work-related
+                    accountabilities (CSC MC No. 2, s. 1985).
                 </p>
             </div>
-            <div className="border-t border-secondary bg-muted/30 px-5 py-3 shrink-0">
-                <label className="flex items-start gap-3 cursor-pointer">
-                    <Checkbox checked={checked} onCheckedChange={v => setChecked(!!v)} className="mt-0.5 shrink-0" />
-                    <span className="text-xs text-muted-foreground leading-relaxed">
-                        I have read and understood the Instructions and Requirements for filing a Leave Application under Civil Service Form No. 6 (Revised 2020).
+            <div className="border-secondary bg-muted/30 shrink-0 border-t px-5 py-3">
+                <label className="flex cursor-pointer items-start gap-3">
+                    <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => setChecked(!!v)}
+                        className="mt-0.5 shrink-0"
+                    />
+                    <span className="text-muted-foreground text-xs leading-relaxed">
+                        I have read and understood the Instructions and
+                        Requirements for filing a Leave Application under Civil
+                        Service Form No. 6 (Revised 2020).
                     </span>
                 </label>
                 <div className="mt-3 flex justify-end">
-                    <Button size="sm" disabled={!checked} onClick={onAcknowledge}>
+                    <Button
+                        size="sm"
+                        disabled={!checked}
+                        onClick={onAcknowledge}
+                    >
                         Proceed to Application →
                     </Button>
                 </div>
@@ -325,11 +478,21 @@ interface FormData {
 // ─── Leave Form ───────────────────────────────────────────────────────────────
 
 function LeaveForm({
-    data, setData, errors, employees, leave_types,
-    processing, onSubmit, onClose, isEdit,
+    data,
+    setData,
+    errors,
+    employees,
+    leave_types,
+    processing,
+    onSubmit,
+    onClose,
+    isEdit,
 }: {
     data: FormData;
-    setData: (keyOrData: keyof FormData | Partial<FormData>, value?: any) => void;
+    setData: (
+        keyOrData: keyof FormData | Partial<FormData>,
+        value?: any,
+    ) => void;
     errors: Partial<Record<keyof FormData, string>>;
     employees: Employee[];
     leave_types: LeaveType[];
@@ -338,40 +501,68 @@ function LeaveForm({
     onClose: () => void;
     isEdit: boolean;
 }) {
-    const selectedEmp = employees.find(e => String(e.employee_id) === data.employee_id);
-    const workDays    = computeWorkingDays(data.start_date, data.end_date);
-    const selectedName = data.is_others ? data.others_text : data.leave_type_availed;
+    const selectedEmp = employees.find(
+        (e) => String(e.employee_id) === data.employee_id,
+    );
+    const workDays = computeWorkingDays(data.start_date, data.end_date);
+    const selectedName = data.is_others
+        ? data.others_text
+        : data.leave_type_availed;
     const isSickLeave = /^sick leave$/i.test(selectedName.trim());
-    const isVLLeave   = /vacation|mandatory|forced|special privilege/i.test(selectedName);
-    const deductCol: 'vl' | 'sl' | 'none' = isSickLeave ? 'sl' : (isVLLeave ? 'vl' : 'none');
-    const vlEarned  = parseFloat(String(selectedEmp?.vl_total_earned ?? 0)) || 0;
-    const slEarned  = parseFloat(String(selectedEmp?.sl_total_earned ?? 0)) || 0;
-    const vlBal     = parseFloat(String(selectedEmp?.vl_balance      ?? 0)) || 0;
-    const slBal     = parseFloat(String(selectedEmp?.sl_balance      ?? 0)) || 0;
-    const showLoc   = /vacation|special privilege/i.test(selectedName);
-    const showSick  = /sick|rehabilitation/i.test(selectedName);
+    const isVLLeave = /vacation|mandatory|forced|special privilege/i.test(
+        selectedName,
+    );
+    const deductCol: 'vl' | 'sl' | 'none' = isSickLeave
+        ? 'sl'
+        : isVLLeave
+          ? 'vl'
+          : 'none';
+    const vlEarned = parseFloat(String(selectedEmp?.vl_total_earned ?? 0)) || 0;
+    const slEarned = parseFloat(String(selectedEmp?.sl_total_earned ?? 0)) || 0;
+    const vlBal = parseFloat(String(selectedEmp?.vl_balance ?? 0)) || 0;
+    const slBal = parseFloat(String(selectedEmp?.sl_balance ?? 0)) || 0;
+    const showLoc = /vacation|special privilege/i.test(selectedName);
+    const showSick = /sick|rehabilitation/i.test(selectedName);
     const showWomen = /women/i.test(selectedName);
     const showStudy = /study/i.test(selectedName);
 
     useEffect(() => {
-        if (workDays <= 0) { setData('approved_with_pay', ''); setData('approved_without_pay', ''); return; }
-        const balance    = isSickLeave ? slBal : vlBal;
-        const withPay    = Math.min(workDays, Math.max(0, balance));
+        if (workDays <= 0) {
+            setData('approved_with_pay', '');
+            setData('approved_without_pay', '');
+            return;
+        }
+        const balance = isSickLeave ? slBal : vlBal;
+        const withPay = Math.min(workDays, Math.max(0, balance));
         const withoutPay = Math.max(0, workDays - withPay);
-        setData('approved_with_pay',    withPay > 0    ? String(withPay)    : '');
-        setData('approved_without_pay', withoutPay > 0 ? String(withoutPay) : '');
-    }, [workDays, data.employee_id, data.leave_type_id, data.is_others, data.others_text]);
+        setData('approved_with_pay', withPay > 0 ? String(withPay) : '');
+        setData(
+            'approved_without_pay',
+            withoutPay > 0 ? String(withoutPay) : '',
+        );
+    }, [
+        workDays,
+        data.employee_id,
+        data.leave_type_id,
+        data.is_others,
+        data.others_text,
+    ]);
 
     function pickLeaveType(lt: LeaveType) {
         setData({
             ...data,
-            leave_type_id:      String(lt.leave_type_id),
+            leave_type_id: String(lt.leave_type_id),
             leave_type_availed: lt.leave_type_name,
-            is_others:          false,
-            others_text:        '',
-            loc_type: '' as const, loc_ph_text: '', loc_abroad_text: '',
-            sick_type: '' as const, sick_hospital_text: '', sick_outpatient_text: '',
-            illness_women: '', study_purpose: '',
+            is_others: false,
+            others_text: '',
+            loc_type: '' as const,
+            loc_ph_text: '',
+            loc_abroad_text: '',
+            sick_type: '' as const,
+            sick_hospital_text: '',
+            sick_outpatient_text: '',
+            illness_women: '',
+            study_purpose: '',
         });
     }
 
@@ -379,30 +570,33 @@ function LeaveForm({
         const turningOn = !data.is_others;
         setData({
             ...data,
-            is_others:          turningOn,
-            leave_type_id:      turningOn ? '' : data.leave_type_id,
+            is_others: turningOn,
+            leave_type_id: turningOn ? '' : data.leave_type_id,
             leave_type_availed: turningOn ? '' : data.leave_type_availed,
-            others_text:        '',
+            others_text: '',
         });
     }
 
     function handleEmployeeChange(empId: string) {
-        const emp = employees.find(e => String(e.employee_id) === empId);
+        const emp = employees.find((e) => String(e.employee_id) === empId);
         setData({
             ...data,
-            employee_id:       empId,
+            employee_id: empId,
             office_department: emp?.department_name ?? '',
-            position:          emp?.position_name   ?? '',
-            salary:            emp?.monthly_salary  ?? '',
+            position: emp?.position_name ?? '',
+            salary: emp?.monthly_salary ?? '',
         });
     }
 
     return (
-        <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-
-                <p className="text-xs text-muted-foreground">
-                    All fields with <span className="text-destructive">*</span> are required.
+        <form
+            onSubmit={onSubmit}
+            className="flex flex-1 flex-col overflow-hidden"
+        >
+            <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                <p className="text-muted-foreground text-xs">
+                    All fields with <span className="text-destructive">*</span>{' '}
+                    are required.
                 </p>
 
                 {/* ══ EMPLOYEE DETAILS ══════════════════════════════════════════ */}
@@ -411,15 +605,22 @@ function LeaveForm({
                     <div className="grid grid-cols-2 gap-x-5 gap-y-3">
                         <div>
                             <label className="text-xs font-medium">
-                                Employee Name <span className="text-destructive">*</span>
+                                Employee Name{' '}
+                                <span className="text-destructive">*</span>
                             </label>
-                            <Select value={data.employee_id || ''} onValueChange={handleEmployeeChange}>
-                                <SelectTrigger className="text-sm mt-1 w-full">
+                            <Select
+                                value={data.employee_id || ''}
+                                onValueChange={handleEmployeeChange}
+                            >
+                                <SelectTrigger className="mt-1 w-full text-sm">
                                     <SelectValue placeholder="Select employee…" />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-64 text-xs">
-                                    {employees.map(emp => (
-                                        <SelectItem key={emp.employee_id} value={String(emp.employee_id)}>
+                                    {employees.map((emp) => (
+                                        <SelectItem
+                                            key={emp.employee_id}
+                                            value={String(emp.employee_id)}
+                                        >
                                             {emp.last_name
                                                 ? `${emp.last_name}, ${emp.first_name ?? ''} ${emp.middle_name ?? ''}`.trim()
                                                 : emp.employee_name}
@@ -432,49 +633,55 @@ function LeaveForm({
 
                         <div>
                             <label className="text-xs font-medium">
-                                Office/Department <span className="text-destructive">*</span>
+                                Office/Department{' '}
+                                <span className="text-destructive">*</span>
                             </label>
                             <input
                                 value={data.office_department}
-                                onChange={e => setData('office_department', e.target.value)}
+                                onChange={(e) =>
+                                    setData('office_department', e.target.value)
+                                }
                                 placeholder="Department name"
-                                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm mt-1
-                                    placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring mt-1 w-full rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-1"
                             />
                             <FieldError message={errors.office_department} />
                         </div>
 
                         <div>
                             <label className="text-xs font-medium">
-                                Position <span className="text-destructive">*</span>
+                                Position{' '}
+                                <span className="text-destructive">*</span>
                             </label>
                             <input
                                 value={data.position}
-                                onChange={e => setData('position', e.target.value)}
+                                onChange={(e) =>
+                                    setData('position', e.target.value)
+                                }
                                 placeholder="Job position"
-                                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm mt-1
-                                    placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring mt-1 w-full rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-1"
                             />
                             <FieldError message={errors.position} />
                         </div>
 
                         <div>
                             <label className="text-xs font-medium">
-                                Salary <span className="text-destructive">*</span>
+                                Salary{' '}
+                                <span className="text-destructive">*</span>
                             </label>
                             <input
                                 value={data.salary}
-                                onChange={e => setData('salary', e.target.value)}
+                                onChange={(e) =>
+                                    setData('salary', e.target.value)
+                                }
                                 placeholder="Monthly salary"
-                                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm mt-1
-                                    placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring mt-1 w-full rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-1"
                             />
                             <FieldError message={errors.salary} />
                         </div>
                     </div>
                 </div>
 
-                <div className="border-t border-secondary" />
+                <div className="border-secondary border-t" />
 
                 {/* ══ DETAILS OF APPLICATION ════════════════════════════════════ */}
                 <div>
@@ -482,26 +689,36 @@ function LeaveForm({
 
                     {/* 6.A */}
                     <Sub>6.A Type of leave to be availed of</Sub>
-                    <div className="space-y-0.5 mb-4">
-                        {leave_types.map(lt => (
+                    <div className="mb-4 space-y-0.5">
+                        {leave_types.map((lt) => (
                             <SqCheck
                                 key={lt.leave_type_id}
-                                checked={!data.is_others && data.leave_type_id === String(lt.leave_type_id)}
+                                checked={
+                                    !data.is_others &&
+                                    data.leave_type_id ===
+                                        String(lt.leave_type_id)
+                                }
                                 onChange={() => pickLeaveType(lt)}
                                 label={lt.leave_type_name}
                             />
                         ))}
-                        <div className="flex items-center gap-3 mt-2 pt-2 border-t border-dashed border-secondary">
-                            <SqCheck checked={data.is_others} onChange={toggleOthers} label="Others:" />
+                        <div className="border-secondary mt-2 flex items-center gap-3 border-t border-dashed pt-2">
+                            <SqCheck
+                                checked={data.is_others}
+                                onChange={toggleOthers}
+                                label="Others:"
+                            />
                             <div className="flex-1">
                                 <input
-                                    value={data.is_others ? data.others_text : ''}
-                                    onChange={e => setData('others_text', e.target.value)}
+                                    value={
+                                        data.is_others ? data.others_text : ''
+                                    }
+                                    onChange={(e) =>
+                                        setData('others_text', e.target.value)
+                                    }
                                     disabled={!data.is_others}
                                     placeholder="Specify…"
-                                    className="w-full rounded-md border border-input bg-background px-3 py-1 text-sm
-                                        placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring
-                                        disabled:opacity-40 disabled:cursor-not-allowed"
+                                    className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring w-full rounded-md border px-3 py-1 text-sm focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-40"
                                 />
                             </div>
                         </div>
@@ -513,43 +730,74 @@ function LeaveForm({
 
                     {/* Vacation/SPL */}
                     <div className="mb-3">
-                        <Italic>In case of Vacation/Special Privilege Leave:</Italic>
+                        <Italic>
+                            In case of Vacation/Special Privilege Leave:
+                        </Italic>
                         <div className="space-y-1.5 pl-3">
                             <div className="flex items-center gap-3">
                                 <SqCheck
                                     checked={data.loc_type === 'ph'}
-                                    onChange={() => setData({ ...data, loc_type: data.loc_type === 'ph' ? '' as const : 'ph' as const, loc_abroad_text: '' })}
+                                    onChange={() =>
+                                        setData({
+                                            ...data,
+                                            loc_type:
+                                                data.loc_type === 'ph'
+                                                    ? ('' as const)
+                                                    : ('ph' as const),
+                                            loc_abroad_text: '',
+                                        })
+                                    }
                                     label="Within the Philippines"
                                     disabled={!showLoc}
                                 />
                                 <div className="flex-1">
                                     <input
                                         value={data.loc_ph_text}
-                                        onChange={e => setData('loc_ph_text', e.target.value)}
-                                        disabled={!showLoc || data.loc_type !== 'ph'}
+                                        onChange={(e) =>
+                                            setData(
+                                                'loc_ph_text',
+                                                e.target.value,
+                                            )
+                                        }
+                                        disabled={
+                                            !showLoc || data.loc_type !== 'ph'
+                                        }
                                         placeholder="Specify location…"
-                                        className="w-full rounded-md border border-input bg-background px-3 py-1 text-sm
-                                            placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring
-                                            disabled:opacity-40 disabled:cursor-not-allowed"
+                                        className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring w-full rounded-md border px-3 py-1 text-sm focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-40"
                                     />
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 <SqCheck
                                     checked={data.loc_type === 'abroad'}
-                                    onChange={() => setData({ ...data, loc_type: data.loc_type === 'abroad' ? '' as const : 'abroad' as const, loc_ph_text: '' })}
+                                    onChange={() =>
+                                        setData({
+                                            ...data,
+                                            loc_type:
+                                                data.loc_type === 'abroad'
+                                                    ? ('' as const)
+                                                    : ('abroad' as const),
+                                            loc_ph_text: '',
+                                        })
+                                    }
                                     label="Abroad (Specify)"
                                     disabled={!showLoc}
                                 />
                                 <div className="flex-1">
                                     <input
                                         value={data.loc_abroad_text}
-                                        onChange={e => setData('loc_abroad_text', e.target.value)}
-                                        disabled={!showLoc || data.loc_type !== 'abroad'}
+                                        onChange={(e) =>
+                                            setData(
+                                                'loc_abroad_text',
+                                                e.target.value,
+                                            )
+                                        }
+                                        disabled={
+                                            !showLoc ||
+                                            data.loc_type !== 'abroad'
+                                        }
                                         placeholder="Specify country/destination…"
-                                        className="w-full rounded-md border border-input bg-background px-3 py-1 text-sm
-                                            placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring
-                                            disabled:opacity-40 disabled:cursor-not-allowed"
+                                        className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring w-full rounded-md border px-3 py-1 text-sm focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-40"
                                     />
                                 </div>
                             </div>
@@ -563,38 +811,68 @@ function LeaveForm({
                             <div className="flex items-center gap-3">
                                 <SqCheck
                                     checked={data.sick_type === 'hospital'}
-                                    onChange={() => setData({ ...data, sick_type: data.sick_type === 'hospital' ? '' as const : 'hospital' as const, sick_outpatient_text: '' })}
+                                    onChange={() =>
+                                        setData({
+                                            ...data,
+                                            sick_type:
+                                                data.sick_type === 'hospital'
+                                                    ? ('' as const)
+                                                    : ('hospital' as const),
+                                            sick_outpatient_text: '',
+                                        })
+                                    }
                                     label="In Hospital (Specify Illness)"
                                     disabled={!showSick}
                                 />
                                 <div className="flex-1">
                                     <input
                                         value={data.sick_hospital_text}
-                                        onChange={e => setData('sick_hospital_text', e.target.value)}
-                                        disabled={!showSick || data.sick_type !== 'hospital'}
+                                        onChange={(e) =>
+                                            setData(
+                                                'sick_hospital_text',
+                                                e.target.value,
+                                            )
+                                        }
+                                        disabled={
+                                            !showSick ||
+                                            data.sick_type !== 'hospital'
+                                        }
                                         placeholder="Specify illness…"
-                                        className="w-full rounded-md border border-input bg-background px-3 py-1 text-sm
-                                            placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring
-                                            disabled:opacity-40 disabled:cursor-not-allowed"
+                                        className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring w-full rounded-md border px-3 py-1 text-sm focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-40"
                                     />
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 <SqCheck
                                     checked={data.sick_type === 'outpatient'}
-                                    onChange={() => setData({ ...data, sick_type: data.sick_type === 'outpatient' ? '' as const : 'outpatient' as const, sick_hospital_text: '' })}
+                                    onChange={() =>
+                                        setData({
+                                            ...data,
+                                            sick_type:
+                                                data.sick_type === 'outpatient'
+                                                    ? ('' as const)
+                                                    : ('outpatient' as const),
+                                            sick_hospital_text: '',
+                                        })
+                                    }
                                     label="Out Patient (Specify Illness)"
                                     disabled={!showSick}
                                 />
                                 <div className="flex-1">
                                     <input
                                         value={data.sick_outpatient_text}
-                                        onChange={e => setData('sick_outpatient_text', e.target.value)}
-                                        disabled={!showSick || data.sick_type !== 'outpatient'}
+                                        onChange={(e) =>
+                                            setData(
+                                                'sick_outpatient_text',
+                                                e.target.value,
+                                            )
+                                        }
+                                        disabled={
+                                            !showSick ||
+                                            data.sick_type !== 'outpatient'
+                                        }
                                         placeholder="Specify illness…"
-                                        className="w-full rounded-md border border-input bg-background px-3 py-1 text-sm
-                                            placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring
-                                            disabled:opacity-40 disabled:cursor-not-allowed"
+                                        className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring w-full rounded-md border px-3 py-1 text-sm focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-40"
                                     />
                                 </div>
                             </div>
@@ -603,17 +881,21 @@ function LeaveForm({
 
                     {/* Women */}
                     <div className="mb-3">
-                        <Italic>In case of Special Leave Benefits for Women:</Italic>
-                        <div className="pl-3 flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground shrink-0 w-24">(Specify Illness)</span>
+                        <Italic>
+                            In case of Special Leave Benefits for Women:
+                        </Italic>
+                        <div className="flex items-center gap-2 pl-3">
+                            <span className="text-muted-foreground w-24 shrink-0 text-xs">
+                                (Specify Illness)
+                            </span>
                             <input
                                 value={data.illness_women}
-                                onChange={e => setData('illness_women', e.target.value)}
+                                onChange={(e) =>
+                                    setData('illness_women', e.target.value)
+                                }
                                 disabled={!showWomen}
                                 placeholder="Specify…"
-                                className="flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm
-                                    placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring
-                                    disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring flex-1 rounded-md border px-3 py-1 text-sm focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-40"
                             />
                         </div>
                     </div>
@@ -622,11 +904,21 @@ function LeaveForm({
                     <div className="mb-3">
                         <Italic>In case of Study Leave:</Italic>
                         <div className="space-y-0.5 pl-3">
-                            {["Completion of Master's Degree", "BAR/Board Examination Review"].map(opt => (
+                            {[
+                                "Completion of Master's Degree",
+                                'BAR/Board Examination Review',
+                            ].map((opt) => (
                                 <SqCheck
                                     key={opt}
                                     checked={data.study_purpose === opt}
-                                    onChange={() => setData('study_purpose', data.study_purpose === opt ? '' : opt)}
+                                    onChange={() =>
+                                        setData(
+                                            'study_purpose',
+                                            data.study_purpose === opt
+                                                ? ''
+                                                : opt,
+                                        )
+                                    }
                                     label={opt}
                                     disabled={!showStudy}
                                 />
@@ -638,15 +930,30 @@ function LeaveForm({
                     <div className="mb-4">
                         <Italic>Other purpose:</Italic>
                         <div className="space-y-0.5 pl-3">
-                            {['Monetization of Leave Credits', 'Terminal Leave'].map(opt => {
-                                const lt = leave_types.find(t => t.leave_type_name === opt);
+                            {[
+                                'Monetization of Leave Credits',
+                                'Terminal Leave',
+                            ].map((opt) => {
+                                const lt = leave_types.find(
+                                    (t) => t.leave_type_name === opt,
+                                );
                                 return (
                                     <SqCheck
                                         key={opt}
-                                        checked={!data.is_others && data.leave_type_availed === opt}
-                                        onChange={() => lt
-                                            ? pickLeaveType(lt)
-                                            : setData({ ...data, leave_type_id: '', leave_type_availed: opt, is_others: false })}
+                                        checked={
+                                            !data.is_others &&
+                                            data.leave_type_availed === opt
+                                        }
+                                        onChange={() =>
+                                            lt
+                                                ? pickLeaveType(lt)
+                                                : setData({
+                                                      ...data,
+                                                      leave_type_id: '',
+                                                      leave_type_availed: opt,
+                                                      is_others: false,
+                                                  })
+                                        }
                                         label={opt}
                                     />
                                 );
@@ -655,31 +962,44 @@ function LeaveForm({
                     </div>
 
                     {/* 6.C */}
-                    <Sub>6.C Number of working days applied for (inclusive dates)</Sub>
-                    <section className="grid grid-cols-2 gap-5 mb-1">
+                    <Sub>
+                        6.C Number of working days applied for (inclusive dates)
+                    </Sub>
+                    <section className="mb-1 grid grid-cols-2 gap-5">
                         <div>
                             <label className="text-xs font-medium">
-                                Start Date <span className="text-destructive">*</span>
+                                Start Date{' '}
+                                <span className="text-destructive">*</span>
                             </label>
                             <div className="mt-1">
-                                <DateInput value={data.start_date} onChange={v => setData('start_date', v)} />
+                                <DateInput
+                                    value={data.start_date}
+                                    onChange={(v) => setData('start_date', v)}
+                                />
                             </div>
                             <FieldError message={errors.start_date} />
                         </div>
                         <div>
                             <label className="text-xs font-medium">
-                                End Date <span className="text-destructive">*</span>
+                                End Date{' '}
+                                <span className="text-destructive">*</span>
                             </label>
                             <div className="mt-1">
-                                <DateInput value={data.end_date} onChange={v => setData('end_date', v)} />
+                                <DateInput
+                                    value={data.end_date}
+                                    onChange={(v) => setData('end_date', v)}
+                                />
                             </div>
                             <FieldError message={errors.end_date} />
                         </div>
                     </section>
                     {workDays > 0 && (
-                        <p className="text-xs text-foreground mt-1">
-                            <span className="font-semibold">{workDays}</span> working day{workDays !== 1 ? 's' : ''}
-                            <span className="text-muted-foreground ml-1">(Mon–Fri)</span>
+                        <p className="text-foreground mt-1 text-xs">
+                            <span className="font-semibold">{workDays}</span>{' '}
+                            working day{workDays !== 1 ? 's' : ''}
+                            <span className="text-muted-foreground ml-1">
+                                (Mon–Fri)
+                            </span>
                         </p>
                     )}
 
@@ -687,17 +1007,27 @@ function LeaveForm({
                     <div className="mt-4">
                         <Sub>6.D Commutation</Sub>
                         <div className="space-y-1">
-                            <SqCheck checked={!data.is_requested} onChange={() => setData('is_requested', false)} label="Not Requested" />
-                            <SqCheck checked={data.is_requested}  onChange={() => setData('is_requested', true)}  label="Requested" />
+                            <SqCheck
+                                checked={!data.is_requested}
+                                onChange={() => setData('is_requested', false)}
+                                label="Not Requested"
+                            />
+                            <SqCheck
+                                checked={data.is_requested}
+                                onChange={() => setData('is_requested', true)}
+                                label="Requested"
+                            />
                         </div>
-                        <div className="flex flex-col items-center mt-6">
-                            <div className="border-b border-border w-48 mb-0.5" />
-                            <p className="text-[10px] italic text-muted-foreground">(Signature of Applicant)</p>
+                        <div className="mt-6 flex flex-col items-center">
+                            <div className="border-border mb-0.5 w-48 border-b" />
+                            <p className="text-muted-foreground text-[10px] italic">
+                                (Signature of Applicant)
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="border-t border-secondary" />
+                <div className="border-secondary border-t" />
 
                 {/* ══ DETAILS OF ACTION ════════════════════════════════════════ */}
                 <div>
@@ -705,52 +1035,98 @@ function LeaveForm({
 
                     {/* 7.A */}
                     <Sub>7.A Certification of Leave Credits</Sub>
-                    <div className="border border-secondary rounded-md mb-2 text-xs overflow-hidden">
-                        <div className="px-3 py-1.5 border-b border-secondary text-muted-foreground bg-muted/20">
-                            As of <span className="font-medium ml-1 text-foreground">{todayLabel()}</span>
+                    <div className="border-secondary mb-2 overflow-hidden rounded-md border text-xs">
+                        <div className="border-secondary text-muted-foreground bg-muted/20 border-b px-3 py-1.5">
+                            As of{' '}
+                            <span className="text-foreground ml-1 font-medium">
+                                {todayLabel()}
+                            </span>
                         </div>
-                        <div className="grid grid-cols-3 border-b border-secondary font-semibold text-muted-foreground bg-muted/30">
-                            <div className="px-3 py-1 border-r border-secondary" />
-                            <div className="px-3 py-1 border-r border-secondary text-center">Vacation Leave</div>
-                            <div className="px-3 py-1 text-center">Sick Leave</div>
+                        <div className="border-secondary text-muted-foreground bg-muted/30 grid grid-cols-3 border-b font-semibold">
+                            <div className="border-secondary border-r px-3 py-1" />
+                            <div className="border-secondary border-r px-3 py-1 text-center">
+                                Vacation Leave
+                            </div>
+                            <div className="px-3 py-1 text-center">
+                                Sick Leave
+                            </div>
                         </div>
-                        <div className="grid grid-cols-3 border-b border-secondary text-foreground">
-                            <div className="px-3 py-1.5 italic text-muted-foreground border-r border-secondary">Total Earned</div>
-                            <div className="px-3 py-1.5 border-r border-secondary text-center font-medium">
+                        <div className="border-secondary text-foreground grid grid-cols-3 border-b">
+                            <div className="text-muted-foreground border-secondary border-r px-3 py-1.5 italic">
+                                Total Earned
+                            </div>
+                            <div className="border-secondary border-r px-3 py-1.5 text-center font-medium">
                                 {selectedEmp ? vlEarned.toFixed(3) : '—'}
                             </div>
                             <div className="px-3 py-1.5 text-center font-medium">
                                 {selectedEmp ? slEarned.toFixed(3) : '—'}
                             </div>
                         </div>
-                        <div className="grid grid-cols-3 border-b border-secondary text-foreground">
-                            <div className="px-3 py-1.5 italic text-muted-foreground border-r border-secondary">Less this application</div>
-                            <div className="px-3 py-1.5 border-r border-secondary text-center font-medium">
-                                {deductCol === 'vl' && workDays > 0 ? workDays : '—'}
+                        <div className="border-secondary text-foreground grid grid-cols-3 border-b">
+                            <div className="text-muted-foreground border-secondary border-r px-3 py-1.5 italic">
+                                Less this application
+                            </div>
+                            <div className="border-secondary border-r px-3 py-1.5 text-center font-medium">
+                                {deductCol === 'vl' && workDays > 0
+                                    ? workDays
+                                    : '—'}
                             </div>
                             <div className="px-3 py-1.5 text-center font-medium">
-                                {deductCol === 'sl' && workDays > 0 ? workDays : '—'}
+                                {deductCol === 'sl' && workDays > 0
+                                    ? workDays
+                                    : '—'}
                             </div>
                         </div>
-                        <div className="grid grid-cols-3 text-foreground">
-                            <div className="px-3 py-1.5 italic text-muted-foreground border-r border-secondary">Balance</div>
-                            <div className="px-3 py-1.5 border-r border-secondary text-center font-medium">
-                                {selectedEmp
-                                    ? deductCol === 'vl' && workDays > 0
-                                        ? <span className={(vlEarned - workDays) < 0 ? 'text-destructive' : ''}>{(vlEarned - workDays).toFixed(3)}</span>
-                                        : <span>{vlEarned.toFixed(3)}</span>
-                                    : '—'}
+                        <div className="text-foreground grid grid-cols-3">
+                            <div className="text-muted-foreground border-secondary border-r px-3 py-1.5 italic">
+                                Balance
+                            </div>
+                            <div className="border-secondary border-r px-3 py-1.5 text-center font-medium">
+                                {selectedEmp ? (
+                                    deductCol === 'vl' && workDays > 0 ? (
+                                        <span
+                                            className={
+                                                vlEarned - workDays < 0
+                                                    ? 'text-destructive'
+                                                    : ''
+                                            }
+                                        >
+                                            {(vlEarned - workDays).toFixed(3)}
+                                        </span>
+                                    ) : (
+                                        <span>{vlEarned.toFixed(3)}</span>
+                                    )
+                                ) : (
+                                    '—'
+                                )}
                             </div>
                             <div className="px-3 py-1.5 text-center font-medium">
-                                {selectedEmp
-                                    ? deductCol === 'sl' && workDays > 0
-                                        ? <span className={(slEarned - workDays) < 0 ? 'text-destructive' : ''}>{(slEarned - workDays).toFixed(3)}</span>
-                                        : <span>{slEarned.toFixed(3)}</span>
-                                    : '—'}
+                                {selectedEmp ? (
+                                    deductCol === 'sl' && workDays > 0 ? (
+                                        <span
+                                            className={
+                                                slEarned - workDays < 0
+                                                    ? 'text-destructive'
+                                                    : ''
+                                            }
+                                        >
+                                            {(slEarned - workDays).toFixed(3)}
+                                        </span>
+                                    ) : (
+                                        <span>{slEarned.toFixed(3)}</span>
+                                    )
+                                ) : (
+                                    '—'
+                                )}
                             </div>
                         </div>
                     </div>
-                    <OfficerBlock label="Authorized Officer" value={data.certifying_officer} onChange={v => setData('certifying_officer', v)} employees={employees} />
+                    <OfficerBlock
+                        label="Authorized Officer"
+                        value={data.certifying_officer}
+                        onChange={(v) => setData('certifying_officer', v)}
+                        employees={employees}
+                    />
 
                     {/* 7.B */}
                     <div className="mt-6">
@@ -758,12 +1134,26 @@ function LeaveForm({
                         <div className="space-y-0.5">
                             <SqCheck
                                 checked={data.status === 'For Approval'}
-                                onChange={() => setData('status', data.status === 'For Approval' ? 'Pending' : 'For Approval')}
+                                onChange={() =>
+                                    setData(
+                                        'status',
+                                        data.status === 'For Approval'
+                                            ? 'Pending'
+                                            : 'For Approval',
+                                    )
+                                }
                                 label="For approval"
                             />
                             <SqCheck
                                 checked={data.status === 'For Disapproval'}
-                                onChange={() => setData('status', data.status === 'For Disapproval' ? 'Pending' : 'For Disapproval')}
+                                onChange={() =>
+                                    setData(
+                                        'status',
+                                        data.status === 'For Disapproval'
+                                            ? 'Pending'
+                                            : 'For Disapproval',
+                                    )
+                                }
                                 label="For disapproval due to"
                             />
                         </div>
@@ -771,35 +1161,61 @@ function LeaveForm({
                             <div className="mt-2 pl-4">
                                 <textarea
                                     value={data.for_disapproval_reason}
-                                    onChange={e => setData('for_disapproval_reason', e.target.value)}
+                                    onChange={(e) =>
+                                        setData(
+                                            'for_disapproval_reason',
+                                            e.target.value,
+                                        )
+                                    }
                                     placeholder="State the reason…"
                                     rows={3}
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm
-                                        placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                                    className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1"
                                 />
                             </div>
                         )}
-                        <OfficerBlock label="Authorized Officer" value={data.recommendation_officer} onChange={v => setData('recommendation_officer', v)} employees={employees} />
+                        <OfficerBlock
+                            label="Authorized Officer"
+                            value={data.recommendation_officer}
+                            onChange={(v) =>
+                                setData('recommendation_officer', v)
+                            }
+                            employees={employees}
+                        />
                     </div>
 
                     {/* 7.C */}
                     <div className="mt-6">
                         <Sub>7.C Approved For:</Sub>
-                        <div className="grid grid-cols-3 gap-4 text-xs text-foreground">
+                        <div className="text-foreground grid grid-cols-3 gap-4 text-xs">
                             {[
-                                { field: 'approved_with_pay'    as const, label: 'days with pay' },
-                                { field: 'approved_without_pay' as const, label: 'days without pay' },
-                                { field: 'approved_others'      as const, label: 'others (Specify)' },
+                                {
+                                    field: 'approved_with_pay' as const,
+                                    label: 'days with pay',
+                                },
+                                {
+                                    field: 'approved_without_pay' as const,
+                                    label: 'days without pay',
+                                },
+                                {
+                                    field: 'approved_others' as const,
+                                    label: 'others (Specify)',
+                                },
                             ].map(({ field, label }) => (
-                                <div key={field} className="flex flex-col gap-1">
+                                <div
+                                    key={field}
+                                    className="flex flex-col gap-1"
+                                >
                                     <input
                                         value={(data as any)[field]}
-                                        onChange={e => setData(field, e.target.value)}
+                                        onChange={(e) =>
+                                            setData(field, e.target.value)
+                                        }
                                         placeholder=""
-                                        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm text-center
-                                            placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                        className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring w-full rounded-md border px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-1"
                                     />
-                                    <span className="text-center text-muted-foreground">{label}</span>
+                                    <span className="text-muted-foreground text-center">
+                                        {label}
+                                    </span>
                                 </div>
                             ))}
                         </div>
@@ -810,25 +1226,40 @@ function LeaveForm({
                         <Sub>7.D Disapproved Due To:</Sub>
                         <textarea
                             value={data.disapproved_reason}
-                            onChange={e => setData('disapproved_reason', e.target.value)}
+                            onChange={(e) =>
+                                setData('disapproved_reason', e.target.value)
+                            }
                             placeholder="State the reason for disapproval…"
                             rows={3}
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm
-                                placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                            className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1"
                         />
                     </div>
 
-                    <OfficerBlock label="Authorized Official" value={data.approval_officer} onChange={v => setData('approval_officer', v)} employees={employees} />
+                    <OfficerBlock
+                        label="Authorized Official"
+                        value={data.approval_officer}
+                        onChange={(v) => setData('approval_officer', v)}
+                        employees={employees}
+                    />
                 </div>
             </div>
 
             {/* Footer — matches attachment 1's DialogFooter pattern */}
-            <DialogFooter className="px-5 py-4 border-t bg-muted/30 shrink-0">
-                <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            <DialogFooter className="bg-muted/30 shrink-0 border-t px-5 py-4">
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onClose}
+                >
                     Cancel
                 </Button>
                 <Button type="submit" size="sm" disabled={processing}>
-                    {processing ? 'Saving…' : isEdit ? 'Update Application' : 'File Leave Application'}
+                    {processing
+                        ? 'Saving…'
+                        : isEdit
+                          ? 'Update Application'
+                          : 'File Leave Application'}
                 </Button>
             </DialogFooter>
         </form>
@@ -837,10 +1268,18 @@ function LeaveForm({
 
 // ─── Leave Modal ──────────────────────────────────────────────────────────────
 
-function LeaveModal({ open, editingApp, employees, leave_types, onClose }: {
-    open: boolean; editingApp: LeaveFiling | null;
+function LeaveModal({
+    open,
+    editingApp,
+    employees,
+    leave_types,
+    onClose,
+}: {
+    open: boolean;
+    editingApp: LeaveFiling | null;
     employees: Employee[];
-    leave_types: LeaveType[]; onClose: () => void;
+    leave_types: LeaveType[];
+    onClose: () => void;
 }) {
     const isEdit = !!editingApp;
     const detail = (editingApp as any)?.detail;
@@ -852,108 +1291,176 @@ function LeaveModal({ open, editingApp, employees, leave_types, onClose }: {
     }
     function restoreSickType(): 'hospital' | 'outpatient' | '' {
         if (!detail?.illness_details) return '';
-        if (detail.illness_details.startsWith('In Hospital:')) return 'hospital';
-        if (detail.illness_details.startsWith('Out Patient:')) return 'outpatient';
+        if (detail.illness_details.startsWith('In Hospital:'))
+            return 'hospital';
+        if (detail.illness_details.startsWith('Out Patient:'))
+            return 'outpatient';
         return '';
     }
 
-    const { data, setData, post, put, processing, errors, reset } = useForm<FormData>({
-        employee_id:          editingApp?.employee_id ? String(editingApp.employee_id) : '',
-        office_department:    (editingApp as any)?.office_department ?? '',
-        position:             (editingApp as any)?.position ?? '',
-        salary:               (editingApp as any)?.salary ?? '',
-        leave_type_id:        editingApp?.leave_type_id ? String(editingApp.leave_type_id) : '',
-        leave_type_availed:   editingApp?.leave_type_availed ?? '',
-        is_others:            false,
-        others_text:          '',
-        loc_type:             restoreLocType(),
-        loc_ph_text:          !detail?.leave_location?.startsWith('Abroad:') ? (detail?.leave_location ?? '') : '',
-        loc_abroad_text:      detail?.leave_location?.startsWith('Abroad:') ? detail.leave_location.replace('Abroad: ', '') : '',
-        sick_type:            restoreSickType(),
-        sick_hospital_text:   detail?.illness_details?.startsWith('In Hospital:') ? detail.illness_details.replace('In Hospital: ', '') : '',
-        sick_outpatient_text: detail?.illness_details?.startsWith('Out Patient:') ? detail.illness_details.replace('Out Patient: ', '') : '',
-        illness_women:        detail?.illness_details?.startsWith('Women:') ? detail.illness_details.replace('Women: ', '') : '',
-        study_purpose:        detail?.study_leave_purpose ?? '',
-        start_date:           editingApp?.start_date ?? '',
-        end_date:             editingApp?.end_date ?? '',
-        is_requested:         editingApp?.is_requested ?? false,
-        is_with_pay:          editingApp?.is_with_pay ?? true,
-        recommendation_officer: editingApp?.recommendation_officer ? String(editingApp.recommendation_officer) : '',
-        certifying_officer:     (editingApp as any)?.certifying_officer ? String((editingApp as any).certifying_officer) : '',
-        status:               editingApp?.status ?? 'Pending',
-        for_disapproval_reason: editingApp?.for_disapproval_reason ?? '',
-        approval_officer:     editingApp?.approval_officer ? String(editingApp.approval_officer) : '',
-        approved_with_pay:    '',
-        approved_without_pay: '',
-        approved_others:      '',
-        disapproved_reason:   editingApp?.disapproved_reason ?? '',
-    });
+    const { data, setData, post, put, processing, errors, reset } =
+        useForm<FormData>({
+            employee_id: editingApp?.employee_id
+                ? String(editingApp.employee_id)
+                : '',
+            office_department: (editingApp as any)?.office_department ?? '',
+            position: (editingApp as any)?.position ?? '',
+            salary: (editingApp as any)?.salary ?? '',
+            leave_type_id: editingApp?.leave_type_id
+                ? String(editingApp.leave_type_id)
+                : '',
+            leave_type_availed: editingApp?.leave_type_availed ?? '',
+            is_others: false,
+            others_text: '',
+            loc_type: restoreLocType(),
+            loc_ph_text: !detail?.leave_location?.startsWith('Abroad:')
+                ? (detail?.leave_location ?? '')
+                : '',
+            loc_abroad_text: detail?.leave_location?.startsWith('Abroad:')
+                ? detail.leave_location.replace('Abroad: ', '')
+                : '',
+            sick_type: restoreSickType(),
+            sick_hospital_text: detail?.illness_details?.startsWith(
+                'In Hospital:',
+            )
+                ? detail.illness_details.replace('In Hospital: ', '')
+                : '',
+            sick_outpatient_text: detail?.illness_details?.startsWith(
+                'Out Patient:',
+            )
+                ? detail.illness_details.replace('Out Patient: ', '')
+                : '',
+            illness_women: detail?.illness_details?.startsWith('Women:')
+                ? detail.illness_details.replace('Women: ', '')
+                : '',
+            study_purpose: detail?.study_leave_purpose ?? '',
+            start_date: editingApp?.start_date ?? '',
+            end_date: editingApp?.end_date ?? '',
+            is_requested: editingApp?.is_requested ?? false,
+            is_with_pay: editingApp?.is_with_pay ?? true,
+            recommendation_officer: editingApp?.recommendation_officer
+                ? String(editingApp.recommendation_officer)
+                : '',
+            certifying_officer: (editingApp as any)?.certifying_officer
+                ? String((editingApp as any).certifying_officer)
+                : '',
+            status: editingApp?.status ?? 'Pending',
+            for_disapproval_reason: editingApp?.for_disapproval_reason ?? '',
+            approval_officer: editingApp?.approval_officer
+                ? String(editingApp.approval_officer)
+                : '',
+            approved_with_pay: '',
+            approved_without_pay: '',
+            approved_others: '',
+            disapproved_reason: editingApp?.disapproved_reason ?? '',
+        });
 
     function buildPayload() {
-        const availed = data.is_others ? data.others_text : data.leave_type_availed;
+        const availed = data.is_others
+            ? data.others_text
+            : data.leave_type_availed;
         let leave_location: string | null = null;
-        if (data.loc_type === 'ph')     leave_location = data.loc_ph_text;
-        if (data.loc_type === 'abroad') leave_location = `Abroad: ${data.loc_abroad_text}`;
+        if (data.loc_type === 'ph') leave_location = data.loc_ph_text;
+        if (data.loc_type === 'abroad')
+            leave_location = `Abroad: ${data.loc_abroad_text}`;
         let illness_details: string | null = null;
-        if (data.sick_type === 'hospital')   illness_details = `In Hospital: ${data.sick_hospital_text}`;
-        if (data.sick_type === 'outpatient') illness_details = `Out Patient: ${data.sick_outpatient_text}`;
-        if (data.illness_women)              illness_details = `Women: ${data.illness_women}`;
+        if (data.sick_type === 'hospital')
+            illness_details = `In Hospital: ${data.sick_hospital_text}`;
+        if (data.sick_type === 'outpatient')
+            illness_details = `Out Patient: ${data.sick_outpatient_text}`;
+        if (data.illness_women)
+            illness_details = `Women: ${data.illness_women}`;
         const parts: string[] = [];
-        if (data.approved_with_pay)    parts.push(`${data.approved_with_pay} days with pay`);
-        if (data.approved_without_pay) parts.push(`${data.approved_without_pay} days without pay`);
-        if (data.approved_others)      parts.push(data.approved_others);
+        if (data.approved_with_pay)
+            parts.push(`${data.approved_with_pay} days with pay`);
+        if (data.approved_without_pay)
+            parts.push(`${data.approved_without_pay} days without pay`);
+        if (data.approved_others) parts.push(data.approved_others);
         return {
-            employee_id:            data.employee_id,
-            office_department:      data.office_department,
-            position:               data.position,
-            salary:                 data.salary,
-            leave_type_id:          data.leave_type_id || null,
-            leave_type_availed:     availed,
-            start_date:             data.start_date,
-            end_date:               data.end_date,
-            is_requested:           data.is_requested,
-            is_with_pay:            !!data.approved_with_pay,
+            employee_id: data.employee_id,
+            office_department: data.office_department,
+            position: data.position,
+            salary: data.salary,
+            leave_type_id: data.leave_type_id || null,
+            leave_type_availed: availed,
+            start_date: data.start_date,
+            end_date: data.end_date,
+            is_requested: data.is_requested,
+            is_with_pay: !!data.approved_with_pay,
             recommendation_officer: data.recommendation_officer || null,
-            certifying_officer:     data.certifying_officer || null,
-            approval_officer:       data.approval_officer || null,
-            status:                 data.status,
+            certifying_officer: data.certifying_officer || null,
+            approval_officer: data.approval_officer || null,
+            status: data.status,
             for_disapproval_reason: data.for_disapproval_reason,
             approved_for_specifics: parts.join(' / ') || null,
-            disapproved_reason:     data.disapproved_reason,
+            disapproved_reason: data.disapproved_reason,
             leave_location,
             illness_details,
-            study_leave_purpose:    data.study_purpose,
+            study_leave_purpose: data.study_purpose,
         };
     }
 
-    function handleClose() { reset(); setAcknowledged(isEdit); onClose(); }
+    function handleClose() {
+        reset();
+        setAcknowledged(isEdit);
+        onClose();
+    }
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!data.employee_id)                           { toast.error('Please select an employee.'); return; }
-        if (!data.is_others && !data.leave_type_availed) { toast.error('Please select a leave type.'); return; }
-        if (data.is_others && !data.others_text.trim())  { toast.error('Please specify the leave type.'); return; }
-        if (!data.start_date || !data.end_date)          { toast.error('Please fill in the inclusive dates.'); return; }
-        if (new Date(data.end_date) < new Date(data.start_date)) { toast.error('End date cannot be before start date.'); return; }
+        if (!data.employee_id) {
+            toast.error('Please select an employee.');
+            return;
+        }
+        if (!data.is_others && !data.leave_type_availed) {
+            toast.error('Please select a leave type.');
+            return;
+        }
+        if (data.is_others && !data.others_text.trim()) {
+            toast.error('Please specify the leave type.');
+            return;
+        }
+        if (!data.start_date || !data.end_date) {
+            toast.error('Please fill in the inclusive dates.');
+            return;
+        }
+        if (new Date(data.end_date) < new Date(data.start_date)) {
+            toast.error('End date cannot be before start date.');
+            return;
+        }
         const opts = {
             data: buildPayload(),
-            onSuccess: () => { toast.success(isEdit ? 'Updated.' : 'Filed successfully.'); handleClose(); },
-            onError:   () => toast.error('Please check the form and try again.'),
+            onSuccess: () => {
+                toast.success(isEdit ? 'Updated.' : 'Filed successfully.');
+                handleClose();
+            },
+            onError: () => toast.error('Please check the form and try again.'),
         };
         isEdit
-            ? put(route('leave.leave-application.update', editingApp!.leave_application_id), opts)
+            ? put(
+                  route(
+                      'leave.leave-application.update',
+                      editingApp!.leave_application_id,
+                  ),
+                  opts,
+              )
             : post(route('leave.leave-application.store'), opts);
     }
 
     return (
-        <Dialog open={open} onOpenChange={o => { if (!o) handleClose(); }}>
+        <Dialog
+            open={open}
+            onOpenChange={(o) => {
+                if (!o) handleClose();
+            }}
+        >
             {/* Max width & height match attachment 1's modal style */}
-            <DialogContent className="p-0 gap-0 sm:max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-                <DialogHeader className="px-5 py-4 border-b border-secondary shrink-0">
+            <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+                <DialogHeader className="border-secondary shrink-0 border-b px-5 py-4">
                     <DialogTitle className="text-sm font-semibold">
                         APPLICATION FOR LEAVE
                     </DialogTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-muted-foreground mt-0.5 text-xs">
                         {!acknowledged
                             ? 'Instructions & Requirements · Please read before proceeding'
                             : 'Civil Service Form No. 6 · Revised 2020 · ANNEX A'}
@@ -961,7 +1468,9 @@ function LeaveModal({ open, editingApp, employees, leave_types, onClose }: {
                 </DialogHeader>
 
                 {!acknowledged ? (
-                    <InstructionsGate onAcknowledge={() => setAcknowledged(true)} />
+                    <InstructionsGate
+                        onAcknowledge={() => setAcknowledged(true)}
+                    />
                 ) : (
                     <LeaveForm
                         data={data}
@@ -982,25 +1491,35 @@ function LeaveModal({ open, editingApp, employees, leave_types, onClose }: {
 
 // ─── Mobile Detail Modal (ported from attachment 1) ───────────────────────────
 
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+function DetailRow({
+    label,
+    value,
+}: {
+    label: string;
+    value: React.ReactNode;
+}) {
     return (
-        <div className="flex items-start justify-between gap-4 py-2 border-b border-secondary last:border-0">
-            <span className="text-xs text-muted-foreground shrink-0">{label}</span>
-            <span className="text-xs text-right">{value}</span>
+        <div className="border-secondary flex items-start justify-between gap-4 border-b py-2 last:border-0">
+            <span className="text-muted-foreground shrink-0 text-xs">
+                {label}
+            </span>
+            <span className="text-right text-xs">{value}</span>
         </div>
     );
 }
 
 function StatusPill({ status }: { status: string }) {
     const map: Record<string, string> = {
-        'Pending':         'bg-slate-100 text-slate-700 border-slate-200',
-        'For Approval':    'bg-green-100 text-green-700 border-green-200',
+        Pending: 'bg-slate-100 text-slate-700 border-slate-200',
+        'For Approval': 'bg-green-100 text-green-700 border-green-200',
         'For Disapproval': 'bg-orange-100 text-orange-700 border-orange-200',
-        'Approved':        'bg-emerald-100 text-emerald-700 border-emerald-200',
-        'Disapproved':     'bg-red-100 text-red-700 border-red-200',
+        Approved: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        Disapproved: 'bg-red-100 text-red-700 border-red-200',
     };
     return (
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${map[status] ?? ''}`}>
+        <span
+            className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${map[status] ?? ''}`}
+        >
             {status}
         </span>
     );
@@ -1013,38 +1532,50 @@ interface MobileDetailModalProps {
     onDeleted: () => void;
 }
 
-function MobileDetailModal({ app, onClose, onEdit, onDeleted }: MobileDetailModalProps) {
+function MobileDetailModal({
+    app,
+    onClose,
+    onEdit,
+    onDeleted,
+}: MobileDetailModalProps) {
     const [confirmOpen, setConfirmOpen] = React.useState(false);
 
     if (!app) return null;
 
     function handleDelete() {
-        router.delete(route('leave.leave-application.destroy', app!.leave_application_id), {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Leave application deleted successfully.');
-                setConfirmOpen(false);
-                onDeleted();
+        router.delete(
+            route('leave.leave-application.destroy', app!.leave_application_id),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success('Leave application deleted successfully.');
+                    setConfirmOpen(false);
+                    onDeleted();
+                },
+                onError: () =>
+                    toast.error('Failed to delete leave application.'),
             },
-            onError: () => toast.error('Failed to delete leave application.'),
-        });
+        );
     }
 
     return (
         <>
-            <Dialog open={!!app} onOpenChange={o => !o && onClose()}>
-                <DialogContent className="p-0 gap-0 max-w-sm max-h-[85vh] flex flex-col">
-                    <DialogHeader className="px-5 py-4 border-b border-secondary shrink-0">
-                        <DialogTitle className="text-sm font-semibold pr-6 flex items-center gap-2">
+            <Dialog open={!!app} onOpenChange={(o) => !o && onClose()}>
+                <DialogContent className="flex max-h-[85vh] max-w-sm flex-col gap-0 p-0">
+                    <DialogHeader className="border-secondary shrink-0 border-b px-5 py-4">
+                        <DialogTitle className="flex items-center gap-2 pr-6 text-sm font-semibold">
                             Leave Application
                             <StatusPill status={app.status} />
                         </DialogTitle>
                     </DialogHeader>
 
-                    <div className="px-5 py-4 overflow-y-auto flex-1 space-y-1">
+                    <div className="flex-1 space-y-1 overflow-y-auto px-5 py-4">
                         <DetailRow
                             label="Employee"
-                            value={(app as any).employee?.employee_name ?? `#${app.employee_id}`}
+                            value={
+                                (app as any).employee?.employee_name ??
+                                `#${app.employee_id}`
+                            }
                         />
                         <DetailRow
                             label="Leave Type"
@@ -1052,7 +1583,9 @@ function MobileDetailModal({ app, onClose, onEdit, onDeleted }: MobileDetailModa
                         />
                         <DetailRow
                             label="Start Date"
-                            value={app.start_date ? toDisplay(app.start_date) : '—'}
+                            value={
+                                app.start_date ? toDisplay(app.start_date) : '—'
+                            }
                         />
                         <DetailRow
                             label="End Date"
@@ -1060,7 +1593,9 @@ function MobileDetailModal({ app, onClose, onEdit, onDeleted }: MobileDetailModa
                         />
                         <DetailRow
                             label="Commutation"
-                            value={app.is_requested ? 'Requested' : 'Not Requested'}
+                            value={
+                                app.is_requested ? 'Requested' : 'Not Requested'
+                            }
                         />
                         <DetailRow
                             label="Status"
@@ -1068,22 +1603,25 @@ function MobileDetailModal({ app, onClose, onEdit, onDeleted }: MobileDetailModa
                         />
                     </div>
 
-                    <DialogFooter className="px-5 py-4 bg-muted/30 shrink-0 flex-row justify-between gap-2">
+                    <DialogFooter className="bg-muted/30 shrink-0 flex-row justify-between gap-2 px-5 py-4">
                         <Button
                             variant="destructive"
                             size="sm"
                             className="gap-1.5"
                             onClick={() => setConfirmOpen(true)}
                         >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="h-3.5 w-3.5" />
                             Delete
                         </Button>
                         <Button
                             size="sm"
                             className="gap-1.5"
-                            onClick={() => { onClose(); onEdit(app); }}
+                            onClick={() => {
+                                onClose();
+                                onEdit(app);
+                            }}
                         >
-                            <Pencil className="w-3.5 h-3.5" />
+                            <Pencil className="h-3.5 w-3.5" />
                             Edit
                         </Button>
                     </DialogFooter>
@@ -1093,11 +1631,16 @@ function MobileDetailModal({ app, onClose, onEdit, onDeleted }: MobileDetailModa
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete this leave application?</AlertDialogTitle>
+                        <AlertDialogTitle>
+                            Delete this leave application?
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently remove the leave application for{' '}
-                            <strong>{app.leave_type_availed ?? 'this leave type'}</strong>.
-                            This action cannot be undone.
+                            This will permanently remove the leave application
+                            for{' '}
+                            <strong>
+                                {app.leave_type_availed ?? 'this leave type'}
+                            </strong>
+                            . This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -1117,26 +1660,51 @@ function MobileDetailModal({ app, onClose, onEdit, onDeleted }: MobileDetailModa
 
 // ─── Desktop Details Dialog ───────────────────────────────────────────────────
 
-function DetailsDialog({ app, onClose }: { app: LeaveFiling | null; onClose: () => void }) {
+function DetailsDialog({
+    app,
+    onClose,
+}: {
+    app: LeaveFiling | null;
+    onClose: () => void;
+}) {
     if (!app) return null;
     return (
-        <Dialog open={!!app} onOpenChange={o => { if (!o) onClose(); }}>
-            <DialogContent className="p-0 gap-0 sm:max-w-lg">
-                <DialogHeader className="px-5 py-4 border-b border-secondary shrink-0">
-                    <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-muted-foreground" />
+        <Dialog
+            open={!!app}
+            onOpenChange={(o) => {
+                if (!o) onClose();
+            }}
+        >
+            <DialogContent className="gap-0 p-0 sm:max-w-lg">
+                <DialogHeader className="border-secondary shrink-0 border-b px-5 py-4">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+                        <CalendarDays className="text-muted-foreground h-4 w-4" />
                         Leave Application
                         <StatusPill status={app.status} />
                     </DialogTitle>
                 </DialogHeader>
-                <div className="px-5 py-4 space-y-1 max-h-[60vh] overflow-y-auto">
+                <div className="max-h-[60vh] space-y-1 overflow-y-auto px-5 py-4">
                     {[
-                        { l: 'Employee',    v: (app as any).employee?.employee_name ?? `#${app.employee_id}` },
-                        { l: 'Leave Type',  v: app.leave_type_availed ?? '—' },
-                        { l: 'Start Date',  v: app.start_date ? toDisplay(app.start_date) : '—' },
-                        { l: 'End Date',    v: app.end_date   ? toDisplay(app.end_date)   : '—' },
-                        { l: 'Commutation', v: app.is_requested ? 'Requested' : 'Not Requested' },
-                        { l: 'Status',      v: <StatusPill status={app.status} /> },
+                        {
+                            l: 'Employee',
+                            v:
+                                (app as any).employee?.employee_name ??
+                                `#${app.employee_id}`,
+                        },
+                        { l: 'Leave Type', v: app.leave_type_availed ?? '—' },
+                        {
+                            l: 'Start Date',
+                            v: app.start_date ? toDisplay(app.start_date) : '—',
+                        },
+                        {
+                            l: 'End Date',
+                            v: app.end_date ? toDisplay(app.end_date) : '—',
+                        },
+                        {
+                            l: 'Commutation',
+                            v: app.is_requested ? 'Requested' : 'Not Requested',
+                        },
+                        { l: 'Status', v: <StatusPill status={app.status} /> },
                     ].map(({ l, v }) => (
                         <DetailRow key={l} label={l} value={v} />
                     ))}
@@ -1163,13 +1731,22 @@ export default function LeaveFilingIndex({
 }: Props) {
     const isMobile = useIsMobile();
 
-    const [modalOpen,  setModalOpen]  = useState(false);
+    const [modalOpen, setModalOpen] = useState(false);
     const [editingApp, setEditingApp] = useState<LeaveFiling | null>(null);
-    const [detailApp,  setDetailApp]  = useState<LeaveFiling | null>(null);
+    const [detailApp, setDetailApp] = useState<LeaveFiling | null>(null);
 
-    function openCreate() { setEditingApp(null); setModalOpen(true); }
-    function openEdit(app: LeaveFiling) { setEditingApp(app); setModalOpen(true); }
-    function closeModal() { setModalOpen(false); setEditingApp(null); }
+    function openCreate() {
+        setEditingApp(null);
+        setModalOpen(true);
+    }
+    function openEdit(app: LeaveFiling) {
+        setEditingApp(app);
+        setModalOpen(true);
+    }
+    function closeModal() {
+        setModalOpen(false);
+        setEditingApp(null);
+    }
 
     function handleRowClick(row: any) {
         setDetailApp(row.original);
@@ -1179,18 +1756,38 @@ export default function LeaveFilingIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Leave Filing" />
             <section className="w-full p-6">
-                <section className="max-w-300 grid grid-cols-1 lg:grid-cols-4 gap-5 mb-6">
-                    <StatCard title="Total Applications" value={total_applications} description="All leave applications"   icon={<CalendarDays className="size-4" />} />
-                    <StatCard title="Pending"            value={total_pending}      description="Awaiting action"          icon={<Clock className="size-4" />} />
-                    <StatCard title="Approved"           value={total_approved}     description="Approved applications"    icon={<CheckCircle className="size-4" />} />
-                    <StatCard title="Disapproved"        value={total_disapproved}  description="Disapproved applications" icon={<XCircle className="size-4" />} />
+                <section className="max-w-300 mb-6 grid grid-cols-1 gap-5 lg:grid-cols-4">
+                    <StatCard
+                        title="Total Applications"
+                        value={total_applications}
+                        description="All leave applications"
+                        icon={<CalendarDays className="size-4" />}
+                    />
+                    <StatCard
+                        title="Pending"
+                        value={total_pending}
+                        description="Awaiting action"
+                        icon={<Clock className="size-4" />}
+                    />
+                    <StatCard
+                        title="Approved"
+                        value={total_approved}
+                        description="Approved applications"
+                        icon={<CheckCircle className="size-4" />}
+                    />
+                    <StatCard
+                        title="Disapproved"
+                        value={total_disapproved}
+                        description="Disapproved applications"
+                        icon={<XCircle className="size-4" />}
+                    />
                 </section>
 
-                <section className="bg-card p-6 rounded-lg border border-secondary">
+                <section className="bg-card border-secondary rounded-lg border p-6">
                     <DataTable
                         columns={getColumns({ onEdit: openEdit })}
                         data={leave_applications}
-                        getRowId={row => String(row.leave_application_id)}
+                        getRowId={(row) => String(row.leave_application_id)}
                         onRowClick={handleRowClick}
                         searchColumnId="employee_name"
                         searchPlaceholder="Search by employee name…"
@@ -1198,17 +1795,29 @@ export default function LeaveFilingIndex({
                             {
                                 columnId: 'leave_type_availed',
                                 title: 'Leave Type',
-                                options: leave_types.map(lt => ({ value: lt.leave_type_name, label: lt.leave_type_name })),
+                                options: leave_types.map((lt) => ({
+                                    value: lt.leave_type_name,
+                                    label: lt.leave_type_name,
+                                })),
                             },
                             {
                                 columnId: 'status',
                                 title: 'Status',
                                 options: [
-                                    { value: 'Pending',         label: 'Pending' },
-                                    { value: 'For Approval',    label: 'For Approval' },
-                                    { value: 'For Disapproval', label: 'For Disapproval' },
-                                    { value: 'Approved',        label: 'Approved' },
-                                    { value: 'Disapproved',     label: 'Disapproved' },
+                                    { value: 'Pending', label: 'Pending' },
+                                    {
+                                        value: 'For Approval',
+                                        label: 'For Approval',
+                                    },
+                                    {
+                                        value: 'For Disapproval',
+                                        label: 'For Disapproval',
+                                    },
+                                    { value: 'Approved', label: 'Approved' },
+                                    {
+                                        value: 'Disapproved',
+                                        label: 'Disapproved',
+                                    },
                                 ],
                             },
                         ]}
@@ -1231,7 +1840,10 @@ export default function LeaveFilingIndex({
                     onDeleted={() => setDetailApp(null)}
                 />
             ) : (
-                <DetailsDialog app={detailApp} onClose={() => setDetailApp(null)} />
+                <DetailsDialog
+                    app={detailApp}
+                    onClose={() => setDetailApp(null)}
+                />
             )}
 
             <LeaveModal

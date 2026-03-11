@@ -2,23 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EligibilityInformation;
 use App\Models\Employee;
-use App\Models\EmployeeBasicInfo;
-use App\Models\Item;
-use App\Models\SalaryGradeStep;
 use App\Models\EmployeeAddress;
+use App\Models\EmployeeBasicInfo;
 use App\Models\EmployeeEducation;
+use App\Models\EmployeeUploadedFile;
 use App\Models\FamilyInfo;
 use App\Models\GovernmentAccount;
-use App\Models\EligibilityInformation;
-use App\Models\EmployeeUploadedFile;
+use App\Models\Item;
+use App\Models\SalaryGradeStep;
 use App\Models\User;
+use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use App\Services\ActivityLogService;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -27,9 +27,7 @@ use function Symfony\Component\Clock\now;
 
 class EmployeeController extends Controller
 {
-    public function __construct(protected ActivityLogService $activityLogService)
-    {
-    }
+    public function __construct(protected ActivityLogService $activityLogService) {}
 
     // ─────────────────────────────────────────────────────────────────────────
     // Index
@@ -50,7 +48,7 @@ class EmployeeController extends Controller
             'item.position.unit',
         ])
             ->get()
-            ->map(fn(Employee $employee) => $this->formatForTable($employee));
+            ->map(fn (Employee $employee) => $this->formatForTable($employee));
 
         return Inertia::render('Employee/Index', [
             'employees' => $employees,
@@ -69,7 +67,7 @@ class EmployeeController extends Controller
         return Inertia::render('Employee/CreateEmployee', [
             'items' => Item::with(['position.department', 'position.division', 'position.unit', 'employee'])
                 ->get()
-                ->map(fn(Item $item) => [
+                ->map(fn (Item $item) => [
                     'item_id' => $item->item_id,
                     'is_occupied' => $item->employee !== null,
                     'position' => $item->position ? [
@@ -223,11 +221,11 @@ class EmployeeController extends Controller
                 FamilyInfo::create([
                     'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
                     'full_name' => $member['full_name'],
-                    'contact_number' => !empty($member['contact_number']) ? $member['contact_number'] : null,
+                    'contact_number' => ! empty($member['contact_number']) ? $member['contact_number'] : null,
                     'relationship' => $member['relationship'],
                     'sex' => isset($member['sex']) && $member['sex'] !== '' ? (bool) $member['sex'] : null,
-                    'date_of_birth' => !empty($member['date_of_birth']) ? $member['date_of_birth'] : null,
-                    'place_of_birth' => !empty($member['place_of_birth']) ? $member['place_of_birth'] : null,
+                    'date_of_birth' => ! empty($member['date_of_birth']) ? $member['date_of_birth'] : null,
+                    'place_of_birth' => ! empty($member['place_of_birth']) ? $member['place_of_birth'] : null,
                 ]);
             }
 
@@ -244,9 +242,9 @@ class EmployeeController extends Controller
                     'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
                     'level' => $edu['level'],
                     'school_name' => $edu['school_name'],
-                    'school_address' => !empty($edu['school_address']) ? $edu['school_address'] : null,
-                    'graduation_date' => !empty($edu['graduation_date']) ? $edu['graduation_date'] : null,
-                    'degree' => !empty($edu['degree']) ? $edu['degree'] : null,
+                    'school_address' => ! empty($edu['school_address']) ? $edu['school_address'] : null,
+                    'graduation_date' => ! empty($edu['graduation_date']) ? $edu['graduation_date'] : null,
+                    'degree' => ! empty($edu['degree']) ? $edu['degree'] : null,
                 ]);
             }
 
@@ -271,7 +269,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'activity' => 'Created employee: ' . $request->first_name . ' ' . $request->last_name,
+            'activity' => 'Created employee: '.$request->first_name.' '.$request->last_name,
         ]);
 
         return redirect()->route('employee.index')
@@ -306,7 +304,7 @@ class EmployeeController extends Controller
             'employee' => [
                 'employee_id' => $employee->employee_id,
                 'work_email' => $employee->work_email,
-                'work_id'     => $employee->work_id,
+                'work_id' => $employee->work_id,
                 'employment_classification' => $employee->employment_classification,
                 'date_applied' => $employee->date_applied,
                 'date_hired' => $employee->date_hired,
@@ -329,7 +327,7 @@ class EmployeeController extends Controller
 
                 // camelCase keys — match the TypeScript interface exactly
                 'uploadedFiles' => $employee->uploadedFiles,
-                'seminarsAndTrainings' => $employee->seminarsAndTrainings->map(fn($s) => [
+                'seminarsAndTrainings' => $employee->seminarsAndTrainings->map(fn ($s) => [
                     'id' => $s->employee_seminar_training_id,
                     'seminar_name' => $s->seminar_training_name,
                     'venue' => $s->venue,
@@ -344,7 +342,7 @@ class EmployeeController extends Controller
                 'employee',
             ])
                 ->get()
-                ->map(fn(Item $item) => [
+                ->map(fn (Item $item) => [
                     'item_id' => $item->item_id,
                     'is_occupied' => $item->employee !== null
                         && $item->employee->employee_id !== $employee->employee_id,
@@ -397,7 +395,7 @@ class EmployeeController extends Controller
             'item_id' => 'sometimes|required|exists:items,item_id',
             'salary_grade_step_id' => 'sometimes|required|exists:salary_grade_steps,salary_grade_step_id',
             'employment_classification' => 'sometimes|required|string|exists:employment_classifications,name',
-            'work_email' => 'sometimes|required|email|unique:employees,work_email,' . $employee->employee_id . ',employee_id',
+            'work_email' => 'sometimes|required|email|unique:employees,work_email,'.$employee->employee_id.',employee_id',
             'password' => 'nullable|string|min:8',
             'date_applied' => 'sometimes|required|date',
             'date_hired' => 'sometimes|required|date',
@@ -454,12 +452,12 @@ class EmployeeController extends Controller
 
     public function toggleStatus(Employee $employee)
     {
-        $employee->update(['status' => !$employee->status]);
+        $employee->update(['status' => ! $employee->status]);
 
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'activity' => ($employee->status ? 'Activated' : 'Deactivated') . ' employee: ' . $employee->basicInfo?->full_name,
+            'activity' => ($employee->status ? 'Activated' : 'Deactivated').' employee: '.$employee->basicInfo?->full_name,
         ]);
 
         return back()->with('success', 'Employee status updated.');
@@ -472,7 +470,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'activity' => 'Deleted employee: ' . $employee->basicInfo?->full_name,
+            'activity' => 'Deleted employee: '.$employee->basicInfo?->full_name,
         ]);
 
         return redirect()->route('employee.index')->with('success', 'Employee deleted successfully.');
@@ -491,7 +489,7 @@ class EmployeeController extends Controller
             $employee->delete();
         }
 
-        return back()->with('success', count($request->ids) . ' employee(s) deleted.');
+        return back()->with('success', count($request->ids).' employee(s) deleted.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -647,7 +645,7 @@ class EmployeeController extends Controller
             ->get()
             ->get($index);
 
-        abort_if(!$member, 404, 'Family member not found.');
+        abort_if(! $member, 404, 'Family member not found.');
 
         $member->update([
             'full_name' => $request->full_name,
@@ -668,7 +666,7 @@ class EmployeeController extends Controller
             ->get()
             ->get($index);
 
-        abort_if(!$member, 404, 'Family member not found.');
+        abort_if(! $member, 404, 'Family member not found.');
 
         $member->delete();
 
@@ -716,7 +714,7 @@ class EmployeeController extends Controller
             ->get()
             ->get($index);
 
-        abort_if(!$edu, 404, 'Education record not found.');
+        abort_if(! $edu, 404, 'Education record not found.');
 
         $edu->update([
             'school_name' => $request->school_name,
@@ -736,7 +734,7 @@ class EmployeeController extends Controller
             ->get()
             ->get($index);
 
-        abort_if(!$edu, 404, 'Education record not found.');
+        abort_if(! $edu, 404, 'Education record not found.');
 
         $edu->delete();
 
@@ -854,7 +852,7 @@ class EmployeeController extends Controller
         }
 
         $path = $request->file('avatar')->store(
-            'avatars/' . $employee->employee_id,
+            'avatars/'.$employee->employee_id,
             'public'
         );
 
@@ -875,7 +873,7 @@ class EmployeeController extends Controller
         $uploaded = $request->file('file');
 
         $path = $uploaded->store(
-            'employee-files/' . $employee->employee_id,
+            'employee-files/'.$employee->employee_id,
             'public'
         );
 
@@ -894,6 +892,7 @@ class EmployeeController extends Controller
         abort_if($file->employee_id !== $employee->employee_id, 403);
         Storage::disk('public')->delete($file->file_path);
         $file->delete();
+
         return back()->with('success', 'File deleted.');
     }
 }

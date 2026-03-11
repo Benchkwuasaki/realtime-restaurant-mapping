@@ -3,14 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Services\ActivityLogService;
-use Inertia\Inertia;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class DocumentTrackingController extends Controller
 {
     public function __construct(protected ActivityLogService $activityLogService) {}
-
 
     public function index()
     {

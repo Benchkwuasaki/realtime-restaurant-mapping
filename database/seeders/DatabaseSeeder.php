@@ -2,48 +2,204 @@
 
 namespace Database\Seeders;
 
-use App\Models\Employee;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-
-use function Symfony\Component\Clock\now;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([
-            RoleSeeder::class,
-        ]);
         // TODO: refactor to separate seeder files
 
+        // ── 0. Government Account Types ───────────────────────────────────
+        $gsisTypeId = DB::table('government_acc_types')->insertGetId([
+            'code' => 'GSIS',
+            'name' => 'Government Service Insurance System',
+            'has_employer_share' => true,
+            'computation_type' => 'rate',
+            'employee_rate' => 9.00,
+            'employer_rate' => 12.00,
+            'fixed_amount' => null,
+            // GSIS has no floor/ceiling or tier — these stay null
+            'min_contribution' => null,
+            'max_contribution' => null,
+            'lower_salary_threshold' => null,
+            'lower_rate' => null,
+            'upper_rate' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $philhealthTypeId = DB::table('government_acc_types')->insertGetId([
+            'code' => 'PHILHEALTH',
+            'name' => 'Philippine Health Insurance Corporation',
+            'has_employer_share' => true,
+            'computation_type' => 'rate',
+            'employee_rate' => 2.50,    // employee share (half of 5% total)
+            'employer_rate' => 2.50,    // employer share (half of 5% total)
+            'fixed_amount' => null,
+            'min_contribution' => 250.00,  // monthly floor — was hardcoded max(250.0, ...)
+            'max_contribution' => 2500.00, // monthly ceiling — was hardcoded min(2500.0, ...)
+            'lower_salary_threshold' => null,
+            'lower_rate' => null,
+            'upper_rate' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $pagibigTypeId = DB::table('government_acc_types')->insertGetId([
+            'code' => 'PAGIBIG',
+            'name' => 'Pag-IBIG Fund',
+            'has_employer_share' => false,
+            'computation_type' => 'fixed',
+            'employee_rate' => null,
+            'employer_rate' => null,
+            'fixed_amount' => 100.00,  // monthly cap — was hardcoded
+            'min_contribution' => null,
+            'max_contribution' => null,
+            'lower_salary_threshold' => 1500.00, // was hardcoded $monthlyBasic <= 1500
+            'lower_rate' => 1.0,     // was hardcoded 0.01 (1%)
+            'upper_rate' => 2.0,     // was hardcoded 0.02 (2%)
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $sssTypeId = DB::table('government_acc_types')->insertGetId([
+            'code' => 'SSS',
+            'name' => 'Social Security System',
+            'has_employer_share' => true,
+            'computation_type' => 'rate',
+            'employee_rate' => 4.50,
+            'employer_rate' => 9.50,
+            'fixed_amount' => null,
+            'min_contribution' => null,
+            'max_contribution' => null,
+            'lower_salary_threshold' => null,
+            'lower_rate' => null,
+            'upper_rate' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // ── 0b. Payroll Deduction Priority Order ──────────────────────────
+        DB::table('payroll_deduction_priority_order')->insert([
+            [
+                'priority' => 1,
+                'deduction_category' => 'government_contribution',
+                'government_acc_type_id' => $gsisTypeId,
+                'label' => "Gov't Contributions",
+                'examples' => 'GSIS, PhilHealth, Pag-IBIG, Withholding Tax',
+                'cuttability' => 'Never',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'priority' => 2,
+                'deduction_category' => 'government_loan',
+                'government_acc_type_id' => null,
+                'label' => "Gov't Loans",
+                'examples' => 'GSIS MPL, GSIS Emergency Loan, Pag-IBIG MPL',
+                'cuttability' => 'Rarely',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'priority' => 3,
+                'deduction_category' => 'internal_org_savings',
+                'government_acc_type_id' => null,
+                'label' => 'Org Savings & Share Capital',
+                'examples' => 'Cooperative Savings, Share Capital Contributions',
+                'cuttability' => 'Rarely',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'priority' => 4,
+                'deduction_category' => 'internal_org_loan',
+                'government_acc_type_id' => null,
+                'label' => 'Internal Org Loans',
+                'examples' => 'Cooperative Loans, Union Emergency Loans',
+                'cuttability' => 'Yes',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'priority' => 5,
+                'deduction_category' => 'internal_org_dues',
+                'government_acc_type_id' => null,
+                'label' => 'Org Dues & Premiums',
+                'examples' => 'Union Dues, Association Membership Dues',
+                'cuttability' => 'First_to_Cut',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'priority' => 6,
+                'deduction_category' => 'water_bill',
+                'government_acc_type_id' => null,
+                'label' => 'Water Bill',
+                'examples' => 'Monthly water consumption charges',
+                'cuttability' => 'First_to_Cut',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'priority' => 7,
+                'deduction_category' => 'other_miscellaneous',
+                'government_acc_type_id' => null,
+                'label' => 'Other Miscellaneous',
+                'examples' => 'NS & ND (COA), One-time deductions',
+                'cuttability' => 'First_to_Cut',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        // ── 0c. Payroll Deduction Settings (operational) ──────────────────
+        DB::table('payroll_deduction_settings')->insertOrIgnore([
+            'id' => 1,
+            'working_days_divisor' => 22,
+            'minimum_take_home_pay' => 3000.00,
+            'salary_threshold' => 6000.00,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         // ── 1. Salary Grade Steps ──────────────────────────────────
-        $salaryGradeSteps = [
-            ['salary_grade' => 7, 'step' => 1, 'salary_amount' => 17899.00],
-            ['salary_grade' => 8, 'step' => 1, 'salary_amount' => 19077.00],
-            ['salary_grade' => 10, 'step' => 1, 'salary_amount' => 22316.00],
-            ['salary_grade' => 11, 'step' => 1, 'salary_amount' => 24887.00],
-            ['salary_grade' => 12, 'step' => 1, 'salary_amount' => 27608.00],
-            ['salary_grade' => 13, 'step' => 1, 'salary_amount' => 30531.00],
-            ['salary_grade' => 14, 'step' => 1, 'salary_amount' => 33452.00],
-            ['salary_grade' => 15, 'step' => 1, 'salary_amount' => 36619.00],
-            ['salary_grade' => 16, 'step' => 1, 'salary_amount' => 40208.00],
-            ['salary_grade' => 18, 'step' => 1, 'salary_amount' => 48597.00],
-            ['salary_grade' => 20, 'step' => 1, 'salary_amount' => 60268.00],
-            ['salary_grade' => 22, 'step' => 1, 'salary_amount' => 75406.00],
-            ['salary_grade' => 24, 'step' => 1, 'salary_amount' => 97744.00],
-            ['salary_grade' => 26, 'step' => 1, 'salary_amount' => 126462.00],
+        $this->call(SalaryGradeStepSeeder::class);
+
+        $sgIdxToGrade = [
+            0 => 7,
+            1 => 8,
+            2 => 10,
+            3 => 11,
+            4 => 12,
+            5 => 13,
+            6 => 14,
+            7 => 15,
+            8 => 16,
+            9 => 18,
+            10 => 20,
+            11 => 22,
+            12 => 24,
         ];
 
-        $sgStepIds = [];
-        foreach ($salaryGradeSteps as $sg) {
-            $sgStepIds[] = DB::table('salary_grade_steps')->insertGetId(
-                array_merge($sg, ['created_at' => now(), 'updated_at' => now()])
-            );
+        $sgRows = DB::table('salary_grade_steps')->get();
+        $sgLookup = [];
+        foreach ($sgRows as $row) {
+            $sgLookup[$row->salary_grade][$row->step] = $row;
         }
 
+        // Helper: get the step-1 row for a given sg_idx
+        $getSgRow = function (int $sgIdx) use ($sgIdxToGrade, $sgLookup) {
+            $grade = $sgIdxToGrade[$sgIdx] ?? 7;
+
+            return $sgLookup[$grade][1] ?? null;
+        };
+
+        // ── 2. Departments ─────────────────────────────────────────
+        // Department #1 (existing)
         // ── 2. Departments ─────────────────────────────────────────
         // Department #1 (existing)
         $deptId = DB::table('departments')->insertGetId([
@@ -373,10 +529,6 @@ class DatabaseSeeder extends Seeder
             ['dept' => $deptId, 'div' => $divHrId, 'unit' => $unitPayrollId, 'name' => 'Benefits Administrator', 'sg_idx' => 3],  // SG11
             ['dept' => $deptId, 'div' => $divHrId, 'unit' => null, 'name' => 'HR Division Chief', 'sg_idx' => 9],  // SG18
             ['dept' => $deptId, 'div' => $divHrId, 'unit' => null, 'name' => 'HR Manager', 'sg_idx' => 9],  // SG18
-            // Operations and Services Department
-            ['dept' => $deptOpsId, 'div' => $divOpsFieldId, 'unit' => $unitDispatchId, 'name' => 'Operations Coordinator', 'sg_idx' => 5], // SG13
-            // Governance and Public Affairs Department
-            ['dept' => $deptGovId, 'div' => $divPublicAffairsId, 'unit' => $unitCommsId, 'name' => 'Public Affairs Officer', 'sg_idx' => 5], // SG13
             // IT
             ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitDevId, 'name' => 'Software Developer', 'sg_idx' => 4],  // SG12
             ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitDevId, 'name' => 'Senior Developer', 'sg_idx' => 6],  // SG14
@@ -414,16 +566,12 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // ── 6. Items — include vacant slots for selected positions ──────
-        // Base: 4 slots per position; selected positions get a 5th slot that stays vacant.
-        $positionsWithVacantSlot = [1, 4, 7, 10, 13, 16, 19, 21, 23, 24];
+        // ── 6. Items — 100 slots distributed across positions ──────
+        // Distribution: spread 100 items across 25 positions (4 each)
         $itemIds = [];
         foreach ($positionIds as $idx => $posId) {
             $posName = $positions[$idx]['name'];
-            $hasVacantExtraSlot = in_array($idx, $positionsWithVacantSlot, true);
-            $slotLimit = $hasVacantExtraSlot ? 5 : 4;
-
-            for ($slot = 1; $slot <= $slotLimit; $slot++) {
+            for ($slot = 1; $slot <= 4; $slot++) {
                 $itemIds[] = [
                     'id' => DB::table('items')->insertGetId([
                         'position_id' => $posId,
@@ -432,15 +580,11 @@ class DatabaseSeeder extends Seeder
                         'updated_at' => now(),
                     ]),
                     'pos_idx' => $idx,
-                    'is_vacant_slot' => $hasVacantExtraSlot && $slot === 5,
                 ];
             }
         }
+        // $itemIds now has 100 entries
 
-        $fillableItemIds = array_values(array_filter(
-            $itemIds,
-            fn(array $item): bool => !$item['is_vacant_slot']
-        ));
         // ── 7. Reference data pools ────────────────────────────────
         $firstNamesMale = [
             'Ramon',
@@ -690,16 +834,6 @@ class DatabaseSeeder extends Seeder
 
         // ── 8. Insert 100 employees ────────────────────────────────
         $createdEmployeeIds = [];
-        $docTrackTargetPositionByDepartment = [
-            $deptId => 5,
-            $deptOpsId => 6,
-            $deptGovId => 7,
-        ];
-        $roleTargetPosition = [
-            'hr_admin' => 5,
-            'ogm' => 7,
-        ];
-        $positionSeenCount = [];
         srand(42); // reproducible randomness
 
         for ($i = 0; $i < 100; $i++) {
@@ -720,7 +854,7 @@ class DatabaseSeeder extends Seeder
             $hireYear = min(2023, 2000 + ($i % 24));
             $hireMonth = str_pad(($i % 12) + 1, 2, '0', STR_PAD_LEFT);
             $hiredDate = "{$hireYear}-{$hireMonth}-01";
-            $appliedDate = date('Y-m-d', strtotime($hiredDate . ' -1 month'));
+            $appliedDate = date('Y-m-d', strtotime($hiredDate.' -1 month'));
 
             $city = $cities[$i % count($cities)];
             $street = $streets[$i % count($streets)];
@@ -738,17 +872,18 @@ class DatabaseSeeder extends Seeder
             $status = ($i % 10 !== 0); // 10% inactive
 
             // item slot
-            $itemEntry = $fillableItemIds[$i];
+            $itemEntry = $itemIds[$i];
             $itemId = $itemEntry['id'];
             $posIdx = $itemEntry['pos_idx'];
-            $positionSeenCount[$posIdx] = ($positionSeenCount[$posIdx] ?? 0) + 1;
-            $positionOccurrence = $positionSeenCount[$posIdx];
             $sgIdx = $positions[$posIdx]['sg_idx'];
 
+            $sgRow = $getSgRow($sgIdx);
+            $sgStepId = $sgRow?->salary_grade_step_id ?? null;
+
             $workEmail = strtolower(
-                preg_replace('/[^a-z0-9]/', '', $firstName) . '.' .
-                preg_replace('/[^a-z0-9]/', '', $lastName) .
-                ($i > 0 ? $i : '') .
+                preg_replace('/[^a-z0-9]/', '', $firstName).'.'.
+                preg_replace('/[^a-z0-9]/', '', $lastName).
+                ($i > 0 ? $i : '').
                 '@obx.gov.ph'
             );
 
@@ -757,11 +892,11 @@ class DatabaseSeeder extends Seeder
                 'first_name' => $firstName,
                 'last_name' => $lastName,
                 'middle_name' => $middleName,
-                'name_extension' => ($i % 15 === 0 && !$isSexFemale) ? 'Jr.' : null,
+                'name_extension' => ($i % 15 === 0 && ! $isSexFemale) ? 'Jr.' : null,
                 'birth_date' => $birthDate,
                 'sex' => $sex,
                 'personal_email' => strtolower("{$firstName}.{$lastName}{$i}@gmail.com"),
-                'phone_number' => '09' . str_pad((171000000 + $i * 1234567) % 900000000 + 100000000, 9, '0'),
+                'phone_number' => '09'.str_pad((171000000 + $i * 1234567) % 900000000 + 100000000, 9, '0'),
                 'civil_status' => $civStat,
                 'place_of_birth' => $placesBirth[$i % count($placesBirth)],
                 'created_at' => now(),
@@ -772,46 +907,18 @@ class DatabaseSeeder extends Seeder
             $employeeId = DB::table('employees')->insertGetId([
                 'employee_basic_info_id' => $basicInfoId,
                 'item_id' => $itemId,
-                'salary_grade_step_id' => $sgStepIds[$sgIdx],
+                'salary_grade_step_id' => $sgStepId,
                 'employment_classification' => $classif,
-                'work_id' => sprintf('EMP-%04d', $i + 1),
                 'work_email' => $workEmail,
                 'password' => Hash::make('password'),
                 'date_applied' => $appliedDate,
                 'date_hired' => $hiredDate,
                 'work_schedule_start' => '08:00:00',
                 'work_schedule_end' => '17:00:00',
-                'break_start' => '12:00:00',
-                'break_end' => '13:00:00',
                 'status' => $status,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-
-            $employeeUser = Employee::findOrFail($employeeId);
-
-            $user = User::firstOrCreate([
-                'employee_id' => $employeeId,
-                'email' => $employeeUser->work_email,
-                'email_verified_at' => now(),
-                'password' => $employeeUser->password,
-            ]);
-
-            $user->assignRole('employee');
-            $departmentId = $positions[$posIdx]['dept'] ?? null;
-            $isDocTrackTarget = $departmentId !== null
-                && isset($docTrackTargetPositionByDepartment[$departmentId])
-                && $docTrackTargetPositionByDepartment[$departmentId] === $posIdx
-                && $positionOccurrence === 1;
-            if ($isDocTrackTarget) {
-                $user->assignRole('document_tracking_operator');
-            }
-            if ($posIdx === $roleTargetPosition['hr_admin'] && $positionOccurrence === 1) {
-                $user->assignRole('hr_admin');
-            }
-            if ($posIdx === $roleTargetPosition['ogm'] && $positionOccurrence === 1) {
-                $user->assignRole('ogm');
-            }
 
             $createdEmployeeIds[] = $employeeId;
 
@@ -849,25 +956,41 @@ class DatabaseSeeder extends Seeder
             DB::table('family_info')->insert([
                 'employee_basic_info_id' => $basicInfoId,
                 'full_name' => "{$spouseFirstName} {$lastName}",
-                'contact_number' => '09' . str_pad((281000000 + $i * 7654321) % 900000000 + 100000000, 9, '0'),
+                'contact_number' => '09'.str_pad((281000000 + $i * 7654321) % 900000000 + 100000000, 9, '0'),
                 'relationship' => 'Spouse',
-                'sex' => !$isSexFemale, // opposite of employee
+                'sex' => ! $isSexFemale, // opposite of employee
                 'date_of_birth' => "{$spouseBirthYear}-{$spouseBirthMonth}-{$spouseBirthDay}",
                 'place_of_birth' => $placesBirth[($i + 2) % count($placesBirth)],
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            // Government accounts
-            $govAccounts = [
-                ['account_type' => 'SSS', 'account_number' => sprintf('%02d-%07d-%d', ($i % 9) + 1, $i * 1234567 % 9999999, $i % 9)],
-                ['account_type' => 'PhilHealth', 'account_number' => sprintf('%02d-%09d-%d', ($i % 9) + 11, $i * 9876543 % 999999999, $i % 9)],
-                ['account_type' => 'Pag-IBIG', 'account_number' => sprintf('%04d-%04d-%04d', ($i * 7) % 9999, ($i * 3) % 9999, ($i * 11) % 9999)],
+            // Government accounts — now uses government_acc_type_id FK
+            $govAccountsData = [
+                [
+                    'government_acc_type_id' => $sssTypeId,
+                    'account_type' => 'SSS',
+                    'account_number' => sprintf('%02d-%07d-%d', ($i % 9) + 1, $i * 1234567 % 9999999, $i % 9),
+                ],
+                [
+                    'government_acc_type_id' => $philhealthTypeId,
+                    'account_type' => 'PhilHealth',
+                    'account_number' => sprintf('%02d-%09d-%d', ($i % 9) + 11, $i * 9876543 % 999999999, $i % 9),
+                ],
+                [
+                    'government_acc_type_id' => $pagibigTypeId,
+                    'account_type' => 'Pag-IBIG',
+                    'account_number' => sprintf('%04d-%04d-%04d', ($i * 7) % 9999, ($i * 3) % 9999, ($i * 11) % 9999),
+                ],
             ];
             if ($classif === 'Regular' && $hireYear < 2015) {
-                $govAccounts[] = ['account_type' => 'GSIS', 'account_number' => sprintf('GSIS-%04d-%d', $i + 1, $hireYear)];
+                $govAccountsData[] = [
+                    'government_acc_type_id' => $gsisTypeId,
+                    'account_type' => 'GSIS',
+                    'account_number' => sprintf('GSIS-%04d-%d', $i + 1, $hireYear),
+                ];
             }
-            foreach ($govAccounts as $acct) {
+            foreach ($govAccountsData as $acct) {
                 DB::table('government_accounts')->insert(array_merge($acct, [
                     'employee_id' => $employeeId,
                     'created_at' => now(),
@@ -880,14 +1003,18 @@ class DatabaseSeeder extends Seeder
                 $allowanceTypes[0], // Transportation
                 $allowanceTypes[1], // Rice Subsidy
             ];
-            if ($i % 4 === 0)
-                $empAllowances[] = $allowanceTypes[2]; // Clothing
-            if ($i % 7 === 0)
-                $empAllowances[] = $allowanceTypes[3]; // Hazard
-            if ($sgIdx >= 9)
-                $empAllowances[] = $allowanceTypes[4]; // Representation (senior)
-            if ($i % 5 === 0)
-                $empAllowances[] = $allowanceTypes[5]; // Subsistence
+            if ($i % 4 === 0) {
+                $empAllowances[] = $allowanceTypes[2];
+            } // Clothing
+            if ($i % 7 === 0) {
+                $empAllowances[] = $allowanceTypes[3];
+            } // Hazard
+            if ($sgIdx >= 9) {
+                $empAllowances[] = $allowanceTypes[4];
+            } // Representation (senior)
+            if ($i % 5 === 0) {
+                $empAllowances[] = $allowanceTypes[5];
+            } // Subsistence
 
             foreach ($empAllowances as $alw) {
                 DB::table('employee_allowances')->insert(array_merge($alw, [
@@ -918,7 +1045,7 @@ class DatabaseSeeder extends Seeder
             ]);
             if ($hireYear <= 2015) {
                 $prevYear = $hireYear;
-                $prevEnd = ($hireYear + 4) . "-12-31";
+                $prevEnd = ($hireYear + 4).'-12-31';
                 DB::table('employee_service_records')->insert([
                     'employee_id' => $employeeId,
                     'department' => $divName,
@@ -946,7 +1073,7 @@ class DatabaseSeeder extends Seeder
                 DB::table('employee_seminars_and_trainings')->insert([
                     'employee_id' => $employeeId,
                     'seminar_training_name' => $seminar2['name'],
-                    'date_attended' => min(2024, $semYear + 1) . '-11-20',
+                    'date_attended' => min(2024, $semYear + 1).'-11-20',
                     'venue' => $seminar2['venue'],
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -985,7 +1112,7 @@ class DatabaseSeeder extends Seeder
                     'employee_id' => $employeeId,
                     'leave_type' => $lvType,
                     'leave_start_date' => "2024-{$lvMonth}-{$lvDay}",
-                    'leave_end_date' => "2024-{$lvMonth}-" . str_pad(((int) $lvDay + 1) % 28 + 1, 2, '0', STR_PAD_LEFT),
+                    'leave_end_date' => "2024-{$lvMonth}-".str_pad(((int) $lvDay + 1) % 28 + 1, 2, '0', STR_PAD_LEFT),
                     'status' => 'approved',
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -993,7 +1120,7 @@ class DatabaseSeeder extends Seeder
             }
 
             // Payroll
-            $baseSalary = $salaryGradeSteps[$sgIdx]['salary_amount'];
+            $baseSalary = $sgRow?->monthly_salary ?? 0;
             $deduction = round($baseSalary * 0.12, 2);
             $finalAmount = round($baseSalary - $deduction, 2);
             DB::table('employee_payroll_data')->insert([
@@ -1019,12 +1146,16 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call([
+            RoleSeeder::class,
             UserSeeder::class,
             InternalOrganizationSeeder::class,
+            HolidaySeeder::class,
+            FaceEmbeddingSeeder::class,
+            RecognitionLogSeeder::class,
+            AttendanceRecordSeeder::class,
             LeaveTypeSeeder::class,
-            LeaveBalanceSeeder::class,
             LeaveApplicationSeeder::class,
-            AttendanceSeeder::class,
+            MandatoryAllowanceSeeder::class,
             // LeaveEntitlementSeeder::class,
         ]);
     }

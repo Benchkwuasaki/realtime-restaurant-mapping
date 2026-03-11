@@ -2,21 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Employee;
 use App\Models\Attendance;
-use Inertia\Inertia;
+use App\Models\Employee;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class AttendanceController extends Controller
 {
     public function index(Request $request)
     {
         $search = $request->get('search', '');
-        $date   = $request->get('date', Carbon::today()->toDateString());
+        $date = $request->get('date', Carbon::today()->toDateString());
 
         $start = Carbon::parse($date, 'Asia/Manila')->startOfDay()->utc();
-        $end   = Carbon::parse($date, 'Asia/Manila')->endOfDay()->utc();
+        $end = Carbon::parse($date, 'Asia/Manila')->endOfDay()->utc();
 
         $query = Attendance::with(['employee.basicInfo'])
             ->whereNotNull('employee_id')
@@ -37,7 +37,7 @@ class AttendanceController extends Controller
 
         return Inertia::render('Attendance/RecognitionLog/Index', [
             'attendances' => $attendances,
-            'filters'     => ['search' => $search, 'date' => $date],
+            'filters' => ['search' => $search, 'date' => $date],
         ]);
     }
 
@@ -49,13 +49,13 @@ class AttendanceController extends Controller
             return response()->json(['error' => 'invalid'], 400);
         }
 
-        $info     = $data['info'];
+        $info = $data['info'];
         $employee = Employee::where('work_id', $info['IdCard'])->first();
 
         // ── Reject unmatched scans — no employee, no record ───────────────────
         // If the face/card doesn't match any active employee in the system,
         // we discard the scan entirely. Nothing is saved, nothing is broadcast.
-        if (!$employee) {
+        if (! $employee) {
             return response()->json(['status' => 'unmatched']);
         }
 
@@ -69,12 +69,12 @@ class AttendanceController extends Controller
         }
 
         Attendance::create([
-            'employee_id'         => $employee->employee_id,
-            'work_id'             => $info['IdCard'],
+            'employee_id' => $employee->employee_id,
+            'work_id' => $info['IdCard'],
             'verification_status' => ($info['VerifyStatus'] ?? 0) == 1 ? 'verified' : 'unknown',
-            'similarity'          => $info['Similarity1'] ?? null,
-            'device_id'           => $info['DeviceID'] ?? null,
-            'captured_at'         => $info['CreateTime'],
+            'similarity' => $info['Similarity1'] ?? null,
+            'device_id' => $info['DeviceID'] ?? null,
+            'captured_at' => $info['CreateTime'],
         ]);
 
         return response()->json(['status' => 'ok']);

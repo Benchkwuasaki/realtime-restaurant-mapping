@@ -2,31 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 use App\Models\LeaveType;
 use App\Models\LeaveTypeRequirement;
-use App\Models\LeaveEntitlement;
-
+use Illuminate\Http\Request;
 
 class LeaveTypeController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
-    {
-
-    }
+    public function index() {}
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
-    {
-
-    }
+    public function create() {}
 
     /**
      * Store a newly created resource in storage.
@@ -86,7 +76,7 @@ class LeaveTypeController extends Controller
 
         // Validate request data
         $validated = $request->validate([
-            'leave_type_name' => 'required|string|max:255|unique:leave_types,leave_type_name,' . $leaveType->leave_type_id . ',leave_type_id',
+            'leave_type_name' => 'required|string|max:255|unique:leave_types,leave_type_name,'.$leaveType->leave_type_id.',leave_type_id',
             'leave_type_description' => 'nullable|string',
             'eligible_sex' => 'required|in:All,Male,Female',
             'is_paid' => 'required|boolean',
@@ -113,7 +103,7 @@ class LeaveTypeController extends Controller
 
         // Update existing requirements or create new ones
         foreach ($validated['requirements'] ?? [] as $req) {
-            if (!empty($req['leave_type_requirement_id'])) {
+            if (! empty($req['leave_type_requirement_id'])) {
                 // Update existing requirement
                 LeaveTypeRequirement::where('leave_type_requirement_id', $req['leave_type_requirement_id'])
                     ->update(['requirement_name' => $req['requirement_name']]);
@@ -165,6 +155,6 @@ class LeaveTypeController extends Controller
         }
 
         // Return success message with count
-        return back()->with('success', count($request->ids) . ' leave type(s) deleted.');
+        return back()->with('success', count($request->ids).' leave type(s) deleted.');
     }
 }

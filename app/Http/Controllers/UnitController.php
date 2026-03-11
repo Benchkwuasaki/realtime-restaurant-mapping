@@ -18,7 +18,7 @@ class UnitController extends Controller
         $units = Unit::with(['division', 'positions'])
             ->orderBy('unit_name')
             ->get()
-            ->map(fn(Unit $unit) => [
+            ->map(fn (Unit $unit) => [
                 'unit_id' => $unit->unit_id,
                 'unit_name' => $unit->unit_name,
                 'unit_acronym' => $unit->unit_acronym,
@@ -29,7 +29,7 @@ class UnitController extends Controller
                     'division_name' => $unit->division->division_name,
                 ],
                 'positions' => $unit->positions
-                    ->map(fn($p) => [
+                    ->map(fn ($p) => [
                         'position_id' => $p->position_id,
                         'position_name' => $p->position_name,
                     ])
@@ -44,7 +44,7 @@ class UnitController extends Controller
             'divisions' => $divisions,
             'totalUnits' => $units->count(),
             'totalDivisions' => $divisions->count(),
-            'totalPositions' => $units->sum(fn($u) => count($u['positions'])),
+            'totalPositions' => $units->sum(fn ($u) => count($u['positions'])),
         ]);
     }
 
@@ -63,7 +63,7 @@ class UnitController extends Controller
                     'division_id' => $unit->division->division_id,
                     'division_name' => $unit->division->division_name,
                 ],
-                'positions' => $unit->positions->map(fn($p) => [
+                'positions' => $unit->positions->map(fn ($p) => [
                     'position_id' => $p->position_id,
                     'position_name' => $p->position_name,
                 ]),
@@ -103,14 +103,14 @@ class UnitController extends Controller
             'department_id' => $unit->division->department_id,
             'division_id' => $unit->division_id,
             'unit_id' => $unit->unit_id,
-            'position_name' => 'Head of ' . $unit->unit_name . ' Unit',
-            'position_type' => 'Regular'
+            'position_name' => 'Head of '.$unit->unit_name.' Unit',
+            'position_type' => 'Regular',
         ]);
 
         $itemNumber = Item::where('item_name', 'like', '%Unit Head%')->count();
 
         $headPosition->items()->create([
-            'item_name' => 'Unit Head Item ' . $itemNumber,
+            'item_name' => 'Unit Head Item '.$itemNumber,
         ]);
 
         return redirect()->route('unit.index')
@@ -150,7 +150,7 @@ class UnitController extends Controller
         Unit::whereIn('unit_id', $request->ids)->delete();
 
         return redirect()->route('unit.index')
-            ->with('success', count($request->ids) . ' unit(s) deleted successfully.');
+            ->with('success', count($request->ids).' unit(s) deleted successfully.');
     }
 
     public function cleanUnitName(string $name): string

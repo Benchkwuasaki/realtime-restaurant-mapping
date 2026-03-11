@@ -1,172 +1,224 @@
-import { Head, router } from "@inertiajs/react"
-import { useState, useEffect, useMemo, useCallback, useRef } from "react"
-import axios from "axios"
+import { Head, router } from '@inertiajs/react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import axios from 'axios';
 import {
-    Search, CalendarDays, WifiOff, Loader2, Radio,
-    LogIn, LogOut, Coffee, ArrowUpFromLine, X,
-    Fingerprint, Activity, Clock, RefreshCw,
-    Pin, PinOff, Plus, Trash2, Edit2, Check, Camera,
-} from "lucide-react"
-import { route } from "ziggy-js"
-import AppLayout from "@/layouts/app-layout"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+    Search,
+    CalendarDays,
+    WifiOff,
+    Loader2,
+    Radio,
+    LogIn,
+    LogOut,
+    Coffee,
+    ArrowUpFromLine,
+    X,
+    Fingerprint,
+    Activity,
+    Clock,
+    RefreshCw,
+    Pin,
+    PinOff,
+    Plus,
+    Trash2,
+    Edit2,
+    Check,
+    Camera,
+} from 'lucide-react';
+import { route } from 'ziggy-js';
+import AppLayout from '@/layouts/app-layout';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import type { BreadcrumbItem } from "@/types"
-import { useEchoPublic } from "@laravel/echo-react"
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import type { BreadcrumbItem } from '@/types';
+import { useEchoPublic } from '@laravel/echo-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface BasicInfo {
-    first_name: string
-    last_name: string
-    middle_name?: string
+    first_name: string;
+    last_name: string;
+    middle_name?: string;
 }
 
 interface Employee {
-    employee_id: number
-    work_id: string
-    basic_info?: BasicInfo
-    avatar_url?: string
+    employee_id: number;
+    work_id: string;
+    basic_info?: BasicInfo;
+    avatar_url?: string;
 }
 
-type TimeType = "time_in" | "break_in" | "break_out" | "time_out"
+type TimeType = 'time_in' | 'break_in' | 'break_out' | 'time_out';
 
 interface AttendanceLog {
-    id: number
-    work_id: string | null
-    verification_status: "verified" | "unknown" | "blacklisted"
-    time_type: TimeType
-    similarity: number | null
-    device_id: string | null
-    snapshot_path: string | null
-    captured_at: string
-    employee?: Employee | null
+    id: number;
+    work_id: string | null;
+    verification_status: 'verified' | 'unknown' | 'blacklisted';
+    time_type: TimeType;
+    similarity: number | null;
+    device_id: string | null;
+    snapshot_path: string | null;
+    captured_at: string;
+    employee?: Employee | null;
 }
 
 interface PaginatedAttendances {
-    data: AttendanceLog[]
-    total?: number
-    [key: string]: unknown
+    data: AttendanceLog[];
+    total?: number;
+    [key: string]: unknown;
 }
 
 interface Props {
-    attendances: AttendanceLog[] | PaginatedAttendances
-    filters: { date: string }
+    attendances: AttendanceLog[] | PaginatedAttendances;
+    filters: { date: string };
 }
 
 // ─── Camera Types ─────────────────────────────────────────────────────────────
 
 interface CameraSource {
-    id: string
-    label: string
+    id: string;
+    label: string;
     /** Full base URL, e.g. http://192.168.0.114:8889/cam1 */
-    src: string
+    src: string;
 }
 
 const DEFAULT_CAMERAS: CameraSource[] = [
-    { id: "cam1", label: "Entrance — CAM 01", src: "http://192.168.0.114:8889/cam1" },
-    { id: "cam2", label: "Entrance — CAM 02", src: "http://192.168.0.114:8889/cam2" },
-]
+    {
+        id: 'cam1',
+        label: 'Entrance — CAM 01',
+        src: 'http://192.168.0.114:8889/cam1',
+    },
+    {
+        id: 'cam2',
+        label: 'Entrance — CAM 02',
+        src: 'http://192.168.0.114:8889/cam2',
+    },
+];
 
-const CAMERAS_STORAGE_KEY = "attendance_cctv_cameras"
+const CAMERAS_STORAGE_KEY = 'attendance_cctv_cameras';
 
 function loadCameras(): CameraSource[] {
     try {
-        const raw = localStorage.getItem(CAMERAS_STORAGE_KEY)
-        if (raw) return JSON.parse(raw) as CameraSource[]
-    } catch { /* ignore */ }
-    return DEFAULT_CAMERAS
+        const raw = localStorage.getItem(CAMERAS_STORAGE_KEY);
+        if (raw) return JSON.parse(raw) as CameraSource[];
+    } catch {
+        /* ignore */
+    }
+    return DEFAULT_CAMERAS;
 }
 
 function saveCameras(cams: CameraSource[]) {
-    try { localStorage.setItem(CAMERAS_STORAGE_KEY, JSON.stringify(cams)) } catch { /* ignore */ }
+    try {
+        localStorage.setItem(CAMERAS_STORAGE_KEY, JSON.stringify(cams));
+    } catch {
+        /* ignore */
+    }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toArray(raw: AttendanceLog[] | PaginatedAttendances): AttendanceLog[] {
-    if (!raw) return []
-    if (Array.isArray(raw)) return raw
-    if (Array.isArray((raw as PaginatedAttendances).data)) return (raw as PaginatedAttendances).data
-    return []
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray((raw as PaginatedAttendances).data))
+        return (raw as PaginatedAttendances).data;
+    return [];
 }
 
-const TT: Record<TimeType, {
-    label: string
-    icon: React.ElementType
-    iconCls: string
-    bgCls: string
-    borderCls: string
-}> = {
+const TT: Record<
+    TimeType,
+    {
+        label: string;
+        icon: React.ElementType;
+        iconCls: string;
+        bgCls: string;
+        borderCls: string;
+    }
+> = {
     time_in: {
-        label: "Time In",
+        label: 'Time In',
         icon: LogIn,
-        iconCls: "text-primary",
-        bgCls: "bg-primary/10",
-        borderCls: "border-primary/20",
+        iconCls: 'text-primary',
+        bgCls: 'bg-primary/10',
+        borderCls: 'border-primary/20',
     },
     break_in: {
-        label: "Break In",
+        label: 'Break In',
         icon: Coffee,
-        iconCls: "text-secondary-foreground",
-        bgCls: "bg-secondary",
-        borderCls: "border-border",
+        iconCls: 'text-secondary-foreground',
+        bgCls: 'bg-secondary',
+        borderCls: 'border-border',
     },
     break_out: {
-        label: "Break Out",
+        label: 'Break Out',
         icon: ArrowUpFromLine,
-        iconCls: "text-accent-foreground",
-        bgCls: "bg-accent",
-        borderCls: "border-accent-foreground/20",
+        iconCls: 'text-accent-foreground',
+        bgCls: 'bg-accent',
+        borderCls: 'border-accent-foreground/20',
     },
     time_out: {
-        label: "Time Out",
+        label: 'Time Out',
         icon: LogOut,
-        iconCls: "text-destructive",
-        bgCls: "bg-destructive/10",
-        borderCls: "border-destructive/20",
+        iconCls: 'text-destructive',
+        bgCls: 'bg-destructive/10',
+        borderCls: 'border-destructive/20',
     },
-}
+};
 
 function fmtTime(iso: string) {
-    return new Date(iso).toLocaleTimeString("en-PH", {
-        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
-    })
+    return new Date(iso).toLocaleTimeString('en-PH', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+    });
 }
 
 function fmtDate(dateStr: string) {
-    const [y, m, d] = dateStr.split("-").map(Number)
-    return new Date(y, m - 1, d).toLocaleDateString("en-PH", {
-        weekday: "long", year: "numeric", month: "long", day: "numeric",
-    })
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-PH', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    });
 }
 
 function todayPH(): string {
-    return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
 }
 
 function getName(r: AttendanceLog): string {
-    const b = r.employee?.basic_info
-    return b ? `${b.first_name} ${b.last_name}` : "Unknown"
+    const b = r.employee?.basic_info;
+    return b ? `${b.first_name} ${b.last_name}` : 'Unknown';
 }
 
 function getWorkId(r: AttendanceLog): string {
-    return r.employee?.work_id ?? r.work_id ?? "—"
+    return r.employee?.work_id ?? r.work_id ?? '—';
 }
 
 function initials(name: string): string {
-    return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
+    return name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
 }
 
 function matchesSearch(r: AttendanceLog, q: string): boolean {
-    if (!q.trim()) return true
-    const lower = q.toLowerCase()
-    return getName(r).toLowerCase().includes(lower) || getWorkId(r).toLowerCase().includes(lower)
+    if (!q.trim()) return true;
+    const lower = q.toLowerCase();
+    return (
+        getName(r).toLowerCase().includes(lower) ||
+        getWorkId(r).toLowerCase().includes(lower)
+    );
 }
 
 // ─── Add / Edit Camera Dialog ─────────────────────────────────────────────────
@@ -177,47 +229,49 @@ function CameraFormDialog({
     onSave,
     initial,
 }: {
-    open: boolean
-    onClose: () => void
-    onSave: (cam: CameraSource) => void
-    initial?: CameraSource
+    open: boolean;
+    onClose: () => void;
+    onSave: (cam: CameraSource) => void;
+    initial?: CameraSource;
 }) {
-    const [label, setLabel] = useState(initial?.label ?? "")
-    const [src, setSrc] = useState(initial?.src ?? "")
+    const [label, setLabel] = useState(initial?.label ?? '');
+    const [src, setSrc] = useState(initial?.src ?? '');
 
     // Keep in sync if `initial` changes (edit re-opens)
     useEffect(() => {
-        setLabel(initial?.label ?? "")
-        setSrc(initial?.src ?? "")
-    }, [initial, open])
+        setLabel(initial?.label ?? '');
+        setSrc(initial?.src ?? '');
+    }, [initial, open]);
 
     const handleSave = () => {
-        if (!src.trim()) return
+        if (!src.trim()) return;
         onSave({
             id: initial?.id ?? crypto.randomUUID(),
             label: label.trim() || src.trim(),
             src: src.trim(),
-        })
-        onClose()
-    }
+        });
+        onClose();
+    };
 
     return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-sm gap-4">
+        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+            <DialogContent className="gap-4 sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-base">
-                        <Camera className="w-4 h-4 text-primary" />
-                        {initial ? "Edit Camera" : "Add Camera"}
+                        <Camera className="text-primary h-4 w-4" />
+                        {initial ? 'Edit Camera' : 'Add Camera'}
                     </DialogTitle>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-3">
                     {/* Label */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-medium text-muted-foreground">Label</label>
+                        <label className="text-muted-foreground text-xs font-medium">
+                            Label
+                        </label>
                         <Input
                             value={label}
-                            onChange={e => setLabel(e.target.value)}
+                            onChange={(e) => setLabel(e.target.value)}
                             placeholder="e.g. Entrance — CAM 03"
                             className="h-9"
                         />
@@ -225,102 +279,145 @@ function CameraFormDialog({
 
                     {/* Stream URL */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-medium text-muted-foreground">
+                        <label className="text-muted-foreground text-xs font-medium">
                             MediaMTX Stream URL
                         </label>
                         <Input
                             value={src}
-                            onChange={e => setSrc(e.target.value)}
+                            onChange={(e) => setSrc(e.target.value)}
                             placeholder="http://192.168.x.x:8889/stream-name"
                             className="h-9 font-mono text-sm"
                         />
-                        <p className="text-[11px] text-muted-foreground/70">
-                            The base URL of your MediaMTX stream. The <code>/whep</code> suffix is added automatically.
+                        <p className="text-muted-foreground/70 text-[11px]">
+                            The base URL of your MediaMTX stream. The{' '}
+                            <code>/whep</code> suffix is added automatically.
                         </p>
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-1">
-                    <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-                    <Button size="sm" onClick={handleSave} disabled={!src.trim()} className="gap-1.5">
-                        <Check className="w-3.5 h-3.5" />
-                        {initial ? "Save Changes" : "Add Camera"}
+                    <Button variant="outline" size="sm" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={!src.trim()}
+                        className="gap-1.5"
+                    >
+                        <Check className="h-3.5 w-3.5" />
+                        {initial ? 'Save Changes' : 'Add Camera'}
                     </Button>
                 </div>
             </DialogContent>
         </Dialog>
-    )
+    );
 }
 
 // ─── CCTV Stream (WebRTC/WHEP) ────────────────────────────────────────────────
 
-function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) {
-    const videoRef = useRef<HTMLVideoElement>(null)
-    const pcRef = useRef<RTCPeerConnection | null>(null)
-    const [status, setStatus] = useState<"connecting" | "live" | "error">("connecting")
+function CctvStream({
+    src,
+    label = 'Camera',
+}: {
+    src: string;
+    label?: string;
+}) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const pcRef = useRef<RTCPeerConnection | null>(null);
+    const [status, setStatus] = useState<'connecting' | 'live' | 'error'>(
+        'connecting',
+    );
 
     const connect = useCallback(async () => {
-        pcRef.current?.close()
-        setStatus("connecting")
-        let cancelled = false
+        pcRef.current?.close();
+        setStatus('connecting');
+        let cancelled = false;
 
-        const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] })
-        pcRef.current = pc
-        pc.addTransceiver("video", { direction: "recvonly" })
-        pc.addTransceiver("audio", { direction: "recvonly" })
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+        });
+        pcRef.current = pc;
+        pc.addTransceiver('video', { direction: 'recvonly' });
+        pc.addTransceiver('audio', { direction: 'recvonly' });
 
         pc.ontrack = (e) => {
             if (videoRef.current && e.streams[0] && !cancelled) {
-                videoRef.current.srcObject = e.streams[0]
-                setStatus("live")
+                videoRef.current.srcObject = e.streams[0];
+                setStatus('live');
             }
-        }
+        };
         pc.onconnectionstatechange = () => {
-            if ((pc.connectionState === "failed" || pc.connectionState === "disconnected") && !cancelled)
-                setStatus("error")
-        }
+            if (
+                (pc.connectionState === 'failed' ||
+                    pc.connectionState === 'disconnected') &&
+                !cancelled
+            )
+                setStatus('error');
+        };
 
         try {
-            const offer = await pc.createOffer()
-            await pc.setLocalDescription(offer)
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
             const res = await fetch(`${src}/whep`, {
-                method: "POST",
-                headers: { "Content-Type": "application/sdp" },
+                method: 'POST',
+                headers: { 'Content-Type': 'application/sdp' },
                 body: offer.sdp,
-            })
-            if (!res.ok) throw new Error("WHEP failed")
-            await pc.setRemoteDescription({ type: "answer", sdp: await res.text() })
+            });
+            if (!res.ok) throw new Error('WHEP failed');
+            await pc.setRemoteDescription({
+                type: 'answer',
+                sdp: await res.text(),
+            });
         } catch {
-            if (!cancelled) setStatus("error")
+            if (!cancelled) setStatus('error');
         }
 
-        return () => { cancelled = true; pc.close() }
-    }, [src])
+        return () => {
+            cancelled = true;
+            pc.close();
+        };
+    }, [src]);
 
     useEffect(() => {
-        let cleanup: (() => void) | undefined
-        connect().then(fn => { cleanup = fn })
-        return () => { cleanup?.(); pcRef.current?.close() }
-    }, [connect])
+        let cleanup: (() => void) | undefined;
+        connect().then((fn) => {
+            cleanup = fn;
+        });
+        return () => {
+            cleanup?.();
+            pcRef.current?.close();
+        };
+    }, [connect]);
 
     return (
-        <div className="relative w-full h-full bg-black overflow-hidden">
-            <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+        <div className="relative h-full w-full overflow-hidden bg-black">
+            <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="h-full w-full object-cover"
+            />
 
-            {status !== "live" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 gap-3 z-10">
-                    {status === "connecting" ? (
+            {status !== 'live' && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/90">
+                    {status === 'connecting' ? (
                         <>
-                            <Loader2 className="w-8 h-8 text-white/30 animate-spin" />
-                            <p className="text-xs text-white/30 tracking-widest uppercase">Connecting…</p>
+                            <Loader2 className="h-8 w-8 animate-spin text-white/30" />
+                            <p className="text-xs uppercase tracking-widest text-white/30">
+                                Connecting…
+                            </p>
                         </>
                     ) : (
                         <>
-                            <WifiOff className="w-8 h-8 text-white/20" />
-                            <p className="text-xs text-white/30 tracking-widest uppercase">Stream Offline</p>
+                            <WifiOff className="h-8 w-8 text-white/20" />
+                            <p className="text-xs uppercase tracking-widest text-white/30">
+                                Stream Offline
+                            </p>
                             <button
                                 onClick={() => connect()}
-                                className="mt-1 text-xs text-white/50 hover:text-white/80 underline transition-colors"
+                                className="mt-1 text-xs text-white/50 underline transition-colors hover:text-white/80"
                             >
                                 Retry
                             </button>
@@ -329,15 +426,15 @@ function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) 
                 </div>
             )}
 
-            <div className="absolute top-2 left-2 flex items-center gap-1.5 z-10">
-                <span className="text-xs font-semibold text-white bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md">
+            <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5">
+                <span className="rounded-md bg-black/60 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
                     {label}
                 </span>
-                {status === "live" && (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-primary-foreground bg-primary/80 backdrop-blur-sm px-2 py-0.5 rounded-md">
+                {status === 'live' && (
+                    <span className="text-primary-foreground bg-primary/80 flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm">
                         <span className="relative flex h-1.5 w-1.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
+                            <span className="bg-primary-foreground absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
+                            <span className="bg-primary-foreground relative inline-flex h-1.5 w-1.5 rounded-full" />
                         </span>
                         LIVE
                     </span>
@@ -346,29 +443,35 @@ function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) 
 
             <LiveClock />
         </div>
-    )
+    );
 }
 
 function LiveClock() {
-    const [time, setTime] = useState("")
+    const [time, setTime] = useState('');
     useEffect(() => {
-        const tick = () => setTime(
-            new Date().toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })
-        )
-        tick()
-        const id = setInterval(tick, 1000)
-        return () => clearInterval(id)
-    }, [])
+        const tick = () =>
+            setTime(
+                new Date().toLocaleTimeString('en-PH', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true,
+                }),
+            );
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, []);
     return (
-        <div className="absolute bottom-2 right-2 text-[10px] font-mono text-white/70 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md tabular-nums z-10">
+        <div className="absolute bottom-2 right-2 z-10 rounded-md bg-black/60 px-2 py-0.5 font-mono text-[10px] tabular-nums text-white/70 backdrop-blur-sm">
             {time}
         </div>
-    )
+    );
 }
 
 // ─── Camera Grid (Google Meet–style) ──────────────────────────────────────────
 
-const THUMB_HEIGHT_PX = 80
+const THUMB_HEIGHT_PX = 80;
 
 function CameraGrid({
     cameras,
@@ -377,33 +480,35 @@ function CameraGrid({
     onEdit,
     onRemove,
 }: {
-    cameras: CameraSource[]
-    pinnedId: string | null
-    onPin: (id: string | null) => void
-    onEdit: (cam: CameraSource) => void
-    onRemove: (id: string) => void
+    cameras: CameraSource[];
+    pinnedId: string | null;
+    onPin: (id: string | null) => void;
+    onEdit: (cam: CameraSource) => void;
+    onRemove: (id: string) => void;
 }) {
-    const pinned = cameras.find(c => c.id === pinnedId) ?? null
-    const others = cameras.filter(c => c.id !== pinnedId)
+    const pinned = cameras.find((c) => c.id === pinnedId) ?? null;
+    const others = cameras.filter((c) => c.id !== pinnedId);
 
     if (cameras.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 aspect-video text-muted-foreground">
-                <Camera className="w-8 h-8 opacity-30" />
+            <div className="border-border bg-muted/20 text-muted-foreground flex aspect-video flex-col items-center justify-center gap-3 rounded-xl border border-dashed">
+                <Camera className="h-8 w-8 opacity-30" />
                 <p className="text-sm">No cameras added yet.</p>
             </div>
-        )
+        );
     }
 
     if (!pinned) {
         // Equal grid — all tiles use aspect-video naturally
-        const colCount = Math.min(cameras.length, 4)
+        const colCount = Math.min(cameras.length, 4);
         return (
             <div
                 className="grid gap-2"
-                style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+                style={{
+                    gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`,
+                }}
             >
-                {cameras.map(cam => (
+                {cameras.map((cam) => (
                     <CameraTile
                         key={cam.id}
                         cam={cam}
@@ -415,15 +520,28 @@ function CameraGrid({
                     />
                 ))}
             </div>
-        )
+        );
     }
 
     // Pinned mode — primary on top, horizontal scrollable thumbnail strip below
-    const THUMB_H = 90
+    const THUMB_H = 90;
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", width: "100%" }}>
+        <div
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                width: '100%',
+            }}
+        >
             {/* Primary — full width, 16/9 */}
-            <div style={{ width: "100%", aspectRatio: "16/9", position: "relative" }}>
+            <div
+                style={{
+                    width: '100%',
+                    aspectRatio: '16/9',
+                    position: 'relative',
+                }}
+            >
                 <CameraTile
                     cam={pinned}
                     isPinned
@@ -437,23 +555,25 @@ function CameraGrid({
 
             {/* Horizontal scrollable thumbnail strip */}
             {others.length > 0 && (
-                <div style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    gap: "0.5rem",
-                    overflowX: "auto",
-                    overflowY: "hidden",
-                    scrollbarWidth: "none",
-                    paddingBottom: "2px",
-                }}>
-                    {others.map(cam => (
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        gap: '0.5rem',
+                        overflowX: 'auto',
+                        overflowY: 'hidden',
+                        scrollbarWidth: 'none',
+                        paddingBottom: '2px',
+                    }}
+                >
+                    {others.map((cam) => (
                         <div
                             key={cam.id}
                             style={{
                                 height: `${THUMB_H}px`,
-                                aspectRatio: "16/9",
+                                aspectRatio: '16/9',
                                 flexShrink: 0,
-                                position: "relative",
+                                position: 'relative',
                             }}
                         >
                             <CameraTile
@@ -470,9 +590,8 @@ function CameraGrid({
                 </div>
             )}
         </div>
-    )
+    );
 }
-
 
 function CameraTile({
     cam,
@@ -483,27 +602,27 @@ function CameraTile({
     onEdit,
     onRemove,
 }: {
-    cam: CameraSource
-    isPinned: boolean
+    cam: CameraSource;
+    isPinned: boolean;
     /** null → aspect-video; number → fixed px height */
-    fixedHeight: number | null
+    fixedHeight: number | null;
     /** true → position absolute inset-0 (used for pinned primary) */
-    fullAbsolute?: boolean
-    onPin: () => void
-    onEdit: () => void
-    onRemove: () => void
+    fullAbsolute?: boolean;
+    onPin: () => void;
+    onEdit: () => void;
+    onRemove: () => void;
 }) {
-    const [hovered, setHovered] = useState(false)
+    const [hovered, setHovered] = useState(false);
 
     const sizeStyle: React.CSSProperties = fullAbsolute
-        ? { position: "absolute", inset: 0 }
+        ? { position: 'absolute', inset: 0 }
         : fixedHeight !== null
-            ? { height: `${fixedHeight}px`, width: "160px", flexShrink: 0 }
-            : { width: "100%", height: "100%" }
+          ? { height: `${fixedHeight}px`, width: '160px', flexShrink: 0 }
+          : { width: '100%', height: '100%' };
 
     return (
         <div
-            className="relative rounded-xl overflow-hidden border border-border bg-black shadow-sm"
+            className="border-border relative overflow-hidden rounded-xl border bg-black shadow-sm"
             style={sizeStyle}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
@@ -511,165 +630,228 @@ function CameraTile({
             <CctvStream src={cam.src} label={cam.label} />
 
             {/* Hover overlay */}
-            {hovered && <div className="absolute inset-0 bg-black/30 z-20 pointer-events-none" />}
+            {hovered && (
+                <div className="pointer-events-none absolute inset-0 z-20 bg-black/30" />
+            )}
 
             {/* Controls — appear on hover */}
             <div
-                className="absolute top-2 right-2 z-30 flex items-center gap-1 transition-opacity duration-150"
-                style={{ opacity: hovered ? 1 : 0, pointerEvents: hovered ? "auto" : "none" }}
+                className="absolute right-2 top-2 z-30 flex items-center gap-1 transition-opacity duration-150"
+                style={{
+                    opacity: hovered ? 1 : 0,
+                    pointerEvents: hovered ? 'auto' : 'none',
+                }}
             >
                 <button
                     onClick={onPin}
-                    title={isPinned ? "Unpin" : "Pin (focus)"}
-                    className="w-7 h-7 rounded-lg bg-black/70 hover:bg-primary/90 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
+                    title={isPinned ? 'Unpin' : 'Pin (focus)'}
+                    className="hover:bg-primary/90 flex h-7 w-7 items-center justify-center rounded-lg bg-black/70 text-white backdrop-blur-sm transition-colors"
                 >
-                    {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                    {isPinned ? (
+                        <PinOff className="h-3.5 w-3.5" />
+                    ) : (
+                        <Pin className="h-3.5 w-3.5" />
+                    )}
                 </button>
                 <button
                     onClick={onEdit}
                     title="Edit camera"
-                    className="w-7 h-7 rounded-lg bg-black/70 hover:bg-white/20 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-black/70 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
                 >
-                    <Edit2 className="w-3.5 h-3.5" />
+                    <Edit2 className="h-3.5 w-3.5" />
                 </button>
                 <button
                     onClick={onRemove}
                     title="Remove camera"
-                    className="w-7 h-7 rounded-lg bg-black/70 hover:bg-destructive/90 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
+                    className="hover:bg-destructive/90 flex h-7 w-7 items-center justify-center rounded-lg bg-black/70 text-white backdrop-blur-sm transition-colors"
                 >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" />
                 </button>
             </div>
 
             {isPinned && (
-                <div className="absolute bottom-2 left-2 z-30 flex items-center gap-1 text-[10px] font-bold text-white bg-primary/80 backdrop-blur-sm px-2 py-0.5 rounded-md">
-                    <Pin className="w-2.5 h-2.5" /> Pinned
+                <div className="bg-primary/80 absolute bottom-2 left-2 z-30 flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+                    <Pin className="h-2.5 w-2.5" /> Pinned
                 </div>
             )}
         </div>
-    )
+    );
 }
 
 // ─── SnapshotImage ────────────────────────────────────────────────────────────
 
-function SnapshotImage({ path, avatarUrl, name, className = "" }: {
-    path: string | null; avatarUrl?: string; name: string; className?: string
+function SnapshotImage({
+    path,
+    avatarUrl,
+    name,
+    className = '',
+}: {
+    path: string | null;
+    avatarUrl?: string;
+    name: string;
+    className?: string;
 }) {
-    const [err, setErr] = useState(false)
-    const src = path ? `/storage/${path}` : (avatarUrl ?? null)
+    const [err, setErr] = useState(false);
+    const src = path ? `/storage/${path}` : (avatarUrl ?? null);
 
     if (!src || err) {
         return (
-            <div className={`bg-primary/10 flex items-center justify-center ${className}`}>
-                <span className="text-primary font-bold text-xl select-none">{initials(name)}</span>
+            <div
+                className={`bg-primary/10 flex items-center justify-center ${className}`}
+            >
+                <span className="text-primary select-none text-xl font-bold">
+                    {initials(name)}
+                </span>
             </div>
-        )
+        );
     }
-    return <img src={src} alt={name} onError={() => setErr(true)} className={`object-cover ${className}`} />
+    return (
+        <img
+            src={src}
+            alt={name}
+            onError={() => setErr(true)}
+            className={`object-cover ${className}`}
+        />
+    );
 }
 
 // ─── Attendance Card ──────────────────────────────────────────────────────────
 
-function AttendanceCard({ record, isNew, onClick }: {
-    record: AttendanceLog; isNew?: boolean; onClick: () => void
+function AttendanceCard({
+    record,
+    isNew,
+    onClick,
+}: {
+    record: AttendanceLog;
+    isNew?: boolean;
+    onClick: () => void;
 }) {
-    const name = getName(record)
-    const workId = getWorkId(record)
+    const name = getName(record);
+    const workId = getWorkId(record);
 
     return (
         <button
             onClick={onClick}
-            className={`group relative flex flex-col w-full bg-card rounded-xl overflow-hidden text-left transition-all duration-200
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]
-                border hover:shadow-md hover:border-primary/40
-                ${isNew ? "border-primary/60 shadow-sm shadow-primary/10" : "border-border"}`}
+            className={`bg-card focus-visible:ring-ring hover:border-primary/40 group relative flex w-full flex-col overflow-hidden rounded-xl border text-left transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 active:scale-[0.98] ${isNew ? 'border-primary/60 shadow-primary/10 shadow-sm' : 'border-border'}`}
         >
-            <div className="h-0.5 w-full bg-primary opacity-50 group-hover:opacity-100 transition-opacity shrink-0" />
-            <div className="relative w-full aspect-square overflow-hidden bg-muted">
+            <div className="bg-primary h-0.5 w-full shrink-0 opacity-50 transition-opacity group-hover:opacity-100" />
+            <div className="bg-muted relative aspect-square w-full overflow-hidden">
                 <SnapshotImage
                     path={record.snapshot_path}
                     avatarUrl={record.employee?.avatar_url}
                     name={name}
-                    className="w-full h-full group-hover:scale-105 transition-transform duration-300"
+                    className="h-full w-full transition-transform duration-300 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                <div className="bg-linear-to-t pointer-events-none absolute inset-0 from-black/60 via-transparent to-transparent" />
                 {isNew && (
-                    <div className="absolute top-2 right-2 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                    <div className="bg-primary text-primary-foreground absolute right-2 top-2 rounded-full px-1.5 py-0.5 text-[9px] font-bold">
                         NEW
                     </div>
                 )}
             </div>
-            <div className="flex flex-col gap-0.5 px-2.5 py-2.5 min-w-0 font-poppins">
-                <p className="text-xs font-semibold text-card-foreground truncate leading-tight">{name}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{workId}</p>
-                <div className="flex items-center gap-1.5 mt-1">
-                    <Clock className="w-3 h-3 text-primary/50 shrink-0" />
-                    <span className="text-[10px] tabular-nums font-semibold text-card-foreground">
+            <div className="font-poppins flex min-w-0 flex-col gap-0.5 px-2.5 py-2.5">
+                <p className="text-card-foreground truncate text-xs font-semibold leading-tight">
+                    {name}
+                </p>
+                <p className="text-muted-foreground truncate text-[10px]">
+                    {workId}
+                </p>
+                <div className="mt-1 flex items-center gap-1.5">
+                    <Clock className="text-primary/50 h-3 w-3 shrink-0" />
+                    <span className="text-card-foreground text-[10px] font-semibold tabular-nums">
                         {fmtTime(record.captured_at)}
                     </span>
                 </div>
-                <p className="text-[9px] uppercase tracking-widest font-semibold mt-0.5 text-green-500">
+                <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-widest text-green-500">
                     Detected
                 </p>
             </div>
         </button>
-    )
+    );
 }
 
 // ─── Employee Detail Dialog ───────────────────────────────────────────────────
 
-function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
-    record: AttendanceLog | null
-    allRecords: AttendanceLog[]
-    open: boolean
-    onClose: () => void
+function EmployeeDetailDialog({
+    record,
+    allRecords,
+    open,
+    onClose,
+}: {
+    record: AttendanceLog | null;
+    allRecords: AttendanceLog[];
+    open: boolean;
+    onClose: () => void;
 }) {
-    if (!record) return null
+    if (!record) return null;
 
-    const name = getName(record)
-    const workId = getWorkId(record)
-    const employeeId = record.employee?.employee_id
+    const name = getName(record);
+    const workId = getWorkId(record);
+    const employeeId = record.employee?.employee_id;
 
-    const empRecords = useMemo(() =>
-        allRecords
-            .filter(r => employeeId ? r.employee?.employee_id === employeeId : r.work_id === record.work_id)
-            .sort((a, b) => new Date(b.captured_at).getTime() - new Date(a.captured_at).getTime()),
-        [allRecords, employeeId, record.work_id]
-    )
+    const empRecords = useMemo(
+        () =>
+            allRecords
+                .filter((r) =>
+                    employeeId
+                        ? r.employee?.employee_id === employeeId
+                        : r.work_id === record.work_id,
+                )
+                .sort(
+                    (a, b) =>
+                        new Date(b.captured_at).getTime() -
+                        new Date(a.captured_at).getTime(),
+                ),
+        [allRecords, employeeId, record.work_id],
+    );
 
     const latest = useMemo(() => {
-        const map: Partial<Record<TimeType, AttendanceLog>> = {}
-        for (const r of [...empRecords].reverse()) map[r.time_type] = r
-        return map
-    }, [empRecords])
+        const map: Partial<Record<TimeType, AttendanceLog>> = {};
+        for (const r of [...empRecords].reverse()) map[r.time_type] = r;
+        return map;
+    }, [empRecords]);
 
     return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl max-h-[90vh] flex flex-col">
+        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+            <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-lg">
                 <div className="relative shrink-0">
                     <div className="absolute inset-0 overflow-hidden">
-                        <SnapshotImage path={record.snapshot_path} avatarUrl={record.employee?.avatar_url} name={name} className="w-full h-full scale-110" />
-                        <div className="absolute inset-0 bg-primary/85 backdrop-blur-2xl" />
+                        <SnapshotImage
+                            path={record.snapshot_path}
+                            avatarUrl={record.employee?.avatar_url}
+                            name={name}
+                            className="h-full w-full scale-110"
+                        />
+                        <div className="bg-primary/85 absolute inset-0 backdrop-blur-2xl" />
                     </div>
                     <button
                         onClick={onClose}
-                        className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-primary-foreground/10 hover:bg-primary-foreground/25 flex items-center justify-center text-primary-foreground transition-colors"
+                        className="bg-primary-foreground/10 hover:bg-primary-foreground/25 text-primary-foreground absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full transition-colors"
                     >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="h-3.5 w-3.5" />
                     </button>
-                    <div className="relative z-10 flex items-end gap-4 px-5 pt-8 pb-5">
-                        <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-primary-foreground/20 shadow-xl shrink-0">
-                            <SnapshotImage path={record.snapshot_path} avatarUrl={record.employee?.avatar_url} name={name} className="w-full h-full" />
+                    <div className="relative z-10 flex items-end gap-4 px-5 pb-5 pt-8">
+                        <div className="border-primary-foreground/20 h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 shadow-xl">
+                            <SnapshotImage
+                                path={record.snapshot_path}
+                                avatarUrl={record.employee?.avatar_url}
+                                name={name}
+                                className="h-full w-full"
+                            />
                         </div>
                         <div className="min-w-0 pb-1">
-                            <h2 className="text-lg font-bold text-primary-foreground leading-tight truncate">{name}</h2>
-                            <p className="text-xs font-mono text-primary-foreground/60 mt-0.5">{workId}</p>
+                            <h2 className="text-primary-foreground truncate text-lg font-bold leading-tight">
+                                {name}
+                            </h2>
+                            <p className="text-primary-foreground/60 mt-0.5 font-mono text-xs">
+                                {workId}
+                            </p>
                             <div className="mt-2.5 flex items-center gap-1.5">
-                                <Clock className="w-3.5 h-3.5 text-primary-foreground/60" />
-                                <span className="text-sm font-mono tabular-nums font-semibold text-primary-foreground">
+                                <Clock className="text-primary-foreground/60 h-3.5 w-3.5" />
+                                <span className="text-primary-foreground font-mono text-sm font-semibold tabular-nums">
                                     {fmtTime(record.captured_at)}
                                 </span>
-                                <span className="text-[9px] uppercase tracking-widest font-semibold text-primary-foreground/50 ml-1">
+                                <span className="text-primary-foreground/50 ml-1 text-[9px] font-semibold uppercase tracking-widest">
                                     Detected
                                 </span>
                             </div>
@@ -677,63 +859,102 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-4 divide-x divide-border border-b border-border bg-muted/30 shrink-0">
-                    {(["time_in", "break_out", "break_in", "time_out"] as TimeType[]).map(tt => {
-                        const cfg = TT[tt]
-                        const Icon = cfg.icon
-                        const rec = latest[tt]
+                <div className="divide-border border-border bg-muted/30 grid shrink-0 grid-cols-4 divide-x border-b">
+                    {(
+                        [
+                            'time_in',
+                            'break_out',
+                            'break_in',
+                            'time_out',
+                        ] as TimeType[]
+                    ).map((tt) => {
+                        const cfg = TT[tt];
+                        const Icon = cfg.icon;
+                        const rec = latest[tt];
                         return (
-                            <div key={tt} className="flex flex-col items-center py-3 px-1 gap-1">
-                                <Icon className={`w-3.5 h-3.5 ${cfg.iconCls}`} />
-                                <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold text-center leading-tight">{cfg.label}</span>
-                                <span className={`text-[10px] font-mono tabular-nums font-bold ${rec ? "text-foreground" : "text-muted-foreground/40"}`}>
-                                    {rec ? fmtTime(rec.captured_at) : "—"}
+                            <div
+                                key={tt}
+                                className="flex flex-col items-center gap-1 px-1 py-3"
+                            >
+                                <Icon
+                                    className={`h-3.5 w-3.5 ${cfg.iconCls}`}
+                                />
+                                <span className="text-muted-foreground text-center text-[9px] font-semibold uppercase leading-tight tracking-widest">
+                                    {cfg.label}
+                                </span>
+                                <span
+                                    className={`font-mono text-[10px] font-bold tabular-nums ${rec ? 'text-foreground' : 'text-muted-foreground/40'}`}
+                                >
+                                    {rec ? fmtTime(rec.captured_at) : '—'}
                                 </span>
                             </div>
-                        )
+                        );
                     })}
                 </div>
 
-                <DialogHeader className="px-5 pt-4 pb-2 shrink-0">
-                    <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-                        <Activity className="w-3.5 h-3.5 text-muted-foreground" />
+                <DialogHeader className="shrink-0 px-5 pb-2 pt-4">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+                        <Activity className="text-muted-foreground h-3.5 w-3.5" />
                         All Detections Today
-                        <Badge variant="secondary" className="text-[10px] ml-auto font-bold">{empRecords.length}</Badge>
+                        <Badge
+                            variant="secondary"
+                            className="ml-auto text-[10px] font-bold"
+                        >
+                            {empRecords.length}
+                        </Badge>
                     </DialogTitle>
                 </DialogHeader>
 
                 <ScrollArea className="h-[280px]">
                     <div className="px-5 pb-5">
                         {empRecords.length === 0 ? (
-                            <p className="text-sm text-muted-foreground italic text-center py-8">No records found.</p>
+                            <p className="text-muted-foreground py-8 text-center text-sm italic">
+                                No records found.
+                            </p>
                         ) : (
                             <div className="space-y-1.5">
-                                {empRecords.map(r => {
-                                    const cfg = TT[r.time_type ?? "time_in"]
-                                    const Icon = cfg.icon
-                                    const active = r.id === record.id
+                                {empRecords.map((r) => {
+                                    const cfg = TT[r.time_type ?? 'time_in'];
+                                    const Icon = cfg.icon;
+                                    const active = r.id === record.id;
                                     return (
                                         <div
                                             key={r.id}
-                                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/50"}`}
+                                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active ? 'bg-primary/10 border-primary/20 border' : 'hover:bg-muted/50'}`}
                                         >
-                                            <div className={`w-9 h-9 rounded-full ${cfg.bgCls} flex items-center justify-center shrink-0 border ${cfg.borderCls}`}>
-                                                <Icon className={`w-4 h-4 ${cfg.iconCls}`} />
+                                            <div
+                                                className={`h-9 w-9 rounded-full ${cfg.bgCls} flex shrink-0 items-center justify-center border ${cfg.borderCls}`}
+                                            >
+                                                <Icon
+                                                    className={`h-4 w-4 ${cfg.iconCls}`}
+                                                />
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Detected</span>
-                                                    <span className="font-mono text-sm tabular-nums font-semibold text-foreground">{fmtTime(r.captured_at)}</span>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                                                        Detected
+                                                    </span>
+                                                    <span className="text-foreground font-mono text-sm font-semibold tabular-nums">
+                                                        {fmtTime(r.captured_at)}
+                                                    </span>
                                                 </div>
-                                                {r.device_id && <p className="text-[9px] text-muted-foreground mt-0.5 truncate">Device: {r.device_id}</p>}
+                                                {r.device_id && (
+                                                    <p className="text-muted-foreground mt-0.5 truncate text-[9px]">
+                                                        Device: {r.device_id}
+                                                    </p>
+                                                )}
                                             </div>
                                             {r.snapshot_path && (
-                                                <div className="w-9 h-9 rounded-lg overflow-hidden border border-border shrink-0">
-                                                    <img src={`/storage/${r.snapshot_path}`} alt="" className="w-full h-full object-cover" />
+                                                <div className="border-border h-9 w-9 shrink-0 overflow-hidden rounded-lg border">
+                                                    <img
+                                                        src={`/storage/${r.snapshot_path}`}
+                                                        alt=""
+                                                        className="h-full w-full object-cover"
+                                                    />
                                                 </div>
                                             )}
                                         </div>
-                                    )
+                                    );
                                 })}
                             </div>
                         )}
@@ -741,15 +962,15 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                 </ScrollArea>
             </DialogContent>
         </Dialog>
-    )
+    );
 }
 
 // ─── Breadcrumbs ──────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: "Attendance", href: "#" },
-    { title: "Logs", href: "#" },
-]
+    { title: 'Attendance', href: '#' },
+    { title: 'Logs', href: '#' },
+];
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -757,179 +978,275 @@ export default function RecognitionLogIndex({
     attendances: initialAttendances,
     filters = { date: todayPH() },
 }: Props) {
-    const [date, setDate] = useState(filters.date)
-    const isToday = date === todayPH()
+    const [date, setDate] = useState(filters.date);
+    const isToday = date === todayPH();
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const d = e.target.value
-        setDate(d)
-        router.get(route("recognition-logs.index"), { date: d }, { preserveScroll: true, replace: true })
-    }
+        const d = e.target.value;
+        setDate(d);
+        router.get(
+            route('recognition-logs.index'),
+            { date: d },
+            { preserveScroll: true, replace: true },
+        );
+    };
 
     const setToday = () => {
-        const today = todayPH()
-        setDate(today)
-        router.get(route("recognition-logs.index"), { date: today }, { preserveScroll: true, replace: true })
-    }
+        const today = todayPH();
+        setDate(today);
+        router.get(
+            route('recognition-logs.index'),
+            { date: today },
+            { preserveScroll: true, replace: true },
+        );
+    };
 
-    const [records, setRecords] = useState<AttendanceLog[]>(() => toArray(initialAttendances))
-    const [refreshing, setRefreshing] = useState(false)
-    const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-    const [newIds, setNewIds] = useState<Set<number>>(new Set())
+    const [records, setRecords] = useState<AttendanceLog[]>(() =>
+        toArray(initialAttendances),
+    );
+    const [refreshing, setRefreshing] = useState(false);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [newIds, setNewIds] = useState<Set<number>>(new Set());
 
     useEffect(() => {
-        setRecords(toArray(initialAttendances))
-    }, [initialAttendances])
+        setRecords(toArray(initialAttendances));
+    }, [initialAttendances]);
 
-    const [echoConnected, setEchoConnected] = useState(false)
+    const [echoConnected, setEchoConnected] = useState(false);
     useEffect(() => {
         const check = () => {
-            const echo = (window as any).Echo
-            if (!echo) { setEchoConnected(false); return }
-            setEchoConnected(echo.connector?.pusher?.connection?.state === "connected")
-        }
-        check()
-        const id = setInterval(check, 2000)
-        return () => clearInterval(id)
-    }, [])
+            const echo = (window as any).Echo;
+            if (!echo) {
+                setEchoConnected(false);
+                return;
+            }
+            setEchoConnected(
+                echo.connector?.pusher?.connection?.state === 'connected',
+            );
+        };
+        check();
+        const id = setInterval(check, 2000);
+        return () => clearInterval(id);
+    }, []);
 
-    const [selectedRecord, setSelectedRecord] = useState<AttendanceLog | null>(null)
-    const [dialogOpen, setDialogOpen] = useState(false)
-    const openRecord = (record: AttendanceLog) => { setSelectedRecord(record); setDialogOpen(true) }
+    const [selectedRecord, setSelectedRecord] = useState<AttendanceLog | null>(
+        null,
+    );
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const openRecord = (record: AttendanceLog) => {
+        setSelectedRecord(record);
+        setDialogOpen(true);
+    };
 
-    useEchoPublic("attendance-logs", ".log.created", (incoming: AttendanceLog) => {
-        if (date !== todayPH()) return
-        setRecords(prev => prev.some(r => r.id === incoming.id) ? prev : [incoming, ...prev])
-        setNewIds(prev => new Set(prev).add(incoming.id))
-        setLastUpdated(new Date())
-        setTimeout(() => {
-            setNewIds(prev => { const s = new Set(prev); s.delete(incoming.id); return s })
-        }, 5000)
-    })
+    useEchoPublic(
+        'attendance-logs',
+        '.log.created',
+        (incoming: AttendanceLog) => {
+            if (date !== todayPH()) return;
+            setRecords((prev) =>
+                prev.some((r) => r.id === incoming.id)
+                    ? prev
+                    : [incoming, ...prev],
+            );
+            setNewIds((prev) => new Set(prev).add(incoming.id));
+            setLastUpdated(new Date());
+            setTimeout(() => {
+                setNewIds((prev) => {
+                    const s = new Set(prev);
+                    s.delete(incoming.id);
+                    return s;
+                });
+            }, 5000);
+        },
+    );
 
-    useEchoPublic("attendance-logs", ".log.updated", (updated: Pick<AttendanceLog, "id" | "time_type">) => {
-        if (date !== todayPH()) return
-        setRecords(prev => prev.map(r => r.id === updated.id ? { ...r, time_type: updated.time_type } : r))
-        setSelectedRecord(prev => prev?.id === updated.id ? { ...prev, time_type: updated.time_type } : prev)
-    })
+    useEchoPublic(
+        'attendance-logs',
+        '.log.updated',
+        (updated: Pick<AttendanceLog, 'id' | 'time_type'>) => {
+            if (date !== todayPH()) return;
+            setRecords((prev) =>
+                prev.map((r) =>
+                    r.id === updated.id
+                        ? { ...r, time_type: updated.time_type }
+                        : r,
+                ),
+            );
+            setSelectedRecord((prev) =>
+                prev?.id === updated.id
+                    ? { ...prev, time_type: updated.time_type }
+                    : prev,
+            );
+        },
+    );
 
     const fetchRecords = useCallback(async (targetDate: string) => {
-        setRefreshing(true)
+        setRefreshing(true);
         try {
             const res = await axios.get<{ attendances: AttendanceLog[] }>(
-                route("recognition-logs.index"),
-                { params: { date: targetDate, json: 1 } }
-            )
-            setRecords(toArray(res.data.attendances ?? []))
-            setLastUpdated(new Date())
-        } catch { /* silently fail */ } finally { setRefreshing(false) }
-    }, [])
+                route('recognition-logs.index'),
+                { params: { date: targetDate, json: 1 } },
+            );
+            setRecords(toArray(res.data.attendances ?? []));
+            setLastUpdated(new Date());
+        } catch {
+            /* silently fail */
+        } finally {
+            setRefreshing(false);
+        }
+    }, []);
 
-    const [search, setSearch] = useState("")
-    const filtered = useMemo(() => records.filter(r => matchesSearch(r, search)), [records, search])
+    const [search, setSearch] = useState('');
+    const filtered = useMemo(
+        () => records.filter((r) => matchesSearch(r, search)),
+        [records, search],
+    );
 
     // ── Camera state ──────────────────────────────────────────────────────────
-    const [cameras, setCameras] = useState<CameraSource[]>(() => loadCameras())
-    const [pinnedId, setPinnedId] = useState<string | null>(null)
+    const [cameras, setCameras] = useState<CameraSource[]>(() => loadCameras());
+    const [pinnedId, setPinnedId] = useState<string | null>(null);
 
     // Form dialog state
-    const [camFormOpen, setCamFormOpen] = useState(false)
-    const [editingCam, setEditingCam] = useState<CameraSource | undefined>(undefined)
+    const [camFormOpen, setCamFormOpen] = useState(false);
+    const [editingCam, setEditingCam] = useState<CameraSource | undefined>(
+        undefined,
+    );
 
-    const openAddCam = () => { setEditingCam(undefined); setCamFormOpen(true) }
-    const openEditCam = (cam: CameraSource) => { setEditingCam(cam); setCamFormOpen(true) }
+    const openAddCam = () => {
+        setEditingCam(undefined);
+        setCamFormOpen(true);
+    };
+    const openEditCam = (cam: CameraSource) => {
+        setEditingCam(cam);
+        setCamFormOpen(true);
+    };
 
     const handleSaveCam = (cam: CameraSource) => {
-        setCameras(prev => {
-            const exists = prev.findIndex(c => c.id === cam.id)
-            const updated = exists >= 0
-                ? prev.map(c => c.id === cam.id ? cam : c)
-                : [...prev, cam]
-            saveCameras(updated)
-            return updated
-        })
-    }
+        setCameras((prev) => {
+            const exists = prev.findIndex((c) => c.id === cam.id);
+            const updated =
+                exists >= 0
+                    ? prev.map((c) => (c.id === cam.id ? cam : c))
+                    : [...prev, cam];
+            saveCameras(updated);
+            return updated;
+        });
+    };
 
     const handleRemoveCam = (id: string) => {
-        setCameras(prev => {
-            const updated = prev.filter(c => c.id !== id)
-            saveCameras(updated)
-            return updated
-        })
-        if (pinnedId === id) setPinnedId(null)
-    }
+        setCameras((prev) => {
+            const updated = prev.filter((c) => c.id !== id);
+            saveCameras(updated);
+            return updated;
+        });
+        if (pinnedId === id) setPinnedId(null);
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Attendance" />
 
             {/* Full-screen flex column — fills viewport below app chrome */}
-            <div className="flex flex-col px-4 sm:px-5 pt-4 pb-4" style={{ height: "calc(100dvh - 56px)" }}>
-
+            <div
+                className="flex flex-col px-4 pb-4 pt-4 sm:px-5"
+                style={{ height: 'calc(100dvh - 56px)' }}
+            >
                 {/* ── Header ── */}
-                <div className="flex items-start justify-between gap-3 flex-wrap shrink-0 mb-3">
+                <div className="mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
                     <div>
-                        <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-                            <Radio className="w-4 h-4 text-primary" />
+                        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+                            <Radio className="text-primary h-4 w-4" />
                             Attendance Monitor
                         </h1>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                            {isToday ? "Today — " : ""}{fmtDate(date)}
-                            {" · "}
-                            <span className="font-semibold text-foreground">{records.length}</span>
-                            {" "}detection{records.length !== 1 ? "s" : ""}
+                        <p className="text-muted-foreground mt-0.5 text-sm">
+                            {isToday ? 'Today — ' : ''}
+                            {fmtDate(date)}
+                            {' · '}
+                            <span className="text-foreground font-semibold">
+                                {records.length}
+                            </span>{' '}
+                            detection{records.length !== 1 ? 's' : ''}
                             {lastUpdated && (
-                                <span className="ml-2 text-[11px] text-muted-foreground/60">
-                                    · updated {lastUpdated.toLocaleTimeString("en-PH", {
-                                        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
+                                <span className="text-muted-foreground/60 ml-2 text-[11px]">
+                                    · updated{' '}
+                                    {lastUpdated.toLocaleTimeString('en-PH', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                        hour12: true,
                                     })}
                                 </span>
                             )}
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <Input type="date" value={date} onChange={handleDateChange} className="w-38 h-9" />
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                            type="date"
+                            value={date}
+                            onChange={handleDateChange}
+                            className="w-38 h-9"
+                        />
                         {!isToday && (
-                            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={setToday}>
-                                <CalendarDays className="w-3.5 h-3.5" />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 gap-1.5"
+                                onClick={setToday}
+                            >
+                                <CalendarDays className="h-3.5 w-3.5" />
                                 <span className="hidden sm:inline">Today</span>
                             </Button>
                         )}
                         <Button
-                            variant="outline" size="sm" className="h-9 w-9 p-0"
-                            onClick={() => fetchRecords(date)} disabled={refreshing} title="Refresh now"
+                            variant="outline"
+                            size="sm"
+                            className="h-9 w-9 p-0"
+                            onClick={() => fetchRecords(date)}
+                            disabled={refreshing}
+                            title="Refresh now"
                         >
-                            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                            <RefreshCw
+                                className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`}
+                            />
                         </Button>
                     </div>
                 </div>
 
                 {/* ── Main layout — fills all remaining height ── */}
-                <div className="flex flex-col xl:flex-row gap-4 flex-1 min-h-0">
-
+                <div className="flex min-h-0 flex-1 flex-col gap-4 xl:flex-row">
                     {/* ══ LEFT: Camera panel ══ */}
-                    <div className="flex flex-col gap-2 xl:w-[69%] shrink-0 min-h-0">
-
+                    <div className="flex min-h-0 shrink-0 flex-col gap-2 xl:w-[69%]">
                         {/* Camera toolbar */}
-                        <div className="flex items-center justify-between gap-2 shrink-0">
-                            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                                <Camera className="w-3.5 h-3.5" />
-                                {cameras.length} camera{cameras.length !== 1 ? "s" : ""}
-                                {pinnedId && <span className="text-primary"> · 1 pinned</span>}
+                        <div className="flex shrink-0 items-center justify-between gap-2">
+                            <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold">
+                                <Camera className="h-3.5 w-3.5" />
+                                {cameras.length} camera
+                                {cameras.length !== 1 ? 's' : ''}
+                                {pinnedId && (
+                                    <span className="text-primary">
+                                        {' '}
+                                        · 1 pinned
+                                    </span>
+                                )}
                             </p>
-                            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={openAddCam}>
-                                <Plus className="w-3 h-3" />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 gap-1.5 text-xs"
+                                onClick={openAddCam}
+                            >
+                                <Plus className="h-3 w-3" />
                                 Add Camera
                             </Button>
                         </div>
 
                         {/* Camera grid — fills remaining height */}
-                        <div className="flex-1 min-h-0">
+                        <div className="min-h-0 flex-1">
                             <CameraGrid
                                 cameras={cameras}
                                 pinnedId={pinnedId}
-                                onPin={id => setPinnedId(id)}
+                                onPin={(id) => setPinnedId(id)}
                                 onEdit={openEditCam}
                                 onRemove={handleRemoveCam}
                             />
@@ -937,57 +1254,72 @@ export default function RecognitionLogIndex({
                     </div>
 
                     {/* ══ RIGHT: Detection log — fills full height, scrollable inside ══ */}
-                    <div className="flex flex-col bg-card border border-border rounded-xl overflow-hidden flex-1 min-h-0">
+                    <div className="bg-card border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border">
                         {/* Panel header */}
-                        <div className="flex flex-col gap-2 px-4 py-3 border-b border-border shrink-0 bg-muted/20">
+                        <div className="border-border bg-muted/20 flex shrink-0 flex-col gap-2 border-b px-4 py-3">
                             <div className="flex items-center justify-between gap-2">
-                                <p className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
-                                    <Fingerprint className="w-3.5 h-3.5 text-primary" />
+                                <p className="text-foreground flex items-center gap-1.5 text-sm font-semibold">
+                                    <Fingerprint className="text-primary h-3.5 w-3.5" />
                                     Detection Log
                                 </p>
                                 <div className="flex items-center gap-1.5">
-                                    {refreshing && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
-                                    <span className="text-xs text-muted-foreground tabular-nums">
-                                        {filtered.length}{search ? ` / ${records.length}` : ""} detection{filtered.length !== 1 ? "s" : ""}
+                                    {refreshing && (
+                                        <Loader2 className="text-primary h-3 w-3 animate-spin" />
+                                    )}
+                                    <span className="text-muted-foreground text-xs tabular-nums">
+                                        {filtered.length}
+                                        {search
+                                            ? ` / ${records.length}`
+                                            : ''}{' '}
+                                        detection
+                                        {filtered.length !== 1 ? 's' : ''}
                                     </span>
                                 </div>
                             </div>
                             <div className="relative">
-                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                                <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" />
                                 <Input
                                     value={search}
-                                    onChange={e => setSearch(e.target.value)}
+                                    onChange={(e) => setSearch(e.target.value)}
                                     placeholder="Search by name or work ID…"
-                                    className="pl-8 pr-8 h-8 text-sm bg-background"
+                                    className="bg-background h-8 pl-8 pr-8 text-sm"
                                 />
                                 {search && (
                                     <button
-                                        onClick={() => setSearch("")}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                        onClick={() => setSearch('')}
+                                        className="text-muted-foreground hover:text-foreground absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
                                     >
-                                        <X className="w-3.5 h-3.5" />
+                                        <X className="h-3.5 w-3.5" />
                                     </button>
                                 )}
                             </div>
                         </div>
 
                         {/* Scrollable grid */}
-                        <div className="flex-1 overflow-y-auto p-3 min-h-0">
+                        <div className="min-h-0 flex-1 overflow-y-auto p-3">
                             {filtered.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-                                    <Fingerprint className="w-10 h-10 opacity-20" />
+                                <div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-16">
+                                    <Fingerprint className="h-10 w-10 opacity-20" />
                                     <p className="text-sm">
-                                        {search ? "No detections match your search." : "No detections for this date."}
+                                        {search
+                                            ? 'No detections match your search.'
+                                            : 'No detections for this date.'}
                                     </p>
                                     {search && (
-                                        <Button variant="outline" size="sm" onClick={() => setSearch("")} className="gap-1.5">
-                                            <X className="w-3 h-3" /> Clear search
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setSearch('')}
+                                            className="gap-1.5"
+                                        >
+                                            <X className="h-3 w-3" /> Clear
+                                            search
                                         </Button>
                                     )}
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-3 gap-2.5">
-                                    {filtered.map(record => (
+                                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-3">
+                                    {filtered.map((record) => (
                                         <AttendanceCard
                                             key={record.id}
                                             record={record}
@@ -1017,5 +1349,5 @@ export default function RecognitionLogIndex({
                 onClose={() => setDialogOpen(false)}
             />
         </AppLayout>
-    )
+    );
 }

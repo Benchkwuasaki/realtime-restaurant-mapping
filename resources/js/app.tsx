@@ -14,10 +14,10 @@ configureEcho({
     wsPort: Number(import.meta.env.VITE_REVERB_PORT) || 8080,
     forceTLS: false,
     enabledTransports: ['ws', 'wss'],
-})
+});
 
 // import { Toaster } from 'sonner';
-import { Toaster } from '@/components/ui/sonner'
+import { Toaster } from '@/components/ui/sonner';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -46,8 +46,7 @@ createInertiaApp({
 // This will set light / dark mode on load...
 initializeTheme();
 
-
-// npm install react-easy-crop 
+// npm install react-easy-crop
 // npm install reverb
 // php artisan install:broadcasting
 // composer require laravel/reverb

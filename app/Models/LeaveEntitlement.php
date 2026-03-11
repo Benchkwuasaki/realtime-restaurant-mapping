@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LeaveEntitlement extends Model
 {
-    protected $table      = 'leave_entitlements';
+    protected $table = 'leave_entitlements';
+
     protected $primaryKey = 'leave_entitlement_id';
 
     protected $fillable = [

@@ -1,5 +1,10 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/use-auth';
 import { useInitials } from '@/hooks/use-initials';
 import { AuthInertiaUser } from '@/types/auth-inertia-user';
@@ -32,7 +37,7 @@ export function UserInfo({
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <span className="truncate text-xs text-muted-foreground cursor-default">
+                                <span className="text-muted-foreground cursor-default truncate text-xs">
                                     {rolesText}
                                 </span>
                             </TooltipTrigger>

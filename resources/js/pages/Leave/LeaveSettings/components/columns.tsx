@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 
 import type { LeaveType } from '../data/schema';
-import { toast } from 'sonner'
+import { toast } from 'sonner';
 
 interface ColumnOptions {
     onEdit: (leaveType: LeaveType) => void;
@@ -23,7 +23,13 @@ interface ColumnOptions {
 
 // ─── Reusable mobile field row ─────────────────────────────────────────────────
 
-function CardField({ label, value }: { label: string; value: React.ReactNode }) {
+function CardField({
+    label,
+    value,
+}: {
+    label: string;
+    value: React.ReactNode;
+}) {
     return (
         <div className="flex items-center justify-between gap-4 text-sm">
             <span className="text-muted-foreground shrink-0">{label}</span>
@@ -32,7 +38,9 @@ function CardField({ label, value }: { label: string; value: React.ReactNode }) 
     );
 }
 
-export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveType>[] {
+export function getColumns({
+    onEdit,
+}: ColumnOptions): DataTableColumnDef<LeaveType>[] {
     return [
         // checkbox
         {
@@ -77,23 +85,23 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
             enableSorting: true,
             enableHiding: true,
             mobileCard: (row) => (
-                <div className="flex flex-col -mx-3 -my-1.5">
-                    <div className="px-3 py-3 space-y-2">
-                        <p className="font-semibold text-sm leading-snug">
+                <div className="-mx-3 -my-1.5 flex flex-col">
+                    <div className="space-y-2 px-3 py-3">
+                        <p className="text-sm font-semibold leading-snug">
                             {row.leave_type_name}
                         </p>
                         {row.leave_type_description ? (
-                            <p className="text-sm text-muted-foreground text-justify leading-relaxed">
+                            <p className="text-muted-foreground text-justify text-sm leading-relaxed">
                                 {row.leave_type_description}
                             </p>
                         ) : (
-                            <p className="text-sm italic text-muted-foreground/50">
+                            <p className="text-muted-foreground/50 text-sm italic">
                                 No description
                             </p>
                         )}
                     </div>
 
-                    <div className="border-t border-secondary px-3 py-2.5 flex items-center">
+                    <div className="border-secondary flex items-center border-t px-3 py-2.5">
                         <Badge variant={row.status ? 'default' : 'destructive'}>
                             {row.status ? 'Active' : 'Inactive'}
                         </Badge>
@@ -110,11 +118,16 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
             ),
             cell: ({ row }) => {
                 const [expanded, setExpanded] = React.useState(false);
-                const description = row.getValue('leave_type_description') as string | null;
+                const description = row.getValue('leave_type_description') as
+                    | string
+                    | null;
                 return (
                     <div
-                        className={`min-w-50 max-w-75 text-sm text-muted-foreground text-justify cursor-pointer ${expanded ? 'whitespace-normal wrap-break-word' : 'truncate'
-                            }`}
+                        className={`min-w-50 max-w-75 text-muted-foreground cursor-pointer text-justify text-sm ${
+                            expanded
+                                ? 'wrap-break-word whitespace-normal'
+                                : 'truncate'
+                        }`}
                         onClick={(e) => {
                             e.stopPropagation();
                             setExpanded((prev) => !prev);
@@ -127,7 +140,6 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
             },
             enableSorting: false,
             enableHiding: true,
-            
         },
 
         // requirements
@@ -140,19 +152,28 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
                 const [expanded, setExpanded] = React.useState(false);
                 const requirements = row.original.requirements;
                 if (!requirements || requirements.length === 0) {
-                    return <span className="text-sm text-muted-foreground">N/A</span>;
+                    return (
+                        <span className="text-muted-foreground text-sm">
+                            N/A
+                        </span>
+                    );
                 }
                 return (
                     <div
-                        className={`min-w-40 max-w-70 text-sm text-muted-foreground cursor-pointer ${expanded ? 'whitespace-normal wrap-break-word' : 'truncate'
-                            }`}
+                        className={`max-w-70 text-muted-foreground min-w-40 cursor-pointer text-sm ${
+                            expanded
+                                ? 'wrap-break-word whitespace-normal'
+                                : 'truncate'
+                        }`}
                         onClick={(e) => {
                             e.stopPropagation();
                             setExpanded((prev) => !prev);
                         }}
                         title="click to expand"
                     >
-                        {requirements.map((req) => req.requirement_name).join(', ')}
+                        {requirements
+                            .map((req) => req.requirement_name)
+                            .join(', ')}
                     </div>
                 );
             },
@@ -171,12 +192,11 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
             cell: ({ row }) => {
                 const val = row.getValue('eligible_sex') as string | null;
                 return (
-                    <span className="text-sm text-muted-foreground">{val}</span>
+                    <span className="text-muted-foreground text-sm">{val}</span>
                 );
             },
             enableSorting: true,
             enableHiding: true,
-
         },
 
         // is paid
@@ -185,7 +205,10 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
             filterFn: (row, columnId, filterValues: boolean[]) =>
                 filterValues.includes(Boolean(row.getValue(columnId))),
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Compensation Status" />
+                <DataTableColumnHeader
+                    column={column}
+                    title="Compensation Status"
+                />
             ),
             cell: ({ row }) => {
                 const isPaid = row.getValue('is_paid') as boolean;
@@ -205,7 +228,10 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
             filterFn: (row, columnId, filterValues: boolean[]) =>
                 filterValues.includes(Boolean(row.getValue(columnId))),
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Cash Convertible" />
+                <DataTableColumnHeader
+                    column={column}
+                    title="Cash Convertible"
+                />
             ),
             cell: ({ row }) => {
                 const isConvertible = row.getValue('is_convertible') as boolean;
@@ -220,7 +246,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
             // no mobileCard — rendered inside is_paid card above
         },
 
-         // is accrual
+        // is accrual
         {
             accessorKey: 'is_accrual',
             filterFn: (row, columnId, filterValues: boolean[]) =>
@@ -259,7 +285,6 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
             },
             enableSorting: true,
             enableHiding: true,
-            
         },
 
         // actions
@@ -274,22 +299,32 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveT
                         deleteAction(
                             (leaveType: LeaveType) =>
                                 router.delete(
-                                    route('leave.leave-type.destroy', leaveType.leave_type_id,),
+                                    route(
+                                        'leave.leave-type.destroy',
+                                        leaveType.leave_type_id,
+                                    ),
                                     {
-                                        onSuccess: () => toast.success(`${leaveType.leave_type_name} deleted successfully.`),
-                                        onError: () => toast.error(`Failed to delete ${leaveType.leave_type_name}.`),
-                                    }
+                                        onSuccess: () =>
+                                            toast.success(
+                                                `${leaveType.leave_type_name} deleted successfully.`,
+                                            ),
+                                        onError: () =>
+                                            toast.error(
+                                                `Failed to delete ${leaveType.leave_type_name}.`,
+                                            ),
+                                    },
                                 ),
                             {
                                 getName: (lt) => lt.leave_type_name,
                                 description: (lt) => (
                                     <>
                                         Are you sure you want to delete{' '}
-                                        <span className="font-medium text-foreground">
+                                        <span className="text-foreground font-medium">
                                             {lt.leave_type_name}
                                         </span>
-                                        ? This will also remove all associated requirements. This
-                                        action cannot be undone.
+                                        ? This will also remove all associated
+                                        requirements. This action cannot be
+                                        undone.
                                     </>
                                 ),
                                 confirmLabel: 'Delete Leave Type',

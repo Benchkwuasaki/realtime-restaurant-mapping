@@ -25,8 +25,8 @@ class AttendanceRecord extends Model
     ];
 
     protected $casts = [
-        'date'         => 'date',
-        'grace_minutes'=> 'integer',
+        'date' => 'date',
+        'grace_minutes' => 'integer',
         'late_minutes' => 'integer',
         'work_minutes' => 'integer',
     ];

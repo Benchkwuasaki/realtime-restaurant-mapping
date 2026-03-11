@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Department;
 use App\Models\Division;
 use App\Models\Item;
+use App\Models\Position;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Models\Position;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,7 +18,7 @@ class DivisionController extends Controller
         $divisions = Division::with(['department', 'units'])
             ->orderBy('division_name')
             ->get()
-            ->map(fn(Division $division) => [
+            ->map(fn (Division $division) => [
                 'division_id' => $division->division_id,
                 'division_name' => $division->division_name,
                 'division_acronym' => $division->division_acronym,
@@ -29,7 +29,7 @@ class DivisionController extends Controller
                     'department_name' => $division->department->department_name,
                 ],
                 'units' => $division->units
-                    ->map(fn($u) => [
+                    ->map(fn ($u) => [
                         'unit_id' => $u->unit_id,
                         'unit_name' => $u->unit_name,
                     ])
@@ -44,7 +44,7 @@ class DivisionController extends Controller
             'departments' => $departments,
             'totalDivisions' => $divisions->count(),
             'totalDepartments' => $departments->count(),
-            'totalUnits' => $divisions->sum(fn($d) => count($d['units'])),
+            'totalUnits' => $divisions->sum(fn ($d) => count($d['units'])),
         ]);
     }
 
@@ -63,7 +63,7 @@ class DivisionController extends Controller
                     'department_id' => $division->department->department_id,
                     'department_name' => $division->department->department_name,
                 ],
-                'units' => $division->units->map(fn($u) => [
+                'units' => $division->units->map(fn ($u) => [
                     'unit_id' => $u->unit_id,
                     'unit_name' => $u->unit_name,
                 ]),
@@ -101,14 +101,14 @@ class DivisionController extends Controller
             'department_id' => $division->department_id,
             'division_id' => $division->division_id,
             'unit_id' => null,
-            'position_name' => 'Head of ' . $division->division_name . ' Division',
-            'position_type' => 'Regular'
+            'position_name' => 'Head of '.$division->division_name.' Division',
+            'position_type' => 'Regular',
         ]);
 
         $itemNumber = Item::where('item_name', 'like', '%Division Head%')->count();
 
         $headPosition->items()->create([
-            'item_name' => 'Division Head Item ' . $itemNumber,
+            'item_name' => 'Division Head Item '.$itemNumber,
         ]);
 
         return redirect()->route('division.index')
@@ -148,14 +148,14 @@ class DivisionController extends Controller
         Division::whereIn('division_id', $request->ids)->delete();
 
         return redirect()->route('division.index')
-            ->with('success', count($request->ids) . ' division(s) deleted successfully.');
+            ->with('success', count($request->ids).' division(s) deleted successfully.');
     }
 
     public function cleanDivisionName(string $name): string
     {
         if (preg_match('/^Division of\s+/i', $name)) {
             $name = preg_replace('/^Division of\s+/i', '', $name);
-        }elseif (preg_match('/\s+Division$/i', $name)) {
+        } elseif (preg_match('/\s+Division$/i', $name)) {
             $name = preg_replace('/\s+Division$/i', '', $name);
         }
 

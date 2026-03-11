@@ -1,81 +1,100 @@
-"use client"
+'use client';
 
 // resources/js/pages/Organization/Position/components/columns.tsx
 
-import { router } from "@inertiajs/react"
-import { Pen, Trash } from "lucide-react"
-import { useState, useRef } from "react"
-import { route } from "ziggy-js"
+import { router } from '@inertiajs/react';
+import { Pen, Trash } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { route } from 'ziggy-js';
 
-import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
+import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
 import {
     DataTableRowActions,
     editAction,
     deleteAction,
-} from "@/components/shared/data-table/data-table-row-action"
-import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+} from '@/components/shared/data-table/data-table-row-action';
+import { type DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog';
 
-import { type Position, type PositionType } from "../data/schema"
+import { type Position, type PositionType } from '../data/schema';
 
 interface ColumnOptions {
-    onEdit: (position: Position) => void
+    onEdit: (position: Position) => void;
 }
 
-const typeBadgeVariant: Record<PositionType, "default" | "secondary" | "outline"> = {
-    "Regular":   "default",
-    "Casual":    "outline",
-    "Job Order": "secondary",
-}
+const typeBadgeVariant: Record<
+    PositionType,
+    'default' | 'secondary' | 'outline'
+> = {
+    Regular: 'default',
+    Casual: 'outline',
+    'Job Order': 'secondary',
+};
 
 // ─── Mobile Delete Confirm Dialog ─────────────────────────────────────────────
 
 interface DeleteConfirmDialogProps {
-    position: Position | null
-    onClose: () => void
+    position: Position | null;
+    onClose: () => void;
 }
 
 function DeleteConfirmDialog({ position, onClose }: DeleteConfirmDialogProps) {
-    const [processing, setProcessing] = useState(false)
+    const [processing, setProcessing] = useState(false);
 
     function handleConfirm() {
-        if (!position) return
-        setProcessing(true)
-        router.delete(route("position.destroy", position.position_id), {
+        if (!position) return;
+        setProcessing(true);
+        router.delete(route('position.destroy', position.position_id), {
             onFinish: () => {
-                setProcessing(false)
-                onClose()
+                setProcessing(false);
+                onClose();
             },
-        })
+        });
     }
 
     return (
-        <Dialog open={position !== null} onOpenChange={(o) => { if (!o) onClose() }}>
-            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-sm" onClick={(e) => e.stopPropagation()}>
-                <DialogHeader className="px-5 py-4 border-b border-border">
-                    <DialogTitle className="text-sm font-semibold text-foreground">
+        <Dialog
+            open={position !== null}
+            onOpenChange={(o) => {
+                if (!o) onClose();
+            }}
+        >
+            <DialogContent
+                className="gap-0 overflow-hidden p-0 sm:max-w-sm"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <DialogHeader className="border-border border-b px-5 py-4">
+                    <DialogTitle className="text-foreground text-sm font-semibold">
                         Delete Position
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="px-5 py-4 text-sm text-muted-foreground">
-                    Are you sure you want to delete{" "}
-                    <span className="font-medium text-foreground">{position?.position_name}</span>?{" "}
-                    This will also affect any items assigned to this position.
+                <div className="text-muted-foreground px-5 py-4 text-sm">
+                    Are you sure you want to delete{' '}
+                    <span className="text-foreground font-medium">
+                        {position?.position_name}
+                    </span>
+                    ? This will also affect any items assigned to this position.
                     This action cannot be undone.
                 </div>
 
-                <DialogFooter className="px-5 py-4 border-t border-border xs:flex xs:flex-row xs:justify-end bg-muted/30">
-                    <Button type="button" variant="outline" size="sm" onClick={onClose} className="text-xs">
+                <DialogFooter className="border-border xs:flex xs:flex-row xs:justify-end bg-muted/30 border-t px-5 py-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onClose}
+                        className="text-xs"
+                    >
                         Cancel
                     </Button>
                     <Button
@@ -86,51 +105,60 @@ function DeleteConfirmDialog({ position, onClose }: DeleteConfirmDialogProps) {
                         onClick={handleConfirm}
                         className="text-xs"
                     >
-                        {processing ? "Deleting…" : "Delete Position"}
+                        {processing ? 'Deleting…' : 'Delete Position'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    )
+    );
 }
 
 // ─── Mobile Card ──────────────────────────────────────────────────────────────
 
 interface MobilePositionCardProps {
-    row: Position
-    onEdit: (position: Position) => void
+    row: Position;
+    onEdit: (position: Position) => void;
 }
 
 function MobilePositionCard({ row, onEdit }: MobilePositionCardProps) {
-    const [confirmPosition, setConfirmPosition] = useState<Position | null>(null)
-    const suppressNextClick = useRef(false)
+    const [confirmPosition, setConfirmPosition] = useState<Position | null>(
+        null,
+    );
+    const suppressNextClick = useRef(false);
 
     function handleDialogClose() {
-        suppressNextClick.current = true
-        setConfirmPosition(null)
-        setTimeout(() => { suppressNextClick.current = false }, 200)
+        suppressNextClick.current = true;
+        setConfirmPosition(null);
+        setTimeout(() => {
+            suppressNextClick.current = false;
+        }, 200);
     }
 
     return (
         <>
             <div
-                className="flex flex-col bg-background overflow-hidden"
-                onClick={(e) => { if (suppressNextClick.current) e.stopPropagation() }}
+                className="bg-background flex flex-col overflow-hidden"
+                onClick={(e) => {
+                    if (suppressNextClick.current) e.stopPropagation();
+                }}
             >
                 {/* ── Card Body ── */}
-                <div className="px-4 pt-4 pb-5 space-y-2">
+                <div className="space-y-2 px-4 pb-5 pt-4">
                     <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-base text-foreground">
+                        <span className="text-foreground text-base font-semibold">
                             {row.position_name}
                         </span>
-                        <Badge variant={typeBadgeVariant[row.position_type]} className="text-xs whitespace-nowrap shrink-0">
+                        <Badge
+                            variant={typeBadgeVariant[row.position_type]}
+                            className="shrink-0 whitespace-nowrap text-xs"
+                        >
                             {row.position_type}
                         </Badge>
                     </div>
 
                     <div className="flex flex-col gap-0.5">
                         {row.department?.department_name && (
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-muted-foreground text-xs">
                                 {row.department.department_name}
                                 {row.division?.division_name && (
                                     <> · {row.division.division_name}</>
@@ -144,18 +172,19 @@ function MobilePositionCard({ row, onEdit }: MobilePositionCardProps) {
                 </div>
 
                 {/* ── Card Footer ── */}
-                <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
-                    <span className="text-xs text-muted-foreground">
-                        {row.occupied_slots} / {row.total_slots} slot{row.total_slots !== 1 ? "s" : ""} filled
+                <div className="border-border bg-muted/30 flex items-center justify-between border-t px-4 py-2.5">
+                    <span className="text-muted-foreground text-xs">
+                        {row.occupied_slots} / {row.total_slots} slot
+                        {row.total_slots !== 1 ? 's' : ''} filled
                     </span>
                     <div className="flex items-center gap-3">
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-12 p-0 text-xs text-muted-foreground hover:text-foreground w-12"
+                            className="text-muted-foreground hover:text-foreground h-12 w-12 p-0 text-xs"
                             onClick={(e) => {
-                                e.stopPropagation()
-                                onEdit(row)
+                                e.stopPropagation();
+                                onEdit(row);
                             }}
                         >
                             <Pen />
@@ -163,10 +192,10 @@ function MobilePositionCard({ row, onEdit }: MobilePositionCardProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-12 p-0 text-xs text-muted-foreground hover:text-destructive w-12"
+                            className="text-muted-foreground hover:text-destructive h-12 w-12 p-0 text-xs"
                             onClick={(e) => {
-                                e.stopPropagation()
-                                setConfirmPosition(row)
+                                e.stopPropagation();
+                                setConfirmPosition(row);
                             }}
                         >
                             <Trash />
@@ -180,22 +209,26 @@ function MobilePositionCard({ row, onEdit }: MobilePositionCardProps) {
                 onClose={handleDialogClose}
             />
         </>
-    )
+    );
 }
 
 // ─── Columns ──────────────────────────────────────────────────────────────────
 
-export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Position>[] {
+export function getColumns({
+    onEdit,
+}: ColumnOptions): DataTableColumnDef<Position>[] {
     return [
         {
-            id: "select",
+            id: 'select',
             header: ({ table }) => (
                 <Checkbox
                     checked={
                         table.getIsAllPageRowsSelected() ||
-                        (table.getIsSomePageRowsSelected() && "indeterminate")
+                        (table.getIsSomePageRowsSelected() && 'indeterminate')
                     }
-                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    onCheckedChange={(value) =>
+                        table.toggleAllPageRowsSelected(!!value)
+                    }
                     aria-label="Select all"
                     className="translate-y-0.5"
                 />
@@ -213,12 +246,14 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Positi
             enableHiding: false,
         },
         {
-            accessorKey: "position_name",
+            accessorKey: 'position_name',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Position Name" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-[180px] font-medium">{row.getValue("position_name")}</div>
+                <div className="min-w-[180px] font-medium">
+                    {row.getValue('position_name')}
+                </div>
             ),
             enableSorting: true,
             enableHiding: true,
@@ -227,32 +262,35 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Positi
             ),
         },
         {
-            accessorKey: "position_type",
+            accessorKey: 'position_type',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Type" />
             ),
             cell: ({ row }) => {
-                const type = row.getValue<PositionType>("position_type")
+                const type = row.getValue<PositionType>('position_type');
                 return (
-                    <Badge variant={typeBadgeVariant[type]} className="text-xs whitespace-nowrap">
+                    <Badge
+                        variant={typeBadgeVariant[type]}
+                        className="whitespace-nowrap text-xs"
+                    >
                         {type}
                     </Badge>
-                )
+                );
             },
             filterFn: (row, _id, value: string[]) =>
-                value.includes(row.getValue("position_type")),
+                value.includes(row.getValue('position_type')),
             enableSorting: true,
             enableHiding: true,
         },
         {
-            id: "department",
-            accessorFn: (row) => row.department?.department_name ?? "",
+            id: 'department',
+            accessorFn: (row) => row.department?.department_name ?? '',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Department" />
             ),
             cell: ({ row }) => (
                 <div className="min-w-[140px]">
-                    {row.original.department?.department_name ?? "—"}
+                    {row.original.department?.department_name ?? '—'}
                 </div>
             ),
             filterFn: (row, _id, value: string[]) =>
@@ -261,14 +299,14 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Positi
             enableHiding: true,
         },
         {
-            id: "division",
-            accessorFn: (row) => row.division?.division_name ?? "",
+            id: 'division',
+            accessorFn: (row) => row.division?.division_name ?? '',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Division" />
             ),
             cell: ({ row }) => (
                 <div className="min-w-[140px]">
-                    {row.original.division?.division_name ?? "—"}
+                    {row.original.division?.division_name ?? '—'}
                 </div>
             ),
             filterFn: (row, _id, value: string[]) =>
@@ -277,46 +315,50 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Positi
             enableHiding: true,
         },
         {
-            id: "unit",
-            accessorFn: (row) => row.unit?.unit_name ?? "",
+            id: 'unit',
+            accessorFn: (row) => row.unit?.unit_name ?? '',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Unit" />
             ),
             cell: ({ row }) => (
                 <div className="min-w-[120px]">
-                    {row.original.unit?.unit_name ?? "—"}
+                    {row.original.unit?.unit_name ?? '—'}
                 </div>
             ),
             filterFn: (row, _id, value: string[]) =>
-                value.includes(String(row.original.unit_id ?? "")),
+                value.includes(String(row.original.unit_id ?? '')),
             enableSorting: true,
             enableHiding: true,
         },
         {
-            accessorKey: "total_slots",
+            accessorKey: 'total_slots',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Total Slots" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-[80px] text-center">{row.getValue("total_slots")}</div>
+                <div className="min-w-[80px] text-center">
+                    {row.getValue('total_slots')}
+                </div>
             ),
             enableSorting: true,
             enableHiding: true,
         },
         {
-            accessorKey: "occupied_slots",
+            accessorKey: 'occupied_slots',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Occupied" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-[80px] text-center">{row.getValue("occupied_slots")}</div>
+                <div className="min-w-[80px] text-center">
+                    {row.getValue('occupied_slots')}
+                </div>
             ),
             enableSorting: true,
             enableHiding: true,
         },
         {
-            id: "actions",
-            header: "Actions",
+            id: 'actions',
+            header: 'Actions',
             cell: ({ row }) => (
                 <DataTableRowActions
                     row={row}
@@ -324,26 +366,32 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Positi
                         editAction(onEdit),
                         deleteAction(
                             (position) =>
-                                router.delete(route("position.destroy", position.position_id)),
+                                router.delete(
+                                    route(
+                                        'position.destroy',
+                                        position.position_id,
+                                    ),
+                                ),
                             {
                                 getName: (p) => p.position_name,
                                 description: (p) => (
                                     <>
-                                        Are you sure you want to delete{" "}
-                                        <span className="font-medium text-foreground">
+                                        Are you sure you want to delete{' '}
+                                        <span className="text-foreground font-medium">
                                             {p.position_name}
-                                        </span>?{" "}
-                                        This will also affect any items assigned to this position.
-                                        This action cannot be undone.
+                                        </span>
+                                        ? This will also affect any items
+                                        assigned to this position. This action
+                                        cannot be undone.
                                     </>
                                 ),
-                                confirmLabel: "Delete Position",
-                            }
+                                confirmLabel: 'Delete Position',
+                            },
                         ),
                     ]}
                 />
             ),
             enableHiding: false,
         },
-    ]
+    ];
 }

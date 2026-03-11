@@ -7,14 +7,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use App\Models\EmployeeAllowance;
-use App\Models\EmployeePayrollData;
-use App\Models\EmployeeServiceRecord;
-use App\Models\EmployeeSeminarAndTraining;
-use App\Models\EmployeeUploadedFile;
-use App\Models\EmployeeWaterBill;
-use App\Models\EligibilityInformation;
-use App\Models\GovernmentAccount;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Employee extends Model

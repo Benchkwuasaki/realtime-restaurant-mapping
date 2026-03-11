@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Services\ActivityLogService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -18,6 +17,7 @@ class ReportsAndAnalyticsController extends Controller
             'module' => 'general',
             'activity' => 'Viewed Reports and Analytics Page',
         ]);
+
         return Inertia::render('ReportsAndAnalytics/Index');
     }
 }

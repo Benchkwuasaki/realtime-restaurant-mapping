@@ -47,7 +47,7 @@ return new class extends Migration
             $table->decimal('accrual_earned', 8, 4);
 
             $table->decimal('balance_before', 8, 4)->default(0);
-            $table->decimal('balance_after',  8, 4)->default(0);
+            $table->decimal('balance_after', 8, 4)->default(0);
             $table->string('credit_status')->default('full_credit');
 
             $table->timestamps();

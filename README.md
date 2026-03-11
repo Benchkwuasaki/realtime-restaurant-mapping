@@ -20,19 +20,19 @@ For development and testing, these users are seeded after `php artisan migrate:f
 ### Credentials by Role
 
 - `super_admin`
-  - Email: `superadmin@gmail.com`
-  - Password: `password`
+    - Email: `superadmin@gmail.com`
+    - Password: `password`
 - `hr_admin`
-  - Email: `anessa.orales20@obx.gov.ph`
-  - Password: `password`
+    - Email: `anessa.orales20@obx.gov.ph`
+    - Password: `password`
 - `ogm`
-  - Email: `usan.una28@obx.gov.ph`
-  - Password: `password`
+    - Email: `usan.una28@obx.gov.ph`
+    - Password: `password`
 - `document_tracking_operator` (one per department)
-  - `anessa.orales20@obx.gov.ph`
-  - `onald.acapagal24@obx.gov.ph`
-  - `usan.una28@obx.gov.ph`
-  - Password (all): `password`
+    - `anessa.orales20@obx.gov.ph`
+    - `onald.acapagal24@obx.gov.ph`
+    - `usan.una28@obx.gov.ph`
+    - Password (all): `password`
 
 ---
 

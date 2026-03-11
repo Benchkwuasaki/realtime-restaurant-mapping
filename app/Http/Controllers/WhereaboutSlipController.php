@@ -30,41 +30,41 @@ class WhereaboutSlipController extends Controller
         ])
             ->latest()
             ->get()
-            ->map(fn($slip) => [
-                'whereabout_slip_id'       => $slip->whereabout_slip_id,
-                'employee_id'              => $slip->employee_id,
+            ->map(fn ($slip) => [
+                'whereabout_slip_id' => $slip->whereabout_slip_id,
+                'employee_id' => $slip->employee_id,
                 'reviewed_and_noted_by_id' => $slip->reviewed_and_noted_by_id,
-                'approved_by_id'           => $slip->approved_by_id,
-                'attested_by_id'           => $slip->attested_by_id,
-                'date_filed'               => $slip->date_filed->format('Y-m-d'),
-                'purpose_type'             => $slip->purpose_type,
-                'purpose_description'      => $slip->purpose_description,
-                'time_out'                 => $slip->time_out,
-                'time_returned'            => $slip->time_returned,
-                'time_noted'               => $slip->time_noted,
-                'minutes_gone'             => $slip->minutes_gone,
-                'status'                   => $slip->status,
-                'return_status'            => $slip->return_status,
-                'employee'              => self::mapEmployee($slip->employee),
+                'approved_by_id' => $slip->approved_by_id,
+                'attested_by_id' => $slip->attested_by_id,
+                'date_filed' => $slip->date_filed->format('Y-m-d'),
+                'purpose_type' => $slip->purpose_type,
+                'purpose_description' => $slip->purpose_description,
+                'time_out' => $slip->time_out,
+                'time_returned' => $slip->time_returned,
+                'time_noted' => $slip->time_noted,
+                'minutes_gone' => $slip->minutes_gone,
+                'status' => $slip->status,
+                'return_status' => $slip->return_status,
+                'employee' => self::mapEmployee($slip->employee),
                 'reviewed_and_noted_by' => self::mapEmployee($slip->reviewedAndNotedBy),
-                'approved_by'           => self::mapEmployee($slip->approvedBy),
-                'attested_by'           => self::mapEmployee($slip->attestedBy),
+                'approved_by' => self::mapEmployee($slip->approvedBy),
+                'attested_by' => self::mapEmployee($slip->attestedBy),
             ]);
 
         $employees = Employee::with('basicInfo')
             ->get()
-            ->sortBy(fn($e) => $e->basicInfo?->last_name)
-            ->map(fn($e) => self::mapEmployee($e))
+            ->sortBy(fn ($e) => $e->basicInfo?->last_name)
+            ->map(fn ($e) => self::mapEmployee($e))
             ->values();
 
         $this->activityLogService->createLog([
-            'user_id'     => Auth::id(),
-            'module'      => 'attendance',
+            'user_id' => Auth::id(),
+            'module' => 'attendance',
             'description' => 'Viewed whereabout slip management',
         ]);
 
         return Inertia::render('Attendance/WhereaboutSlip/Index', [
-            'slips'     => $slips,
+            'slips' => $slips,
             'employees' => $employees,
         ]);
     }
@@ -72,14 +72,14 @@ class WhereaboutSlipController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'employee_id'              => ['required', 'integer', 'exists:employees,employee_id'],
+            'employee_id' => ['required', 'integer', 'exists:employees,employee_id'],
             'reviewed_and_noted_by_id' => ['required', 'integer', 'exists:employees,employee_id'],
-            'approved_by_id'           => ['required', 'integer', 'exists:employees,employee_id'],
-            'attested_by_id'           => ['required', 'integer', 'exists:employees,employee_id'],
-            'date_filed'               => ['required', 'date'],
-            'purpose_type'             => ['required', 'string', 'in:official,personal'],
-            'purpose_description'      => ['required', 'string', 'max:1000'],
-            'time_out'                 => ['required', 'date_format:H:i:s'],
+            'approved_by_id' => ['required', 'integer', 'exists:employees,employee_id'],
+            'attested_by_id' => ['required', 'integer', 'exists:employees,employee_id'],
+            'date_filed' => ['required', 'date'],
+            'purpose_type' => ['required', 'string', 'in:official,personal'],
+            'purpose_description' => ['required', 'string', 'max:1000'],
+            'time_out' => ['required', 'date_format:H:i:s'],
         ]);
 
         $employee = Employee::findOrFail($validated['employee_id']);
@@ -87,8 +87,8 @@ class WhereaboutSlipController extends Controller
         WhereaboutSlip::create($validated);
 
         $this->activityLogService->createLog([
-            'user_id'     => Auth::id(),
-            'module'      => 'attendance',
+            'user_id' => Auth::id(),
+            'module' => 'attendance',
             'description' => "Created whereabout slip for {$employee->basicInfo->full_name}",
         ]);
 
@@ -98,14 +98,14 @@ class WhereaboutSlipController extends Controller
     public function update(Request $request, WhereaboutSlip $whereaboutSlip): RedirectResponse
     {
         $validated = $request->validate([
-            'employee_id'              => ['required', 'integer', 'exists:employees,employee_id'],
+            'employee_id' => ['required', 'integer', 'exists:employees,employee_id'],
             'reviewed_and_noted_by_id' => ['required', 'integer', 'exists:employees,employee_id'],
-            'approved_by_id'           => ['required', 'integer', 'exists:employees,employee_id'],
-            'attested_by_id'           => ['required', 'integer', 'exists:employees,employee_id'],
-            'date_filed'               => ['required', 'date'],
-            'purpose_type'             => ['required', 'string', 'in:official,personal'],
-            'purpose_description'      => ['required', 'string', 'max:1000'],
-            'time_out'                 => ['required', 'date_format:H:i:s'],
+            'approved_by_id' => ['required', 'integer', 'exists:employees,employee_id'],
+            'attested_by_id' => ['required', 'integer', 'exists:employees,employee_id'],
+            'date_filed' => ['required', 'date'],
+            'purpose_type' => ['required', 'string', 'in:official,personal'],
+            'purpose_description' => ['required', 'string', 'max:1000'],
+            'time_out' => ['required', 'date_format:H:i:s'],
         ]);
 
         $whereaboutSlip->update($validated);
@@ -131,7 +131,7 @@ class WhereaboutSlipController extends Controller
             ],
         ], [
             'time_returned.after' => "Time returned must be after the time out ({$timeOut}).",
-            'time_noted.after'    => 'Time noted must be after time returned.',
+            'time_noted.after' => 'Time noted must be after time returned.',
         ]);
 
         // ── Compute minutes_gone ──────────────────────────────────────────────
@@ -143,10 +143,10 @@ class WhereaboutSlipController extends Controller
 
         $whereaboutSlip->update([
             'time_returned' => $validated['time_returned'],
-            'time_noted'    => $validated['time_noted'],
-            'minutes_gone'  => $minutesGone,
+            'time_noted' => $validated['time_noted'],
+            'minutes_gone' => $minutesGone,
             'return_status' => 'returned',
-            'status'        => 'done',
+            'status' => 'done',
         ]);
 
         // ── Re-trigger attendance computation for personal slips ──────────────
@@ -168,7 +168,7 @@ class WhereaboutSlipController extends Controller
     public function bulkDestroy(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'ids'   => ['required', 'array', 'min:1'],
+            'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['integer', 'exists:whereabout_slips,whereabout_slip_id'],
         ]);
 
@@ -178,7 +178,7 @@ class WhereaboutSlipController extends Controller
 
         return back()->with(
             'success',
-            "Successfully deleted {$count} whereabout slip" . ($count !== 1 ? 's' : '') . '.'
+            "Successfully deleted {$count} whereabout slip".($count !== 1 ? 's' : '').'.'
         );
     }
 
@@ -191,10 +191,10 @@ class WhereaboutSlipController extends Controller
      */
     private function recomputeAttendanceForSlip(WhereaboutSlip $slip): void
     {
-        $date  = $slip->date_filed->format('Y-m-d');
-        $tz    = 'Asia/Manila';
+        $date = $slip->date_filed->format('Y-m-d');
+        $tz = 'Asia/Manila';
         $start = Carbon::parse($date, $tz)->startOfDay()->utc();
-        $end   = Carbon::parse($date, $tz)->endOfDay()->utc();
+        $end = Carbon::parse($date, $tz)->endOfDay()->utc();
 
         $log = Attendance::where('employee_id', $slip->employee_id)
             ->whereBetween('captured_at', [$start, $end])
@@ -208,17 +208,19 @@ class WhereaboutSlipController extends Controller
 
     private static function mapEmployee(?Employee $employee): ?array
     {
-        if (!$employee) return null;
+        if (! $employee) {
+            return null;
+        }
 
         return [
-            'employee_id'            => $employee->employee_id,
+            'employee_id' => $employee->employee_id,
             'employee_basic_info_id' => $employee->employee_basic_info_id,
-            'basic_info'             => $employee->basicInfo ? [
+            'basic_info' => $employee->basicInfo ? [
                 'employee_basic_info_id' => $employee->basicInfo->employee_basic_info_id,
-                'first_name'             => $employee->basicInfo->first_name,
-                'last_name'              => $employee->basicInfo->last_name,
-                'middle_name'            => $employee->basicInfo->middle_name,
-                'name_extension'         => $employee->basicInfo->name_extension,
+                'first_name' => $employee->basicInfo->first_name,
+                'last_name' => $employee->basicInfo->last_name,
+                'middle_name' => $employee->basicInfo->middle_name,
+                'name_extension' => $employee->basicInfo->name_extension,
             ] : null,
         ];
     }

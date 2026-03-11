@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Services\ActivityLogService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -30,7 +29,7 @@ class ActivityLogsController extends Controller
             ->count('user_id');
 
         $activityLogs = ActivityLog::query()
-            ->when(!Auth::user()->hasRole('super_admin'), function ($query) {
+            ->when(! Auth::user()->hasRole('super_admin'), function ($query) {
                 $query->where('user_id', Auth::id());
             })
             ->latest('created_at')

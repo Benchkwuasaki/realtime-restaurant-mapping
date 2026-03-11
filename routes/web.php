@@ -1,51 +1,41 @@
 <?php
 
-use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\DocumentTrackingController;
-use App\Http\Controllers\EmployeeController;
-use App\Http\Controllers\PayrollController;
-use App\Http\Controllers\ReportsAndAnalyticsController;
-use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AttendanceLogController;
-use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\AttendanceRecordController;
+use App\Http\Controllers\AttendanceReportController;
 use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\LeaveCalendarController;
-use App\Http\Controllers\LeaveAccrualController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
-use App\Http\Controllers\PositionController;
-use App\Http\Controllers\UnitController;
-use App\Http\Controllers\InternalOrganizationController;
-use App\Http\Controllers\UserController;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use Laravel\Fortify\Features;
-use App\Http\Controllers\HolidayController;
-use App\Http\Controllers\WhereaboutSlipController;
+use App\Http\Controllers\DocumentTrackingController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmploymentClassificationController;
-use Illuminate\Support\Facades\Http;
-
-// Leave
+use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\InternalOrganizationController;
+use App\Http\Controllers\JobOrderPositionController;
+use App\Http\Controllers\LeaveAccrualController;
+use App\Http\Controllers\LeaveApplicationController;
+use App\Http\Controllers\LeaveCalendarController;
+use App\Http\Controllers\LeaveEntitlementController;
 use App\Http\Controllers\LeaveSettingsController;
 use App\Http\Controllers\LeaveTypeController;
-use App\Http\Controllers\LeaveEntitlementController;
-use App\Http\Controllers\LeaveApplicationController;
-
+use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\PositionController;
+// Leave
+use App\Http\Controllers\UnitController;
+use App\Http\Controllers\WhereaboutSlipController;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 // reports and analytics
-use App\Http\Controllers\LeaveReportController;
-use App\Http\Controllers\AttendanceReportController;
+use Laravel\Fortify\Features;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
     ]);
 })->name('home');
-
-
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard Routes
@@ -109,7 +99,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{employee}/seminar', [EmployeeController::class, 'storeSeminar'])->name('seminar.store');
         Route::put('/{employee}/seminar/{seminar}', [EmployeeController::class, 'updateSeminar'])->name('seminar.update');
         Route::delete('/{employee}/seminar/{seminar}', [EmployeeController::class, 'destroySeminar'])->name('seminar.destroy');
-
 
         Route::post('/{employee}/files', [EmployeeController::class, 'storeFile'])
             ->name('file.store');
@@ -232,8 +221,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         'holiday' => 'holiday:holiday_id',
     ]);
 
-
-
     /*
     |--------------------------------------------------------------------------
     | Leave
@@ -242,10 +229,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('leave')->name('leave.')->group(function () {
         Route::get('/leave-calendar', [LeaveCalendarController::class, 'index'])->name('leave-calendar');
 
-
         // leave setting
         Route::get('/leave-settings', [LeaveSettingsController::class, 'index'])->name('leave-settings');
-
 
         // leave types
         Route::prefix('leave-type')->name('leave-type.')->group(function () {
@@ -273,7 +258,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/balances', [LeaveAccrualController::class, 'balances'])->name('balances');
         });
 
-
         Route::get('/leave-application', [LeaveApplicationController::class, 'index'])->name('leave-application.index');
 
     });
@@ -296,7 +280,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
         Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
 
-});
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -314,7 +298,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
         Route::get('/', [AttendanceLogController::class, 'index'])->name('index');
     });
-
 
     /*
 |--------------------------------------------------------------------------
@@ -348,4 +331,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 });
 
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';

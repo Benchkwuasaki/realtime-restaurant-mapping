@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Holiday extends Model
 {
     protected $primaryKey = 'holiday_id';
+
     protected $table = 'holidays';
 
     protected $fillable = [
@@ -18,7 +19,7 @@ class Holiday extends Model
     ];
 
     protected $casts = [
-        'date'         => 'date',
+        'date' => 'date',
         'is_recurring' => 'boolean',
     ];
-}   
+}

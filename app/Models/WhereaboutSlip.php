@@ -25,7 +25,7 @@ class WhereaboutSlip extends Model
     ];
 
     protected $casts = [
-        'date_filed'   => 'date',
+        'date_filed' => 'date',
         'minutes_gone' => 'integer',
     ];
 

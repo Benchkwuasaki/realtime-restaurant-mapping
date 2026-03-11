@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Models\LeaveApplication;
 use App\Models\LeaveType;
-use App\Models\Employee;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
-
 
 class LeaveApplicationController extends Controller
 {
@@ -17,10 +16,6 @@ class LeaveApplicationController extends Controller
      */
     public function index()
     {
-
-
-
-
 
         $currentYear = now()->year;
 
@@ -36,7 +31,7 @@ class LeaveApplicationController extends Controller
             'basicInfo',
             'item.position.department',
             'salaryGradeStep',
-            'leaveBalances' => fn($q) => $q
+            'leaveBalances' => fn ($q) => $q
                 ->where('cycle_year', $currentYear)
                 ->whereIn('leave_type_id', array_filter([$vacationTypeId, $sickTypeId])),
         ])
@@ -44,7 +39,7 @@ class LeaveApplicationController extends Controller
             ->orderBy('employee_basic_info.last_name')
             ->select('employees.*')
             ->get()
-            ->map(fn(Employee $e) => [
+            ->map(fn (Employee $e) => [
                 'employee_id' => $e->employee_id,
                 'employee_name' => $e->basicInfo->full_name ?? $e->basicInfo->first_name,
                 'last_name' => $e->basicInfo->last_name ?? '',
@@ -67,7 +62,7 @@ class LeaveApplicationController extends Controller
         $leave_applications = LeaveApplication::with(['employee.basicInfo', 'leaveType', 'detail'])
             ->orderByDesc('date_of_filing')
             ->get()
-            ->map(fn(LeaveApplication $app) => [
+            ->map(fn (LeaveApplication $app) => [
                 'leave_application_id' => $app->leave_application_id,
                 'employee_id' => $app->employee_id,
                 'leave_type_id' => $app->leave_type_id,
@@ -123,15 +118,6 @@ class LeaveApplicationController extends Controller
             'total_approved',
             'total_disapproved',
         ));
-
-
-
-
-
-
-
-
-
 
         //        // Eager-load employee, leaveType, and detail to avoid N+1 queries
         // $leave_applications = LeaveApplication::with(['employee.basicInfo', 'leaveType', 'detail'])
