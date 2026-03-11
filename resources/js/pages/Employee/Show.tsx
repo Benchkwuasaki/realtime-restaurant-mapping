@@ -400,15 +400,6 @@ function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatu
             <div className="flex items-center gap-2">
                 {isStatus ? (
                     <>
-                        {/* Status dot uses CSS vars via Tailwind — no hardcoded hex */}
-                        <div className={cn(
-                            "w-5 h-5 rounded-full flex items-center justify-center shrink-0",
-                            statusValue
-                                ? "bg-emerald-500/10 border border-emerald-500/20"
-                                : "bg-rose-500/10 border border-rose-500/20",
-                        )}>
-                            <div className={cn("w-2 h-2 rounded-full", statusValue ? "bg-emerald-500" : "bg-rose-500")} />
-                        </div>
                         <ActiveBadge active={statusValue ?? false} />
                     </>
                 ) : value ? (
