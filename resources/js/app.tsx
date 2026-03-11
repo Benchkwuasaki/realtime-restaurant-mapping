@@ -46,10 +46,18 @@ createInertiaApp({
 // This will set light / dark mode on load...
 initializeTheme();
 
-
+// Employee Avatar error
 // npm install react-easy-crop 
+
+// For Attendance Logs
 // npm install reverb
 // php artisan install:broadcasting
 // composer require laravel/reverb
 // npm install --save-dev laravel-echo pusher-js
 // php artisan reverb:start
+
+
+// For document upload error
+// C:\php\php.ini
+// upload_max_filesize = 25M
+// post_max_size = 30M
