@@ -182,7 +182,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {
             title: "Incoming",
             url: route('document-tracking-incoming.index'),
-          }
+          },
+          {
+            title: "Outgoing",
+            url: route('document-tracking-outgoing.index'),
+          },
+          {
+            title: "Archive",
+            url: route('document-tracking-archive.index'),
+          },
         ]
       },
       {
