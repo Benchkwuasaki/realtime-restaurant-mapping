@@ -129,15 +129,10 @@ class PaySlipGenerationController extends Controller
         ]);
     }
 
-<<<<<<< HEAD
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-=======
     /**
      * Build a single payslip data array for one employee + period.
      * Returns null if the employee, period, or payroll record is missing.
      */
->>>>>>> origin/refactored-payroll
     private function buildPayslip(int $employeeId, int $periodId): ?array
     {
         $employee = Employee::with([

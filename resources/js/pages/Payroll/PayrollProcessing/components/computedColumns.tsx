@@ -86,7 +86,7 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
     {
         accessorKey: 'basicPay',
         header: () => (
-            <div className="text-right">
+            <div className="text-center">
                 <div>Basic Pay</div>
                 <div className="text-[10px] font-normal text-blue-400">semi-monthly</div>
             </div>
@@ -94,23 +94,23 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         cell: ({ getValue }) => (
             <span className="tabular-nums text-slate-700">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-blue-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-blue-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
     {
         accessorKey: 'allowances',
-        header: () => <div className="text-right">Allowances</div>,
+        header: () => <div className="text-center">Allowances</div>,
         cell: ({ getValue }) => (
             <span className="tabular-nums text-slate-700">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-blue-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-blue-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
     {
         accessorKey: 'grossPay',
-        header: () => <div className="text-right font-semibold">Gross Pay</div>,
+        header: () => <div className="text-center font-semibold">Gross Pay</div>,
         cell: ({ getValue }) => (
             <span className="font-semibold tabular-nums text-blue-700">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-blue-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-blue-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
 
     // ── Deductions — Attendance ───────────────────────────────────────────────
@@ -118,7 +118,7 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         id: 'absent',
         accessorKey: 'absentDeduction',
         header: () => (
-            <div className="text-right">
+            <div className="text-center">
                 <div>Absent</div>
                 <div className="text-[10px] font-normal text-orange-400">days / amt</div>
             </div>
@@ -126,7 +126,7 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         cell: ({ row }) => {
             const { absentDays, absentDeduction } = row.original;
             return absentDays > 0 ? (
-                <div className="text-right">
+                <div className="text-center">
                     <div className="text-[11px] text-orange-500">
                         {absentDays} day{absentDays !== 1 ? 's' : ''}
                     </div>
@@ -136,13 +136,13 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
                 <span className="text-slate-400">—</span>
             );
         },
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-orange-50/80 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-orange-50/80 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
     {
         id: 'tardy',
         accessorKey: 'lateDeduction',
         header: () => (
-            <div className="text-right">
+            <div className="text-center">
                 <div>Tardy</div>
                 <div className="text-[10px] font-normal text-orange-400">mins / amt</div>
             </div>
@@ -150,7 +150,7 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         cell: ({ row }) => {
             const { lateMinutes, lateDeduction } = row.original;
             return lateMinutes > 0 ? (
-                <div className="text-right">
+                <div className="text-center">
                     <div className="text-[11px] text-orange-500">{lateMinutes} min</div>
                     <div className="font-medium text-orange-600">{peso(lateDeduction)}</div>
                 </div>
@@ -158,41 +158,41 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
                 <span className="text-slate-400">—</span>
             );
         },
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-orange-50/80 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-orange-50/80 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
 
     // ── Deductions — Statutory ────────────────────────────────────────────────
     {
         accessorKey: 'gsis',
-        header: () => <div className="text-right">GSIS</div>,
+        header: () => <div className="text-center">GSIS</div>,
         cell: ({ getValue }) => (
             <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
     {
         accessorKey: 'philhealth',
-        header: () => <div className="text-right">PhilHealth</div>,
+        header: () => <div className="text-center">PhilHealth</div>,
         cell: ({ getValue }) => (
             <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
     {
         accessorKey: 'pagibig',
-        header: () => <div className="text-right">Pag-IBIG</div>,
+        header: () => <div className="text-center">Pag-IBIG</div>,
         cell: ({ getValue }) => (
             <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
     {
         accessorKey: 'tax',
-        header: () => <div className="text-right">Tax</div>,
+        header: () => <div className="text-center">Tax</div>,
         cell: ({ getValue }) => (
             <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
 
     // ── Deductions — Org ──────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         id: 'orgSavingsDues',
         accessorFn: (row) => row.internalOrgSavings + row.internalOrgSecond,
         header: () => (
-            <div className="text-right">
+            <div className="text-center">
                 <div>Org Savings</div>
                 <div className="text-[10px] font-normal text-red-400">&amp; Dues</div>
             </div>
@@ -208,12 +208,12 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         cell: ({ getValue }) => (
             <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
     {
         accessorKey: 'internalOrgLoans',
         header: () => (
-            <div className="text-right">
+            <div className="text-center">
                 <div>Org Loans</div>
                 <div className="text-[10px] font-normal text-red-400">both cut-offs</div>
             </div>
@@ -221,12 +221,12 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         cell: ({ getValue }) => (
             <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
     {
         accessorKey: 'otherDeductionsMisc',
         header: () => (
-            <div className="text-right">
+            <div className="text-center">
                 <div>Other Ded.</div>
                 <div className="text-[10px] font-normal text-red-400">water, misc</div>
             </div>
@@ -234,21 +234,21 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         cell: ({ getValue }) => (
             <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
     {
         accessorKey: 'totalDeductions',
-        header: () => <div className="text-right font-semibold">Total Ded.</div>,
+        header: () => <div className="text-center font-semibold">Total Ded.</div>,
         cell: ({ getValue }) => (
             <span className="font-semibold tabular-nums text-red-700">{peso(getValue<number>())}</span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-right text-[11px] font-medium text-slate-600' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
     },
 
     // ── Net Pay ───────────────────────────────────────────────────────────────
     {
         accessorKey: 'netPay',
-        header: () => <div className="text-right">Net Pay</div>,
+        header: () => <div className="text-center">Net Pay</div>,
         cell: ({ row }) => (
             <span
                 className={`font-bold tabular-nums ${
@@ -258,7 +258,7 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
                 {peso(row.original.netPay)}
             </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-right', headerClassName: 'border-r border-b bg-green-50 px-3 py-1.5 text-right text-[11px] font-medium text-green-700' },
+        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-green-50 px-3 py-1.5 text-center text-[11px] font-medium text-green-700' },
     },
 
     // ── Remarks ───────────────────────────────────────────────────────────────
@@ -347,7 +347,7 @@ export const computedHeaderGroups = [
     {
         label: 'Net Pay',
         rowSpan: 2,
-        className: 'border-r border-b bg-green-50 px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase text-green-700',
+        className: 'border-r border-b bg-green-50 px-3 py-2 text-center text-xs font-semibold tracking-wide uppercase text-green-700',
     },
     // Remarks — spans both header rows
     {
