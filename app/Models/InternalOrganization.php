@@ -44,6 +44,7 @@ class InternalOrganization extends Model
     {
         return 'internal_organization_id';
     }
+
     public function services(): HasMany
     {
         return $this->hasMany(

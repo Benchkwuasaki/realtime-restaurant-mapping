@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Services\ActivityLogService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -30,14 +29,16 @@ class ActivityLogsController extends Controller
             ->count('user_id');
 
         $activityLogs = ActivityLog::query()
-            ->with(['user:id,name'])
+            ->when(! Auth::user()->hasRole('super_admin'), function ($query) {
+                $query->where('user_id', Auth::id());
+            })
             ->latest('created_at')
             ->get()
             ->map(function (ActivityLog $log) {
                 return [
-                    'user' => $this->activityLogService->formatUserName(optional($log->user)->name ?? 'System'),
+                    'user' => $log->user->getFullName(),
                     'module' => $this->activityLogService->formatModuleName($log->module),
-                    'description' => $log->description,
+                    'activity' => $log->activity,
                     'device' => $log->device,
                     'platform' => $log->platform,
 
@@ -50,7 +51,7 @@ class ActivityLogsController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'general',
-            'description' => 'Viewed activity logs',
+            'activity' => 'Viewed activity logs',
         ]);
 
         return Inertia::render('ActivityLogs/Index', [

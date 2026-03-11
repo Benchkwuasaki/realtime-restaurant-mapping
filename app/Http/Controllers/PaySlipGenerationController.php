@@ -46,11 +46,11 @@ class PaySlipGenerationController extends Controller
             ->unique(fn ($p) => $p->start_date->format('Y-m-d').'_'.$p->end_date->format('Y-m-d'))
             ->map(fn (PayrollPeriod $p) => [
                 'payroll_period_id' => $p->payroll_period_id,
-                'label'             => $this->formatPeriodLabel($p->start_date, $p->end_date),
-                'start_date'        => $p->start_date,
-                'end_date'          => $p->end_date,
-                'cut_off'           => $p->cut_off,
-                'status'            => $p->status,
+                'label' => $this->formatPeriodLabel($p->start_date, $p->end_date),
+                'start_date' => $p->start_date,
+                'end_date' => $p->end_date,
+                'cut_off' => $p->cut_off,
+                'status' => $p->status,
             ])
             ->values();
 
@@ -85,14 +85,15 @@ class PaySlipGenerationController extends Controller
         $payroll_periods = $payroll_periods->map(function ($p) use ($periodClassifications) {
             $key = Carbon::parse($p['start_date'])->format('Y-m-d').'_'.Carbon::parse($p['end_date'])->format('Y-m-d');
             $p['available_classifications'] = $periodClassifications->get($key, collect())->values()->toArray();
+
             return $p;
         })->values();
 
         // ── Request params ────────────────────────────────────────────────────
-        $selectedEmployeeId  = $request->integer('employee_id') ?: null;
-        $selectedPeriodId    = $request->integer('period_id') ?: null;
-        $isBulk              = $request->boolean('bulk');
-        $bulkClassification  = $request->string('classification')->toString();
+        $selectedEmployeeId = $request->integer('employee_id') ?: null;
+        $selectedPeriodId = $request->integer('period_id') ?: null;
+        $isBulk = $request->boolean('bulk');
+        $bulkClassification = $request->string('classification')->toString();
 
         // ── Single payslip ────────────────────────────────────────────────────
         $payslip = null;
@@ -119,20 +120,18 @@ class PaySlipGenerationController extends Controller
         }
 
         return Inertia::render('Payroll/Outputs/PaySlipGeneration/Index', [
-            'employees'           => $employees,
-            'payroll_periods'     => $payroll_periods,
-            'payslip'             => $payslip,
-            'bulk_payslips'       => $bulkPayslips,
+            'employees' => $employees,
+            'payroll_periods' => $payroll_periods,
+            'payslip' => $payslip,
+            'bulk_payslips' => $bulkPayslips,
             'selected_employee_id' => $selectedEmployeeId,
-            'selected_period_id'  => $selectedPeriodId,
-            'is_bulk'             => $isBulk,
+            'selected_period_id' => $selectedPeriodId,
+            'is_bulk' => $isBulk,
         ]);
     }
 
-    /**
-     * Build a single payslip data array for one employee + period.
-     * Returns null if the employee, period, or payroll record is missing.
-     */
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
     private function buildPayslip(int $employeeId, int $periodId): ?array
     {
         $employee = Employee::with([
@@ -164,55 +163,55 @@ class PaySlipGenerationController extends Controller
         }
 
         $basicInfo = $employee->basicInfo;
-        $position  = $employee->item?->position;
-        $sgStep    = $employee->salaryGradeStep;
+        $position = $employee->item?->position;
+        $sgStep = $employee->salaryGradeStep;
 
         return [
-            'employee_name'             => trim(
+            'employee_name' => trim(
                 ($basicInfo->last_name ?? '').', '.
                 ($basicInfo->first_name ?? '').' '.
                 ($basicInfo->middle_name ?? '')
             ),
-            'position'                  => $position?->position_name ?? '—',
-            'salary_grade'              => (int) ($sgStep?->salary_grade ?? 0),
-            'step'                      => (int) ($sgStep?->step ?? 0),
+            'position' => $position?->position_name ?? '—',
+            'salary_grade' => (int) ($sgStep?->salary_grade ?? 0),
+            'step' => (int) ($sgStep?->step ?? 0),
             'employment_classification' => ucfirst(strtolower($employee->employment_classification ?? 'regular')),
-            'period_label'              => $this->formatPeriodLabel($period->start_date, $period->end_date),
+            'period_label' => $this->formatPeriodLabel($period->start_date, $period->end_date),
 
-            'basic_pay'         => (float) ($record->basic_pay ?? 0),
-            'pera'              => (float) ($record->pera ?? 0),
-            'rice_allowance'    => (float) ($record->rice_allowance ?? 0),
+            'basic_pay' => (float) ($record->basic_pay ?? 0),
+            'pera' => (float) ($record->pera ?? 0),
+            'rice_allowance' => (float) ($record->rice_allowance ?? 0),
             'uniform_allowance' => (float) ($record->uniform_allowance ?? 0),
 
-            'gsis_premium'    => (float) ($record->gsis_premium ?? 0),
-            'philhealth'      => (float) ($record->philhealth ?? 0),
-            'pag_ibig'        => (float) ($record->pag_ibig ?? 0),
+            'gsis_premium' => (float) ($record->gsis_premium ?? 0),
+            'philhealth' => (float) ($record->philhealth ?? 0),
+            'pag_ibig' => (float) ($record->pag_ibig ?? 0),
             'withholding_tax' => (float) ($record->withholding_tax ?? 0),
 
-            'absent_days'      => (int)   ($record->absent_days ?? 0),
+            'absent_days' => (int) ($record->absent_days ?? 0),
             'absent_deduction' => (float) ($record->absent_deduction ?? 0),
-            'late_minutes'     => (int)   ($record->late_minutes ?? 0),
-            'late_deduction'   => (float) ($record->late_deduction ?? 0),
+            'late_minutes' => (int) ($record->late_minutes ?? 0),
+            'late_deduction' => (float) ($record->late_deduction ?? 0),
 
-            'gsis_mpl'       => (float) ($record->gsis_mpl ?? 0),
+            'gsis_mpl' => (float) ($record->gsis_mpl ?? 0),
             'gsis_emergency' => (float) ($record->gsis_emergency ?? 0),
-            'pag_ibig_mpl'   => (float) ($record->pag_ibig_mpl ?? 0),
-            'ama_y2k_union'  => (float) ($record->ama_y2k_union ?? 0),
-            'water_bill'     => (float) ($record->water_bill ?? 0),
+            'pag_ibig_mpl' => (float) ($record->pag_ibig_mpl ?? 0),
+            'ama_y2k_union' => (float) ($record->ama_y2k_union ?? 0),
+            'water_bill' => (float) ($record->water_bill ?? 0),
 
-            'net_pay'             => (float) ($record->net_pay ?? 0),
-            'floor_check_passed'  => (bool)  ($record->floor_check_passed ?? true),
-            'posted_date'         => $record->posted_at
+            'net_pay' => (float) ($record->net_pay ?? 0),
+            'floor_check_passed' => (bool) ($record->floor_check_passed ?? true),
+            'posted_date' => $record->posted_at
                                         ? Carbon::parse($record->posted_at)->format('M d, Y')
                                         : '—',
-            'hr_officer'          => $record->hr_officer_name ?? '—',
+            'hr_officer' => $record->hr_officer_name ?? '—',
         ];
     }
 
     private function formatPeriodLabel(string $startDate, string $endDate): string
     {
         $start = Carbon::parse($startDate);
-        $end   = Carbon::parse($endDate);
+        $end = Carbon::parse($endDate);
 
         if ($start->month === $end->month && $start->year === $end->year) {
             return $start->format('M d').' – '.$end->format('d, Y');

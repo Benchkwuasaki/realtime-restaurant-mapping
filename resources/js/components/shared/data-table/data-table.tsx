@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import {
     flexRender,
@@ -14,9 +14,9 @@ import {
     type RowSelectionState,
     type SortingState,
     type VisibilityState,
-} from "@tanstack/react-table"
-import * as React from "react"
-import { Checkbox } from "@/components/ui/checkbox"
+} from '@tanstack/react-table';
+import * as React from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 import {
     Table,
@@ -25,17 +25,17 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table"
+} from '@/components/ui/table';
 
-import { useIsMobile } from "../../../hooks/use-is-mobile"
-import { DataTablePagination } from "./data-table-pagination"
+import { useIsMobile } from '../../../hooks/use-is-mobile';
+import { DataTablePagination } from './data-table-pagination';
 import {
     DataTableToolbar,
     type ToolbarAddButtonConfig,
     type ToolbarBulkDeleteConfig,
     type ToolbarFilterConfig,
-} from "./data-table-toolbar"
-import { type DataTableColumnDef } from "./types/data-table-types"
+} from './data-table-toolbar';
+import { type DataTableColumnDef } from './types/data-table-types';
 
 // ─── Header group config ────────────────────────────────────────────────────────
 
@@ -59,8 +59,8 @@ export interface DataTableHeaderGroupCell {
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
 interface DataTableProps<TData, TValue> {
-    columns: DataTableColumnDef<TData, TValue>[]
-    data: TData[]
+    columns: DataTableColumnDef<TData, TValue>[];
+    data: TData[];
 
     /**
      * How to derive the stable row id from each record.
@@ -72,7 +72,7 @@ interface DataTableProps<TData, TValue> {
      * Optional click handler for an entire row (e.g. navigate to detail page).
      * Receives the full row object. When omitted, rows are not clickable.
      */
-    onRowClick?: (row: Row<TData>) => void
+    onRowClick?: (row: Row<TData>) => void;
 
     /** Default page size (defaults to 10) */
     defaultPageSize?: number
@@ -137,14 +137,18 @@ export function DataTable<TData, TValue>({
     footerRow,
     striped = false,
 }: DataTableProps<TData, TValue>) {
-    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
-    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-    const [sorting, setSorting] = React.useState<SortingState>([])
+    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
+        {},
+    );
+    const [columnVisibility, setColumnVisibility] =
+        React.useState<VisibilityState>({});
+    const [columnFilters, setColumnFilters] =
+        React.useState<ColumnFiltersState>([]);
+    const [sorting, setSorting] = React.useState<SortingState>([]);
     const [pagination, setPagination] = React.useState({
         pageIndex: 0,
         pageSize: defaultPageSize,
-    })
+    });
 
     const table = useReactTable({
         data,
@@ -162,12 +166,17 @@ export function DataTable<TData, TValue>({
         autoResetPageIndex: false,
         onRowSelectionChange: setRowSelection,
         onSortingChange: (updater) => {
-            setSorting(updater)
-            setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+            setSorting(updater);
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
         },
         onColumnFiltersChange: (updater) => {
-            setColumnFilters(updater)
-            setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+            setColumnFilters(updater);
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+            const next =
+                typeof updater === 'function'
+                    ? updater(columnFilters)
+                    : updater;
+            onColumnFiltersChangeProp?.(next);
         },
         onColumnVisibilityChange: setColumnVisibility,
         onPaginationChange: setPagination,
@@ -176,7 +185,7 @@ export function DataTable<TData, TValue>({
         getSortedRowModel: getSortedRowModel(),
         getFacetedRowModel: getFacetedRowModel(),
         getFacetedUniqueValues: getFacetedUniqueValues(),
-    })
+    });
 
     const totalFiltered = table.getFilteredRowModel().rows.length
     const pageCount = Math.max(1, Math.ceil(totalFiltered / pagination.pageSize))
@@ -199,19 +208,23 @@ export function DataTable<TData, TValue>({
                 {isMobile ? (
                     <div className="divide-y divide-gray-200">
                         {/* ── Select-all header ── */}
-                        <div className="flex items-center gap-3 bg-muted/50 px-4 py-2">
+                        <div className="bg-muted/50 flex items-center gap-3 px-4 py-2">
                             <Checkbox
                                 checked={
                                     table.getIsAllPageRowsSelected() ||
-                                    (table.getIsSomePageRowsSelected() && "indeterminate")
+                                    (table.getIsSomePageRowsSelected() &&
+                                        'indeterminate')
                                 }
-                                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                                onCheckedChange={(value) =>
+                                    table.toggleAllPageRowsSelected(!!value)
+                                }
                                 aria-label="Select all"
                             />
                             <span className="text-muted-foreground text-xs font-medium">
-                                {table.getIsSomePageRowsSelected() || table.getIsAllPageRowsSelected()
+                                {table.getIsSomePageRowsSelected() ||
+                                table.getIsAllPageRowsSelected()
                                     ? `${Object.keys(rowSelection).length} selected`
-                                    : "Select all"}
+                                    : 'Select all'}
                             </span>
                         </div>
 
@@ -224,35 +237,59 @@ export function DataTable<TData, TValue>({
                                 return (
                                     <div
                                         key={row.id}
-                                        data-state={row.getIsSelected() && "selected"}
-                                        onClick={onRowClick ? () => onRowClick(row) : undefined}
+                                        data-state={
+                                            row.getIsSelected() && 'selected'
+                                        }
+                                        onClick={
+                                            onRowClick
+                                                ? () => onRowClick(row)
+                                                : undefined
+                                        }
                                         className={[
-                                            "flex items-center gap-3 px-4 py-3 transition-colors",
-                                            row.getIsSelected() ? "bg-muted" : "bg-background",
-                                            onRowClick ? "cursor-pointer active:bg-muted" : "",
-                                        ].join(" ")}
+                                            'flex items-center gap-3 px-4 py-3 transition-colors',
+                                            row.getIsSelected()
+                                                ? 'bg-muted'
+                                                : 'bg-background',
+                                            onRowClick
+                                                ? 'active:bg-muted cursor-pointer'
+                                                : '',
+                                        ].join(' ')}
                                     >
                                         {/* Per-row checkbox */}
-                                        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                                        <div
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="shrink-0"
+                                        >
                                             <Checkbox
                                                 checked={row.getIsSelected()}
-                                                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                                                onCheckedChange={(value) =>
+                                                    row.toggleSelected(!!value)
+                                                }
                                                 aria-label="Select row"
                                             />
                                         </div>
 
                                         {/* Card fields */}
-                                        <div className="flex flex-1 flex-col gap-1.5 min-w-0">
+                                        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                                             {cardColumns.map((col) => {
                                                 const colId =
-                                                    (col as { accessorKey?: string }).accessorKey ?? (col.id as string)
+                                                    (
+                                                        col as {
+                                                            accessorKey?: string;
+                                                        }
+                                                    ).accessorKey ??
+                                                    (col.id as string);
                                                 return (
-                                                    <div key={colId}>{col.mobileCard!(row.original)}</div>
-                                                )
+                                                    <div key={colId}>
+                                                        {col.mobileCard!(
+                                                            row.original,
+                                                        )}
+                                                    </div>
+                                                );
                                             })}
                                         </div>
                                     </div>
-                                )
+                                );
                             })
                         ) : (
                             <div className="text-muted-foreground flex h-24 items-center justify-center text-sm">
@@ -395,7 +432,10 @@ export function DataTable<TData, TValue>({
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={columns.length} className="h-24 text-center">
+                                        <TableCell
+                                            colSpan={columns.length}
+                                            className="h-24 text-center"
+                                        >
                                             No results.
                                         </TableCell>
                                     </TableRow>
@@ -430,5 +470,5 @@ export function DataTable<TData, TValue>({
                 }
             />
         </div>
-    )
+    );
 }

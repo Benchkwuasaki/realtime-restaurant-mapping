@@ -37,7 +37,7 @@ export interface LoadEmployeeColumnsOptions {
     setEmployeeIncluded: (id: number, include: boolean) => void;
     updateAttendance: (
         employeeId: number,
-        field: 'absent_days' | 'late_minutes',
+        field: keyof AttendanceRecord,
         value: string,
     ) => void;
 }
@@ -265,6 +265,151 @@ export function createLoadEmployeeColumns(
                             <InputGroupText>min</InputGroupText>
                         </InputGroupAddon>
                     </InputGroup>
+                );
+            },
+            enableSorting: false,
+        },
+
+        // ── Undertime minutes ─────────────────────────────────────────────────
+        // Auto-derived from work_minutes vs expected schedule; editable by HR.
+        // Deducted from payroll at the same per-minute rate as late minutes.
+        {
+            id: 'undertime_minutes',
+            header: 'Undertime (mins)',
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                return (
+                    <InputGroup className="mx-auto w-28">
+                        <InputGroupInput
+                            type="number"
+                            min={0}
+                            value={
+                                attendance[row.original.id]
+                                    ?.undertime_minutes ?? 0
+                            }
+                            onChange={(e) =>
+                                updateAttendance(
+                                    row.original.id,
+                                    'undertime_minutes',
+                                    e.target.value,
+                                )
+                            }
+                            disabled={!included}
+                            className="text-center"
+                        />
+                        <InputGroupAddon align="inline-end">
+                            <InputGroupText>min</InputGroupText>
+                        </InputGroupAddon>
+                    </InputGroup>
+                );
+            },
+            enableSorting: false,
+        },
+
+        // ── Personal Slip minutes (CHARGEABLE) ────────────────────────────────
+        // Personal slips are deducted from payroll at the per-minute rate.
+        // Pre-filled from whereabout_slips; editable so HR can correct values.
+        {
+            id: 'personal_slip_minutes',
+            header: () => (
+                <span>
+                    Personal Slip{' '}
+                    <span className="text-[10px] font-normal text-amber-500">
+                        (chargeable)
+                    </span>
+                </span>
+            ),
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                const val =
+                    attendance[row.original.id]?.personal_slip_minutes ?? 0;
+                return (
+                    <InputGroup
+                        className={`mx-auto w-28 ${val > 0 ? 'ring-1 ring-amber-300' : ''}`}
+                    >
+                        <InputGroupInput
+                            type="number"
+                            min={0}
+                            value={val}
+                            onChange={(e) =>
+                                updateAttendance(
+                                    row.original.id,
+                                    'personal_slip_minutes',
+                                    e.target.value,
+                                )
+                            }
+                            disabled={!included}
+                            className="text-center"
+                        />
+                        <InputGroupAddon align="inline-end">
+                            <InputGroupText>min</InputGroupText>
+                        </InputGroupAddon>
+                    </InputGroup>
+                );
+            },
+            enableSorting: false,
+        },
+
+        // ── Official Slip minutes (AUTHORISED — no deduction) ────────────────
+        // Official slips are authorised absences. They are pre-filled from the
+        // whereabout_slips table and shown for transparency, but they do NOT
+        // produce any payroll deduction.
+        {
+            id: 'official_slip_minutes',
+            header: () => (
+                <span className="text-blue-700">
+                    Official Slip{' '}
+                    <span className="text-[10px] font-normal text-blue-400">
+                        (no deduction)
+                    </span>
+                </span>
+            ),
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                const val =
+                    attendance[row.original.id]?.official_slip_minutes ?? 0;
+                return (
+                    <InputGroup
+                        className={`mx-auto w-28 ${val > 0 ? 'ring-1 ring-blue-200' : ''}`}
+                    >
+                        <InputGroupInput
+                            type="number"
+                            min={0}
+                            value={val}
+                            onChange={(e) =>
+                                updateAttendance(
+                                    row.original.id,
+                                    'official_slip_minutes',
+                                    e.target.value,
+                                )
+                            }
+                            disabled={!included}
+                            className="text-center text-blue-700"
+                        />
+                        <InputGroupAddon align="inline-end">
+                            <InputGroupText>min</InputGroupText>
+                        </InputGroupAddon>
+                    </InputGroup>
+                );
+            },
+            enableSorting: false,
+        },
+
+        // ── Total Work Hours (read-only display) ──────────────────────────────
+        // SUM(work_minutes) / 60 across attended days, computed server-side.
+        // Not editable — reflects actual recorded work time from attendance_records.
+        {
+            id: 'total_work_hours',
+            header: 'Work Hours',
+            cell: ({ row }) => {
+                const included = includedEmployeeIds.includes(row.original.id);
+                const hrs = attendance[row.original.id]?.total_work_hours ?? 0;
+                return (
+                    <span
+                        className={`block text-center text-sm text-muted-foreground tabular-nums ${!included ? 'opacity-40' : ''}`}
+                    >
+                        {hrs > 0 ? `${Number(hrs).toFixed(1)} h` : '—'}
+                    </span>
                 );
             },
             enableSorting: false,

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Services\ActivityLogService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AnnouncementController extends Controller
@@ -17,7 +16,7 @@ class AnnouncementController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'general',
-            'description' => 'Visited Announcement Page',
+            'activity' => 'Visited Announcement Page',
         ]);
 
         return inertia(component: 'Announcement/Index');

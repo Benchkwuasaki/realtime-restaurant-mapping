@@ -36,7 +36,7 @@ class DepartmentController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'organization',
-            'description' => 'Viewed Department Management Page',
+            'activity' => 'Viewed Department Management Page',
         ]);
 
         return Inertia::render('Organization/Department/Index', [

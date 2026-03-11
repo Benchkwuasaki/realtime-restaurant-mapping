@@ -115,7 +115,6 @@ class PositionController extends Controller
             'item_slots' => ['required', 'integer', 'min:1', 'max:100'],
         ]);
 
-        // position_type defaults to 'Regular' via the DB default
         $position = Position::create(collect($validated)->except('item_slots')->toArray());
 
         for ($i = 1; $i <= $validated['item_slots']; $i++) {

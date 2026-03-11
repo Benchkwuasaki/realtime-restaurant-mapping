@@ -21,11 +21,14 @@ class Employee extends Model
         'salary_grade_step_id',
         'employment_classification',
         'work_email',
+        'work_id',
         'password',
         'date_applied',
         'date_hired',
         'work_schedule_start',
         'work_schedule_end',
+        'break_start',
+        'break_end',
         'avatar_path',
         'avatar_url',
         'status',
@@ -125,5 +128,10 @@ class Employee extends Model
             'employee_id',
             'internal_organization_id'
         )->withTimestamps();
+    }
+
+    public function user()
+    {
+        return $this->hasOne(User::class, 'employee_id', 'employee_id');
     }
 }
