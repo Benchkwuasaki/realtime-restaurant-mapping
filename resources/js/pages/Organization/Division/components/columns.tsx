@@ -115,7 +115,7 @@ function MobileDivisionCard({ row, onEdit }: MobileDivisionCardProps) {
                         <span className="font-semibold text-base text-foreground">
                             {row.division_name}
                         </span>
-                        <Badge variant="default" className="font-mono text-xs shrink-0">
+                        <Badge variant="outline" className="font-mono text-xs shrink-0">
                             {row.division_acronym}
                         </Badge>
                     </div>
@@ -222,7 +222,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Divisi
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
-                <Badge variant="default" className="font-mono text-xs">
+                <Badge variant="outline" className="font-mono text-xs">
                     {row.getValue("division_acronym")}
                 </Badge>
             ),

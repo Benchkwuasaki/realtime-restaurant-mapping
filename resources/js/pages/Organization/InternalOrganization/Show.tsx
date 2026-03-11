@@ -135,7 +135,7 @@ function MobileMemberCard({ row }: MobileMemberCardProps) {
                 </div>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
-                <Badge variant={row.status ? "default" : "secondary"} className="text-xs">
+                <Badge variant={row.status ? "default" : "destructive"} className="text-xs">
                     {row.status ? "Active" : "Inactive"}
                 </Badge>
             </div>
@@ -203,7 +203,7 @@ const memberColumns: ColumnDef<OrganizationMember>[] = [
         cell: ({ row }) => {
             const isActive: boolean = row.getValue("status")
             return (
-                <Badge variant={isActive ? "default" : "secondary"}>
+                <Badge variant={isActive ? "default" : "destructive"}>
                     {isActive ? "Active" : "Inactive"}
                 </Badge>
             )
@@ -562,13 +562,13 @@ export default function Show({ organization, availableEmployees }: Props) {
 
                     <InfoRow label="Status" icon={<CheckCircle2 className="h-3 w-3" />}>
                         <Button
-                            variant="outline"
+                            variant={organization.status ? "default" : "destructive"}
                             size="sm"
                             className="h-6 text-xs"
                             onClick={handleToggleStatus}
                             disabled={processing}
                         >
-                            {organization.status ? "Deactivate" : "Activate"}
+                            {organization.status ? "Activate" : "Deactivate"}
                         </Button>
                     </InfoRow>
 
@@ -591,7 +591,7 @@ export default function Show({ organization, availableEmployees }: Props) {
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="outline" className="text-xs">
                                 {members.length} {members.length === 1 ? "member" : "members"}
                             </Badge>
                             <Button

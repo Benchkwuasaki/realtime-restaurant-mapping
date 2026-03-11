@@ -7,10 +7,12 @@ import {
     UserX, Settings, Plus, Trash2, Pencil,
     Check, X, ClipboardList, MapPin, ChevronDown, ChevronRight,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 import AppLayout from "@/layouts/app-layout"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { StatCard } from "@/components/shared/stat-card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -70,29 +72,23 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: "Records", href: route("attendance-record.index") },
 ]
 
-// ─── Themed badge helpers ─────────────────────────────────────────────────────
+// ─── Badge helpers ─────────────────────────────────────────────────────────────
 
 function PurposeBadge({ type }: { type: "personal" | "official" }) {
     return type === "personal"
-        ? <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">Personal</span>
-        : <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">Official</span>
+        ? <Badge variant="secondary">Personal</Badge>
+        : <Badge variant="default">Official</Badge>
 }
 
 function ReturnBadge({ status }: { status: "returned" | "not_returned" }) {
     return status === "returned"
-        ? <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">Returned</span>
-        : <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">Not Returned</span>
+        ? <Badge variant="green">Returned</Badge>
+        : <Badge variant="yellow">Not Returned</Badge>
 }
 
-// ─── Whereabout Slip list (inside history dialog) ─────────────────────────────
+// ─── Whereabout Slip list ─────────────────────────────────────────────────────
 
-function WhereaboutSlipList({
-    slips,
-    hasTimedOut,
-}: {
-    slips: WhereaboutSlip[]
-    hasTimedOut: boolean
-}) {
+function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; hasTimedOut: boolean }) {
     if (slips.length === 0) return null
 
     return (
@@ -106,16 +102,16 @@ function WhereaboutSlipList({
                 return (
                     <div
                         key={slip.whereabout_slip_id}
-                        className={`rounded-lg border bg-background overflow-hidden ${isDeducted ? "border-rose-300 dark:border-rose-800" : "border-border"
-                            }`}
+                        className={cn(
+                            "rounded-lg border bg-background overflow-hidden",
+                            isDeducted ? "border-rose-300 dark:border-rose-800" : "border-border",
+                        )}
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/20">
                             <div className="flex items-center gap-2 min-w-0">
                                 <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
-                                <span className="text-xs font-medium truncate max-w-[220px]">
-                                    {slip.purpose_description}
-                                </span>
+                                <span className="text-xs font-medium truncate max-w-[220px]">{slip.purpose_description}</span>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                                 <PurposeBadge type={slip.purpose_type} />
@@ -125,32 +121,28 @@ function WhereaboutSlipList({
 
                         {/* Time grid */}
                         <div className="grid grid-cols-3 gap-px bg-border/40">
-                            <div className="flex flex-col gap-0.5 px-3 py-2 bg-background">
-                                <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Left At</span>
-                                <span className="text-xs font-mono font-medium">{fmtTime(slip.time_out)}</span>
-                            </div>
-                            <div className="flex flex-col gap-0.5 px-3 py-2 bg-background">
-                                <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Returned At</span>
-                                <span className="text-xs font-mono font-medium">
-                                    {slip.time_returned ? fmtTime(slip.time_returned) : "—"}
-                                </span>
-                            </div>
-                            <div className="flex flex-col gap-0.5 px-3 py-2 bg-background">
-                                <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Duration</span>
-                                <span className={`text-xs font-mono font-medium ${isDeducted ? "text-rose-600 dark:text-rose-400" : ""}`}>
-                                    {slip.minutes_gone != null ? fmtMinutes(slip.minutes_gone) : "—"}
-                                </span>
-                            </div>
+                            {[
+                                { label: "Left At",     value: fmtTime(slip.time_out) },
+                                { label: "Returned At", value: slip.time_returned ? fmtTime(slip.time_returned) : "—" },
+                                { label: "Duration",    value: slip.minutes_gone != null ? fmtMinutes(slip.minutes_gone) : "—", highlight: isDeducted },
+                            ].map(({ label, value, highlight }) => (
+                                <div key={label} className="flex flex-col gap-0.5 px-3 py-2 bg-background">
+                                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
+                                    <span className={cn("text-xs font-mono font-medium", highlight && "text-rose-600 dark:text-rose-400")}>{value}</span>
+                                </div>
+                            ))}
                         </div>
 
                         {/* Deduction notice */}
                         {isPersonal && (
-                            <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold ${isDeducted
-                                ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800/60"
-                                : isPendingDeduction
-                                    ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800/60"
-                                    : "bg-muted/30 text-muted-foreground border-t border-border/40"
-                                }`}>
+                            <div className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold border-t",
+                                isDeducted
+                                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/60"
+                                    : isPendingDeduction
+                                        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60"
+                                        : "bg-muted/30 text-muted-foreground border-border/40",
+                            )}>
                                 <AlertTriangle className="w-3 h-3 shrink-0" />
                                 {isDeducted
                                     ? `${fmtMinutes(slip.minutes_gone)} deducted from work hours`
@@ -160,7 +152,6 @@ function WhereaboutSlipList({
                             </div>
                         )}
 
-                        {/* Official slip note */}
                         {!isPersonal && (
                             <div className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/40 bg-muted/10">
                                 <ClipboardList className="w-3 h-3 shrink-0" />
@@ -194,87 +185,59 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
     return (
         <>
             <tr
-                className={`border-b border-border/50 transition-colors ${hasSlips ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20"
-                    } ${expanded ? "bg-muted/30" : ""}`}
+                className={cn(
+                    "border-b border-border/50 transition-colors",
+                    hasSlips ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20",
+                    expanded && "bg-muted/30",
+                )}
                 onClick={() => hasSlips && setExpanded(e => !e)}
             >
-                {/* Expand toggle */}
                 <td className="w-8 pl-3 py-2.5">
-                    {hasSlips ? (
-                        expanded
+                    {hasSlips
+                        ? expanded
                             ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                             : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                    ) : (
-                        <span className="w-3.5 h-3.5 block" />
-                    )}
+                        : <span className="w-3.5 h-3.5 block" />}
                 </td>
 
-                {/* Date */}
                 <td className="py-2.5 pr-4 text-xs font-medium whitespace-nowrap">
                     {format(parseISO(r.date), "EEE, MMM d, yyyy")}
                 </td>
 
-                {/* Status */}
                 <td className="py-2.5 pr-4">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap border ${STATUS_PILL[r.status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                    {/* STATUS_PILL bundles multi-property colour classes — kept as outline + className */}
+                    <Badge variant="outline" className={cn("text-[10px] gap-1", STATUS_PILL[r.status])}>
                         <Icon className="w-2.5 h-2.5" />
                         {STATUS_LABEL[r.status]}
-                    </span>
+                    </Badge>
                 </td>
 
-                {/* Time In */}
                 <td className="py-2.5 pr-4">
-                    <span className={`text-xs font-mono ${isLate ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-foreground"}`}>
+                    <span className={cn("text-xs font-mono", isLate && "text-rose-600 dark:text-rose-400 font-semibold")}>
                         {fmtTime(r.time_in)}
                     </span>
                 </td>
 
-                {/* Break Out */}
-                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">
-                    {fmtTime(r.break_out)}
-                </td>
+                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{fmtTime(r.break_out)}</td>
+                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{fmtTime(r.break_in)}</td>
+                <td className="py-2.5 pr-4 text-xs font-mono text-foreground">{fmtTime(r.time_out)}</td>
+                <td className="py-2.5 pr-4 text-xs font-mono font-semibold">{fmtMinutes(r.work_minutes)}</td>
 
-                {/* Break In */}
-                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">
-                    {fmtTime(r.break_in)}
-                </td>
-
-                {/* Time Out */}
-                <td className="py-2.5 pr-4 text-xs font-mono text-foreground">
-                    {fmtTime(r.time_out)}
-                </td>
-
-                {/* Work Hours */}
-                <td className="py-2.5 pr-4 text-xs font-mono font-semibold">
-                    {fmtMinutes(r.work_minutes)}
-                </td>
-
-                {/* Late */}
                 <td className="py-2.5 pr-4">
-                    {isLate ? (
-                        <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">
-                            {fmtMinutes(r.late_minutes)}
-                        </span>
-                    ) : (
-                        <span className="text-xs text-muted-foreground/40 font-mono">—</span>
-                    )}
+                    {isLate
+                        ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">{fmtMinutes(r.late_minutes)}</span>
+                        : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
                 </td>
 
-                {/* Slip Deduction */}
                 <td className="py-2.5 pr-3">
-                    {personalDeductionMins > 0 ? (
-                        <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">
-                            -{fmtMinutes(personalDeductionMins)}
-                        </span>
-                    ) : slips.some(s => s.purpose_type === "personal" && s.return_status === "returned" && !hasTimedOut) ? (
-                        <span className="text-[10px] text-amber-500 font-semibold">Pending</span>
-                    ) : (
-                        <span className="text-xs text-muted-foreground/40 font-mono">—</span>
-                    )}
+                    {personalDeductionMins > 0
+                        ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">-{fmtMinutes(personalDeductionMins)}</span>
+                        : slips.some(s => s.purpose_type === "personal" && s.return_status === "returned" && !hasTimedOut)
+                            ? <span className="text-[10px] text-amber-500 font-semibold">Pending</span>
+                            : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
                 </td>
             </tr>
 
-            {/* Expanded slips row */}
             {expanded && hasSlips && (
                 <tr className="bg-muted/10 border-b border-border/50">
                     <td colSpan={10} className="px-4 pb-3 pt-2">
@@ -292,28 +255,16 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
 
 // ─── History Dialog ───────────────────────────────────────────────────────────
 
-function HistoryDialog({
-    record,
-    open,
-    onClose,
-}: {
-    record: RecordWithHistory | null
-    open: boolean
-    onClose: () => void
+function HistoryDialog({ record, open, onClose }: {
+    record: RecordWithHistory | null; open: boolean; onClose: () => void
 }) {
     const toDateStr = (d: Date) => d.toISOString().slice(0, 10)
-
-    const getDefaultFrom = () => {
-        const d = new Date()
-        d.setMonth(d.getMonth() - 1)
-        return toDateStr(d)
-    }
+    const getDefaultFrom = () => { const d = new Date(); d.setMonth(d.getMonth() - 1); return toDateStr(d) }
     const getDefaultTo = () => toDateStr(new Date())
 
     const [dateFrom, setDateFrom] = useState(getDefaultFrom)
     const [dateTo, setDateTo] = useState(getDefaultTo)
 
-    // Reset filters to last 1 month when dialog opens
     useEffect(() => {
         if (open) { setDateFrom(getDefaultFrom()); setDateTo(getDefaultTo()) }
     }, [open])
@@ -322,23 +273,18 @@ function HistoryDialog({
 
     const name = getEmployeeName(record)
 
-    // Always include the current record + its history, deduplicated by date
-    const allRecords = [record, ...record.history].filter(
-        (r, i, arr) => arr.findIndex(x => toLocalDate(x.date).getTime() === toLocalDate(r.date).getTime()) === i
-    )
-
     function toLocalDate(s: string): Date {
-        if (s.length > 10) {
-            const d = new Date(s)
-            return new Date(d.getFullYear(), d.getMonth(), d.getDate())
-        }
+        if (s.length > 10) { const d = new Date(s); return new Date(d.getFullYear(), d.getMonth(), d.getDate()) }
         const [y, m, d] = s.split('-').map(Number)
         return new Date(y, m - 1, d)
     }
 
+    const allRecords = [record, ...record.history].filter(
+        (r, i, arr) => arr.findIndex(x => toLocalDate(x.date).getTime() === toLocalDate(r.date).getTime()) === i
+    )
+
     const from = dateFrom ? toLocalDate(dateFrom) : null
     const to = dateTo ? toLocalDate(dateTo) : null
-
     const filtered = allRecords.filter(r => {
         const d = toLocalDate(r.date)
         if (from && d < from) return false
@@ -349,23 +295,18 @@ function HistoryDialog({
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="w-[98vw] max-w-[1400px] sm:max-w-[1400px] max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
-                {/* ── Header ── */}
                 <DialogHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
                     <DialogTitle className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 overflow-hidden shrink-0 flex items-center justify-center">
                             {record.employee?.avatar_url ? (
                                 <img src={record.employee.avatar_url} alt={name} className="w-full h-full object-cover" />
                             ) : (
-                                <span className="text-xs font-bold text-primary">
-                                    {name.slice(0, 2).toUpperCase()}
-                                </span>
+                                <span className="text-xs font-bold text-primary">{name.slice(0, 2).toUpperCase()}</span>
                             )}
                         </div>
                         <div>
                             <p className="text-sm font-semibold">{name}</p>
-                            <p className="text-xs font-mono text-muted-foreground font-normal">
-                                {record.employee?.work_id ?? "—"}
-                            </p>
+                            <p className="text-xs font-mono text-muted-foreground font-normal">{record.employee?.work_id ?? "—"}</p>
                         </div>
                         <span className="ml-auto text-xs text-muted-foreground font-normal">
                             {filtered.length} record{filtered.length !== 1 ? "s" : ""}
@@ -373,39 +314,20 @@ function HistoryDialog({
                     </DialogTitle>
                 </DialogHeader>
 
-                {/* ── Date filters ── */}
                 <div className="flex items-center gap-3 px-5 py-3 border-b border-border bg-muted/20 shrink-0">
                     <span className="text-xs text-muted-foreground font-medium shrink-0">Filter by date</span>
                     <div className="flex items-center gap-2">
-                        <Input
-                            type="date"
-                            value={dateFrom}
-                            onChange={e => setDateFrom(e.target.value)}
-                            className="h-7 text-xs w-36"
-                            placeholder="From"
-                        />
+                        <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-7 text-xs w-36" />
                         <span className="text-muted-foreground text-xs">—</span>
-                        <Input
-                            type="date"
-                            value={dateTo}
-                            onChange={e => setDateTo(e.target.value)}
-                            className="h-7 text-xs w-36"
-                            placeholder="To"
-                        />
+                        <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-7 text-xs w-36" />
                     </div>
                     {(dateFrom || dateTo) && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-muted-foreground"
-                            onClick={() => { setDateFrom(""); setDateTo("") }}
-                        >
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => { setDateFrom(""); setDateTo("") }}>
                             <X className="w-3 h-3 mr-1" /> Clear
                         </Button>
                     )}
                 </div>
 
-                {/* ── Scrollable table ── */}
                 <div className="overflow-auto flex-1 min-h-0">
                     {filtered.length === 0 ? (
                         <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
@@ -416,27 +338,21 @@ function HistoryDialog({
                             <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
                                 <tr className="border-b border-border">
                                     <th className="w-8 pl-3 py-2.5" />
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Date</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Time In</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Break (Out)</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Break (In)</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Time Out</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                        <span className="flex items-center gap-1"><Timer className="w-3 h-3" /> Work Hrs</span>
-                                    </th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                        <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Late</span>
-                                    </th>
-                                    <th className="py-2.5 pr-3 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                        <span className="flex items-center gap-1"><ClipboardList className="w-3 h-3" /> Slip Ded.</span>
-                                    </th>
+                                    {[
+                                        { label: "Date" }, { label: "Status" }, { label: "Time In" },
+                                        { label: "Break (Out)" }, { label: "Break (In)" }, { label: "Time Out" },
+                                        { label: "Work Hrs", icon: <Timer className="w-3 h-3" /> },
+                                        { label: "Late", icon: <AlertTriangle className="w-3 h-3" /> },
+                                        { label: "Slip Ded.", icon: <ClipboardList className="w-3 h-3" /> },
+                                    ].map(({ label, icon }) => (
+                                        <th key={label} className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                            {icon ? <span className="flex items-center gap-1">{icon}{label}</span> : label}
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map(r => (
-                                    <HistoryTableRow key={r.date} r={r} />
-                                ))}
+                                {filtered.map(r => <HistoryTableRow key={r.date} r={r} />)}
                             </tbody>
                         </table>
                     )}
@@ -446,35 +362,19 @@ function HistoryDialog({
     )
 }
 
+// ─── Settings ─────────────────────────────────────────────────────────────────
 
 const WINDOW_OPTIONS = [0, 15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 420, 480]
 
 function fmtMins(n: number): string {
     if (n === 0) return "None"
-    if (n >= 60) {
-        const h = Math.floor(n / 60)
-        const m = n % 60
-        return m === 0 ? `${h}h` : `${h}h ${m}m`
-    }
+    if (n >= 60) { const h = Math.floor(n / 60); const m = n % 60; return m === 0 ? `${h}h` : `${h}h ${m}m` }
     return `${n} min`
 }
 
-// ─── Setting Form ─────────────────────────────────────────────────────────────
+const EMPTY_FORM = { name: "", early_time_in_minutes: 60, late_time_out_minutes: 60, is_default: false }
 
-const EMPTY_FORM = {
-    name: "",
-    early_time_in_minutes: 60,
-    late_time_out_minutes: 60,
-    is_default: false,
-}
-
-function SettingForm({
-    initial,
-    onSubmit,
-    onCancel,
-    submitting,
-    isExistingDefault = false,
-}: {
+function SettingForm({ initial, onSubmit, onCancel, submitting, isExistingDefault = false }: {
     initial?: Partial<typeof EMPTY_FORM>
     onSubmit: (data: typeof EMPTY_FORM) => void
     onCancel: () => void
@@ -482,77 +382,54 @@ function SettingForm({
     isExistingDefault?: boolean
 }) {
     const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM, ...initial })
-
     function set<K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) {
         setForm(f => ({ ...f, [key]: value }))
     }
 
     return (
         <div className="flex flex-col gap-4">
-            {/* Name */}
             <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Setting Name
-                </Label>
-                <Input
-                    placeholder="e.g. Standard Schedule"
-                    value={form.name}
-                    onChange={e => set("name", e.target.value)}
-                />
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Setting Name</Label>
+                <Input placeholder="e.g. Standard Schedule" value={form.name} onChange={e => set("name", e.target.value)} />
             </div>
 
-            {/* Window selects */}
             <div className="grid grid-cols-2 gap-3">
                 {([
-                    {
-                        key: "early_time_in_minutes" as const,
-                        label: "Early Time-In",
-                        description: "How early before scheduled time-in scans are accepted",
-                    },
-                    {
-                        key: "late_time_out_minutes" as const,
-                        label: "Late Time-Out",
-                        description: "How late after scheduled time-out scans are accepted",
-                    },
+                    { key: "early_time_in_minutes" as const, label: "Early Time-In", description: "How early before scheduled time-in scans are accepted" },
+                    { key: "late_time_out_minutes" as const, label: "Late Time-Out",  description: "How late after scheduled time-out scans are accepted" },
                 ] as const).map(({ key, label, description }) => (
                     <div key={key} className="flex flex-col gap-1.5">
-                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            {label}
-                        </Label>
-                        <p className="text-[10px] text-muted-foreground/70 -mt-0.5 leading-tight">
-                            {description}
-                        </p>
+                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</Label>
+                        <p className="text-[10px] text-muted-foreground/70 -mt-0.5 leading-tight">{description}</p>
                         <select
                             value={form[key]}
                             onChange={e => set(key, Number(e.target.value))}
                             className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                         >
-                            {WINDOW_OPTIONS.map(o => (
-                                <option key={o} value={o}>{fmtMins(o)}</option>
-                            ))}
+                            {WINDOW_OPTIONS.map(o => <option key={o} value={o}>{fmtMins(o)}</option>)}
                         </select>
                     </div>
                 ))}
             </div>
 
-            {/* Default toggle — locked if this is the current default */}
-            <div className={`flex items-center justify-between rounded-lg border border-border px-3.5 py-3 ${isExistingDefault ? "opacity-60 pointer-events-none" : ""
-                }`}>
+            <div className={cn("flex items-center justify-between rounded-lg border border-border px-3.5 py-3", isExistingDefault && "opacity-60 pointer-events-none")}>
                 <div>
                     <p className="text-sm font-medium">Set as default</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        {isExistingDefault
-                            ? "Already the default setting"
-                            : "Used for all attendance calculations"}
+                        {isExistingDefault ? "Already the default setting" : "Used for all attendance calculations"}
                     </p>
                 </div>
                 <div
                     onClick={() => !isExistingDefault && set("is_default", !form.is_default)}
-                    className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 cursor-pointer ${form.is_default ? "bg-primary" : "bg-muted-foreground/30"
-                        }`}
+                    className={cn(
+                        "w-9 h-5 rounded-full transition-colors flex items-center px-0.5 cursor-pointer",
+                        form.is_default ? "bg-primary" : "bg-muted-foreground/30",
+                    )}
                 >
-                    <div className={`w-4 h-4 rounded-full bg-primary-foreground shadow transition-transform ${form.is_default ? "translate-x-4" : "translate-x-0"
-                        }`} />
+                    <div className={cn(
+                        "w-4 h-4 rounded-full bg-primary-foreground shadow transition-transform",
+                        form.is_default ? "translate-x-4" : "translate-x-0",
+                    )} />
                 </div>
             </div>
 
@@ -569,8 +446,6 @@ function SettingForm({
     )
 }
 
-// ─── Settings Dialog ──────────────────────────────────────────────────────────
-
 function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: () => void; settings: AttendanceSetting[] }) {
     const [mode, setMode] = useState<"list" | "create" | "edit">("list")
     const [editing, setEditing] = useState<AttendanceSetting | null>(null)
@@ -581,27 +456,16 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
 
     function handleCreate(data: typeof EMPTY_FORM) {
         setSubmitting(true)
-        router.post(route("attendance-settings.store"), data, {
-            preserveScroll: true,
-            onFinish: () => { setSubmitting(false); resetToList() },
-        })
+        router.post(route("attendance-settings.store"), data, { preserveScroll: true, onFinish: () => { setSubmitting(false); resetToList() } })
     }
-
     function handleUpdate(data: typeof EMPTY_FORM) {
         if (!editing) return
         setSubmitting(true)
-        router.put(route("attendance-settings.update", editing.id), data, {
-            preserveScroll: true,
-            onFinish: () => { setSubmitting(false); resetToList() },
-        })
+        router.put(route("attendance-settings.update", editing.id), data, { preserveScroll: true, onFinish: () => { setSubmitting(false); resetToList() } })
     }
-
     function handleDelete() {
         if (!deleting) return
-        router.delete(route("attendance-settings.destroy", deleting.id), {
-            preserveScroll: true,
-            onFinish: () => setDeleting(null),
-        })
+        router.delete(route("attendance-settings.destroy", deleting.id), { preserveScroll: true, onFinish: () => setDeleting(null) })
     }
 
     useEffect(() => { if (open) resetToList() }, [open])
@@ -618,7 +482,7 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
                     </DialogHeader>
 
                     {mode === "create" && <SettingForm onSubmit={handleCreate} onCancel={resetToList} submitting={submitting} />}
-                    {mode === "edit" && editing && <SettingForm key={editing.id} initial={editing} onSubmit={handleUpdate} onCancel={resetToList} submitting={submitting} />}
+                    {mode === "edit" && editing && <SettingForm key={editing.id} initial={editing} onSubmit={handleUpdate} onCancel={resetToList} submitting={submitting} isExistingDefault={editing.is_default} />}
 
                     {mode === "list" && (
                         <div className="flex flex-col gap-3 mt-1">
@@ -626,13 +490,17 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
                                 <p className="text-sm text-muted-foreground text-center py-6">No settings yet.</p>
                             )}
                             {settings.map(s => (
-                                <div key={s.id} className={`rounded-lg border overflow-hidden transition-colors ${s.is_default ? "border-primary/40 bg-primary/5" : "border-border bg-background"}`}>
+                                <div key={s.id} className={cn(
+                                    "rounded-lg border overflow-hidden transition-colors",
+                                    s.is_default ? "border-primary/40 bg-primary/5" : "border-border bg-background",
+                                )}>
                                     <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/60">
                                         <div className="flex items-center gap-2 min-w-0">
                                             {s.is_default && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded-full border border-primary/20 shrink-0">
+                                                // "Default" uses primary colours — variant="default" applies bg-primary text-primary-foreground
+                                                <Badge variant="default" className="text-[10px] gap-1 font-bold uppercase tracking-wide shrink-0">
                                                     <BadgeCheck className="w-2.5 h-2.5" /> Default
-                                                </span>
+                                                </Badge>
                                             )}
                                             <span className="text-sm font-semibold truncate">{s.name}</span>
                                         </div>
@@ -650,9 +518,9 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
                                     <div className="grid grid-cols-2 gap-px bg-border/50">
                                         {[
                                             { label: "Early Time-In", value: `${s.early_time_in_minutes}m` },
-                                            { label: "Late Time-Out", value: `${s.late_time_out_minutes}m` },
+                                            { label: "Late Time-Out",  value: `${s.late_time_out_minutes}m` },
                                         ].map(({ label, value }) => (
-                                            <div key={label} className={`flex flex-col gap-0.5 px-3 py-2 ${s.is_default ? "bg-primary/5" : "bg-background"}`}>
+                                            <div key={label} className={cn("flex flex-col gap-0.5 px-3 py-2", s.is_default ? "bg-primary/5" : "bg-background")}>
                                                 <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
                                                 <span className="font-mono text-sm font-semibold">{value}</span>
                                             </div>
@@ -672,15 +540,11 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete "{deleting?.name}"?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. Existing records will not be affected.
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>This action cannot be undone. Existing records will not be affected.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90 text-destructive-foreground" onClick={handleDelete}>
-                            Delete
-                        </AlertDialogAction>
+                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90 text-destructive-foreground" onClick={handleDelete}>Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -697,9 +561,9 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
     const [recomputing, setRecomputing] = useState(false)
     const channelRef = useRef<any>(null)
 
-    const present = records.filter(r => r.status === "PRESENT").length
-    const halfDay = records.filter(r => r.status === "HALF_DAY").length
-    const absent = records.filter(r => r.status === "ABSENT").length
+    const present   = records.filter(r => r.status === "PRESENT").length
+    const halfDay   = records.filter(r => r.status === "HALF_DAY").length
+    const absent    = records.filter(r => r.status === "ABSENT").length
     const lateCount = records.filter(r => (r.late_minutes ?? 0) > 0).length
 
     useEffect(() => {
@@ -709,7 +573,7 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
         channelRef.current = channel
 
         channel
-            .subscribed(() => { })
+            .subscribed(() => {})
             .listen(".record.updated", (incoming: AttendanceRecord) => {
                 const parsed = attendanceRecordSchema.safeParse(incoming)
                 if (!parsed.success) return
@@ -720,13 +584,9 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                     if (idx === -1) return [{ ...updated, history: [] }, ...prev]
                     const existing = prev[idx]
                     if (existing.date === updated.date) {
-                        const next = [...prev]
-                        next[idx] = { ...updated, history: existing.history }
-                        return next
+                        const next = [...prev]; next[idx] = { ...updated, history: existing.history }; return next
                     }
-                    const next = [...prev]
-                    next[idx] = { ...updated, history: [existing, ...existing.history] }
-                    return next
+                    const next = [...prev]; next[idx] = { ...updated, history: [existing, ...existing.history] }; return next
                 })
 
                 setSelected(prev => {
@@ -741,10 +601,7 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
 
     function handleRecompute() {
         setRecomputing(true)
-        router.post(route("attendance-record.recompute"), {}, {
-            onFinish: () => setRecomputing(false),
-            preserveScroll: true,
-        })
+        router.post(route("attendance-record.recompute"), {}, { onFinish: () => setRecomputing(false), preserveScroll: true })
     }
 
     const columns = getColumns()
@@ -767,17 +624,17 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                             <Settings className="w-3.5 h-3.5 mr-1.5" /> Settings
                         </Button>
                         <Button variant="outline" size="sm" onClick={handleRecompute} disabled={recomputing}>
-                            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${recomputing ? "animate-spin" : ""}`} />
+                            <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", recomputing && "animate-spin")} />
                             {recomputing ? "Queuing…" : "Recompute All"}
                         </Button>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <StatCard title="Present" value={present} description="Completed full day" icon={<UserCheck className="w-4 h-4 m-2 text-primary" />} />
-                    <StatCard title="Half Day" value={halfDay} description="Partial attendance" icon={<Coffee className="w-4 h-4 m-2 text-secondary-foreground" />} />
-                    <StatCard title="Absent" value={absent} description="No attendance recorded" icon={<UserX className="w-4 h-4 m-2 text-destructive" />} />
-                    <StatCard title="Late" value={lateCount} description="Arrived after scheduled time" icon={<AlertTriangle className="w-4 h-4 m-2 text-accent-foreground" />} />
+                    <StatCard title="Present"  value={present}   description="Completed full day"           icon={<UserCheck     className="w-4 h-4 m-2 text-primary" />} />
+                    <StatCard title="Half Day" value={halfDay}   description="Partial attendance"           icon={<Coffee        className="w-4 h-4 m-2 text-secondary-foreground" />} />
+                    <StatCard title="Absent"   value={absent}    description="No attendance recorded"       icon={<UserX         className="w-4 h-4 m-2 text-destructive" />} />
+                    <StatCard title="Late"     value={lateCount} description="Arrived after scheduled time" icon={<AlertTriangle className="w-4 h-4 m-2 text-accent-foreground" />} />
                 </div>
 
                 <DataTable
@@ -786,24 +643,13 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                     getRowId={row => String(row.id)}
                     searchColumnId="employee_name"
                     searchPlaceholder="Search by name or work ID…"
-                    filters={[
-                        { columnId: "status", title: "Status", options: statusOptions },
-                    ]}
+                    filters={[{ columnId: "status", title: "Status", options: statusOptions }]}
                     onRowClick={row => setSelected(row.original as RecordWithHistory)}
                 />
             </div>
 
-            <HistoryDialog
-                record={selected}
-                open={!!selected}
-                onClose={() => setSelected(null)}
-            />
-
-            <SettingsDialog
-                open={settingsOpen}
-                onClose={() => setSettingsOpen(false)}
-                settings={settings}
-            />
+            <HistoryDialog record={selected} open={!!selected} onClose={() => setSelected(null)} />
+            <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={settings} />
         </AppLayout>
     )
 }

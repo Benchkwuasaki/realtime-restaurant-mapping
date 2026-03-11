@@ -12,15 +12,15 @@ export const statusOptions = [
 // ─── Status pill styles ───────────────────────────────────────────────────────
 
 export const STATUS_PILL: Record<string, string> = {
-    PRESENT:  "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-    HALF_DAY: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-    ABSENT:   "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+    PRESENT:  "bg-emerald-500 text-white border-emerald-500",
+    HALF_DAY: "bg-yellow-500 text-white border-yellow-500",
+    ABSENT:   "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
 }
 
 export const STATUS_DOT: Record<string, string> = {
-    PRESENT:  "bg-emerald-400",
-    HALF_DAY: "bg-amber-400",
-    ABSENT:   "bg-rose-400",
+    PRESENT:  "bg-emerald-500 text-white border-emerald-500",
+    HALF_DAY: "bg-yellow-500 text-white border-yellow-500",
+    ABSENT:   "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
 }
 
 // Human-readable labels shown in pills and dialogs

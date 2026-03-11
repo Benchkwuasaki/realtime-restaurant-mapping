@@ -105,7 +105,7 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
                                         </span>
                                     </div>
                                     <Badge
-                                        variant={emp.is_active ? "default" : "secondary"}
+                                        variant={emp.is_active ? "default" : "destructive"}
                                         className="shrink-0 text-xs"
                                     >
                                         {emp.is_active ? "Active" : "Inactive"}

@@ -12,6 +12,7 @@ import React from "react"
 import { route } from "ziggy-js"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 import {
     useReactTable,
     getCoreRowModel,
@@ -100,7 +101,6 @@ interface BasicInfo {
     educations?: Education[]
     family_info?: FamilyMember[]
 }
-
 interface WhereaboutSlip {
     whereabout_slip_id: number
     purpose_type: "personal" | "official"
@@ -110,7 +110,6 @@ interface WhereaboutSlip {
     return_status: "returned" | "not_returned"
     minutes_gone?: number
 }
-
 interface AttendanceRecord {
     id: number
     date: string
@@ -128,7 +127,6 @@ interface AttendanceRecord {
     status?: string
     whereabout_slips?: WhereaboutSlip[]
 }
-
 interface GovernmentAccount {
     government_account_id: number
     account_type: string
@@ -256,8 +254,6 @@ function toInputTime(t?: string): string {
     if (!t) return ""
     return t.slice(0, 5)
 }
-
-// Convert YYYY-MM-DD or full ISO to local-midnight Date (avoids UTC offset trap)
 function toLocalDate(s: string): Date {
     if (s.length > 10) {
         const d = new Date(s)
@@ -266,8 +262,6 @@ function toLocalDate(s: string): Date {
     const [y, m, d] = s.split("-").map(Number)
     return new Date(y, m - 1, d)
 }
-
-// Format time string "HH:MM" or "HH:MM:SS" → "h:MM AM/PM"
 function fmtTime(t?: string): string {
     if (!t) return "—"
     const slice = t.length > 8
@@ -278,7 +272,6 @@ function fmtTime(t?: string): string {
     const h12 = h % 12 || 12
     return `${h12}:${String(m).padStart(2, "0")} ${ampm}`
 }
-
 function fmtMinutes(mins?: number | null): string {
     if (mins == null) return "—"
     if (mins < 60) return `${mins}m`
@@ -286,7 +279,6 @@ function fmtMinutes(mins?: number | null): string {
     const rem = mins % 60
     return rem > 0 ? `${h}h ${rem}m` : `${h}h`
 }
-
 async function getCroppedImg(
     imageSrc: string,
     croppedAreaPixels: { x: number; y: number; width: number; height: number },
@@ -301,81 +293,65 @@ async function getCroppedImg(
     canvas.width = croppedAreaPixels.width
     canvas.height = croppedAreaPixels.height
     const ctx = canvas.getContext("2d")!
-    ctx.drawImage(
-        image,
-        croppedAreaPixels.x, croppedAreaPixels.y,
-        croppedAreaPixels.width, croppedAreaPixels.height,
-        0, 0,
-        croppedAreaPixels.width, croppedAreaPixels.height,
-    )
+    ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, croppedAreaPixels.width, croppedAreaPixels.height)
     return new Promise((resolve, reject) =>
-        canvas.toBlob(
-            blob => (blob ? resolve(blob) : reject(new Error("Canvas is empty"))),
-            "image/jpeg",
-            0.92,
-        ),
-    )
+        canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error("Canvas is empty"))), "image/jpeg", 0.92))
 }
 
-// ─── Themed badge helpers ─────────────────────────────────────────────────────
 
-// Attendance status
-const STATUS_BADGE: Record<string, string> = {
-    PRESENT: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60",
-    HALF_DAY: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border-sky-200/60 dark:border-sky-800/60",
-    ABSENT: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/60",
-    ON_LEAVE: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-400 border-violet-200/60 dark:border-violet-800/60",
-    LATE: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/60",
+// Attendance status — semantic colour map
+const STATUS_CLASSES: Record<string, string> = {
+    PRESENT: "bg-emerald-500 text-white border-emerald-500",
+    HALF_DAY: "bg-yellow-500 text-white border-yellow-500",
+    ABSENT: "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+    ON_LEAVE: "bg-violet-100 text-violet-700  border-violet-200/60  dark:bg-violet-950/60  dark:text-violet-400  dark:border-violet-800/60",
+    LATE: "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
 }
 const STATUS_LABEL: Record<string, string> = {
-    PRESENT: "Present",
-    HALF_DAY: "Half Day",
-    ABSENT: "Absent",
-    ON_LEAVE: "On Leave",
-    LATE: "Late",
+    PRESENT: "Present", HALF_DAY: "Half Day", ABSENT: "Absent", ON_LEAVE: "On Leave", LATE: "Late",
 }
-
 function statusKey(raw?: string): string {
     return (raw ?? "ABSENT").toUpperCase().replace(/[-\s]/g, "_")
 }
 
+/** Attendance status badge */
 function StatusBadge({ status }: { status?: string }) {
     const key = statusKey(status)
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${STATUS_BADGE[key] ?? "bg-muted text-muted-foreground border-border"}`}>
+        <Badge variant="outline" className={cn("text-[10px]", STATUS_CLASSES[key])}>
             {STATUS_LABEL[key] ?? (status ?? "—")}
-        </span>
+        </Badge>
     )
 }
 
-// Purpose type badge
+/** Personal / Official purpose */
 function PurposeBadge({ type }: { type: "personal" | "official" }) {
     return type === "personal"
-        ? <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">Personal</span>
-        : <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">Official</span>
+        ? <Badge variant="secondary">Personal</Badge>
+        : <Badge variant="default">Official</Badge>
 }
 
-// Return status badge
+/** Returned / Not Returned */
 function ReturnBadge({ status }: { status: "returned" | "not_returned" }) {
     return status === "returned"
-        ? <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">Returned</span>
-        : <span className="inline-flex items-center px-1.5 py-0 h-4 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">Not Returned</span>
+        ? <Badge variant="green" >Returned</Badge>
+        : <Badge variant="yellow" >Not Returned</Badge>
 }
 
-// Employment / generic value badge (primary-tinted)
+/** Generic primary-tinted value badge — uses your --primary CSS var */
 function ValueBadge({ value }: { value: string }) {
     return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground max-w-full truncate">
+        <Badge className="max-w-full truncate text-xs font-semibold rounded-md">
             {value}
-        </span>
+        </Badge>
     )
 }
 
-// Active / Inactive badge
+/** Active / Inactive */
 function ActiveBadge({ active }: { active: boolean }) {
     return active
-        ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">Active</span>
-        : <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/60">Inactive</span>
+        ? <Badge variant="default" >Active</Badge>
+        : <Badge variant="destructive" >Inactive</Badge>
 }
 
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
@@ -389,7 +365,7 @@ function InfoRow({ icon: Icon, label, value, onEdit }: {
                 <Icon className="w-4 h-4 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest leading-none mb-1">{label}</p>
+                <p className="text-[10px]  text-muted-foreground uppercase tracking-widest leading-none mb-1">{label}</p>
                 <p className="text-sm text-foreground font-medium leading-snug break-words">
                     {value || <span className="text-muted-foreground/40 font-normal italic text-xs">Not provided</span>}
                 </p>
@@ -424,8 +400,14 @@ function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatu
             <div className="flex items-center gap-2">
                 {isStatus ? (
                     <>
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${statusValue ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-rose-500/10 border border-rose-500/20"}`}>
-                            <div className={`w-2 h-2 rounded-full ${statusValue ? "bg-emerald-500" : "bg-rose-500"}`} />
+                        {/* Status dot uses CSS vars via Tailwind — no hardcoded hex */}
+                        <div className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center shrink-0",
+                            statusValue
+                                ? "bg-emerald-500/10 border border-emerald-500/20"
+                                : "bg-rose-500/10 border border-rose-500/20",
+                        )}>
+                            <div className={cn("w-2 h-2 rounded-full", statusValue ? "bg-emerald-500" : "bg-rose-500")} />
                         </div>
                         <ActiveBadge active={statusValue ?? false} />
                     </>
@@ -547,12 +529,7 @@ function SalaryEditDialog({ employee, open, onClose }: { employee: Employee; ope
                 <div className="py-2 space-y-3">
                     <div>
                         <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Salary Grade Step ID</Label>
-                        <Input
-                            type="number"
-                            value={form.salary_grade_step_id}
-                            onChange={e => setForm({ salary_grade_step_id: e.target.value })}
-                            placeholder="Enter salary grade step ID"
-                        />
+                        <Input type="number" value={form.salary_grade_step_id} onChange={e => setForm({ salary_grade_step_id: e.target.value })} placeholder="Enter salary grade step ID" />
                         {sgs && (
                             <p className="text-xs text-muted-foreground mt-1.5">
                                 Current: SG-{sgs.salary_grade}, Step {sgs.step} — ₱{Number(sgs.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
@@ -572,13 +549,8 @@ function SalaryEditDialog({ employee, open, onClose }: { employee: Employee; ope
 // ─── Employment Edit Dialog ───────────────────────────────────────────────────
 
 type EditField =
-    | "position"
-    | "date_hired"
-    | "unit_division_department"
-    | "employment_classification"
-    | "date_applied"
-    | "work_schedule"
-    | "break_time"
+    | "position" | "date_hired" | "unit_division_department"
+    | "employment_classification" | "date_applied" | "work_schedule" | "break_time"
     | null
 
 const employmentFieldLabels: Record<NonNullable<EditField>, string> = {
@@ -599,8 +571,7 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
     const currentItemId = employee.item?.item_id?.toString() ?? ""
     const currentPositionName = useMemo(() =>
         items.find(i => i.item_id.toString() === currentItemId)?.position?.position_name ?? "",
-        [items, currentItemId],
-    )
+        [items, currentItemId])
 
     const [form, setForm] = useState({
         item_id: currentItemId,
@@ -613,29 +584,20 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         break_start: toInputTime(employee.break_start),
         break_end: toInputTime(employee.break_end),
     })
-
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
     const handlePositionSelect = (positionName: string) => {
         const grp = positionGroups.find(g => g.positionName === positionName)
         if (!grp) return
         const ownSlot = grp.items.find(i => i.item_id.toString() === currentItemId)
-        if (ownSlot) {
-            setForm(p => ({ ...p, selected_position_name: positionName, item_id: ownSlot.item_id.toString() }))
-            return
-        }
+        if (ownSlot) { setForm(p => ({ ...p, selected_position_name: positionName, item_id: ownSlot.item_id.toString() })); return }
         const firstAvailable = grp.items.find(i => !i.is_occupied)
-        setForm(p => ({
-            ...p,
-            selected_position_name: positionName,
-            item_id: firstAvailable ? firstAvailable.item_id.toString() : "",
-        }))
+        setForm(p => ({ ...p, selected_position_name: positionName, item_id: firstAvailable ? firstAvailable.item_id.toString() : "" }))
     }
 
     const selectedGroup = useMemo(() =>
         positionGroups.find(g => g.positionName === form.selected_position_name),
-        [positionGroups, form.selected_position_name],
-    )
+        [positionGroups, form.selected_position_name])
 
     const save = () => {
         let data: Record<string, string> = {}
@@ -653,13 +615,10 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
     }
 
     const titles: Record<NonNullable<EditField>, string> = {
-        position: "Edit Position",
-        date_hired: "Edit Date Hired",
+        position: "Edit Position", date_hired: "Edit Date Hired",
         unit_division_department: "Unit / Division / Department",
         employment_classification: "Edit Employment Classification",
-        date_applied: "Edit Date Applied",
-        work_schedule: "Edit Work Schedule",
-        break_time: "Edit Break Time",
+        date_applied: "Edit Date Applied", work_schedule: "Edit Work Schedule", break_time: "Edit Break Time",
     }
 
     return (
@@ -683,11 +642,11 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                                         <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.positionName}</span>
                                                         {grp.totalSlots > 1 && (
                                                             isDisabled
-                                                                ? <span className="text-[10px] font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 rounded-md shrink-0">Full</span>
-                                                                : <span className="text-[10px] font-semibold bg-accent text-accent-foreground px-2 py-0.5 rounded-md shrink-0">{grp.availableSlots}/{grp.totalSlots} open</span>
+                                                                ? <Badge variant="outline" className="text-[10px] font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 shrink-0">Full</Badge>
+                                                                : <Badge variant="secondary" className="text-[10px] shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
                                                         )}
                                                         {grp.totalSlots === 1 && isDisabled && (
-                                                            <span className="text-[10px] font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 rounded-md shrink-0">Full</span>
+                                                            <Badge variant="outline" className="text-[10px] font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 shrink-0">Full</Badge>
                                                         )}
                                                     </div>
                                                 </SelectItem>
@@ -699,8 +658,7 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                     <p className="text-xs text-muted-foreground mt-1.5">
                                         {selectedGroup.availableSlots === 0
                                             ? "All slots are currently occupied."
-                                            : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slot${selectedGroup.totalSlots > 1 ? "s" : ""} available — a slot will be auto-assigned.`
-                                        }
+                                            : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slot${selectedGroup.totalSlots > 1 ? "s" : ""} available — a slot will be auto-assigned.`}
                                     </p>
                                 )}
                             </div>
@@ -736,22 +694,11 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                     )}
                     {field === "unit_division_department" && (
                         <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground">
-                                Unit, Division, and Department are determined by the assigned <strong>Position</strong>. To change them, update the Position.
-                            </p>
+                            <p className="text-sm text-muted-foreground">Unit, Division, and Department are determined by the assigned <strong>Position</strong>. To change them, update the Position.</p>
                             <div className="rounded-lg border border-border divide-y divide-border">
-                                <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-sm text-muted-foreground">Unit</span>
-                                    <span className="text-sm font-medium">{employee.item?.position?.unit?.unit_name ?? "—"}</span>
-                                </div>
-                                <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-sm text-muted-foreground">Division</span>
-                                    <span className="text-sm font-medium">{employee.item?.position?.division?.division_name ?? "—"}</span>
-                                </div>
-                                <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-sm text-muted-foreground">Department</span>
-                                    <span className="text-sm font-medium">{employee.item?.position?.department?.department_name ?? "—"}</span>
-                                </div>
+                                <div className="flex justify-between px-4 py-2.5"><span className="text-sm text-muted-foreground">Unit</span><span className="text-sm font-medium">{employee.item?.position?.unit?.unit_name ?? "—"}</span></div>
+                                <div className="flex justify-between px-4 py-2.5"><span className="text-sm text-muted-foreground">Division</span><span className="text-sm font-medium">{employee.item?.position?.division?.division_name ?? "—"}</span></div>
+                                <div className="flex justify-between px-4 py-2.5"><span className="text-sm text-muted-foreground">Department</span><span className="text-sm font-medium">{employee.item?.position?.department?.department_name ?? "—"}</span></div>
                             </div>
                         </div>
                     )}
@@ -776,26 +723,14 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                     )}
                     {field === "work_schedule" && (
                         <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Start Time</Label>
-                                <Input type="time" value={form.work_schedule_start} onChange={e => set("work_schedule_start", e.target.value)} autoFocus />
-                            </div>
-                            <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">End Time</Label>
-                                <Input type="time" value={form.work_schedule_end} onChange={e => set("work_schedule_end", e.target.value)} />
-                            </div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Start Time</Label><Input type="time" value={form.work_schedule_start} onChange={e => set("work_schedule_start", e.target.value)} autoFocus /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">End Time</Label><Input type="time" value={form.work_schedule_end} onChange={e => set("work_schedule_end", e.target.value)} /></div>
                         </div>
                     )}
                     {field === "break_time" && (
                         <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Break Start</Label>
-                                <Input type="time" value={form.break_start} onChange={e => set("break_start", e.target.value)} autoFocus />
-                            </div>
-                            <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Break End</Label>
-                                <Input type="time" value={form.break_end} onChange={e => set("break_end", e.target.value)} />
-                            </div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Break Start</Label><Input type="time" value={form.break_start} onChange={e => set("break_start", e.target.value)} autoFocus /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Break End</Label><Input type="time" value={form.break_end} onChange={e => set("break_end", e.target.value)} /></div>
                         </div>
                     )}
                 </div>
@@ -838,16 +773,12 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                 <DetailCard title="Date Applied" value={fmt(employee.date_applied)} onEdit={() => setEditField("date_applied")} />
                 <DetailCard
                     title="Work Schedule"
-                    value={employee.work_schedule_start && employee.work_schedule_end
-                        ? `${employee.work_schedule_start} – ${employee.work_schedule_end}`
-                        : undefined}
+                    value={employee.work_schedule_start && employee.work_schedule_end ? `${employee.work_schedule_start} – ${employee.work_schedule_end}` : undefined}
                     onEdit={() => setEditField("work_schedule")}
                 />
                 <DetailCard
                     title="Break Time"
-                    value={employee.break_start && employee.break_end
-                        ? `${employee.break_start} – ${employee.break_end}`
-                        : undefined}
+                    value={employee.break_start && employee.break_end ? `${employee.break_start} – ${employee.break_end}` : undefined}
                     onEdit={() => setEditField("break_time")}
                 />
             </div>
@@ -857,9 +788,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                     <span className="text-sm font-bold text-foreground">Internal Organizations</span>
                 </div>
                 {orgs.length === 0 ? (
-                    <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">
-                        Not a member of any internal organization.
-                    </div>
+                    <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">Not a member of any internal organization.</div>
                 ) : (
                     <div className="divide-y divide-border">
                         {orgs.map(org => (
@@ -868,9 +797,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                                     <p className="text-sm font-medium text-foreground">{org.name}</p>
                                     <p className="text-xs text-muted-foreground">{org.code}</p>
                                 </div>
-                                <span className="text-[10px] font-semibold bg-accent text-accent-foreground px-2.5 py-0.5 rounded-md shrink-0">
-                                    {org.type}
-                                </span>
+                                <Badge variant="secondary" className="text-[10px] shrink-0">{org.type}</Badge>
                             </div>
                         ))}
                     </div>
@@ -919,7 +846,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
                                     <span className="text-sm text-muted-foreground">{a.allowance_type}</span>
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm font-bold">₱{Number(a.amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
-                                        <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-md">Present</span>
+                                        <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">Present</Badge>
                                     </div>
                                 </div>
                             ))}
@@ -953,9 +880,7 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Leave Balances</span>
-                    {data.length > 0 && (
-                        <span className="text-[10px] font-semibold bg-accent text-accent-foreground px-2 py-0.5 rounded-full">{data.length}</span>
-                    )}
+                    {data.length > 0 && <Badge variant="secondary" className="text-[10px] rounded-full">{data.length}</Badge>}
                 </div>
                 {data.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-14 gap-3">
@@ -1010,9 +935,11 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                 return (
                     <div
                         key={slip.whereabout_slip_id}
-                        className={`rounded-lg border bg-background overflow-hidden ${isDeducted ? "border-rose-300 dark:border-rose-800" : "border-border"}`}
+                        className={cn(
+                            "rounded-lg border bg-background overflow-hidden",
+                            isDeducted ? "border-rose-300 dark:border-rose-800" : "border-border",
+                        )}
                     >
-                        {/* Header */}
                         <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/20">
                             <div className="flex items-center gap-2 min-w-0">
                                 <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
@@ -1024,7 +951,6 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                             </div>
                         </div>
 
-                        {/* Time grid */}
                         <div className="grid grid-cols-3 gap-px bg-border/40">
                             {[
                                 { label: "Left At", value: fmtTime(slip.time_out) },
@@ -1033,19 +959,20 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                             ].map(({ label, value, highlight }) => (
                                 <div key={label} className="flex flex-col gap-0.5 px-3 py-2 bg-background">
                                     <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
-                                    <span className={`text-xs font-mono font-medium ${highlight ? "text-rose-600 dark:text-rose-400" : ""}`}>{value}</span>
+                                    <span className={cn("text-xs font-mono font-medium", highlight && "text-rose-600 dark:text-rose-400")}>{value}</span>
                                 </div>
                             ))}
                         </div>
 
-                        {/* Footer notice */}
                         {isPersonal ? (
-                            <div className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold ${isDeducted
-                                ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800/60"
-                                : isPendingDeduct
-                                    ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800/60"
-                                    : "bg-muted/30 text-muted-foreground border-t border-border/40"
-                                }`}>
+                            <div className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold border-t",
+                                isDeducted
+                                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/60"
+                                    : isPendingDeduct
+                                        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60"
+                                        : "bg-muted/30 text-muted-foreground border-border/40",
+                            )}>
                                 <AlertTriangle className="w-3 h-3 shrink-0" />
                                 {isDeducted
                                     ? `${fmtMinutes(slip.minutes_gone)} deducted from work hours`
@@ -1070,16 +997,13 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
 
 function AttendanceRow({ record }: { record: AttendanceRecord }) {
     const [expanded, setExpanded] = useState(false)
-
     const slips = record.whereabout_slips ?? []
     const hasTimedOut = !!record.time_out
     const isLate = (record.late_minutes ?? 0) > 0
     const hasSlips = slips.length > 0
 
     const personalDeductionMins = hasTimedOut
-        ? slips
-            .filter(s => s.purpose_type === "personal" && s.return_status === "returned" && s.minutes_gone != null)
-            .reduce((sum, s) => sum + (s.minutes_gone ?? 0), 0)
+        ? slips.filter(s => s.purpose_type === "personal" && s.return_status === "returned" && s.minutes_gone != null).reduce((sum, s) => sum + (s.minutes_gone ?? 0), 0)
         : 0
 
     const dateLabel = (() => {
@@ -1090,42 +1014,34 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
     return (
         <>
             <tr
-                className={`border-b border-border/50 transition-colors ${hasSlips ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20"} ${expanded ? "bg-muted/30" : ""}`}
+                className={cn(
+                    "border-b border-border/50 transition-colors",
+                    hasSlips ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20",
+                    expanded && "bg-muted/30",
+                )}
                 onClick={() => hasSlips && setExpanded(e => !e)}
             >
-                {/* Expand toggle */}
                 <td className="w-8 pl-3 py-2.5">
                     {hasSlips
-                        ? expanded
-                            ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                            : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                        ? expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                         : <span className="w-3.5 h-3.5 block" />}
                 </td>
-                {/* Date */}
                 <td className="py-2.5 pr-4 text-xs font-medium whitespace-nowrap">{dateLabel}</td>
-                {/* Status */}
                 <td className="py-2.5 pr-4"><StatusBadge status={record.status} /></td>
-                {/* Time In */}
                 <td className="py-2.5 pr-4">
-                    <span className={`text-xs font-mono ${isLate ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-foreground"}`}>
+                    <span className={cn("text-xs font-mono", isLate && "text-rose-600 dark:text-rose-400 font-semibold")}>
                         {fmtTime(record.time_in)}
                     </span>
                 </td>
-                {/* Break Out */}
                 <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{fmtTime(record.break_out)}</td>
-                {/* Break In */}
                 <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{fmtTime(record.break_in)}</td>
-                {/* Time Out */}
                 <td className="py-2.5 pr-4 text-xs font-mono text-foreground">{fmtTime(record.time_out)}</td>
-                {/* Work Hours */}
                 <td className="py-2.5 pr-4 text-xs font-mono font-semibold">{fmtMinutes(record.work_minutes)}</td>
-                {/* Late */}
                 <td className="py-2.5 pr-4">
                     {isLate
                         ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">{fmtMinutes(record.late_minutes)}</span>
                         : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
                 </td>
-                {/* Slip Deduction */}
                 <td className="py-2.5 pr-3">
                     {personalDeductionMins > 0
                         ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">-{fmtMinutes(personalDeductionMins)}</span>
@@ -1135,13 +1051,11 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
                 </td>
             </tr>
 
-            {/* Expanded slips */}
             {expanded && hasSlips && (
                 <tr className="bg-muted/10 border-b border-border/50">
                     <td colSpan={10} className="px-4 pb-3 pt-2">
                         <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
-                            <ClipboardList className="w-3 h-3" />
-                            Whereabout Slips
+                            <ClipboardList className="w-3 h-3" />Whereabout Slips
                         </div>
                         <WhereaboutSlipList slips={slips} hasTimedOut={hasTimedOut} />
                     </td>
@@ -1155,7 +1069,6 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
 
 function AttendanceRecordTab({ employee }: { employee: Employee }) {
     const records = (employee.attendance_records ?? []) as AttendanceRecord[]
-
     const today = new Date()
     const oneMonthAgo = new Date(today)
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
@@ -1174,43 +1087,36 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
         return true
     })
 
-    // Summary counts
     const stats = [
-        { label: "Present", count: records.filter(r => statusKey(r.status) === "PRESENT").length, cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60" },
-        { label: "Half Day", count: records.filter(r => statusKey(r.status) === "HALF_DAY").length, cls: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border-sky-200/60 dark:border-sky-800/60" },
-        { label: "Absent", count: records.filter(r => statusKey(r.status) === "ABSENT").length, cls: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/60" },
-        { label: "Late", count: records.filter(r => (r.late_minutes ?? 0) > 0).length, cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/60" },
+        { label: "Present", count: records.filter(r => statusKey(r.status) === "PRESENT").length, cls: STATUS_CLASSES.PRESENT },
+        { label: "Half Day", count: records.filter(r => statusKey(r.status) === "HALF_DAY").length, cls: STATUS_CLASSES.HALF_DAY },
+        { label: "Absent", count: records.filter(r => statusKey(r.status) === "ABSENT").length, cls: STATUS_CLASSES.ABSENT },
+        { label: "Late", count: records.filter(r => (r.late_minutes ?? 0) > 0).length, cls: STATUS_CLASSES.LATE },
     ]
 
     return (
         <div className="p-3 sm:p-5 space-y-4">
-
-            {/* Stat strip */}
             {records.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {stats.map(({ label, count, cls }) => (
                         <div key={label} className="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-2">
                             <span className="text-xs text-muted-foreground font-medium">{label}</span>
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${cls}`}>{count}</span>
+                            <Badge variant="outline" className={cn("text-xs font-bold rounded-full", cls)}>{count}</Badge>
                         </div>
                     ))}
                 </div>
             )}
 
-            {/* Main card */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-
-                {/* Header + filters */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-border">
                     <div className="flex items-center gap-2 shrink-0">
                         <span className="text-sm font-bold text-foreground">Attendance Records</span>
                         {records.length > 0 && (
-                            <span className="text-[10px] font-semibold bg-accent text-accent-foreground px-2 py-0.5 rounded-full">
+                            <Badge variant="secondary" className="text-[10px] rounded-full">
                                 {filtered.length}{filtered.length !== records.length && ` / ${records.length}`}
-                            </span>
+                            </Badge>
                         )}
                     </div>
-
                     {records.length > 0 && (
                         <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
                             <span className="text-xs text-muted-foreground font-medium shrink-0">Filter</span>
@@ -1226,37 +1132,30 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
                     )}
                 </div>
 
-                {/* Empty / filtered-empty / table */}
                 {records.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-14 gap-3">
                         <Clock className="w-10 h-10 text-muted-foreground/30" />
                         <p className="text-sm italic text-muted-foreground">No attendance records found.</p>
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-                        No records match the selected date range.
-                    </div>
+                    <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">No records match the selected date range.</div>
                 ) : (
                     <div className="overflow-auto max-h-[590px]">
                         <table className="w-full text-sm border-collapse min-w-[760px]">
                             <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
                                 <tr className="border-b border-border">
                                     <th className="w-8 pl-3 py-2.5" />
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Date</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Time In</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Break (Out)</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Break (In)</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Time Out</th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                        <span className="flex items-center gap-1"><Timer className="w-3 h-3" /> Work Hrs</span>
-                                    </th>
-                                    <th className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                        <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Late</span>
-                                    </th>
-                                    <th className="py-2.5 pr-3 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                        <span className="flex items-center gap-1"><ClipboardList className="w-3 h-3" /> Slip Ded.</span>
-                                    </th>
+                                    {[
+                                        { label: "Date" }, { label: "Status" }, { label: "Time In" },
+                                        { label: "Break (Out)" }, { label: "Break (In)" }, { label: "Time Out" },
+                                        { label: "Work Hrs", icon: <Timer className="w-3 h-3" /> },
+                                        { label: "Late", icon: <AlertTriangle className="w-3 h-3" /> },
+                                        { label: "Slip Ded.", icon: <ClipboardList className="w-3 h-3" /> },
+                                    ].map(({ label, icon }) => (
+                                        <th key={label} className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                            {icon ? <span className="flex items-center gap-1">{icon}{label}</span> : label}
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody>
@@ -1282,8 +1181,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
     const toggleVisibility = (key: string) => setVisibleIds(prev => ({ ...prev, [key]: !prev[key] }))
 
     const [govDialog, setGovDialog] = useState<{
-        open: boolean; mode: "standard" | "custom"
-        type: string; id?: number; value: string; customTypeName: string
+        open: boolean; mode: "standard" | "custom"; type: string; id?: number; value: string; customTypeName: string
     }>({ open: false, mode: "standard", type: "", value: "", customTypeName: "" })
 
     const openEditGovDialog = (type: string, existing: GovernmentAccount) =>
@@ -1297,21 +1195,13 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
             router.put(
                 route("employee.government-account.update", { employee: employee.employee_id, account: govDialog.id }),
                 { account_number: govDialog.value },
-                {
-                    preserveScroll: true,
-                    onSuccess: () => { toast.success(`${accountType} number updated successfully.`); setGovDialog(p => ({ ...p, open: false })) },
-                    onError: () => toast.error("Failed to update government account. Please try again."),
-                },
+                { preserveScroll: true, onSuccess: () => { toast.success(`${accountType} number updated successfully.`); setGovDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update government account. Please try again.") },
             )
         } else {
             router.post(
                 route("employee.government-account.store", employee.employee_id),
                 { account_type: accountType, account_number: govDialog.value },
-                {
-                    preserveScroll: true,
-                    onSuccess: () => { toast.success(`${accountType} number added successfully.`); setGovDialog(p => ({ ...p, open: false })) },
-                    onError: () => toast.error("Failed to add government account. Please try again."),
-                },
+                { preserveScroll: true, onSuccess: () => { toast.success(`${accountType} number added successfully.`); setGovDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add government account. Please try again.") },
             )
         }
     }
@@ -1321,11 +1211,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
         if (!deleteGovId) return
         router.delete(
             route("employee.government-account.destroy", { employee: employee.employee_id, account: deleteGovId }),
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success("Government account deleted."); setDeleteGovId(null) },
-                onError: () => toast.error("Failed to delete government account. Please try again."),
-            },
+            { preserveScroll: true, onSuccess: () => { toast.success("Government account deleted."); setDeleteGovId(null) }, onError: () => toast.error("Failed to delete government account. Please try again.") },
         )
     }
 
@@ -1361,9 +1247,9 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Government ID Numbers</span>
-                    <button onClick={() => setGovDialog({ open: true, mode: "custom", type: "", id: undefined, value: "", customTypeName: "" })} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                    <Button variant="ghost" size="icon-xs" onClick={() => setGovDialog({ open: true, mode: "custom", type: "", id: undefined, value: "", customTypeName: "" })}>
                         <Plus className="w-4 h-4" />
-                    </button>
+                    </Button>
                 </div>
                 <div className="divide-y divide-border">
                     {STANDARD_GOV_ID_TYPES.map(type => {
@@ -1381,9 +1267,9 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 <div className="flex items-center gap-1 shrink-0">
                                     {account ? (
                                         <>
-                                            <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => toggleVisibility(key)}>
                                                 {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                            </button>
+                                            </Button>
                                             <Button onClick={() => openEditGovDialog(type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
                                             <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </>
@@ -1404,9 +1290,9 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                     {isVisible ? account.account_number : "•".repeat(10)}
                                 </span>
                                 <div className="flex items-center gap-1 shrink-0">
-                                    <button onClick={() => toggleVisibility(key)} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                                    <Button variant="ghost" size="icon-xs" onClick={() => toggleVisibility(key)}>
                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                    </button>
+                                    </Button>
                                     <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
                                     <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
@@ -1420,9 +1306,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Eligibility and Credentials</span>
-                    <button onClick={() => openEligDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
-                        <Plus className="w-4 h-4" />
-                    </button>
+                    <Button variant="ghost" size="icon-xs" onClick={() => openEligDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {eligibilities.length === 0 ? (
                     <div className="px-5 py-8 text-center">
@@ -1436,7 +1320,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3">
                                     <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
                                     <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
-                                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 px-2.5 py-0.5 rounded-md shrink-0">✓ Active</span>
+                                    <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60 shrink-0">✓ Active</Badge>
                                     <Button onClick={() => openEligDialog(e)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
                                 </div>
                             ))}
@@ -1450,10 +1334,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>
-                            {govDialog.id
-                                ? `Edit ${govDialog.type} Number`
-                                : govDialog.mode === "custom" ? "Add Government ID"
-                                    : `Add ${govDialog.type} Number`}
+                            {govDialog.id ? `Edit ${govDialog.type} Number` : govDialog.mode === "custom" ? "Add Government ID" : `Add ${govDialog.type} Number`}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="py-2 space-y-3">
@@ -1532,58 +1413,33 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const serviceRecs = employee.serviceRecords ?? []
 
     const [familyDialog, setFamilyDialog] = useState<{
-        open: boolean; index?: number
-        full_name: string; relationship: string; contact_number: string
-        sex: string; date_of_birth: string; place_of_birth: string
+        open: boolean; index?: number; full_name: string; relationship: string
+        contact_number: string; sex: string; date_of_birth: string; place_of_birth: string
     }>({ open: false, full_name: "", relationship: "", contact_number: "", sex: "", date_of_birth: "", place_of_birth: "" })
     const [deleteFamilyIndex, setDeleteFamilyIndex] = useState<number | null>(null)
 
     const openFamilyDialog = (member?: FamilyMember, index?: number) =>
         setFamilyDialog({
-            open: true, index,
-            full_name: member?.full_name ?? "",
-            relationship: member?.relationship ?? "",
-            contact_number: member?.contact_number ?? "",
-            sex: member?.sex !== undefined ? String(Number(member.sex)) : "",
-            date_of_birth: toInputDate(member?.date_of_birth),
-            place_of_birth: member?.place_of_birth ?? "",
+            open: true, index, full_name: member?.full_name ?? "", relationship: member?.relationship ?? "",
+            contact_number: member?.contact_number ?? "", sex: member?.sex !== undefined ? String(Number(member.sex)) : "",
+            date_of_birth: toInputDate(member?.date_of_birth), place_of_birth: member?.place_of_birth ?? "",
         })
 
     const saveFamilyMember = () => {
-        const data = {
-            full_name: familyDialog.full_name,
-            relationship: familyDialog.relationship,
-            contact_number: familyDialog.contact_number,
-            sex: familyDialog.sex,
-            date_of_birth: familyDialog.date_of_birth || null,
-            place_of_birth: familyDialog.place_of_birth,
-        }
+        const data = { full_name: familyDialog.full_name, relationship: familyDialog.relationship, contact_number: familyDialog.contact_number, sex: familyDialog.sex, date_of_birth: familyDialog.date_of_birth || null, place_of_birth: familyDialog.place_of_birth }
         if (familyDialog.index !== undefined) {
-            router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, {
-                preserveScroll: true,
-                onSuccess: () => { toast.success("Family member updated successfully."); setFamilyDialog(p => ({ ...p, open: false })) },
-                onError: () => toast.error("Failed to update family member. Please try again."),
-            })
+            router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, { preserveScroll: true, onSuccess: () => { toast.success("Family member updated successfully."); setFamilyDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update family member. Please try again.") })
         } else {
-            router.post(route("employee.family.store", employee.employee_id), data, {
-                preserveScroll: true,
-                onSuccess: () => { toast.success("Family member added successfully."); setFamilyDialog(p => ({ ...p, open: false })) },
-                onError: () => toast.error("Failed to add family member. Please try again."),
-            })
+            router.post(route("employee.family.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Family member added successfully."); setFamilyDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add family member. Please try again.") })
         }
     }
     const confirmDeleteFamily = () => {
         if (deleteFamilyIndex === null) return
-        router.delete(route("employee.family.destroy", { employee: employee.employee_id, index: deleteFamilyIndex }), {
-            preserveScroll: true,
-            onSuccess: () => { toast.success("Family member removed."); setDeleteFamilyIndex(null) },
-            onError: () => toast.error("Failed to remove family member. Please try again."),
-        })
+        router.delete(route("employee.family.destroy", { employee: employee.employee_id, index: deleteFamilyIndex }), { preserveScroll: true, onSuccess: () => { toast.success("Family member removed."); setDeleteFamilyIndex(null) }, onError: () => toast.error("Failed to remove family member. Please try again.") })
     }
 
     const [educDialog, setEducDialog] = useState<{
-        open: boolean; index?: number
-        level: string; school_name: string; school_address: string; degree: string; graduation_date: string
+        open: boolean; index?: number; level: string; school_name: string; school_address: string; degree: string; graduation_date: string
     }>({ open: false, level: "", school_name: "", school_address: "", degree: "", graduation_date: "" })
     const [deleteEducIndex, setDeleteEducIndex] = useState<number | null>(null)
 
@@ -1593,33 +1449,17 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const saveEducation = () => {
         const data = { level: educDialog.level, school_name: educDialog.school_name, school_address: educDialog.school_address, degree: educDialog.degree, graduation_date: educDialog.graduation_date || null }
         if (educDialog.index !== undefined) {
-            router.put(route("employee.education.update", { employee: employee.employee_id, index: educDialog.index }), data, {
-                preserveScroll: true,
-                onSuccess: () => { toast.success("Education record updated successfully."); setEducDialog(p => ({ ...p, open: false })) },
-                onError: () => toast.error("Failed to update education record. Please try again."),
-            })
+            router.put(route("employee.education.update", { employee: employee.employee_id, index: educDialog.index }), data, { preserveScroll: true, onSuccess: () => { toast.success("Education record updated successfully."); setEducDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update education record. Please try again.") })
         } else {
-            router.post(route("employee.education.store", employee.employee_id), data, {
-                preserveScroll: true,
-                onSuccess: () => { toast.success("Education record added successfully."); setEducDialog(p => ({ ...p, open: false })) },
-                onError: () => toast.error("Failed to add education record. Please try again."),
-            })
+            router.post(route("employee.education.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Education record added successfully."); setEducDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add education record. Please try again.") })
         }
     }
     const confirmDeleteEduc = () => {
         if (deleteEducIndex === null) return
-        router.delete(route("employee.education.destroy", { employee: employee.employee_id, index: deleteEducIndex }), {
-            preserveScroll: true,
-            onSuccess: () => { toast.success("Education record deleted."); setDeleteEducIndex(null) },
-            onError: () => toast.error("Failed to delete education record. Please try again."),
-        })
+        router.delete(route("employee.education.destroy", { employee: employee.employee_id, index: deleteEducIndex }), { preserveScroll: true, onSuccess: () => { toast.success("Education record deleted."); setDeleteEducIndex(null) }, onError: () => toast.error("Failed to delete education record. Please try again.") })
     }
-
     const educByLevel = educations.reduce<Record<string, Education[]>>((acc, edu) => {
-        const key = edu.level ?? "Other"
-        if (!acc[key]) acc[key] = []
-        acc[key].push(edu)
-        return acc
+        const key = edu.level ?? "Other"; if (!acc[key]) acc[key] = []; acc[key].push(edu); return acc
     }, {})
 
     const [seminarDialog, setSeminarDialog] = useState<{
@@ -1629,30 +1469,17 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
     const openSeminarDialog = (s?: SeminarTraining) =>
         setSeminarDialog({ open: true, id: s?.id, seminar_name: s?.seminar_name ?? "", venue: s?.venue ?? "", date_attended: toInputDate(s?.date_attended) })
-
     const saveSeminar = () => {
         const data = { seminar_name: seminarDialog.seminar_name, venue: seminarDialog.venue, date_attended: seminarDialog.date_attended || null }
         if (seminarDialog.id) {
-            router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, {
-                preserveScroll: true,
-                onSuccess: () => { toast.success("Seminar / training updated successfully."); setSeminarDialog(p => ({ ...p, open: false })) },
-                onError: () => toast.error("Failed to update seminar. Please try again."),
-            })
+            router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, { preserveScroll: true, onSuccess: () => { toast.success("Seminar / training updated successfully."); setSeminarDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update seminar. Please try again.") })
         } else {
-            router.post(route("employee.seminar.store", employee.employee_id), data, {
-                preserveScroll: true,
-                onSuccess: () => { toast.success("Seminar / training added successfully."); setSeminarDialog(p => ({ ...p, open: false })) },
-                onError: () => toast.error("Failed to add seminar. Please try again."),
-            })
+            router.post(route("employee.seminar.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Seminar / training added successfully."); setSeminarDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add seminar. Please try again.") })
         }
     }
     const confirmDeleteSeminar = () => {
         if (!deleteSeminarId) return
-        router.delete(route("employee.seminar.destroy", { employee: employee.employee_id, seminar: deleteSeminarId }), {
-            preserveScroll: true,
-            onSuccess: () => { toast.success("Seminar / training deleted."); setDeleteSeminarId(null) },
-            onError: () => toast.error("Failed to delete seminar. Please try again."),
-        })
+        router.delete(route("employee.seminar.destroy", { employee: employee.employee_id, seminar: deleteSeminarId }), { preserveScroll: true, onSuccess: () => { toast.success("Seminar / training deleted."); setDeleteSeminarId(null) }, onError: () => toast.error("Failed to delete seminar. Please try again.") })
     }
 
     const [serviceDialog, setServiceDialog] = useState<{
@@ -1662,30 +1489,17 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
     const openServiceDialog = (s?: ServiceRecord) =>
         setServiceDialog({ open: true, id: s?.id, position_name: s?.position_name ?? "", department_name: s?.department_name ?? "", year_start: s?.year_start ?? "", year_end: s?.year_end ?? "" })
-
     const saveServiceRecord = () => {
         const data = { position_name: serviceDialog.position_name, department_name: serviceDialog.department_name, year_start: serviceDialog.year_start, year_end: serviceDialog.year_end }
         if (serviceDialog.id) {
-            router.put(route("employee.service-record.update", { employee: employee.employee_id, record: serviceDialog.id }), data, {
-                preserveScroll: true,
-                onSuccess: () => { toast.success("Service record updated successfully."); setServiceDialog(p => ({ ...p, open: false })) },
-                onError: () => toast.error("Failed to update service record. Please try again."),
-            })
+            router.put(route("employee.service-record.update", { employee: employee.employee_id, record: serviceDialog.id }), data, { preserveScroll: true, onSuccess: () => { toast.success("Service record updated successfully."); setServiceDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update service record. Please try again.") })
         } else {
-            router.post(route("employee.service-record.store", employee.employee_id), data, {
-                preserveScroll: true,
-                onSuccess: () => { toast.success("Service record added successfully."); setServiceDialog(p => ({ ...p, open: false })) },
-                onError: () => toast.error("Failed to add service record. Please try again."),
-            })
+            router.post(route("employee.service-record.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Service record added successfully."); setServiceDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add service record. Please try again.") })
         }
     }
     const confirmDeleteService = () => {
         if (!deleteServiceId) return
-        router.delete(route("employee.service-record.destroy", { employee: employee.employee_id, record: deleteServiceId }), {
-            preserveScroll: true,
-            onSuccess: () => { toast.success("Service record deleted."); setDeleteServiceId(null) },
-            onError: () => toast.error("Failed to delete service record. Please try again."),
-        })
+        router.delete(route("employee.service-record.destroy", { employee: employee.employee_id, record: deleteServiceId }), { preserveScroll: true, onSuccess: () => { toast.success("Service record deleted."); setDeleteServiceId(null) }, onError: () => toast.error("Failed to delete service record. Please try again.") })
     }
 
     return (
@@ -1694,7 +1508,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Family Information</span>
-                    <button onClick={() => openFamilyDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
+                    <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {familyMembers.length === 0 ? (
                     <div className="px-5 py-8 text-center">
@@ -1735,7 +1549,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Educational Background</span>
-                    <button onClick={() => openEducDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
+                    <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {educations.length === 0 ? (
                     <div className="px-5 py-8 text-center">
@@ -1777,7 +1591,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Seminars and Trainings</span>
-                    <button onClick={() => openSeminarDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
+                    <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {seminars.length === 0 ? (
                     <div className="px-5 py-8 text-center">
@@ -1790,7 +1604,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
                                 <div className="w-4" />
                                 {["Seminar / Training", "Organizer", "Date Attended", ""].map(h => (
-                                    <span key={h} className={`text-xs font-semibold text-muted-foreground ${h === "Date Attended" ? "text-right" : ""}`}>{h}</span>
+                                    <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Date Attended" && "text-right")}>{h}</span>
                                 ))}
                             </div>
                             <div className="divide-y divide-border">
@@ -1816,7 +1630,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Service Records</span>
-                    <button onClick={() => openServiceDialog()} className="w-7 h-7 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"><Plus className="w-4 h-4" /></button>
+                    <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {serviceRecs.length === 0 ? (
                     <div className="px-5 py-8 text-center">
@@ -1829,7 +1643,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
                                 <div className="w-4" />
                                 {["Position", "Department", "Duration", ""].map(h => (
-                                    <span key={h} className={`text-xs font-semibold text-muted-foreground ${h === "Duration" ? "text-right" : ""}`}>{h}</span>
+                                    <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Duration" && "text-right")}>{h}</span>
                                 ))}
                             </div>
                             <div className="divide-y divide-border">
@@ -1897,7 +1711,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 <SelectContent>{["Elementary Education", "Secondary Education", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Other"].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Name *</Label><Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widests mb-1.5 block">School Name *</Label><Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label><Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} /></div>
                         <div className="grid grid-cols-2 gap-3">
                             <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label><Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} /></div>
@@ -1915,7 +1729,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widests mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, venue: e.target.value }))} /></div>
                         <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label><Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
                     </div>
@@ -1944,6 +1758,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
+            {/* Confirm delete dialogs — unified pattern */}
             {[
                 { open: deleteFamilyIndex !== null, onClose: () => setDeleteFamilyIndex(null), onConfirm: confirmDeleteFamily, label: "family member" },
                 { open: deleteEducIndex !== null, onClose: () => setDeleteEducIndex(null), onConfirm: confirmDeleteEduc, label: "education record" },
@@ -1969,23 +1784,23 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
 // ─── Documents Tab ────────────────────────────────────────────────────────────
 
-const FILE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
-    pdf: { icon: "PDF", color: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950/40" },
-    doc: { icon: "DOC", color: "text-sky-600", bg: "bg-sky-50 dark:bg-sky-950/40" },
-    docx: { icon: "DOCX", color: "text-sky-600", bg: "bg-sky-50 dark:bg-sky-950/40" },
-    xls: { icon: "XLS", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
-    xlsx: { icon: "XLSX", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
-    png: { icon: "PNG", color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
-    jpg: { icon: "JPG", color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
-    jpeg: { icon: "JPEG", color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/40" },
-    txt: { icon: "TXT", color: "text-muted-foreground", bg: "bg-muted" },
-    zip: { icon: "ZIP", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/40" },
+const FILE_META: Record<string, { icon: string; className: string }> = {
+    pdf: { icon: "PDF", className: "text-rose-600  bg-rose-50  dark:bg-rose-950/40" },
+    doc: { icon: "DOC", className: "text-sky-600   bg-sky-50   dark:bg-sky-950/40" },
+    docx: { icon: "DOCX", className: "text-sky-600   bg-sky-50   dark:bg-sky-950/40" },
+    xls: { icon: "XLS", className: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40" },
+    xlsx: { icon: "XLSX", className: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40" },
+    png: { icon: "PNG", className: "text-violet-600 bg-violet-50 dark:bg-violet-950/40" },
+    jpg: { icon: "JPG", className: "text-violet-600 bg-violet-50 dark:bg-violet-950/40" },
+    jpeg: { icon: "JPEG", className: "text-violet-600 bg-violet-50 dark:bg-violet-950/40" },
+    txt: { icon: "TXT", className: "text-muted-foreground bg-muted" },
+    zip: { icon: "ZIP", className: "text-amber-600 bg-amber-50 dark:bg-amber-950/40" },
 }
 
 function getFileExt(name: string) { return name.split(".").pop()?.toLowerCase() ?? "" }
-function getFileIcon(name: string) {
+function getFileMeta(name: string) {
     const ext = getFileExt(name)
-    return FILE_ICONS[ext] ?? { icon: ext.toUpperCase() || "FILE", color: "text-muted-foreground", bg: "bg-muted" }
+    return FILE_META[ext] ?? { icon: ext.toUpperCase() || "FILE", className: "text-muted-foreground bg-muted" }
 }
 function isViewable(name: string) { return ["pdf", "png", "jpg", "jpeg", "gif", "webp", "txt"].includes(getFileExt(name)) }
 function isImage(name: string) { return ["png", "jpg", "jpeg", "gif", "webp"].includes(getFileExt(name)) }
@@ -1997,7 +1812,6 @@ function DocumentsTab({ employee }: { employee: Employee }) {
     const [viewFile, setViewFile] = useState<UploadedFile | null>(null)
     const [uploading, setUploading] = useState(false)
     const [uploadError, setUploadError] = useState<string | null>(null)
-
     const MAX_FILE_SIZE = 25 * 1024 * 1024
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2005,23 +1819,19 @@ function DocumentsTab({ employee }: { employee: Employee }) {
         if (!file) return
         if (file.size > MAX_FILE_SIZE) {
             setUploadError(`File is too large. Maximum size is 25 MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)} MB.`)
-            e.target.value = ""
-            return
+            e.target.value = ""; return
         }
-        setUploadError(null)
-        setUploading(true)
+        setUploadError(null); setUploading(true)
         const toastId = toast.loading(`Uploading "${file.name}"…`)
-        const formData = new FormData()
-        formData.append("file", file)
+        const formData = new FormData(); formData.append("file", file)
         router.post(route("employee.file.store", employee.employee_id), formData, {
             preserveScroll: true,
             onSuccess: () => { toast.success(`"${file.name}" uploaded successfully.`, { id: toastId }); setUploading(false) },
             onError: (errors) => {
                 const msg = errors?.file ?? "Upload failed. Please try again."
-                toast.error(msg, { id: toastId })
-                setUploadError(msg)
-                setUploading(false)
-            }, onFinish: () => setUploading(false),
+                toast.error(msg, { id: toastId }); setUploadError(msg); setUploading(false)
+            },
+            onFinish: () => setUploading(false),
         })
         e.target.value = ""
     }
@@ -2045,42 +1855,38 @@ function DocumentsTab({ employee }: { employee: Employee }) {
     return (
         <div className="p-3 sm:p-5 space-y-4">
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                {/* Header */}
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-foreground">Uploaded Files</span>
-                        {uploadedFiles.length > 0 && (
-                            <span className="text-[10px] font-semibold bg-accent text-accent-foreground px-2 py-0.5 rounded-full">{uploadedFiles.length}</span>
-                        )}
+                        {uploadedFiles.length > 0 && <Badge variant="secondary" className="text-[10px] rounded-full">{uploadedFiles.length}</Badge>}
                     </div>
-                    <button
+                    <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="text-xs h-7 gap-1.5"
                     >
                         <Upload className="w-3.5 h-3.5" />
                         {uploading ? "Uploading…" : "Upload"}
-                    </button>
+                    </Button>
                     <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
                 </div>
 
-                {/* Upload error */}
                 {uploadError && (
-                    <div className="mx-4 sm:mx-5 mt-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 px-4 py-3 flex items-start gap-2.5">
-                        <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                        <p className="flex-1 text-sm text-rose-700 dark:text-rose-400 leading-snug">{uploadError}</p>
-                        <button onClick={() => setUploadError(null)} className="text-rose-400 hover:text-rose-600 transition-colors shrink-0">
+                    <div className="mx-4 sm:mx-5 mt-3 rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-2.5">
+                        <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                        <p className="flex-1 text-sm text-destructive leading-snug">{uploadError}</p>
+                        <button onClick={() => setUploadError(null)} className="text-destructive/60 hover:text-destructive transition-colors shrink-0">
                             <XCircle className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 )}
 
-                {/* Size hint */}
                 <div className="px-4 sm:px-5 py-2 border-b border-border bg-muted/20">
                     <p className="text-[11px] text-muted-foreground">Maximum file size: <span className="font-semibold">25 MB</span>. All file types accepted.</p>
                 </div>
 
-                {/* Empty state */}
                 {uploadedFiles.length === 0 ? (
                     <div className="px-5 py-14 text-center">
                         <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
@@ -2095,7 +1901,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                 ) : (
                     <div className="divide-y divide-border">
                         {uploadedFiles.map(file => {
-                            const { icon, color, bg } = getFileIcon(file.file_name)
+                            const { icon, className } = getFileMeta(file.file_name)
                             const canView = isViewable(file.file_name)
                             return (
                                 <div
@@ -2103,8 +1909,8 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                     className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/20 transition-colors group cursor-pointer"
                                     onClick={() => canView ? setViewFile(file) : window.open(file.file_url, "_blank")}
                                 >
-                                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
-                                        <span className={`text-[9px] font-black ${color} tracking-tight`}>{icon}</span>
+                                    <div className={cn("w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0", className)}>
+                                        <span className="text-[9px] font-black tracking-tight">{icon}</span>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-foreground truncate leading-snug">{file.file_name}</p>
@@ -2134,16 +1940,16 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* View / Preview Dialog */}
+            {/* Preview Dialog */}
             <Dialog open={!!viewFile} onOpenChange={o => !o && setViewFile(null)}>
                 <DialogContent className="sm:max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl">
                     <DialogHeader className="px-5 py-4 border-b border-border shrink-0 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-3 min-w-0">
                             {viewFile && (() => {
-                                const { icon, color, bg } = getFileIcon(viewFile.file_name)
+                                const { icon, className } = getFileMeta(viewFile.file_name)
                                 return (
-                                    <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
-                                        <span className={`text-[9px] font-black ${color}`}>{icon}</span>
+                                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", className)}>
+                                        <span className="text-[9px] font-black">{icon}</span>
                                     </div>
                                 )
                             })()}
@@ -2171,7 +1977,6 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirm */}
             <AlertDialog open={!!deleteFileId} onOpenChange={o => !o && setDeleteFileId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -2209,18 +2014,15 @@ function AvatarPreviewDialog({ src, name, open, onClose }: { src: string; name?:
     )
 }
 
-// ─── Avatar file validator ────────────────────────────────────────────────────
+// ─── Avatar Upload Dialog ─────────────────────────────────────────────────────
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/jpg"]
-
 function validateAvatarFile(file: File): string | null {
     if (!ALLOWED_AVATAR_TYPES.includes(file.type)) return "Only JPEG, JPG, or PNG images are allowed."
     if (file.size > MAX_AVATAR_SIZE) return "File size must not exceed 5 MB."
     return null
 }
-
-// ─── Avatar Upload Dialog ─────────────────────────────────────────────────────
 
 function AvatarUploadDialog({ open, onClose, onFileSelected }: { open: boolean; onClose: () => void; onFileSelected: (file: File) => void }) {
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -2275,8 +2077,7 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: { open: boolean; 
         setFileError(null)
         const reader = new FileReader()
         reader.onload = () => goToCrop(reader.result as string)
-        reader.readAsDataURL(file)
-        e.target.value = ""
+        reader.readAsDataURL(file); e.target.value = ""
     }
 
     const applyCrop = async () => {
@@ -2286,7 +2087,6 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: { open: boolean; 
             onFileSelected(new File([blob], "avatar-cropped.jpg", { type: "image/jpeg" }))
             handleClose()
         } catch {
-            setCameraError("Failed to crop image. Please try again.")
             toast.error("Failed to crop image. Please try again.")
         }
     }
@@ -2303,49 +2103,43 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: { open: boolean; 
                     </DialogTitle>
                 </DialogHeader>
 
-                {/* Choose */}
                 {mode === "choose" && (
                     <div className="px-5 py-5 space-y-4">
                         <p className="text-sm text-muted-foreground">Choose how you'd like to update your profile photo.</p>
                         <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent/40 transition-all group cursor-pointer">
-                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                                    <Upload className="w-5 h-5 text-primary" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm font-semibold">Select Image</p>
-                                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">Choose from device</p>
-                                </div>
-                            </button>
-                            <button onClick={startCamera} className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent/40 transition-all group cursor-pointer">
-                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                                    <Camera className="w-5 h-5 text-primary" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm font-semibold">Take a Photo</p>
-                                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">Use your camera</p>
-                                </div>
-                            </button>
+                            {[
+                                { icon: Upload, label: "Select Image", sub: "Choose from device", action: () => fileInputRef.current?.click() },
+                                { icon: Camera, label: "Take a Photo", sub: "Use your camera", action: startCamera },
+                            ].map(({ icon: Icon, label, sub, action }) => (
+                                <button key={label} onClick={action} className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent/40 transition-all group cursor-pointer">
+                                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                                        <Icon className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-sm font-semibold">{label}</p>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{sub}</p>
+                                    </div>
+                                </button>
+                            ))}
                         </div>
                         <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png" className="hidden" onChange={handleFileChange} />
                         {fileError && (
-                            <div className="rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 px-4 py-3 flex items-start gap-2.5">
-                                <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                                <p className="text-sm text-rose-700 dark:text-rose-400 leading-snug">{fileError}</p>
+                            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-2.5">
+                                <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                                <p className="text-sm text-destructive leading-snug">{fileError}</p>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* Camera */}
                 {mode === "camera" && (
                     <div className="px-5 py-5 space-y-4">
                         {cameraError ? (
-                            <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 p-4 text-center space-y-3">
-                                <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center mx-auto">
-                                    <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                            <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-center space-y-3">
+                                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+                                    <XCircle className="w-5 h-5 text-destructive" />
                                 </div>
-                                <p className="text-sm text-rose-700 dark:text-rose-400 leading-snug">{cameraError}</p>
+                                <p className="text-sm text-destructive leading-snug">{cameraError}</p>
                             </div>
                         ) : (
                             <div className="relative rounded-xl overflow-hidden bg-black aspect-square shadow-inner">
@@ -2371,19 +2165,13 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: { open: boolean; 
                     </div>
                 )}
 
-                {/* Crop */}
                 {mode === "crop" && rawImageSrc && (
                     <div className="px-5 py-5 space-y-4">
                         <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-black">
                             <Cropper
-                                image={rawImageSrc}
-                                crop={crop}
-                                zoom={zoom}
-                                aspect={1}
-                                cropShape="round"
-                                showGrid={false}
-                                onCropChange={setCrop}
-                                onZoomChange={setZoom}
+                                image={rawImageSrc} crop={crop} zoom={zoom} aspect={1}
+                                cropShape="round" showGrid={false}
+                                onCropChange={setCrop} onZoomChange={setZoom}
                                 onCropComplete={(_area, pixels) => setCroppedAreaPixels(pixels)}
                             />
                         </div>
@@ -2421,8 +2209,7 @@ export default function ShowEmployee({ employee, items }: Props) {
 
     const handleAvatarFileSelected = (file: File) => {
         const toastId = toast.loading("Updating profile photo…")
-        const formData = new FormData()
-        formData.append("avatar", file)
+        const formData = new FormData(); formData.append("avatar", file)
         router.post(route("employee.avatar.update", employee.employee_id), formData, {
             preserveScroll: true,
             onSuccess: () => toast.success("Profile photo updated successfully.", { id: toastId }),
