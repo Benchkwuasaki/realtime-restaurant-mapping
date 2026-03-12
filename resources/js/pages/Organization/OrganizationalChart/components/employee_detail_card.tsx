@@ -43,7 +43,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
                         </div>
                         <div className="flex-1 min-w-0">
                             <DialogTitle className="text-sm font-semibold text-foreground
-                                leading-snug break-words">
+                                leading-snug wrap-break-word">
                                 {title}
                             </DialogTitle>
                             {subtitle && (
@@ -52,7 +52,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
                                 </p>
                             )}
                             {/* Badge sits under the title — safely away from the close button */}
-                            <Badge variant="secondary" className="mt-2 text-xs">
+                            <Badge variant="outline" className="mt-2 text-xs">
                                 {employees.length}{' '}
                                 {employees.length === 1 ? 'employee' : 'employees'}
                             </Badge>

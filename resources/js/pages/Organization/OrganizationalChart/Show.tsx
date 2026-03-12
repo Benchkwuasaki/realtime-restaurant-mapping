@@ -157,8 +157,6 @@ export default function OrganizationalChartShow({ department }: Props) {
                                         className="h-14 w-14 sm:h-20 sm:w-20 ring-2 sm:ring-4 ring-border
                                             bg-accent text-accent-foreground font-bold text-xl sm:text-2xl"
                                     />
-                                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5
-                                        bg-green-500 rounded-full ring-2 ring-background" />
                                 </div>
 
                                 <div className="flex-1 min-w-0">
