@@ -179,7 +179,7 @@ class DocumentTrackingService
         DB::transaction(function () use ($user, $document, $officeId, $data) {
             $document->update([
                 'status'        => 'cancelled',
-                'office_status' => 'done',
+                'office_status' => 'cancelled',
             ]);
 
             $this->log($document, [

@@ -66,6 +66,8 @@ class DocumentTrackingOutgoingController extends Controller
             ->get()
             ->map($shape);
 
+        // dd($ourOffice);
+
         // "Other Offices" tab — requests this dept forwarded but did not originate
         $forwardedIds = DB::table('document_tracking_actions')
             ->where('office_id', $departmentId)

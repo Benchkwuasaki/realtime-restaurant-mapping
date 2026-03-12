@@ -14,24 +14,28 @@ export const OFFICE_STATUS_PILL: Record<string, string> = {
     pending_receipt: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
     received: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
     done: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+    cancelled: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
 }
 
 export const OFFICE_STATUS_DOT: Record<string, string> = {
     pending_receipt: "bg-yellow-400",
     received: "bg-blue-400",
     done: "bg-green-400",
+    cancelled: "bg-red-400",
 }
 
 export const OFFICE_STATUS_LABEL: Record<string, string> = {
     pending_receipt: "Pending Receipt",
     received: "Received",
     done: "Done",
+    cancelled: "Cancelled",
 }
 
 export const OFFICE_STATUS_ICON: Record<string, React.ElementType> = {
     pending_receipt: Clock,
     received: CheckCircle2,
     done: CheckCircle2,
+    cancelled: XCircle,
 }
 
 // ─── Action button display config ─────────────────────────────────────────────

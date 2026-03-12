@@ -46,7 +46,7 @@ export const outgoingRowSchema = z.object({
     origin_office: officeSchema.nullable(),
     current_office: officeSchema.nullable(),
     status: z.enum(["filed", "in_progress", "completed", "cancelled"]),
-    office_status: z.enum(["pending_receipt", "received", "done"]),
+    office_status: z.enum(["pending_receipt", "received", "done", "cancelled"]),
     elapsed_time: z.string(),
     origin_office_id: z.number(),
     details: historyDetailsSchema,

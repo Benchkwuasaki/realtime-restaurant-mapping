@@ -238,10 +238,6 @@ export default function OutgoingIndex({
         ],
         defaultPageSize: 25,
         onRowClick: (row: { original: OutgoingRow }) => setSelectedDocument(row.original),
-        addButton: {
-            label: "New Request",
-            onClick: () => setModalOpen(true),
-        },
     }
 
     return (
@@ -321,6 +317,10 @@ export default function OutgoingIndex({
                             columns={getColumns(departmentId, false)}
                             data={ourOffice}
                             {...sharedTableProps}
+                            addButton={{
+                                label: "New Request",
+                                onClick: () => setModalOpen(true),
+                            }}
                         />
                     </TabsContent>
 

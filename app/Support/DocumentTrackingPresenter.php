@@ -59,6 +59,7 @@ class DocumentTrackingPresenter
     private static function buildFlow(DocumentTracking $document, Collection $actions): Collection
     {
         $flow = collect();
+        $hasClosingAction = false;
 
         self::pushOffice($flow, $document->originOffice);
 
@@ -69,6 +70,7 @@ class DocumentTrackingPresenter
             }
 
             if (in_array($action->action, ['completed', 'cancelled'], true)) {
+                $hasClosingAction = true;
                 self::pushOffice($flow, $action->office, $action->action, true);
                 continue;
             }
@@ -78,7 +80,9 @@ class DocumentTrackingPresenter
             }
         }
 
-        self::pushOffice($flow, $document->currentOffice);
+        if (! $hasClosingAction) {
+            self::pushOffice($flow, $document->currentOffice);
+        }
 
         return $flow;
     }

@@ -28,6 +28,7 @@ return new class extends Migration
                 'pending_receipt',
                 'received',
                 'done',
+                'cancelled',
             ])->default('pending_receipt');
 
             $table->timestamp('current_holder_received_at')->nullable();
