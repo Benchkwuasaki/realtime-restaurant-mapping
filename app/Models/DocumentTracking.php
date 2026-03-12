@@ -57,7 +57,7 @@ class DocumentTracking extends Model
     {
         return $this->hasOne(DocumentTrackingAction::class, 'document_tracking_id', 'document_tracking_id')
             ->whereIn('action', ['forwarded', 'returned'])
-            ->latestOfMany('acted_at');
+            ->orderByDesc('acted_at');
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

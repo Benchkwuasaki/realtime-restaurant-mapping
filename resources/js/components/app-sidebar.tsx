@@ -36,6 +36,7 @@ type Office = { name: string | null; acronym: string | null }
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, hasRole } = useAuth()
   const { department, division, unit } = user?.offices ?? {}
+  const incomingDocumentsCount = user?.notifications?.incoming_documents_count ?? 0
   const officeParts = ([department, division, unit] as (Office | undefined | null)[])
     .filter((office): office is Office => !!office?.name)
 
@@ -181,11 +182,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Document Tracking",
         url: null,
         icon: File,
+        badgeCount: incomingDocumentsCount,
         show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("document_tracking_operator"),
         items: [
           {
             title: "Incoming",
             url: route('document-tracking-incoming.index'),
+            badgeCount: incomingDocumentsCount,
           },
           {
             title: "Outgoing",

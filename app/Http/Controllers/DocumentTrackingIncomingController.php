@@ -44,6 +44,8 @@ class DocumentTrackingIncomingController extends Controller
             ->get()
             ->map(function (DocumentTracking $doc) use ($departmentId, $allDepartments) {
 
+            // dd($doc);
+
                 // Offices that have previously touched this document (excluding current dept)
                 // Collected from office_id, from_office_id, to_office_id across all actions
                 $touchedIds = $doc->actions
@@ -90,9 +92,11 @@ class DocumentTrackingIncomingController extends Controller
                 ];
             });
 
+        // dd($documents);
         return Inertia::render('DocumentTracking/Incoming/Index', [
             'documents'    => $documents,
             'departmentId' => $departmentId,
+            'incomingCount' => $documents->count(),
         ]);
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\DocumentTracking;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -46,8 +47,13 @@ class HandleInertiaRequests extends Middleware
         $department = $position?->department;
         $division = $position?->division;
         $unit = $position?->unit;
-
-        // dd($department, $division, $unit);
+        $departmentId = $department?->department_id;
+        $incomingDocumentsCount = $departmentId
+            ? DocumentTracking::query()
+                ->where('current_office_id', $departmentId)
+                ->whereNotIn('status', ['completed', 'cancelled'])
+                ->count()
+            : 0;
 
         return [
             ...parent::share($request),
@@ -72,6 +78,9 @@ class HandleInertiaRequests extends Middleware
                             'name' => $unit?->unit_name,
                             'acronym' => $unit?->unit_acronym,
                         ],
+                    ],
+                    'notifications' => [
+                        'incoming_documents_count' => $incomingDocumentsCount,
                     ],
                 ] : null,
             ],

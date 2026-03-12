@@ -5,6 +5,9 @@ export type AuthInertiaUser = {
     position: string;
     roles: string[];
     avatar: string;
+    notifications?: {
+        incoming_documents_count: number
+    }
     offices: {
         department: { name: string | null; acronym: string | null } | null
         division: { name: string | null; acronym: string | null } | null
