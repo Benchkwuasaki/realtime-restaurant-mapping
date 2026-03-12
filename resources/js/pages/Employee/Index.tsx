@@ -24,6 +24,12 @@ const statusFilterOptions = [
     { value: false, label: 'Inactive' },
 ]
 
+const EmpClassFilterOptions = [
+    { value: 'Regular',  label: 'Regular' },
+    { value: 'Job Order', label: 'Job Order' },
+    { value: 'Casual', label: 'Casual' },
+]
+
 export default function Index({ employees, totalEmployees, activeEmployees, inactiveEmployees }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -77,6 +83,11 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
                             columnId: 'status',
                             title: 'Status',
                             options: statusFilterOptions,
+                        },
+                        {
+                            columnId: 'employmentClassification',
+                            title: 'Employment Classification',
+                            options: EmpClassFilterOptions,
                         },
                     ]}
                     addButton={{
