@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GovernmentAccType;
 use App\Models\PayrollDeductionSetting;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollRecord;
@@ -24,25 +25,13 @@ class GovernmentRemittanceReportController extends Controller
         $agency = $request->get('agency', 'all');
         $employeeTypeFilter = $request->get('employee_type', 'all'); // 'all', 'regular', 'casual'
 
-        // Get all payroll periods and group them by date range
-        $allPeriods = PayrollPeriod::orderBy('start_date', 'desc')->get();
-        
-        // Create unique periods based on date range
-        $uniquePeriods = collect();
-        $seenDateRanges = [];
-        
-        foreach ($allPeriods as $period) {
-            $dateKey = $period->start_date->format('Y-m-d') . '|' . $period->end_date->format('Y-m-d');
-            
-            if (!in_array($dateKey, $seenDateRanges)) {
-                $seenDateRanges[] = $dateKey;
-                $uniquePeriods->push($period);
-            }
-        }
+        // Get only 2nd cut-off periods (start_date = 16th of the month)
+        $allPeriods = PayrollPeriod::orderBy('start_date', 'desc')
+            ->whereRaw('DAY(start_date) = 16')
+            ->get();
 
-        // Format periods for dropdown - FILTER OUT JOB ORDER ONLY PERIODS
-        $periods = $uniquePeriods->filter(function ($period) {
-            // Check if period has any Regular or Casual employees (not just Job Order)
+        // Format periods for dropdown — only include periods that have Regular/Casual payroll records
+        $periods = $allPeriods->filter(function ($period) {
             return PayrollRecord::where('payroll_period_id', $period->payroll_period_id)
                 ->whereHas('employee', function ($query) {
                     $query->whereRaw('LOWER(employment_classification) IN (?, ?)', ['regular', 'casual']);
@@ -60,8 +49,27 @@ class GovernmentRemittanceReportController extends Controller
             ? PayrollPeriod::find($periodId)
             : null;
 
-        // Get payroll settings
-        $settings = PayrollDeductionSetting::getSettings();
+        // Load rates from GovernmentAccType — the single source of truth
+        // (same table that PayrollDeductionSettingsController reads/writes)
+        $s = PayrollDeductionSetting::getSettings();
+        $accTypes = GovernmentAccType::all()->keyBy('code');
+        $gsis = $accTypes->get('GSIS');
+        $phic = $accTypes->get('PHILHEALTH');
+        $pagibig = $accTypes->get('PAGIBIG');
+
+        $rates = [
+            // GSIS
+            'gsis_employee_rate' => (float) ($gsis?->employee_rate ?? 9.0),
+            'gsis_employer_rate' => (float) ($gsis?->employer_rate ?? 12.0),
+            // PhilHealth — one rate stored; employer mirrors employee (50/50 split)
+            'philhealth_employee_rate' => (float) ($phic?->employee_rate ?? 2.5),
+            'philhealth_employer_rate' => (float) ($phic?->employee_rate ?? 2.5),
+            // PhilHealth floor/ceiling stored per-payroll; convert to monthly for report
+            'philhealth_floor' => (float) (($phic?->min_contribution ?? 250.0) * 2),
+            'philhealth_ceiling' => (float) (($phic?->max_contribution ?? 2500.0) * 2),
+            // Pag-IBIG — fixed_amount is monthly cap; divide by 2 for per-payroll
+            'pagibig_per_payroll' => (float) (($pagibig?->fixed_amount ?? 100.0) / 2),
+        ];
 
         // Initialize empty arrays
         $remittances = [];
@@ -96,12 +104,12 @@ class GovernmentRemittanceReportController extends Controller
             ])
                 ->whereHas('payrollPeriod', function ($query) use ($selectedPeriod) {
                     $query->where('start_date', $selectedPeriod->start_date)
-                          ->where('end_date', $selectedPeriod->end_date);
+                        ->where('end_date', $selectedPeriod->end_date);
                 })
                 ->get();
 
             // Calculate remittances for all agencies (with employee type data and filtering)
-            $remittances = $this->calculateRemittances($payrollRecords, $settings, $employeeTypeFilter);
+            $remittances = $this->calculateRemittances($payrollRecords, $rates, $employeeTypeFilter);
 
             // Calculate summary totals
             $summary = $this->calculateSummary($remittances, $payrollRecords);
@@ -137,12 +145,12 @@ class GovernmentRemittanceReportController extends Controller
             'currentAgency' => $agency,
             'summary' => $summary,
             'settings' => [
-                'gsis_employee_rate' => (float) ($settings->gsis_employee_rate ?? 9),
-                'gsis_employer_rate' => (float) ($settings->gsis_employer_rate ?? 12),
-                'philhealth_rate' => (float) ($settings->philhealth_rate ?? 2.5),
-                'philhealth_employer_rate' => (float) ($settings->philhealth_employer_rate ?? 2.5),
-                'pagibig_monthly' => (float) ($settings->pagibig_monthly ?? 100),
-                'pagibig_per_payroll' => (float) (($settings->pagibig_monthly ?? 100) / 2),
+                'gsis_employee_rate' => $rates['gsis_employee_rate'],
+                'gsis_employer_rate' => $rates['gsis_employer_rate'],
+                'philhealth_rate' => $rates['philhealth_employee_rate'],
+                'philhealth_employer_rate' => $rates['philhealth_employer_rate'],
+                'pagibig_monthly' => $rates['pagibig_per_payroll'] * 2,
+                'pagibig_per_payroll' => $rates['pagibig_per_payroll'],
             ],
             'employeeTypeCounts' => $employeeTypeCounts,
             'currentEmployeeTypeFilter' => $employeeTypeFilter,
@@ -154,7 +162,7 @@ class GovernmentRemittanceReportController extends Controller
      */
     private function getEmployeeTypeCounts($selectedPeriod): array
     {
-        if (!$selectedPeriod) {
+        if (! $selectedPeriod) {
             return [
                 'regular' => 0,
                 'casual' => 0,
@@ -165,7 +173,7 @@ class GovernmentRemittanceReportController extends Controller
         $records = PayrollRecord::with('employee')
             ->whereHas('payrollPeriod', function ($query) use ($selectedPeriod) {
                 $query->where('start_date', $selectedPeriod->start_date)
-                      ->where('end_date', $selectedPeriod->end_date);
+                    ->where('end_date', $selectedPeriod->end_date);
             })
             ->get();
 
@@ -188,7 +196,7 @@ class GovernmentRemittanceReportController extends Controller
      * Calculate remittances for all government agencies with optional employee type filter
      * and organized by employee type (Regular first, then Casual)
      */
-    private function calculateRemittances($payrollRecords, $settings, $employeeTypeFilter = 'all'): array
+    private function calculateRemittances($payrollRecords, array $rates, $employeeTypeFilter = 'all'): array
     {
         if ($payrollRecords->isEmpty()) {
             return [
@@ -199,7 +207,11 @@ class GovernmentRemittanceReportController extends Controller
             ];
         }
 
-        $pagibigPerPayroll = ($settings->pagibig_monthly ?? 100) / 2;
+        $pagibigPerPayroll = $rates['pagibig_per_payroll'];
+        $philhealthEmployeeRate = $rates['philhealth_employee_rate'];
+        $philhealthEmployerRate = $rates['philhealth_employer_rate'];
+        $philhealthFloor = $rates['philhealth_floor'];
+        $philhealthCeiling = $rates['philhealth_ceiling'];
 
         // Filter records by employee type if needed
         $filteredRecords = $payrollRecords;
@@ -213,14 +225,14 @@ class GovernmentRemittanceReportController extends Controller
         $regularRecords = $filteredRecords->filter(function ($record) {
             return strtolower($record->employee?->employment_classification ?? '') === 'regular';
         });
-        
+
         $casualRecords = $filteredRecords->filter(function ($record) {
             return strtolower($record->employee?->employment_classification ?? '') === 'casual';
         });
 
         // Helper function to map records to employee data
-        $mapRecordsToEmployees = function ($records, $type) use ($settings, $pagibigPerPayroll) {
-            return $records->map(function ($record) use ($settings, $pagibigPerPayroll, $type) {
+        $mapRecordsToEmployees = function ($records, $type) use ($rates, $pagibigPerPayroll, $philhealthEmployeeRate, $philhealthEmployerRate, $philhealthFloor, $philhealthCeiling) {
+            return $records->map(function ($record) use ($rates, $pagibigPerPayroll, $type, $philhealthEmployeeRate, $philhealthEmployerRate, $philhealthFloor, $philhealthCeiling) {
                 $monthlyBasic = $record->basic_pay * 2;
 
                 // Get employee name
@@ -234,9 +246,9 @@ class GovernmentRemittanceReportController extends Controller
                 // Get classification
                 $classification = $record->employee?->employment_classification ?? '—';
 
-                // For PhilHealth: 5% total (2.5% each) with floor ₱500 and ceiling ₱5,000 monthly
-                $totalContribution = round($monthlyBasic * (($settings->philhealth_rate + $settings->philhealth_employer_rate) / 100), 2);
-                $totalContribution = max(500.0, min(5000.0, $totalContribution));
+                // PhilHealth: floor/ceiling from GovernmentAccType (stored per-payroll × 2 = monthly)
+                $totalContribution = round($monthlyBasic * (($philhealthEmployeeRate + $philhealthEmployerRate) / 100), 2);
+                $totalContribution = max($philhealthFloor, min($philhealthCeiling, $totalContribution));
                 $philhealthEmployeeShare = round($totalContribution / 2, 2);
                 $philhealthEmployerShare = round($totalContribution / 2, 2);
 
@@ -251,11 +263,11 @@ class GovernmentRemittanceReportController extends Controller
                     'employee_type' => $type,
                     'basic_pay' => $monthlyBasic,
                     // GSIS
-                    'gsis_employee' => round($monthlyBasic * ($settings->gsis_employee_rate / 100), 2),
-                    'gsis_employer' => round($monthlyBasic * ($settings->gsis_employer_rate / 100), 2),
+                    'gsis_employee' => round($monthlyBasic * ($rates['gsis_employee_rate'] / 100), 2),
+                    'gsis_employer' => round($monthlyBasic * ($rates['gsis_employer_rate'] / 100), 2),
                     'gsis_total' => round(
-                        ($monthlyBasic * ($settings->gsis_employee_rate / 100)) +
-                        ($monthlyBasic * ($settings->gsis_employer_rate / 100)),
+                        ($monthlyBasic * ($rates['gsis_employee_rate'] / 100)) +
+                        ($monthlyBasic * ($rates['gsis_employer_rate'] / 100)),
                         2
                     ),
                     // PhilHealth
@@ -283,6 +295,7 @@ class GovernmentRemittanceReportController extends Controller
         // Combine all employees with Regular first, then Casual
         $allEmployees = $regularEmployees->concat($casualEmployees)->map(function ($item) {
             unset($item['sort_name']);
+
             return $item;
         });
 
@@ -380,7 +393,7 @@ class GovernmentRemittanceReportController extends Controller
                 'agency_name' => 'GSIS',
                 'full_name' => 'Government Service Insurance System',
                 'tagline' => '',
-                'rate_description' => "Employee: {$settings->gsis_employee_rate}% · Employer: {$settings->gsis_employer_rate}% of basic salary",
+                'rate_description' => "Employee: {$rates['gsis_employee_rate']}% · Employer: {$rates['gsis_employer_rate']}% of basic salary",
                 'total_employee_share' => $gsisEmployees->sum('employee_share'),
                 'total_employer_share' => $gsisEmployees->sum('employer_share'),
                 'total' => $gsisEmployees->sum('subtotal'),
@@ -404,7 +417,7 @@ class GovernmentRemittanceReportController extends Controller
                 'agency_name' => 'PhilHealth',
                 'full_name' => 'Philippine Health Insurance Corporation',
                 'tagline' => 'Tiger Partner in Health',
-                'rate_description' => "Employee: {$settings->philhealth_rate}% · Employer: {$settings->philhealth_employer_rate}% of basic salary (50/50 split)",
+                'rate_description' => "Employee: {$rates['philhealth_employee_rate']}% · Employer: {$rates['philhealth_employer_rate']}% of basic salary (50/50 split)",
                 'total_employee_share' => $philhealthEmployees->sum('employee_share'),
                 'total_employer_share' => $philhealthEmployees->sum('employer_share'),
                 'total' => $philhealthEmployees->sum('subtotal'),
@@ -487,30 +500,10 @@ class GovernmentRemittanceReportController extends Controller
         $regularRecords = $payrollRecords->filter(function ($record) {
             return strtolower($record->employee?->employment_classification ?? '') === 'regular';
         });
-        
+
         $casualRecords = $payrollRecords->filter(function ($record) {
             return strtolower($record->employee?->employment_classification ?? '') === 'casual';
         });
-
-        // Calculate regular totals
-        $regularDeductions = 0;
-        $regularEmployer = 0;
-        foreach ($regularRecords as $record) {
-            $regularDeductions += ($record->gsis_premium + $record->philhealth + $record->pag_ibig + 
-                                 $record->withholding_tax + $record->gsis_mpl + $record->gsis_emergency + 
-                                 $record->pag_ibig_mpl + $record->ama_y2k_union + $record->water_bill) * 2;
-            $regularEmployer += ($record->gsis_premium + $record->philhealth + $record->pag_ibig) * 2;
-        }
-
-        // Calculate casual totals
-        $casualDeductions = 0;
-        $casualEmployer = 0;
-        foreach ($casualRecords as $record) {
-            $casualDeductions += ($record->gsis_premium + $record->philhealth + $record->pag_ibig + 
-                               $record->withholding_tax + $record->gsis_mpl + $record->gsis_emergency + 
-                               $record->pag_ibig_mpl + $record->ama_y2k_union + $record->water_bill) * 2;
-            $casualEmployer += ($record->gsis_premium + $record->philhealth + $record->pag_ibig) * 2;
-        }
 
         foreach (['gsis', 'philhealth', 'pagibig', 'bir'] as $agency) {
             if (isset($remittances[$agency])) {
@@ -523,6 +516,21 @@ class GovernmentRemittanceReportController extends Controller
             }
         }
 
+        // Derive Regular/Casual totals from remittances (consistent with top summary cards)
+        $regularEmployeeShare = 0;
+        $regularEmployerShare = 0;
+        $casualEmployeeShare = 0;
+        $casualEmployerShare = 0;
+
+        foreach (['gsis', 'philhealth', 'pagibig', 'bir'] as $agency) {
+            if (isset($remittances[$agency])) {
+                $regularEmployeeShare += $remittances[$agency]['regular_totals']['employee'] ?? 0;
+                $regularEmployerShare += $remittances[$agency]['regular_totals']['employer'] ?? 0;
+                $casualEmployeeShare += $remittances[$agency]['casual_totals']['employee'] ?? 0;
+                $casualEmployerShare += $remittances[$agency]['casual_totals']['employer'] ?? 0;
+            }
+        }
+
         return [
             'employee_deductions' => round($totalEmployeeDeductions, 2),
             'employer_payment' => round($totalEmployerPayment, 2),
@@ -531,15 +539,15 @@ class GovernmentRemittanceReportController extends Controller
             'by_employee_type' => [
                 'regular' => [
                     'count' => $regularRecords->count(),
-                    'deductions' => round($regularDeductions, 2),
-                    'employer' => round($regularEmployer, 2),
-                    'total' => round($regularDeductions + $regularEmployer, 2),
+                    'deductions' => round($regularEmployeeShare, 2),
+                    'employer' => round($regularEmployerShare, 2),
+                    'total' => round($regularEmployeeShare + $regularEmployerShare, 2),
                 ],
                 'casual' => [
                     'count' => $casualRecords->count(),
-                    'deductions' => round($casualDeductions, 2),
-                    'employer' => round($casualEmployer, 2),
-                    'total' => round($casualDeductions + $casualEmployer, 2),
+                    'deductions' => round($casualEmployeeShare, 2),
+                    'employer' => round($casualEmployerShare, 2),
+                    'total' => round($casualEmployeeShare + $casualEmployerShare, 2),
                 ],
             ],
         ];
