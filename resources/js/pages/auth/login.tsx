@@ -21,6 +21,36 @@ export default function Login({
     canResetPassword,
     canRegister,
 }: Props) {
+    const developmentCredentials = [
+        {
+            role: 'super_admin',
+            email: 'superadmin@gmail.com',
+        },
+        {
+            role: 'hr_admin',
+            email: 'anessa.orales20@obx.gov.ph',
+        },
+        {
+            role: 'ogm',
+            email: 'usan.una28@obx.gov.ph',
+        },
+        {
+            role: 'document_tracking_operator',
+            email: 'anessa.orales20@obx.gov.ph',
+            department: 'OBE',
+        },
+        {
+            role: 'document_tracking_operator',
+            email: 'onald.acapagal24@obx.gov.ph',
+            department: 'OSD',
+        },
+        {
+            role: 'document_tracking_operator',
+            email: 'usan.una28@obx.gov.ph',
+            department: 'GPAD',
+        },
+    ];
+
     return (
         <AuthLayout
             title="Log in to your account"
@@ -115,6 +145,26 @@ export default function Login({
                     {status}
                 </div>
             )}
+
+            <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                <p className="font-semibold">Development credentials only</p>
+                <p className="mt-1 text-amber-900">
+                    These accounts are for development purposes only and must not
+                    be exposed in production.
+                </p>
+                <p className='mt-5 text-red-400'>Password for all accounts: password</p>
+                <div className="mt-4 space-y-3">
+                    {developmentCredentials.map((credential, index) => (
+                        <div
+                            key={`${credential.role}-${credential.email}-${index}`}
+                            className="rounded-md border border-amber-200 bg-white/70 p-3"
+                        >
+                            <p className="font-medium">Role: {credential.department ? `${credential.role} (${credential.department})` : credential.role}</p>
+                            <p className='font-bold'>{credential.email}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
         </AuthLayout>
     );
 }

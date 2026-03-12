@@ -10,7 +10,6 @@ import {
   Calendar,
   Wallet,
   Logs,
-  UserCog,
   Bell,
   FileBarChart,
 } from "lucide-react"
@@ -30,12 +29,15 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/use-auth"
-import { url } from "node_modules/zod/v4/classic/external.cjs"
-import { title } from "process"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+
+type Office = { name: string | null; acronym: string | null }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, hasRole } = useAuth()
+  const { department, division, unit } = user?.offices ?? {}
+  const officeParts = ([department, division, unit] as (Office | undefined | null)[])
+    .filter((office): office is Office => !!office?.name)
 
   const data = {
     navMain: [
@@ -45,7 +47,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: LayoutDashboard,
         show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
       },
-      // TODO: implement user management, admin, super admin
       {
         title: "Employee",
         url: route("employee.index"),
@@ -297,21 +298,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
 
         {(() => {
-          const { unit, division, department } = user?.offices ?? {}
-          const office = unit?.name ? unit : division?.name ? division : department?.name ? department : null
-          if (!office) return null
+          if (officeParts.length === 0) return null
+
           return (
-            <div className="px-3 pb-2 flex items-center gap-1.5">
-              <Building2 className="size-3 shrink-0 text-muted-foreground" />
+            <div className="flex items-start gap-1.5 px-3 pb-2">
+              <Building2 className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="text-xs text-muted-foreground truncate cursor-default">
-                      {office.acronym ?? office.name}
-                    </span>
+                    <p className="cursor-default text-xs leading-tight text-muted-foreground">
+                      {officeParts.map((office) => office.acronym ?? office.name).join(" › ")}
+                    </p>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{office.name}</p>
+                    <p>{officeParts.map((office) => office.name).join(" › ")}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
