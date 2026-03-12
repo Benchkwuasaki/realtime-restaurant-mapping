@@ -85,7 +85,7 @@ class DocumentTrackingOutgoingController extends Controller
             ])
             ->whereIn('document_tracking_id', $forwardedIds)
             ->where('origin_office_id', '!=', $departmentId)
-            ->where('status', '!=', 'completed')
+            ->whereNotIn('status', ['completed', 'cancelled'])
             ->latest()
             ->get()
             ->map($shape);
