@@ -418,7 +418,7 @@ export default function Page() {
                         <div className="flex items-stretch gap-4 mb-5">
                             <div className="flex flex-col items-center justify-center p-5 rounded-2xl flex-1"
                                 style={{ background: "rgba(251,113,133,0.07)", border: "1.5px solid rgba(251,113,133,0.18)" }}>
-                                <p className="text-6xl font-black leading-none" style={{ color: "#fb7185" }}>36</p>
+                                <p className="text-6xl font-black leading-none" style={{ color: "#fb7185" }}>{pendingLeaveCount}</p>
                                 <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-widest font-semibold">total pending</p>
                             </div>
                             <div className="grid grid-cols-1 gap-2 flex-1">
