@@ -93,6 +93,7 @@ const STATUS_BADGE: Record<string, React.ComponentProps<typeof Badge>['variant']
 
 function StatusBadge({ status }: { status: string }) {
     return (
+
         <Badge variant={STATUS_BADGE[status] ?? 'default'}>
             {status}
         </Badge>

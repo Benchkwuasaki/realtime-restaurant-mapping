@@ -1,6 +1,7 @@
 import { Head, useForm, usePage } from "@inertiajs/react"
 import { Building2, GitBranch, LampDesk, LayoutGrid } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 import { route } from "ziggy-js"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { StatCard } from "@/components/shared/stat-card"
@@ -120,9 +121,33 @@ function DepartmentModal({ open, editingDepartment, onClose }: DepartmentModalPr
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (isEdit) {
-            put(route("department.update", editingDepartment!.department_id), { onSuccess: handleClose })
+            put(route("department.update", editingDepartment!.department_id), {
+                onSuccess: () => {
+                    toast.success("Department updated", {
+                        description: `"${data.department_name}" has been updated successfully.`,
+                    })
+                    handleClose()
+                },
+                onError: () => {
+                    toast.error("Failed to update department", {
+                        description: "Please check the form for errors and try again.",
+                    })
+                },
+            })
         } else {
-            post(route("department.store"), { onSuccess: handleClose })
+            post(route("department.store"), {
+                onSuccess: () => {
+                    toast.success("Department created", {
+                        description: `"${data.department_name}" has been created successfully.`,
+                    })
+                    handleClose()
+                },
+                onError: () => {
+                    toast.error("Failed to create department", {
+                        description: "Please check the form for errors and try again.",
+                    })
+                },
+            })
         }
     }
 
@@ -184,10 +209,7 @@ function DepartmentModal({ open, editingDepartment, onClose }: DepartmentModalPr
                         </div>
                     </div>
 
-                    <DialogFooter className="px-5 py-4 border-t border-border xs:flex xs:flex-row xs:justify-between bg-muted/30">
-                        <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
-                            Cancel
-                        </Button>
+                    <DialogFooter className="px-5 py-4 border-t border-border xs:flex xs:flex-row xs:justify-between bg-muted/30" showCloseButton>
                         <Button type="submit" size="sm" disabled={processing} className="text-xs">
                             {processing ? "Saving…" : isEdit ? "Update Department" : "Create Department"}
                         </Button>
@@ -236,7 +258,13 @@ export default function DepartmentIndex({ departments, totalDepartments, totalDi
         setSelectedDepartment(null)
     }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: () => { } })
+    function handleDelete(department: Department) {
+        toast.success("Department deleted", {
+            description: `"${department.department_name}" has been removed.`,
+        })
+    }
+
+    const columns = getColumns({ onEdit: openEdit, onDelete: handleDelete })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -261,13 +289,6 @@ export default function DepartmentIndex({ departments, totalDepartments, totalDi
                     </div>
                 </div>
 
-
-                {props.flash?.success && (
-                    <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
-                        {props.flash.success}
-                    </div>
-                )}
-
                 <DataTable
                     columns={columns}
                     data={departments}
@@ -283,6 +304,16 @@ export default function DepartmentIndex({ departments, totalDepartments, totalDi
                         route: route("department.bulk-destroy"),
                         entityName: "Department",
                         getId: (row) => (row as Department).department_id,
+                        onSuccess: (count: number) => {
+                            toast.success(`${count} department${count !== 1 ? "s" : ""} deleted`, {
+                                description: "The selected departments have been permanently removed.",
+                            })
+                        },
+                        onError: () => {
+                            toast.error("Bulk delete failed", {
+                                description: "Some departments could not be deleted. Please try again.",
+                            })
+                        },
                     }}
                 />
             </div>

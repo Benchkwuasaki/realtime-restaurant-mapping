@@ -2,20 +2,22 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InternalOrganization extends Model
 {
+    use SoftDeletes;
 
     protected $table = 'internal_organizations';
     protected $primaryKey = 'internal_organization_id';
+
     protected $fillable = [
         'code',
         'name',
-        'type',
+        'internal_org_type_id',  // FK replaces the old 'type' string
         'head',
         'payroll_deduction_linked',
         'status',
@@ -23,10 +25,15 @@ class InternalOrganization extends Model
 
     protected $casts = [
         'payroll_deduction_linked' => 'boolean',
-        'status' => 'boolean',
+        'status'                   => 'boolean',
     ];
 
     // ── Relationships ──────────────────────────────────────────────────────────
+
+    public function orgType(): BelongsTo
+    {
+        return $this->belongsTo(InternalOrgType::class, 'internal_org_type_id', 'internal_org_type_id');
+    }
 
     public function members(): BelongsToMany
     {

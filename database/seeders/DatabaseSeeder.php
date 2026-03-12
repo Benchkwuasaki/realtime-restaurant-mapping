@@ -21,20 +21,20 @@ class DatabaseSeeder extends Seeder
 
         // ── 1. Salary Grade Steps ──────────────────────────────────
         $salaryGradeSteps = [
-            ['salary_grade' => 7, 'step' => 1, 'monthly_salary' => 17899.00],
-            ['salary_grade' => 8, 'step' => 1, 'monthly_salary' => 19077.00],
-            ['salary_grade' => 10, 'step' => 1, 'monthly_salary' => 22316.00],
-            ['salary_grade' => 11, 'step' => 1, 'monthly_salary' => 24887.00],
-            ['salary_grade' => 12, 'step' => 1, 'monthly_salary' => 27608.00],
-            ['salary_grade' => 13, 'step' => 1, 'monthly_salary' => 30531.00],
-            ['salary_grade' => 14, 'step' => 1, 'monthly_salary' => 33452.00],
-            ['salary_grade' => 15, 'step' => 1, 'monthly_salary' => 36619.00],
-            ['salary_grade' => 16, 'step' => 1, 'monthly_salary' => 40208.00],
-            ['salary_grade' => 18, 'step' => 1, 'monthly_salary' => 48597.00],
-            ['salary_grade' => 20, 'step' => 1, 'monthly_salary' => 60268.00],
-            ['salary_grade' => 22, 'step' => 1, 'monthly_salary' => 75406.00],
-            ['salary_grade' => 24, 'step' => 1, 'monthly_salary' => 97744.00],
-            ['salary_grade' => 26, 'step' => 1, 'monthly_salary' => 126462.00],
+            ['salary_grade' => 7, 'step' => 1, 'salary_amount' => 17899.00],
+            ['salary_grade' => 8, 'step' => 1, 'salary_amount' => 19077.00],
+            ['salary_grade' => 10, 'step' => 1, 'salary_amount' => 22316.00],
+            ['salary_grade' => 11, 'step' => 1, 'salary_amount' => 24887.00],
+            ['salary_grade' => 12, 'step' => 1, 'salary_amount' => 27608.00],
+            ['salary_grade' => 13, 'step' => 1, 'salary_amount' => 30531.00],
+            ['salary_grade' => 14, 'step' => 1, 'salary_amount' => 33452.00],
+            ['salary_grade' => 15, 'step' => 1, 'salary_amount' => 36619.00],
+            ['salary_grade' => 16, 'step' => 1, 'salary_amount' => 40208.00],
+            ['salary_grade' => 18, 'step' => 1, 'salary_amount' => 48597.00],
+            ['salary_grade' => 20, 'step' => 1, 'salary_amount' => 60268.00],
+            ['salary_grade' => 22, 'step' => 1, 'salary_amount' => 75406.00],
+            ['salary_grade' => 24, 'step' => 1, 'salary_amount' => 97744.00],
+            ['salary_grade' => 26, 'step' => 1, 'salary_amount' => 126462.00],
         ];
 
         $sgStepIds = [];
@@ -994,7 +994,7 @@ class DatabaseSeeder extends Seeder
             }
 
             // Payroll
-            $baseSalary = $salaryGradeSteps[$sgIdx]['monthly_salary'];
+            $baseSalary = $salaryGradeSteps[$sgIdx]['salary_amount'];
             $deduction = round($baseSalary * 0.12, 2);
             $finalAmount = round($baseSalary - $deduction, 2);
             DB::table('employee_payroll_data')->insert([

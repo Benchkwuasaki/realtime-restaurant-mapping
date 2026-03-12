@@ -282,7 +282,7 @@ const DivisionNode: React.FC<{
 
                 <div onClick={handleDivClick} className="flex flex-col items-center gap-2.5 cursor-pointer w-full">
                     <div className="text-center w-full">
-                        <p className="text-xs font-bold text-foreground leading-tight break-words">
+                        <p className="text-xs font-bold text-foreground leading-tight wrap-break-word">
                             {division.name}
                         </p>
                         {division.acronym && (
@@ -423,11 +423,15 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
         }, [department, fitToCanvas]);
 
         // Re-fit on window resize
+
+
         useEffect(() => {
             const onResize = () => requestAnimationFrame(() => fitToCanvas());
             window.addEventListener('resize', onResize);
             return () => window.removeEventListener('resize', onResize);
         }, [fitToCanvas]);
+
+
 
         // ── Expose panToEmployee ────────────────────────────────────────────────
         // Uses current getBoundingClientRect to find where the node is on screen RIGHT NOW,
@@ -521,7 +525,7 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
         }, [scale, clampTranslate]);
 
         // ── Mouse handlers ──────────────────────────────────────────────────────
-        const handleWheel = useCallback((e: React.WheelEvent) => {
+        const handleWheel = useCallback((e: WheelEvent) => {
             e.preventDefault();
             setScale(s => Math.min(MAX, Math.max(minScaleRef.current, s + (e.deltaY < 0 ? STEP : -STEP))));
         }, []);
@@ -597,6 +601,14 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
             );
         };
 
+        useEffect(() => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            canvas.addEventListener('wheel', handleWheel, { passive: false });
+            return () => canvas.removeEventListener('wheel', handleWheel);
+        }, [handleWheel]);
+
+
         return (
             <div className="relative w-full h-full overflow-hidden">
 
@@ -641,7 +653,6 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
                 <div
                     ref={canvasRef}
                     className="w-full h-full cursor-grab active:cursor-grabbing select-none overflow-hidden touch-none isolate"
-                    onWheel={handleWheel}
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}

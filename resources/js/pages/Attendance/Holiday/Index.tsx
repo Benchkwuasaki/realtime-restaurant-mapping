@@ -1,5 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react'
-import { CalendarDays, Check, Pencil, Plus, PlusCircle, Repeat, Trash2, ArrowUpDown, X, CalendarCheck, RefreshCw } from 'lucide-react'
+import { CalendarDays, Check, Pencil, Plus, PlusCircle, Repeat, Trash2, ArrowUpDown, X, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { route } from 'ziggy-js'
 import {
@@ -40,6 +40,7 @@ import { StatCard } from '@/components/shared/stat-card'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { cn } from '@/lib/utils'
 import type { BreadcrumbItem } from '@/types'
+import { TYPE_BADGE_VARIANT } from './data/data'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,20 +73,6 @@ const HOLIDAY_TYPES = [
     'Local Holiday',
 ]
 
-const TYPE_PILL: Record<string, string> = {
-    'Regular Holiday':     'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
-    'Special Non-Working': 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-    'Special Working':     'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
-    'Local Holiday':       'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300',
-}
-
-const TYPE_DOT: Record<string, string> = {
-    'Regular Holiday':     'bg-rose-400',
-    'Special Non-Working': 'bg-amber-400',
-    'Special Working':     'bg-sky-400',
-    'Local Holiday':       'bg-violet-400',
-}
-
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Attendance', href: '#' },
     { title: 'Holiday Management', href: '/holiday' },
@@ -104,6 +91,16 @@ function getFormattedDate(dateStr: string): string {
 function FieldError({ message }: { message?: string }) {
     if (!message) return null
     return <p className="text-xs text-destructive mt-1">{message}</p>
+}
+
+// ─── Type Badge ───────────────────────────────────────────────────────────────
+
+function TypeBadge({ type }: { type: string }) {
+    return (
+        <Badge variant={TYPE_BADGE_VARIANT[type] ?? 'secondary'}>
+            {type}
+        </Badge>
+    )
 }
 
 // ─── Holiday Modal ────────────────────────────────────────────────────────────
@@ -191,10 +188,7 @@ function HolidayModal({ open, editingHoliday, onClose }: HolidayModalProps) {
                                     <SelectContent>
                                         {HOLIDAY_TYPES.map((t) => (
                                             <SelectItem key={t} value={t}>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${TYPE_DOT[t] ?? 'bg-muted-foreground'}`} />
-                                                    {t}
-                                                </div>
+                                                <TypeBadge type={t} />
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -347,8 +341,7 @@ function TypeFilter({ selectedTypes, onChange }: TypeFilterProps) {
                             )}>
                                 {isSelected && <Check className="size-3 stroke-primary-foreground" />}
                             </div>
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TYPE_DOT[type]}`} />
-                            {type}
+                            <TypeBadge type={type} />
                         </DropdownMenuItem>
                     )
                 })}
@@ -382,10 +375,9 @@ function HolidayMobileCard({ holiday, onEdit, onDelete, isLast }: HolidayMobileC
         <div className={cn("bg-background", !isLast && "border-b border-border")}>
             {/* ── Card Body ── */}
             <div className="px-4 pt-3.5 pb-3 space-y-1.5">
-                {/* Name + type pill */}
+                {/* Name + type badge */}
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${TYPE_DOT[holiday.type] ?? 'bg-muted-foreground'}`} />
                         <span className="font-semibold text-sm text-foreground truncate">
                             {holiday.name}
                         </span>
@@ -393,13 +385,11 @@ function HolidayMobileCard({ holiday, onEdit, onDelete, isLast }: HolidayMobileC
                             <Repeat className="w-3.5 h-3.5 text-muted-foreground shrink-0" title="Recurring yearly" />
                         )}
                     </div>
-                    <span className={`inline-block shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full ${TYPE_PILL[holiday.type] ?? 'bg-muted text-muted-foreground'}`}>
-                        {holiday.type}
-                    </span>
+                    <TypeBadge type={holiday.type} />
                 </div>
 
                 {/* Date + day of week */}
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-3.5">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span>{getFormattedDate(holiday.date)}</span>
                     <span className="text-muted-foreground/40">·</span>
                     <span>{getDayOfWeek(holiday.date)}</span>
@@ -407,7 +397,7 @@ function HolidayMobileCard({ holiday, onEdit, onDelete, isLast }: HolidayMobileC
 
                 {/* Description */}
                 {holiday.description && (
-                    <p className="text-xs text-muted-foreground pl-3.5 line-clamp-2">
+                    <p className="text-xs text-muted-foreground line-clamp-2">
                         {holiday.description}
                     </p>
                 )}
@@ -415,9 +405,9 @@ function HolidayMobileCard({ holiday, onEdit, onDelete, isLast }: HolidayMobileC
 
             {/* ── Card Footer ── */}
             <div className="flex items-center justify-between px-4 py-2 bg-muted/30">
-                <span className="text-xs text-muted-foreground">
-                    {holiday.is_recurring ? 'Repeats every year' : 'One-time holiday'}
-                </span>
+                <Badge variant={holiday.is_recurring ? 'default' : 'secondary'}>
+                    {holiday.is_recurring ? 'Recurring' : 'One-time'}
+                </Badge>
                 <div className="flex items-center gap-1">
                     <Button
                         variant="ghost"
@@ -520,14 +510,13 @@ function MonthCard({ monthName, year, holidays, onEdit, onDelete, isMobile }: Mo
                                 >
                                     <td className="px-3 py-3">
                                         <div className="flex items-center gap-1.5">
-                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TYPE_DOT[h.type] ?? 'bg-muted-foreground'}`} />
                                             <span className="font-medium text-foreground text-xs">{h.name}</span>
                                             {h.is_recurring && (
                                                 <Repeat className="w-3 h-3 text-muted-foreground shrink-0" title="Recurring yearly" />
                                             )}
                                         </div>
                                         {h.description && (
-                                            <p className="text-[11px] text-muted-foreground mt-0.5 pl-3 truncate max-w-[160px]">
+                                            <p className="text-[11px] text-muted-foreground mt-0.5 truncate max-w-[160px]">
                                                 {h.description}
                                             </p>
                                         )}
@@ -539,9 +528,7 @@ function MonthCard({ monthName, year, holidays, onEdit, onDelete, isMobile }: Mo
                                         {getDayOfWeek(h.date)}
                                     </td>
                                     <td className="px-3 py-3 whitespace-nowrap">
-                                        <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${TYPE_PILL[h.type] ?? 'bg-muted text-muted-foreground'}`}>
-                                            {h.type}
-                                        </span>
+                                        <TypeBadge type={h.type} />
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center justify-end gap-1">

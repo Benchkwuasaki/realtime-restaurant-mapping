@@ -246,14 +246,12 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Positi
         },
         {
             id: "department",
-            accessorFn: (row) => row.department?.department_name ?? "",
+            accessorFn: (row) => String(row.department?.department_id ?? ""),
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Department" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-[140px]">
-                    {row.original.department?.department_name ?? "—"}
-                </div>
+                <div>{row.original.department?.department_name ?? "—"}</div>
             ),
             filterFn: (row, _id, value: string[]) =>
                 value.includes(String(row.original.department_id)),
@@ -262,7 +260,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Positi
         },
         {
             id: "division",
-            accessorFn: (row) => row.division?.division_name ?? "",
+            accessorFn: (row) => String(row.division?.division_id ?? ""),
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Division" />
             ),
@@ -278,7 +276,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Positi
         },
         {
             id: "unit",
-            accessorFn: (row) => row.unit?.unit_name ?? "",
+            accessorFn: (row) => String(row.unit?.unit_id ?? ""),
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Unit" />
             ),

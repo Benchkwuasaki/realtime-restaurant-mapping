@@ -4,6 +4,7 @@ import {
     GraduationCap, Award, Plus, Trash2, List, Save, Pencil,
 } from "lucide-react"
 import { type FormEventHandler, useState, useMemo, useEffect } from "react"
+import type React from "react"
 import { toast } from "sonner"
 import { route } from "ziggy-js"
 import {
@@ -27,6 +28,8 @@ import {
 import { Stepper } from "@/components/ui/stepper"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
+import { PhoneInput } from "@/components/phone-input"
+import { isValidPhoneNumber } from 'react-phone-number-input'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -51,7 +54,7 @@ export interface SalaryGradeStep {
     salary_grade_step_id: number
     salary_grade: number
     step: number
-    monthly_salary: number
+    salary_amount: number
 }
 
 export interface EmploymentClassification {
@@ -84,7 +87,7 @@ interface FamilyRow {
     date_of_birth: string
     place_of_birth: string
 }
-interface GovernmentRow { [key: string]: string; account_type: string; account_number: string }
+interface GovernmentRow { [key: string]: string; account_type: string; account_number: string; custom_type_name: string }
 interface EducationRow { [key: string]: string; level: string; school_name: string; school_address: string; graduation_date: string; degree: string }
 interface EligibilityRow { [key: string]: string; eligibility_name: string; year_passed: string }
 
@@ -158,39 +161,28 @@ function isJobOrderPosition(grp: PositionGroup): boolean {
 
 // ─── Validation helpers ───────────────────────────────────────────────────────
 
-const PH_PHONE_REGEX = /^09\d{9}$/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-// At least 1 uppercase, 1 lowercase, 1 digit, 1 special char from the set, min 8 chars
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*\-_=+[\]{};:'",.<>?/\\|`~])[A-Za-z\d!@#$%^&*\-_=+[\]{};:'",.<>?/\\|`~]{8,}$/
 
 function validateEmail(email: string): boolean {
     return EMAIL_REGEX.test(email)
 }
 
-function validatePhone(phone: string): boolean {
-    return PH_PHONE_REGEX.test(phone)
-}
-
 function validatePassword(password: string): boolean {
     return PASSWORD_REGEX.test(password)
-}
-
-function isFutureDate(dateStr: string): boolean {
-    if (!dateStr) return false
-    return new Date(dateStr) > new Date()
 }
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
 const steps = [
-    { title: "Personal Information", description: "Step 1", icon: User },
-    { title: "Employment Details", description: "Step 2", icon: BriefcaseBusiness },
-    { title: "Address", description: "Step 3", icon: MapPin },
-    { title: "Family Information", description: "Step 4", icon: Users },
-    { title: "Government Accounts", description: "Step 5", icon: Landmark },
-    { title: "Education", description: "Step 6", icon: GraduationCap },
-    { title: "Eligibility", description: "Step 7", icon: Award },
-    { title: "Review & Submit", description: "Step 8", icon: BadgeCheck },
+    { title: "Personal Information", description: "Step 1" },
+    { title: "Employment Details", description: "Step 2" },
+    { title: "Address", description: "Step 3" },
+    { title: "Family Information", description: "Step 4" },
+    { title: "Government Accounts", description: "Step 5" },
+    { title: "Education", description: "Step 6" },
+    { title: "Eligibility", description: "Step 7" },
+    { title: "Review & Submit", description: "Step 8" },
 ]
 
 const REQUIRED: Record<number, { field: string; label: string }[]> = {
@@ -207,12 +199,15 @@ const REQUIRED: Record<number, { field: string; label: string }[]> = {
         { field: "salary_grade", label: "Salary Grade" },
         { field: "salary_grade_step_id", label: "Step" },
         { field: "employment_classification", label: "Employment Classification" },
+        { field: "work_id", label: "Work ID" },
         { field: "work_email", label: "Work Email" },
         { field: "password", label: "Password" },
         { field: "date_applied", label: "Date Applied" },
         { field: "date_hired", label: "Date Hired" },
         { field: "work_schedule_start", label: "Schedule Start" },
         { field: "work_schedule_end", label: "Schedule End" },
+        { field: "break_start", label: "Break Start" },
+        { field: "break_end", label: "Break End" },
         { field: "status", label: "Status" },
     ],
 }
@@ -491,7 +486,11 @@ function PersonalStep({ data, setData, err }: {
             </div>
             <div className="space-y-2">
                 <FieldLabel htmlFor="phone_number">Phone Number <Req /></FieldLabel>
-                <Input id="phone_number" value={data.phone_number} onChange={e => setData("phone_number", e.target.value)} placeholder="09XXXXXXXXX" />
+                <PhoneInput
+                    defaultCountry="PH"
+                    value={data.phone_number}
+                    onChange={v => setData("phone_number", v)}
+                />
                 <FieldError message={err("phone_number")} />
             </div>
         </div>
@@ -502,10 +501,11 @@ function PersonalStep({ data, setData, err }: {
 
 function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmentClassifications, roles }: {
     data: {
-        item_id: string; selected_position_name: string; salary_grade_step_id: string
+        item_id: string; selected_position_name: string; salary_grade_step_id: string; work_id: string
         employment_classification: string; roles: string[]; work_email: string; password: string
         date_applied: string; date_hired: string; work_schedule_start: string
         work_schedule_end: string; status: string; salary_grade: string; step: string
+        break_start: string; break_end: string
     }
     setData: SetDataFn; err: ErrFn
     items: Item[]; salaryGradeSteps: SalaryGradeStep[]; employmentClassifications: EmploymentClassification[]; roles: Role[]
@@ -537,11 +537,6 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
         )
     }, [allPositionGroups, data.employment_classification])
 
-    const selectedGroup = useMemo(
-        () => positionGroups.find(g => g.groupKey === data.selected_position_name),
-        [positionGroups, data.selected_position_name]
-    )
-
     const handleClassificationSelect = (value: string) => {
         setData("employment_classification", value)
         setData("selected_position_name", "")
@@ -557,6 +552,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
     }
 
     const positionDisabled = !data.employment_classification
+
     const selectedRolesLabel = data.roles.length === 0
         ? "Select role(s)"
         : data.roles.length === 1
@@ -569,17 +565,6 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
             : data.roles.filter(role => role !== roleName)
         setData("roles", nextRoles)
     }
-
-    const positionHint = useMemo(() => {
-        if (!data.employment_classification) return null
-        const isJO = data.employment_classification === JOB_ORDER_CLASSIFICATION
-        if (positionGroups.length === 0) {
-            return isJO
-                ? "No Job Order positions available. Create one under Organization → Job Order Positions."
-                : "No Regular/Casual positions available."
-        }
-        return isJO ? "Showing Job Order positions only." : "Showing Regular and Casual positions only."
-    }, [data.employment_classification, positionGroups])
 
     return (
         <>
@@ -627,8 +612,10 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                                 const isDisabled = grp.isFull
                                 return (
                                     <SelectItem key={grp.groupKey} value={grp.groupKey} disabled={isDisabled} className="py-2.5">
-                                        <div className="flex items-center justify-between gap-3 w-full">
-                                            <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.displayLabel}</span>
+                                        <div className="flex items-center justify-between gap-3 w-full min-w-0">
+                                            <span className={`truncate ${isDisabled ? "text-muted-foreground/50" : ""}`}>
+                                                {grp.displayLabel}
+                                            </span>
                                             {grp.totalSlots > 1 && (
                                                 isDisabled
                                                     ? <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">Full</Badge>
@@ -643,39 +630,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                             })}
                         </SelectContent>
                     </Select>
-
-                    {positionHint && <p className="text-xs text-muted-foreground">{positionHint}</p>}
-                    {selectedGroup && selectedGroup.totalSlots > 1 && (
-                        <p className="text-xs text-muted-foreground">
-                            {selectedGroup.availableSlots === 0
-                                ? "All slots are currently occupied."
-                                : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slots available — a slot will be auto-assigned.`}
-                        </p>
-                    )}
                     <FieldError message={err("item_id")} />
-
-                    {selectedGroup?.position && (
-                        <div className="rounded-lg border border-border divide-y divide-border bg-muted/20 mt-1">
-                            {selectedGroup.position.department && (
-                                <div className="flex justify-between px-4 py-2">
-                                    <span className="text-xs text-muted-foreground">Department</span>
-                                    <span className="text-xs font-medium text-foreground">{selectedGroup.position.department.department_name}</span>
-                                </div>
-                            )}
-                            {selectedGroup.position.division && (
-                                <div className="flex justify-between px-4 py-2">
-                                    <span className="text-xs text-muted-foreground">Division</span>
-                                    <span className="text-xs font-medium text-foreground">{selectedGroup.position.division.division_name}</span>
-                                </div>
-                            )}
-                            {selectedGroup.position.unit && (
-                                <div className="flex justify-between px-4 py-2">
-                                    <span className="text-xs text-muted-foreground">Unit</span>
-                                    <span className="text-xs font-medium text-foreground">{selectedGroup.position.unit.unit_name}</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
                 </div>
 
                 {/* Roles */}
@@ -734,7 +689,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                                 .sort((a, b) => a.step - b.step)
                                 .map(sgs => (
                                     <SelectItem key={sgs.salary_grade_step_id} value={String(sgs.salary_grade_step_id)}>
-                                        Step {sgs.step} — ₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                                        Step {sgs.step} — ₱{Number(sgs.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                                     </SelectItem>
                                 ))}
                         </SelectContent>
@@ -753,6 +708,13 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                         </SelectContent>
                     </Select>
                     <FieldError message={err("status")} />
+                </div>
+
+                {/* Work ID */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="work_id">Work ID <Req /></FieldLabel>
+                    <Input id="work_id" value={data.work_id} onChange={e => setData("work_id", e.target.value)} placeholder="e.g. EMP-2024-001" />
+                    <FieldError message={err("work_id")} />
                 </div>
 
                 {/* Work Email */}
@@ -795,6 +757,20 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                     <FieldLabel htmlFor="work_schedule_end">Schedule End <Req /></FieldLabel>
                     <Input id="work_schedule_end" type="time" value={data.work_schedule_end} onChange={e => setData("work_schedule_end", e.target.value)} />
                     <FieldError message={err("work_schedule_end")} />
+                </div>
+
+                {/* Break Start */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="break_start">Break Start</FieldLabel>
+                    <Input id="break_start" type="time" value={data.break_start} onChange={e => setData("break_start", e.target.value)} />
+                    <FieldError message={err("break_start")} />
+                </div>
+
+                {/* Break End */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="break_end">Break End</FieldLabel>
+                    <Input id="break_end" type="time" value={data.break_end} onChange={e => setData("break_end", e.target.value)} />
+                    <FieldError message={err("break_end")} />
                 </div>
             </div>
 
@@ -851,7 +827,7 @@ function AddressStep({ rows, setRows, err }: { rows: AddressRow[]; setRows: (r: 
 
 // ─── FamilyStep ───────────────────────────────────────────────────────────────
 
-const RELATIONSHIPS = ["Spouse", "Parent", "Sibling", "Child", "Guardian", "Emergency Contact"]
+const RELATIONSHIPS = ["Spouse", "Father", "Mother", "Sibling", "Child", "Guardian"]
 
 function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: FamilyRow[]) => void; err: ErrFn }) {
     const add = () => setRows([...rows, { full_name: "", contact_number: "", relationship: "", sex: "", date_of_birth: "", place_of_birth: "" }])
@@ -860,8 +836,8 @@ function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: Fa
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
     }
     return (
-        <CollectionSection title="Add family members or emergency contacts." onAdd={add} addLabel="Add Family Member">
-            {rows.length === 0 && (<><EmptyState label="No family members added yet." /><FieldError message={err("family")} /></>)}
+        <CollectionSection title="Add family members or emergency contacts. You can skip this and add them later." onAdd={add} addLabel="Add Family Member">
+            {rows.length === 0 && (<><EmptyState label="No family members added yet. You can add them later." /><FieldError message={err("family")} /></>)}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-3 gap-4 pr-6">
@@ -896,7 +872,11 @@ function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: Fa
                         </div>
                         <div className="space-y-1.5">
                             <FieldLabel>Contact Number</FieldLabel>
-                            <Input value={row.contact_number} onChange={e => update(i, "contact_number", e.target.value)} placeholder="09XXXXXXXXXX" />
+                            <PhoneInput
+                                defaultCountry="PH"
+                                value={row.contact_number}
+                                onChange={v => update(i, "contact_number", v)}
+                            />
                         </div>
                         <div className="space-y-1.5">
                             <FieldLabel>Place of Birth</FieldLabel>
@@ -910,40 +890,239 @@ function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: Fa
 }
 
 // ─── GovernmentStep ───────────────────────────────────────────────────────────
+// Mirrors Show.tsx layout: fixed rows for standard IDs + expandable extras.
+// This entire step is optional — the user can leave everything blank.
 
-const GOVERNMENT_ACCOUNT_TYPES = ["SSS", "PhilHealth", "GSIS", "TIN", "Pag-IBIG", "Other"]
+/** Standard IDs always shown as fixed rows (matching Show.tsx) */
+const STANDARD_GOV_ID_TYPES_CREATE = ["GSIS", "PhilHealth", "Pag-IBIG"]
 
-function GovernmentStep({ rows, setRows, err }: { rows: GovernmentRow[]; setRows: (r: GovernmentRow[]) => void; err: ErrFn }) {
-    const add = () => setRows([...rows, { account_type: "", account_number: "" }])
-    const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
-    const update = (i: number, field: keyof GovernmentRow, value: string) => {
-        const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
+/** Selectable types for extra rows. "Others" triggers a free-text name input. */
+const EXTRA_GOV_ID_TYPES_CREATE = [
+    "SSS", "TIN", "Voter's ID", "Driver's License", "Passport",
+    "PhilSys / National ID", "Postal ID", "Senior Citizen ID", "PWD ID", "OFW ID",
+    "Others",
+]
+
+/** Format rules for ID types that have a known pattern. Returns an error string or null. */
+function validateGovIdFormat(type: string, number: string): string | null {
+    if (!number.trim()) return null // blank is always ok (optional)
+    const t = type.toLowerCase()
+    const patterns: Record<string, { regex: RegExp; hint: string }> = {
+        "gsis": { regex: /^\d{10,12}$/, hint: "Must be 10–12 digits (e.g. 1234567890)." },
+        "philhealth": { regex: /^\d{2}-\d{9}-\d$/, hint: "Format: 00-000000000-0" },
+        "pag-ibig": { regex: /^\d{4}-\d{4}-\d{4}$/, hint: "Format: 0000-0000-0000" },
+        "sss": { regex: /^\d{2}-\d{7}-\d$/, hint: "Format: 00-0000000-0" },
+        "tin": { regex: /^\d{3}-\d{3}-\d{3}(-\d{3})?$/, hint: "Format: 000-000-000 or 000-000-000-000" },
+        "driver's license": { regex: /^[A-Z]\d{2}-\d{2}-\d{6}$/, hint: "Format: A00-00-000000" },
+        "passport": { regex: /^[A-Z]\d{7}$/, hint: "Format: A0000000" },
     }
+    const rule = patterns[t]
+    if (!rule) return null // no strict format for this type
+    return rule.regex.test(number) ? null : rule.hint
+}
+
+function getGovPlaceholder(type: string): string {
+    switch (type.toLowerCase()) {
+        case "philhealth": return "00-000000000-0"
+        case "pag-ibig": return "0000-0000-0000"
+        case "gsis": return "10–12 digit number"
+        case "sss": return "00-0000000-0"
+        case "tin": return "000-000-000-000"
+        case "driver's license": return "A00-00-000000"
+        case "passport": return "A0000000"
+        case "others": return "Enter ID number"
+        default: return `Enter ${type || "ID"} number`
+    }
+}
+
+function GovernmentStep({ rows, setRows, err }: {
+    rows: GovernmentRow[]
+    setRows: React.Dispatch<React.SetStateAction<GovernmentRow[]>>
+    err: ErrFn
+}) {
+    const getStdValue = (type: string) =>
+        rows.find(r => r.account_type === type)?.account_number ?? ""
+
+    const updateStandard = (type: string, value: string) =>
+        setRows(prev => prev.map(r => r.account_type === type ? { ...r, account_number: value } : r))
+
+    const extraRows = rows.filter(r => !STANDARD_GOV_ID_TYPES_CREATE.includes(r.account_type))
+
+    const addExtra = () =>
+        setRows(prev => [...prev, { account_type: "", account_number: "", custom_type_name: "" }])
+
+    const removeExtra = (extraIdx: number) => {
+        setRows(prev => {
+            let count = -1
+            return prev.filter(r => {
+                if (!STANDARD_GOV_ID_TYPES_CREATE.includes(r.account_type)) {
+                    count++
+                    return count !== extraIdx
+                }
+                return true
+            })
+        })
+    }
+
+    const updateExtra = (extraIdx: number, field: keyof GovernmentRow, value: string) => {
+        setRows(prev => {
+            let count = -1
+            return prev.map(r => {
+                if (!STANDARD_GOV_ID_TYPES_CREATE.includes(r.account_type)) {
+                    count++
+                    if (count === extraIdx) {
+                        const updated = { ...r, [field]: value }
+                        if (field === "account_type" && value !== "Others") {
+                            updated.custom_type_name = ""
+                        }
+                        return updated
+                    }
+                }
+                return r
+            })
+        })
+    }
+
     return (
-        <CollectionSection title="Add government ID numbers (SSS, PhilHealth, GSIS, TIN, Pag-IBIG, etc.)." onAdd={add} addLabel="Add Account">
-            {rows.length === 0 && (<><EmptyState label="No government accounts added yet." /><FieldError message={err("government")} /></>)}
-            {rows.map((row, i) => (
-                <RowCard key={i} onRemove={() => remove(i)}>
-                    <div className="grid grid-cols-2 gap-4 pr-6">
-                        <div className="space-y-1.5">
-                            <FieldLabel>Account Type <Req /></FieldLabel>
-                            <Select value={row.account_type} onValueChange={v => update(i, "account_type", v)}>
-                                <SelectTrigger className={err(`government.${i}.account_type`) ? "border-destructive" : ""}><SelectValue placeholder="Select type" /></SelectTrigger>
-                                <SelectContent>
-                                    {GOVERNMENT_ACCOUNT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <FieldError message={err(`government.${i}.account_type`)} />
-                        </div>
-                        <div className="space-y-1.5">
-                            <FieldLabel>ID Number <Req /></FieldLabel>
-                            <Input value={row.account_number} onChange={e => update(i, "account_number", e.target.value)} placeholder="XXXX-XXXX-XXXX" className={err(`government.${i}.account_number`) ? "border-destructive" : ""} />
-                            <FieldError message={err(`government.${i}.account_number`)} />
-                        </div>
+        <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+                Fill in available government ID numbers. All fields are optional — you can update them later on the employee profile.
+            </p>
+
+            {/* ── Standard IDs (always visible) ── */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-border bg-muted/20">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Standard Government IDs</p>
+                </div>
+                <div className="divide-y divide-border">
+                    {STANDARD_GOV_ID_TYPES_CREATE.map(type => {
+                        const globalIdx = rows.findIndex(r => r.account_type === type)
+                        const errMsg = err(`government.${globalIdx}.account_number`)
+                        return (
+                            <div key={type} className="px-5 py-3">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-sm font-medium text-foreground w-28 shrink-0">{type}</span>
+                                    <Input
+                                        value={getStdValue(type)}
+                                        onChange={e => updateStandard(type, e.target.value)}
+                                        placeholder={getGovPlaceholder(type)}
+                                        className={`flex-1 font-mono${errMsg ? " border-destructive focus-visible:ring-destructive" : ""}`}
+                                    />
+                                </div>
+                                {errMsg && (
+                                    <p className="mt-1.5 ml-32 text-xs text-destructive">{errMsg}</p>
+                                )}
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+
+            {/* ── Additional IDs ── */}
+            {extraRows.length > 0 && (
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div className="px-5 py-3 border-b border-border bg-muted/20">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Additional IDs</p>
                     </div>
-                </RowCard>
-            ))}
-        </CollectionSection>
+                    <div className="divide-y divide-border">
+                        {extraRows.map((row, extraIdx) => {
+                            // Resolve the global index for error key lookups
+                            let count = -1
+                            const globalIdx = rows.findIndex(r => {
+                                if (!STANDARD_GOV_ID_TYPES_CREATE.includes(r.account_type)) {
+                                    count++
+                                    return count === extraIdx
+                                }
+                                return false
+                            })
+                            const isOthers = row.account_type === "Others"
+                            const typeErr = err(`government.${globalIdx}.account_type`)
+                            const nameErr = err(`government.${globalIdx}.custom_type_name`)
+                            const numErr = err(`government.${globalIdx}.account_number`)
+
+                            return (
+                                <div key={extraIdx} className="px-5 py-3 space-y-2">
+                                    <div className="flex items-start gap-3">
+                                        {isOthers ? (
+                                            <>
+                                                {/* Custom name input — takes the "type" slot */}
+                                                <div className="w-44 shrink-0 space-y-1">
+                                                    <Input
+                                                        value={row.custom_type_name}
+                                                        onChange={e => updateExtra(extraIdx, "custom_type_name", e.target.value)}
+                                                        placeholder="ID name (e.g. Barangay ID…)"
+                                                        className={nameErr ? "border-destructive" : ""}
+                                                        autoFocus
+                                                    />
+                                                    <FieldError message={nameErr} />
+                                                </div>
+
+                                                {/* ID Number input */}
+                                                <div className="flex-1 space-y-1">
+                                                    <Input
+                                                        value={row.account_number}
+                                                        onChange={e => updateExtra(extraIdx, "account_number", e.target.value)}
+                                                        placeholder="Enter ID number"
+                                                        className={`font-mono${numErr ? " border-destructive" : ""}`}
+                                                    />
+                                                    <FieldError message={numErr} />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {/* ID Type selector */}
+                                                <div className="w-44 shrink-0 space-y-1">
+                                                    <Select
+                                                        value={row.account_type}
+                                                        onValueChange={v => updateExtra(extraIdx, "account_type", v)}
+                                                    >
+                                                        <SelectTrigger className={`h-9 text-sm${typeErr ? " border-destructive" : ""}`}>
+                                                            <SelectValue placeholder="Select ID type…" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {EXTRA_GOV_ID_TYPES_CREATE.map(t => (
+                                                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FieldError message={typeErr} />
+                                                </div>
+
+                                                {/* ID Number input */}
+                                                <div className="flex-1 space-y-1">
+                                                    <Input
+                                                        value={row.account_number}
+                                                        onChange={e => updateExtra(extraIdx, "account_number", e.target.value)}
+                                                        placeholder={getGovPlaceholder(row.account_type)}
+                                                        className={`font-mono${numErr ? " border-destructive" : ""}`}
+                                                    />
+                                                    <FieldError message={numErr} />
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Remove button — always visible */}
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            onClick={() => removeExtra(extraIdx)}
+                                            className="mt-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
+
+            <Button type="button" variant="outline" size="sm" onClick={addExtra} className="gap-1.5">
+                <Plus className="w-3.5 h-3.5" /> Add More ID
+            </Button>
+        </div>
     )
 }
 
@@ -958,8 +1137,8 @@ function EducationStep({ rows, setRows, err }: { rows: EducationRow[]; setRows: 
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
     }
     return (
-        <CollectionSection title="Add educational attainment records." onAdd={add} addLabel="Add Education Record">
-            {rows.length === 0 && (<><EmptyState label="No education records added yet." /><FieldError message={err("education")} /></>)}
+        <CollectionSection title="Add educational attainment records. You can skip this and add them later." onAdd={add} addLabel="Add Education Record">
+            {rows.length === 0 && (<><EmptyState label="No education records added yet. You can add them later." /><FieldError message={err("education")} /></>)}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-3 gap-4 pr-6">
@@ -1006,8 +1185,8 @@ function EligibilityStep({ rows, setRows, err }: { rows: EligibilityRow[]; setRo
         const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
     }
     return (
-        <CollectionSection title="Add civil service eligibilities or professional licenses." onAdd={add} addLabel="Add Eligibility">
-            {rows.length === 0 && (<><EmptyState label="No eligibility records added yet." /><FieldError message={err("eligibility")} /></>)}
+        <CollectionSection title="Add civil service eligibilities or professional licenses. You can skip this and add them later." onAdd={add} addLabel="Add Eligibility">
+            {rows.length === 0 && (<><EmptyState label="No eligibility records added yet. You can add them later." /><FieldError message={err("eligibility")} /></>)}
             {rows.map((row, i) => (
                 <RowCard key={i} onRemove={() => remove(i)}>
                     <div className="grid grid-cols-2 gap-4 pr-6">
@@ -1032,13 +1211,15 @@ function EligibilityStep({ rows, setRows, err }: { rows: EligibilityRow[]; setRo
 
 function ReviewStep({ data, items, salaryGradeSteps, addresses, family, government, education, eligibility }: {
     data: {
-        first_name: string; last_name: string; middle_name: string; name_extension: string
+        first_name: string; last_name: string; middle_name: string; name_extension: string; work_id: string
         birth_date: string; sex: string; civil_status: string; place_of_birth: string
         personal_email: string; phone_number: string; item_id: string
         selected_position_name: string; salary_grade_step_id: string
         employment_classification: string; roles: string[]; work_email: string
         date_applied: string; date_hired: string
-        work_schedule_start: string; work_schedule_end: string; status: string
+        work_schedule_start: string; work_schedule_end: string
+        break_start: string; break_end: string
+        status: string
     }
     items: Item[]; salaryGradeSteps: SalaryGradeStep[]
     addresses: AddressRow[]; family: FamilyRow[]; government: GovernmentRow[]
@@ -1047,12 +1228,17 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
     const selectedSGS = salaryGradeSteps.find(s => String(s.salary_grade_step_id) === data.salary_grade_step_id)
     const positionGroups = useMemo(() => buildPositionGroups(items), [items])
     const selectedGroup = positionGroups.find(g => g.groupKey === data.selected_position_name)
+    // Only show non-empty government accounts in review
+    const filledGovAccounts = government
+        .filter(g => g.account_number.trim() !== "")
+        .map(g => ({
+            display_type: g.account_type === "Others" && g.custom_type_name?.trim()
+                ? g.custom_type_name.trim()
+                : g.account_type,
+            account_number: g.account_number,
+        }))
 
-    const positionDisplay = selectedGroup
-        ? (selectedGroup.totalSlots > 1
-            ? `${selectedGroup.positionName}`
-            : selectedGroup.positionName)
-        : undefined
+    const positionDisplay = selectedGroup?.positionName
 
     return (
         <div className="space-y-0.5">
@@ -1077,12 +1263,13 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
             {selectedGroup?.position?.department && <ReviewRow label="Department" value={selectedGroup.position.department.department_name} />}
             {selectedGroup?.position?.division && <ReviewRow label="Division" value={selectedGroup.position.division.division_name} />}
             {selectedGroup?.position?.unit && <ReviewRow label="Unit" value={selectedGroup.position.unit.unit_name} />}
+            <ReviewRow label="Work ID" value={data.work_id} />
             <ReviewRow label="Employment Classification" value={data.employment_classification || undefined} />
             <ReviewRow label="Roles" value={data.roles.map(formatRoleLabel).join(", ") || undefined} />
             <ReviewRow
                 label="Salary Grade & Step"
                 value={selectedSGS
-                    ? `SG ${selectedSGS.salary_grade} — Step ${selectedSGS.step} (₱${Number(selectedSGS.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })})`
+                    ? `SG ${selectedSGS.salary_grade} — Step ${selectedSGS.step} (₱${Number(selectedSGS.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })})`
                     : data.salary_grade_step_id || undefined}
             />
             <ReviewRow label="Status" value={data.status === "1" ? "Active" : data.status === "0" ? "Inactive" : undefined} />
@@ -1090,38 +1277,49 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
             <ReviewRow label="Date Applied" value={data.date_applied} />
             <ReviewRow label="Date Hired" value={data.date_hired} />
             <ReviewRow label="Work Schedule" value={data.work_schedule_start && data.work_schedule_end ? `${data.work_schedule_start} – ${data.work_schedule_end}` : undefined} />
+            <ReviewRow label="Break Time" value={data.break_start && data.break_end ? `${data.break_start} – ${data.break_end}` : undefined} />
 
             <SectionHeading>Addresses ({addresses.length})</SectionHeading>
-            {addresses.length === 0 ? <EmptyState label="No addresses provided." /> : addresses.map((a, i) => (
-                <div key={i} className="text-sm py-0.5">{i + 1}. {[a.street_address, a.city, a.state, a.zip_code].filter(Boolean).join(", ")}</div>
-            ))}
+            {addresses.length === 0
+                ? <EmptyState label="No addresses provided." />
+                : addresses.map((a, i) => (
+                    <div key={i} className="text-sm py-0.5">{i + 1}. {[a.street_address, a.city, a.state, a.zip_code].filter(Boolean).join(", ")}</div>
+                ))}
 
             <SectionHeading>Family / Emergency Contacts ({family.length})</SectionHeading>
-            {family.length === 0 ? <EmptyState label="No family members provided." /> : family.map((f, i) => (
-                <div key={i} className="text-sm py-0.5">
-                    {i + 1}. {f.full_name}
-                    {f.relationship && ` (${f.relationship})`}
-                    {f.sex && ` — ${f.sex === "1" ? "Male" : "Female"}`}
-                    {f.date_of_birth && `, b. ${f.date_of_birth}`}
-                    {f.place_of_birth && `, ${f.place_of_birth}`}
-                    {f.contact_number && ` — ${f.contact_number}`}
-                </div>
-            ))}
+            {family.length === 0
+                ? <EmptyState label="No family members provided." />
+                : family.map((f, i) => (
+                    <div key={i} className="text-sm py-0.5">
+                        {i + 1}. {f.full_name}
+                        {f.relationship && ` (${f.relationship})`}
+                        {f.sex && ` — ${f.sex === "1" ? "Male" : "Female"}`}
+                        {f.date_of_birth && `, b. ${f.date_of_birth}`}
+                        {f.place_of_birth && `, ${f.place_of_birth}`}
+                        {f.contact_number && ` — ${f.contact_number}`}
+                    </div>
+                ))}
 
-            <SectionHeading>Government Accounts ({government.length})</SectionHeading>
-            {government.length === 0 ? <EmptyState label="No government accounts provided." /> : government.map((g, i) => (
-                <div key={i} className="text-sm py-0.5">{i + 1}. {g.account_type} — {g.account_number}</div>
-            ))}
+            <SectionHeading>Government Accounts ({filledGovAccounts.length})</SectionHeading>
+            {filledGovAccounts.length === 0
+                ? <EmptyState label="No government accounts provided." />
+                : filledGovAccounts.map((g, i) => (
+                    <div key={i} className="text-sm py-0.5">{i + 1}. {g.display_type} — {g.account_number}</div>
+                ))}
 
             <SectionHeading>Education ({education.length})</SectionHeading>
-            {education.length === 0 ? <EmptyState label="No education records provided." /> : education.map((e, i) => (
-                <div key={i} className="text-sm py-0.5">{i + 1}. {e.level} {e.degree && `— ${e.degree}`}, {e.school_name} {e.graduation_date && `(${e.graduation_date})`}</div>
-            ))}
+            {education.length === 0
+                ? <EmptyState label="No education records provided." />
+                : education.map((e, i) => (
+                    <div key={i} className="text-sm py-0.5">{i + 1}. {e.level} {e.degree && `— ${e.degree}`}, {e.school_name} {e.graduation_date && `(${e.graduation_date})`}</div>
+                ))}
 
             <SectionHeading>Eligibility ({eligibility.length})</SectionHeading>
-            {eligibility.length === 0 ? <EmptyState label="No eligibility records provided." /> : eligibility.map((e, i) => (
-                <div key={i} className="text-sm py-0.5">{i + 1}. {e.eligibility_name} {e.year_passed && `— Passed: ${e.year_passed}`}</div>
-            ))}
+            {eligibility.length === 0
+                ? <EmptyState label="No eligibility records provided." />
+                : eligibility.map((e, i) => (
+                    <div key={i} className="text-sm py-0.5">{i + 1}. {e.eligibility_name} {e.year_passed && `— Passed: ${e.year_passed}`}</div>
+                ))}
         </div>
     )
 }
@@ -1141,12 +1339,16 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
     const [processing, setProcessing] = useState(false)
 
     const [addresses, setAddresses] = useState<AddressRow[]>([{ street_address: "", city: "", state: "", zip_code: "" }])
-    const [family, setFamily] = useState<FamilyRow[]>([{ full_name: "", contact_number: "", relationship: "", sex: "", date_of_birth: "", place_of_birth: "" }])
-    const [government, setGovernment] = useState<GovernmentRow[]>([{ account_type: "", account_number: "" }])
-    const [education, setEducation] = useState<EducationRow[]>([{ level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
-    const [eligibility, setEligibility] = useState<EligibilityRow[]>([{ eligibility_name: "", year_passed: "" }])
+    const [family, setFamily] = useState<FamilyRow[]>([])
+    // ── Pre-populate standard gov IDs so they appear as fixed rows ──────────────
+    const [government, setGovernment] = useState<GovernmentRow[]>([
+        { account_type: "GSIS", account_number: "", custom_type_name: "" },
+        { account_type: "PhilHealth", account_number: "", custom_type_name: "" },
+        { account_type: "Pag-IBIG", account_number: "", custom_type_name: "" },
+    ])
+    const [education, setEducation] = useState<EducationRow[]>([])
+    const [eligibility, setEligibility] = useState<EligibilityRow[]>([])
 
-    const CurrentIcon = steps[currentStep].icon
     const isLastStep = currentStep === steps.length - 1
 
     const { data, setData, errors } = useForm({
@@ -1157,9 +1359,11 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
         selected_position_name: "",
         salary_grade_step_id: "",
         employment_classification: "",
+        work_id: "",
         roles: ["employee"],
         work_email: "", password: "", date_applied: "", date_hired: "",
         work_schedule_start: "", work_schedule_end: "", status: "",
+        break_start: "", break_end: "",
         salary_grade: "", step: "",
     })
 
@@ -1167,42 +1371,33 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
         const rules = REQUIRED[step] ?? []
         const newErrors: Record<string, string> = {}
 
-        // ── Required field presence ────────────────────────────────────────────
         for (const { field, label } of rules) {
             const value = (data as Record<string, string>)[field]
             if (!value || value.trim() === "") newErrors[field] = `${label} is required.`
         }
 
-        // ── Step 0: Personal Information ──────────────────────────────────────
         if (step === 0) {
-            // Birth date must not be in the future
-            if (data.birth_date && isFutureDate(data.birth_date)) {
-                newErrors["birth_date"] = "Date of birth cannot be in the future."
+            if (data.birth_date) {
+                const today = new Date()
+                const birth = new Date(data.birth_date)
+                const age = today.getFullYear() - birth.getFullYear()
+                    - (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0)
+                if (age < 18) {
+                    newErrors["birth_date"] = "Employee must be at least 18 years old."
+                }
             }
-
-            // Phone number — Philippine format: 09XXXXXXXXXX (11 digits)
-            if (data.phone_number && !validatePhone(data.phone_number)) {
-                newErrors["phone_number"] = "Phone number must be in the format 09XXXXXXXXXX."
-            }
-
-            // Personal email — optional but must be valid if filled
-            if (data.personal_email && !validateEmail(data.personal_email)) {
-                newErrors["personal_email"] = "Please enter a valid email address."
+            if (data.phone_number && !isValidPhoneNumber(data.phone_number)) {
+                newErrors["phone_number"] = "Please enter a valid phone number."
             }
         }
 
-        // ── Step 1: Employment Details ────────────────────────────────────────
         if (step === 1) {
             if (!data.roles || data.roles.length === 0) {
                 newErrors["roles"] = "At least one role is required."
             }
-
-            // Work email format
             if (data.work_email && !validateEmail(data.work_email)) {
                 newErrors["work_email"] = "Please enter a valid email address."
             }
-
-            // Password complexity: uppercase, lowercase, number, special char, min 8
             if (data.password) {
                 if (data.password.length < 8) {
                     newErrors["password"] = "Password must be at least 8 characters."
@@ -1210,23 +1405,23 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
                     newErrors["password"] = "Password must include uppercase, lowercase, a number, and a special character."
                 }
             }
-
-            // Date hired must not be before date applied
             if (data.date_applied && data.date_hired) {
                 if (new Date(data.date_hired) < new Date(data.date_applied)) {
                     newErrors["date_hired"] = "Date Hired cannot be earlier than Date Applied."
                 }
             }
-
-            // Schedule start and end must not be identical
             if (data.work_schedule_start && data.work_schedule_end) {
                 if (data.work_schedule_start === data.work_schedule_end) {
                     newErrors["work_schedule_end"] = "Schedule End cannot be the same as Schedule Start."
                 }
             }
+            if (data.break_start && data.break_end) {
+                if (data.break_start === data.break_end) {
+                    newErrors["break_end"] = "Break End cannot be the same as Break Start."
+                }
+            }
         }
 
-        // ── Step 2: Address ───────────────────────────────────────────────────
         if (step === 2) {
             if (addresses.length === 0) newErrors["addresses"] = "At least one address is required."
             addresses.forEach((row, i) => {
@@ -1237,51 +1432,80 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             })
         }
 
-        // ── Step 3: Family ────────────────────────────────────────────────────
         if (step === 3) {
-            if (family.length === 0) newErrors["family"] = "At least one family member or emergency contact is required."
             family.forEach((row, i) => {
                 if (!row.full_name.trim()) newErrors[`family.${i}.full_name`] = "Full Name is required."
                 if (!row.relationship.trim()) newErrors[`family.${i}.relationship`] = "Relationship is required."
             })
         }
 
-        // ── Step 4: Government Accounts ───────────────────────────────────────
         if (step === 4) {
-            if (government.length === 0) newErrors["government"] = "At least one government account is required."
-
-            // Duplicate account type check
+            // The entire Government Accounts step is optional.
+            // Standard rows — optional but if filled, must match the expected format.
+            // Extra rows — only validate if the row has ANY content (type or number filled).
             const seenTypes = new Map<string, number>()
+
             government.forEach((row, i) => {
-                if (!row.account_type.trim()) {
-                    newErrors[`government.${i}.account_type`] = "Account Type is required."
+                const isStandard = STANDARD_GOV_ID_TYPES_CREATE.includes(row.account_type)
+
+                if (isStandard) {
+                    // Skip blank standard rows entirely
+                    if (!row.account_number.trim()) return
+                    // Validate format when a value is entered
+                    const formatErr = validateGovIdFormat(row.account_type, row.account_number)
+                    if (formatErr) {
+                        newErrors[`government.${i}.account_number`] = formatErr
+                    }
+                    return
+                }
+
+                const hasType = row.account_type.trim() !== ""
+                const hasNumber = row.account_number.trim() !== ""
+                const hasCustom = row.custom_type_name?.trim() !== ""
+
+                // Completely empty extra row — skip
+                if (!hasType && !hasNumber) return
+
+                // Partially filled — validate
+                if (!hasType) {
+                    newErrors[`government.${i}.account_type`] = "Please select an ID type."
                 } else {
-                    const type = row.account_type.trim()
-                    if (seenTypes.has(type)) {
-                        // Flag both the first occurrence and the current duplicate
-                        const firstIdx = seenTypes.get(type)!
-                        newErrors[`government.${firstIdx}.account_type`] = `Duplicate account type: ${type}.`
-                        newErrors[`government.${i}.account_type`] = `Duplicate account type: ${type}.`
-                    } else {
-                        seenTypes.set(type, i)
+                    const isOthers = row.account_type === "Others"
+                    if (isOthers && !hasCustom) {
+                        newErrors[`government.${i}.custom_type_name`] = "Please specify the ID name."
+                    }
+                    if (!isOthers) {
+                        const type = row.account_type.trim()
+                        if (seenTypes.has(type)) {
+                            const firstIdx = seenTypes.get(type)!
+                            newErrors[`government.${firstIdx}.account_type`] = `Duplicate: ${type} already added.`
+                            newErrors[`government.${i}.account_type`] = `Duplicate: ${type} already added.`
+                        } else {
+                            seenTypes.set(type, i)
+                        }
                     }
                 }
-                if (!row.account_number.trim()) newErrors[`government.${i}.account_number`] = "ID Number is required."
+
+                if (!hasNumber) {
+                    newErrors[`government.${i}.account_number`] = "Please enter the ID number."
+                } else {
+                    // Validate format for extra rows too
+                    const formatErr = validateGovIdFormat(row.account_type, row.account_number)
+                    if (formatErr) {
+                        newErrors[`government.${i}.account_number`] = formatErr
+                    }
+                }
             })
         }
 
-        // ── Step 5: Education ─────────────────────────────────────────────────
         if (step === 5) {
-            if (education.length === 0) newErrors["education"] = "At least one education record is required."
             education.forEach((row, i) => {
                 if (!row.school_name.trim()) newErrors[`education.${i}.school_name`] = "School Name is required."
                 if (!row.level.trim()) newErrors[`education.${i}.level`] = "Level is required."
             })
         }
 
-        // ── Step 6: Eligibility ───────────────────────────────────────────────
         if (step === 6) {
-            if (eligibility.length === 0) newErrors["eligibility"] = "At least one eligibility record is required."
             eligibility.forEach((row, i) => {
                 if (!row.eligibility_name.trim()) newErrors[`eligibility.${i}.eligibility_name`] = "Eligibility Name is required."
                 if (!row.year_passed.trim()) newErrors[`eligibility.${i}.year_passed`] = "Date Passed is required."
@@ -1298,7 +1522,7 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
             setStepErrors({})
             setCurrentStep(s => Math.min(s + 1, steps.length - 1))
         } else {
-            toast.error("Please fix the errors before continuing.", { duration: 4000 })
+            toast.error("Please fill up the required fields.", { duration: 5000 })
         }
     }
 
@@ -1314,50 +1538,79 @@ export default function CreateEmployee({ items, salaryGradeSteps, employmentClas
     const submit: FormEventHandler = (e) => {
         e.preventDefault()
 
-        // Strip frontend-only fields before sending to the backend
         const payload = { ...data }
         delete payload.selected_position_name
         delete payload.salary_grade
         delete payload.step
 
-        router.post(
-            route("employee.store"),
-            {
-                ...payload,
-                addresses,
-                family_info: family,
-                government_accounts: government,
-                education,
-                eligibility_information: eligibility,
-            },
-            {
-                onStart: () => setProcessing(true),
-                onFinish: () => setProcessing(false),
-                onError: (errs) => {
-                    const errMap = errs as Record<string, string>
-                    setStepErrors(errMap)
-                    const messages = Object.values(errMap)
-                    if (messages.length > 0) {
-                        toast.error("Please fix the following errors", {
-                            description: messages.join("\n"),
+        // Filter out standard gov ID rows that were left empty
+        // Filter out empty rows, and resolve "Others" → custom_type_name as the account_type
+        const filledGovernmentAccounts = government
+            .filter(g => g.account_number.trim() !== "")
+            .map(({ custom_type_name, account_type, account_number }) => ({
+                account_type: account_type === "Others" && custom_type_name.trim()
+                    ? custom_type_name.trim()
+                    : account_type,
+                account_number,
+            }))
+
+        try {
+            router.post(
+                route("employee.store"),
+                {
+                    ...payload,
+                    addresses,
+                    family_info: family,
+                    government_accounts: filledGovernmentAccounts,
+                    education,
+                    eligibility_information: eligibility,
+                },
+                {
+                    onStart: () => setProcessing(true),
+                    onFinish: () => setProcessing(false),
+                    onSuccess: () => {
+                        toast.success("Employee created successfully.", {
+                            description: `${data.first_name} ${data.last_name} has been added to the system.`,
+                            duration: 5000,
+                        })
+                    },
+                    onError: (errs) => {
+                        const errMap = errs as Record<string, string>
+                        setStepErrors(errMap)
+                        const messages = Object.values(errMap)
+                        toast.error("Submission failed.", {
+                            description: (
+                                <ul className="mt-1 space-y-0.5 list-disc list-inside">
+                                    {messages.map((msg, i) => (
+                                        <li key={i} className="text-sm">{msg}</li>
+                                    ))}
+                                </ul>
+                            ),
                             duration: 8000,
                         })
-                    }
+                    },
                 },
-            },
-        )
+            )
+        } catch (error) {
+            setProcessing(false)
+            toast.error("An unexpected error occurred.", {
+                description: error instanceof Error
+                    ? error.message
+                    : "Something went wrong. Please try again or contact support.",
+                duration: 8000,
+            })
+        }
     }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Create Employee" />
-            <div className="px-10 pt-5">
+            <div className="px-10 pt-5 mb-8">
                 <Stepper steps={steps} currentStep={currentStep} onStepChange={setCurrentStep} />
 
                 <form onSubmit={e => e.preventDefault()}>
                     <div className="mt-8 p-6 border rounded-md">
                         <h2 className="flex items-center gap-2 text-lg font-semibold mb-6">
-                            <CurrentIcon className="w-5 h-5" />
                             {steps[currentStep].title}
                         </h2>
 

@@ -4,6 +4,7 @@ import { router } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import { useState, useRef } from "react"
 import { Pen, Trash } from "lucide-react"
+import { toast } from "sonner"
 
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import {
@@ -43,7 +44,17 @@ function DeleteConfirmDialog({ division, onClose }: DeleteConfirmDialogProps) {
         if (!division) return
         setProcessing(true)
         router.delete(route("division.destroy", division.division_id), {
-            onFinish: () => {
+            onSuccess: () => {
+                toast.success("Division deleted", {
+                    description: `"${division.division_name}" has been permanently removed.`,
+                })
+                setProcessing(false)
+                onClose()
+            },
+            onError: () => {
+                toast.error("Failed to delete division", {
+                    description: "Something went wrong. Please try again.",
+                })
                 setProcessing(false)
                 onClose()
             },
@@ -115,7 +126,7 @@ function MobileDivisionCard({ row, onEdit }: MobileDivisionCardProps) {
                         <span className="font-semibold text-base text-foreground">
                             {row.division_name}
                         </span>
-                        <Badge variant="default" className="font-mono text-xs shrink-0">
+                        <Badge variant="outline" className="font-mono text-xs shrink-0">
                             {row.division_acronym}
                         </Badge>
                     </div>
@@ -210,6 +221,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Divisi
                     {row.getValue("division_name")}
                 </div>
             ),
+            width: 300,
             enableSorting: true,
             enableHiding: true,
             mobileCard: (row) => (
@@ -222,10 +234,11 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Divisi
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
-                <Badge variant="default" className="font-mono text-xs">
+                <Badge variant="outline" className="font-mono text-xs">
                     {row.getValue("division_acronym")}
                 </Badge>
             ),
+            width: 150,
             enableSorting: true,
             enableHiding: true,
         },
@@ -247,7 +260,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Divisi
         },
         {
             id: "department",
-            accessorFn: (row) => row.department?.department_name ?? "",
+            accessorFn: (row) => String(row.department?.department_id ?? ""),
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Department" />
             ),
@@ -271,7 +284,18 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Divisi
                         editAction(onEdit),
                         deleteAction(
                             (division) =>
-                                router.delete(route("division.destroy", division.division_id)),
+                                router.delete(route("division.destroy", division.division_id), {
+                                    onSuccess: () => {
+                                        toast.success("Division deleted", {
+                                            description: `"${division.division_name}" has been permanently removed.`,
+                                        })
+                                    },
+                                    onError: () => {
+                                        toast.error("Failed to delete division", {
+                                            description: "Something went wrong. Please try again.",
+                                        })
+                                    },
+                                }),
                             {
                                 getName: (d) => d.division_name,
                                 description: (d) => (

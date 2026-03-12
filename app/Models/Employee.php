@@ -29,11 +29,14 @@ class Employee extends Model
         'salary_grade_step_id',
         'employment_classification',
         'work_email',
+        'work_id',
         'password',
         'date_applied',
         'date_hired',
         'work_schedule_start',
         'work_schedule_end',
+        'break_start',
+        'break_end',
         'avatar_path',
         'avatar_url',
         'status',
@@ -138,5 +141,10 @@ class Employee extends Model
     public function user()
     {
         return $this->hasOne(User::class, 'employee_id', 'employee_id');
+    }
+
+    public function attendanceRecords()
+    {
+        return $this->hasMany(AttendanceRecord::class, 'employee_id', 'employee_id');
     }
 }

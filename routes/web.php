@@ -1,15 +1,14 @@
 <?php
 
-use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PayrollController;
-use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AnnouncementController;
-use App\Http\Controllers\RecognitionLogController;
-use App\Http\Controllers\AttendanceLogs;
+use App\Http\Controllers\AttendanceLogController;
+use App\Http\Controllers\AttendanceRecordController;
+use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaveCalendarController;
 use App\Http\Controllers\LeaveAccrualController;
@@ -18,13 +17,13 @@ use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\InternalOrganizationController;
-use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
+use App\Http\Controllers\PayrollReportController;
 use Illuminate\Support\Facades\Http;
 
 // Leave
@@ -32,6 +31,13 @@ use App\Http\Controllers\LeaveSettingsController;
 use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\LeaveEntitlementController;
 use App\Http\Controllers\LeaveApplicationController;
+
+// reports and analytics
+use App\Http\Controllers\LeaveReportController;
+use App\Http\Controllers\AttendanceReportController;
+use App\Http\Controllers\EmployeeReportController;
+use App\Http\Controllers\GovernmentReportController;
+
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -162,6 +168,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{internalOrganization}/toggle-status', [InternalOrganizationController::class, 'toggleStatus'])->name('toggle-status');
         Route::delete('/{internalOrganization}', [InternalOrganizationController::class, 'destroy'])->name('destroy');
         Route::post('/{internalOrganization}/members', [InternalOrganizationController::class, 'storeMembers'])->name('members.store');
+        Route::post('/org-types', [InternalOrganizationController::class, 'storeOrgType'])->name('org-type.store');
     });
 
     /*
@@ -201,26 +208,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/bulk-destroy', [JobOrderPositionController::class, 'bulkDestroy'])->name('bulk-destroy');
         Route::put('/{position}', [JobOrderPositionController::class, 'update'])->name('update');
         Route::delete('/{position}', [JobOrderPositionController::class, 'destroy'])->name('destroy');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Attendance - api calls
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('attendance')->name('attendance.')->group(function () {
-        Route::post('/clock-in', [AttendanceController::class, 'clockIn'])->name('clock-in');
-        Route::post('/enroll', [AttendanceController::class, 'enroll'])->name('enroll');
-        Route::post('/detect', [AttendanceController::class, 'detect'])->name('detect');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Attendance - Recognition logs
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
-        Route::get('/', [RecognitionLogController::class, 'index'])->name('index');
     });
 
     /*
@@ -315,7 +302,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Reports and Analytics
     |--------------------------------------------------------------------------
     */
-    Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
+    Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
+        Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
+        Route::inertia('/leave', 'ReportsAndAnalytics\Leave\LeaveIndexa')->name('leave');
+
+        Route::get('/attendance-report', [AttendanceReportController::class, 'index'])
+            ->name('attendance-report.index');
+
+        Route::get('/employee-report', [EmployeeReportController::class, 'index'])
+            ->name('employee-report.index');
+        
+        Route::get('/leave-report', [LeaveReportController::class, 'index'])
+            ->name('leave-report.index');
+        
+        Route::get('/payroll-report', [PayrollReportController::class, 'index'])
+            ->name('payroll-report.index');
+        
+        Route::get('/government-report', [GovernmentReportController::class, 'index'])
+            ->name('government-report.index');
+
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -330,8 +336,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/organization/organizational_chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
     Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
 
+    Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
+        Route::get('/', [AttendanceLogController::class, 'index'])->name('index');
+    });
 
 
+    /*
+|--------------------------------------------------------------------------
+| Attendance - Records (computed daily attendance)
+|--------------------------------------------------------------------------
+*/
+    // Attendance Records
+    Route::get('attendance/records', [AttendanceRecordController::class, 'index'])
+        ->name('attendance-record.index');
+    Route::post('attendance/records/sync-absent', [AttendanceRecordController::class, 'syncAbsent'])
+        ->name('attendance-record.sync-absent');
+
+    // Attendance Settings (full CRUD)
+    Route::get('attendance/settings', [AttendanceSettingController::class, 'index'])
+        ->name('attendance-settings.index');
+
+    Route::post('attendance/settings', [AttendanceSettingController::class, 'store'])
+        ->name('attendance-settings.store');
+
+    Route::put('attendance/settings/{attendanceSetting}', [AttendanceSettingController::class, 'update'])
+        ->name('attendance-settings.update');
+
+    Route::delete('attendance/settings/{attendanceSetting}', [AttendanceSettingController::class, 'destroy'])
+        ->name('attendance-settings.destroy');
 
     // Activity Logs Routes
 
