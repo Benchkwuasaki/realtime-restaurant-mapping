@@ -310,7 +310,10 @@ class EmployeeController extends Controller
                 'basic_info' => $employee->basicInfo,
                 'item' => $employee->item,
                 'salary_grade_step' => $employee->salaryGradeStep,
-                'allowances' => $employee->allowances,
+                'allowances' => $employee->allowances->map(fn ($a) => [
+                    'allowance_type' => $a->name,
+                    'amount' => $a->monthly_salary,
+                ]),
                 'eligibility_information' => $employee->eligibilityInformation,
                 'government_accounts' => $employee->governmentAccounts,
 
