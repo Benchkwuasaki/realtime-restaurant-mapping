@@ -194,7 +194,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           items: [
             {
               title: "Employee Reports",
-              url: "/reports_and_analytics/employees",
+              url: route('reports_and_analytics.employee-report.index'),
             },
             {
               title: "Attendance Reports",
@@ -202,11 +202,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             },
             {
               title: "Leave Reports",
-              url: "/reports_and_analytics/leave",
+              url: route('reports_and_analytics.leave-report.index'),
             },
             {
               title: "Payroll Reports",
-              url: "/reports_and_analytics/payroll",
+              url: route('reports_and_analytics.payroll-report.index'),
             },
             {
               title: "Government Reports",
