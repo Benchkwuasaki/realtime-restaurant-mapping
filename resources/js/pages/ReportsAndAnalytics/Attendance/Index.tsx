@@ -302,15 +302,11 @@ export default function Index() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <div>
                         <h1 style={{ fontSize: 22, fontWeight: 900, color: 'var(--foreground)', margin: 0, letterSpacing: '-0.02em' }}>
-                            Attendance Reports & Analytics
+                            Attendance Overview
                         </h1>
                         <p style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4, margin: 0 }}>
                             Attendance · Payroll · Headcount · Performance — as of {date}
                         </p>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ padding: '3px 10px', borderRadius: 99, fontSize: 10, fontWeight: 700, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>● Live</span>
-                        <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>Last updated: just now</span>
                     </div>
                 </div>
 
