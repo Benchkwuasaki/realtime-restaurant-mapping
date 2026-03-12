@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\DocumentTracking;
+use App\Support\DocumentTrackingPresenter;
 use App\Services\DocumentTrackingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,11 +48,19 @@ class DocumentTrackingOutgoingController extends Controller
             'office_status'    => $doc->office_status,
             'elapsed_time'     => $doc->getElapsedTime(),
             'origin_office_id' => $doc->origin_office_id,
+            'details'          => DocumentTrackingPresenter::details($doc),
         ];
 
         // "Our Office" tab — requests this department originally created
         $ourOffice = DocumentTracking::query()
-            ->with(['originOffice', 'currentOffice'])
+            ->with([
+                'originOffice',
+                'currentOffice',
+                'actions.office',
+                'actions.fromOffice',
+                'actions.toOffice',
+                'actions.actor.employee.basicInfo',
+            ])
             ->where('origin_office_id', $departmentId)
             ->latest()
             ->get()
@@ -64,7 +73,14 @@ class DocumentTrackingOutgoingController extends Controller
             ->pluck('document_tracking_id');
 
         $otherOffices = DocumentTracking::query()
-            ->with(['originOffice', 'currentOffice'])
+            ->with([
+                'originOffice',
+                'currentOffice',
+                'actions.office',
+                'actions.fromOffice',
+                'actions.toOffice',
+                'actions.actor.employee.basicInfo',
+            ])
             ->whereIn('document_tracking_id', $forwardedIds)
             ->where('origin_office_id', '!=', $departmentId)
             ->where('status', '!=', 'completed')

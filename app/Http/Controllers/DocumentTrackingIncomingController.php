@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\DocumentTracking;
+use App\Support\DocumentTrackingPresenter;
 use App\Services\DocumentTrackingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,12 +32,15 @@ class DocumentTrackingIncomingController extends Controller
 
         $documents = DocumentTracking::query()
             ->with([
+                'originOffice',
+                'currentOffice',
                 'latestForwardAction.fromOffice',
                 // Load all actions with their office relationships so we can
                 // derive which offices have touched each document
                 'actions.office',
                 'actions.fromOffice',
                 'actions.toOffice',
+                'actions.actor.employee.basicInfo',
             ])
             ->where('current_office_id', $departmentId)
             ->whereNotIn('status', ['completed', 'cancelled'])
@@ -82,6 +86,7 @@ class DocumentTrackingIncomingController extends Controller
                     'elapsed_time'      => $doc->getElapsedTime(),
                     'origin_office_id'  => $doc->origin_office_id,
                     'current_office_id' => $doc->current_office_id,
+                    'details'           => DocumentTrackingPresenter::details($doc),
                     // Per-document office lists for the dialogs
                     'forward_offices'   => $allDepartments->map(fn($d) => [
                         'department_id'      => $d->department_id,

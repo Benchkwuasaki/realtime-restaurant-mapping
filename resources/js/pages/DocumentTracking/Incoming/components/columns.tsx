@@ -335,7 +335,10 @@ function MobileIncomingCard({ row }: { row: IncomingRow }) {
             </div>
 
             {actions.length > 0 && (
-                <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/30">
+                <div
+                    className="flex items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/30"
+                    onClick={e => e.stopPropagation()}
+                >
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button size="sm" variant="outline" className="text-xs gap-1.5">

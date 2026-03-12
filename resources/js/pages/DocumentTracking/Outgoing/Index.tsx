@@ -3,6 +3,7 @@ import { Head, router, usePage } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import { Building2, FileText, GitBranch } from "lucide-react"
 
+import { DocumentHistoryDialog } from "@/components/document-tracking/document-history-dialog"
 import AppLayout from "@/layouts/app-layout"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { StatCard } from "@/components/shared/stat-card"
@@ -220,6 +221,7 @@ export default function OutgoingIndex({
     const { props } = usePage<{ flash?: { success?: string } }>()
     const [tab, setTab] = useState<"our" | "other">("our")
     const [modalOpen, setModalOpen] = useState(false)
+    const [selectedDocument, setSelectedDocument] = useState<OutgoingRow | null>(null)
 
     const ourActive = ourOffice.filter(
         (document) => !["completed", "cancelled"].includes(document.status),
@@ -235,8 +237,7 @@ export default function OutgoingIndex({
             { columnId: "office_status", title: "Status", options: officeStatusOptions },
         ],
         defaultPageSize: 25,
-        onRowClick: (row: { original: OutgoingRow }) =>
-            router.visit(route("document-tracking.show", row.original.id)),
+        onRowClick: (row: { original: OutgoingRow }) => setSelectedDocument(row.original),
         addButton: {
             label: "New Request",
             onClick: () => setModalOpen(true),
@@ -338,6 +339,12 @@ export default function OutgoingIndex({
                 open={modalOpen}
                 departments={departments}
                 onClose={() => setModalOpen(false)}
+            />
+
+            <DocumentHistoryDialog
+                open={selectedDocument !== null}
+                onOpenChange={(open) => !open && setSelectedDocument(null)}
+                document={selectedDocument?.details ?? null}
             />
         </AppLayout>
     )

@@ -1,7 +1,9 @@
-import { Head, router } from "@inertiajs/react"
+import { useState } from "react"
+import { Head } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import { Archive, CheckCircle2, XCircle } from "lucide-react"
 import AppLayout from "@/layouts/app-layout"
+import { DocumentHistoryDialog } from "@/components/document-tracking/document-history-dialog"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { StatCard } from "@/components/shared/stat-card"
 import type { BreadcrumbItem } from "@/types"
@@ -25,7 +27,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ArchiveIndex({ documents, departmentId }: Props) {
+export default function ArchiveIndex({ documents, departmentId: _departmentId }: Props) {
+    const [selectedDocument, setSelectedDocument] = useState<ArchiveRow | null>(null)
     const completed = documents.filter(d => d.status === "completed").length
     const cancelled = documents.filter(d => d.status === "cancelled").length
     const total = documents.length
@@ -82,10 +85,16 @@ export default function ArchiveIndex({ documents, departmentId }: Props) {
                         { columnId: "status", title: "Status", options: requestStatusOptions },
                     ]}
                     defaultPageSize={25}
-                    onRowClick={row => router.visit(route("document-tracking-archive.show", row.original.id))}
+                    onRowClick={row => setSelectedDocument(row.original)}
                 />
 
             </div>
+
+            <DocumentHistoryDialog
+                open={selectedDocument !== null}
+                onOpenChange={(open) => !open && setSelectedDocument(null)}
+                document={selectedDocument?.details ?? null}
+            />
         </AppLayout>
     )
 }

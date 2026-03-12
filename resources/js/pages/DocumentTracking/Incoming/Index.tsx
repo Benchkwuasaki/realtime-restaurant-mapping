@@ -1,7 +1,9 @@
-import { Head, router, usePage } from "@inertiajs/react"
+import { useState } from "react"
+import { Head, usePage } from "@inertiajs/react"
 import { route } from "ziggy-js"
-import { FileText, Clock, CheckCircle2, Plus } from "lucide-react"
+import { FileText, Clock, CheckCircle2 } from "lucide-react"
 import AppLayout from "@/layouts/app-layout"
+import { DocumentHistoryDialog } from "@/components/document-tracking/document-history-dialog"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { StatCard } from "@/components/shared/stat-card"
 import { Button } from "@/components/ui/button"
@@ -26,8 +28,9 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function IncomingIndex({ documents, departmentId }: Props) {
+export default function IncomingIndex({ documents, departmentId: _departmentId }: Props) {
     const { props } = usePage<{ flash?: { success?: string } }>()
+    const [selectedDocument, setSelectedDocument] = useState<IncomingRow | null>(null)
 
     const pendingReceipt = documents.filter(d => d.office_status === "pending_receipt").length
     const received = documents.filter(d => d.office_status === "received").length
@@ -92,10 +95,16 @@ export default function IncomingIndex({ documents, departmentId }: Props) {
                         { columnId: "office_status", title: "Status", options: officeStatusOptions },
                     ]}
                     defaultPageSize={25}
-                    onRowClick={row => router.visit(route("document-tracking.show", row.original.id))}
+                    onRowClick={row => setSelectedDocument(row.original)}
                 />
 
             </div>
+
+            <DocumentHistoryDialog
+                open={selectedDocument !== null}
+                onOpenChange={(open) => !open && setSelectedDocument(null)}
+                document={selectedDocument?.details ?? null}
+            />
         </AppLayout>
     )
 }

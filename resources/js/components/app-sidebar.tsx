@@ -12,6 +12,7 @@ import {
   Logs,
   Bell,
   FileBarChart,
+  HelpCircle
 } from "lucide-react"
 import * as React from "react"
 
@@ -304,14 +305,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           if (officeParts.length === 0) return null
 
           return (
-            <div className="flex items-start gap-1.5 px-3 pb-2">
-              <Building2 className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
+            <div className="flex justify-center gap-1.5 px-3 pb-2">
+              <Building2 className="size-3 shrink-0 text-muted-foreground" />
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <p className="cursor-default text-xs leading-tight text-muted-foreground">
-                      {officeParts.map((office) => office.acronym ?? office.name).join(" › ")}
-                    </p>
+                    <div className="flex flex-row">
+                      <p className="cursor-default text-xs leading-tight text-muted-foreground font-bold">
+                        {officeParts.map((office) => office.acronym ?? office.name).join(" › ")}
+                      </p>
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>{officeParts.map((office) => office.name).join(" › ")}</p>

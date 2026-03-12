@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\DocumentTracking;
+use App\Support\DocumentTrackingPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -24,7 +25,14 @@ class DocumentTrackingArchiveController extends Controller
             ->pluck('document_tracking_id');
 
         $documents = DocumentTracking::query()
-            ->with(['originOffice', 'currentOffice'])
+            ->with([
+                'originOffice',
+                'currentOffice',
+                'actions.office',
+                'actions.fromOffice',
+                'actions.toOffice',
+                'actions.actor.employee.basicInfo',
+            ])
             ->whereIn('status', ['completed', 'cancelled'])
             ->where(function ($q) use ($departmentId, $involvedIds) {
                 // Either this dept originated it, or was involved via an action
@@ -51,6 +59,7 @@ class DocumentTrackingArchiveController extends Controller
                     ]
                     : null,
                 'status'         => $doc->status,
+                'details'        => DocumentTrackingPresenter::details($doc),
             ]);
 
         return Inertia::render('DocumentTracking/Archive/Index', [

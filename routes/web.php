@@ -303,7 +303,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{documentTracking}/forward',  [DocumentTrackingIncomingController::class, 'forward'])->name('forward');
         Route::post('/{documentTracking}/return',   [DocumentTrackingIncomingController::class, 'return'])->name('return');
         Route::post('/{documentTracking}/complete', [DocumentTrackingIncomingController::class, 'complete'])->name('complete');
-        Route::post('/{documentTracking}/cancel',   [DocumentTrackingIncomingController::class, 'cancel'])->name('cancel');
+        // Route::post('/{documentTracking}/cancel',   [DocumentTrackingIncomingController::class, 'cancel'])->name('cancel');
     });
 
     // Outgoing

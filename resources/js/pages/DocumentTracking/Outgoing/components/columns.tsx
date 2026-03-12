@@ -3,7 +3,6 @@ import { router } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import {
     MoreHorizontal,
-    Eye,
     XCircle,
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -66,7 +65,7 @@ function CancelDialog({ documentId, open, onClose }: { documentId: number; open:
                     e.preventDefault()
                     setProcessing(true)
                     router.post(
-                        route("document-tracking.outgoing.cancel", documentId),
+                        route("document-tracking-outgoing.cancel", documentId),
                         { remarks },
                         { onSuccess: close, onError: () => setProcessing(false) },
                     )
@@ -163,7 +162,10 @@ function MobileOutgoingCard({ row, departmentId, showOrigin }: { row: OutgoingRo
                     <span>{row.elapsed_time}</span>
                 </div>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/30">
+            <div
+                className="flex items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/30"
+                onClick={e => e.stopPropagation()}
+            >
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="outline" className="text-xs gap-1.5">
@@ -172,13 +174,6 @@ function MobileOutgoingCard({ row, departmentId, showOrigin }: { row: OutgoingRo
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-44">
                         <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            onClick={() => router.visit(route("document-tracking.show", row.id))}
-                            className="gap-2 cursor-pointer"
-                        >
-                            <Eye className="w-4 h-4 text-muted-foreground" /> View Details
-                        </DropdownMenuItem>
                         {canCancel && (<>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
