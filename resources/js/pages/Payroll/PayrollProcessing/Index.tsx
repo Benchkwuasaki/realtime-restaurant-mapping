@@ -47,10 +47,7 @@ import {
 } from '@/components/ui/dialog';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import {
-    InputGroup,
-    InputGroupInput,
-} from '@/components/ui/input-group';
+import { InputGroup, InputGroupInput } from '@/components/ui/input-group';
 import {
     Popover,
     PopoverContent,
@@ -233,7 +230,7 @@ export default function Index({
             };
         }
     }, [payrollMonth, cutoffType]);
-    
+
     const defaultHrName =
         auth.user.name ??
         (auth.user.first_name || auth.user.last_name
@@ -327,7 +324,11 @@ export default function Index({
             setProcessingErrors(incomingProcessingErrors);
             setHasComputed(true);
         }
-    }, [incomingProcessedPeriodId, incomingComputedRecords, incomingProcessingErrors]);
+    }, [
+        incomingProcessedPeriodId,
+        incomingComputedRecords,
+        incomingProcessingErrors,
+    ]);
 
     const filteredEmployees = useMemo(
         () =>
@@ -544,7 +545,13 @@ export default function Index({
                 status: e.basic_pay >= NET_PAY_THRESHOLD ? 'ok' : 'low',
             }))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [hasComputed, computedRecords, includedEmployees, includedEmployeeIds, NET_PAY_THRESHOLD]);
+    }, [
+        hasComputed,
+        computedRecords,
+        includedEmployees,
+        includedEmployeeIds,
+        NET_PAY_THRESHOLD,
+    ]);
 
     const flaggedEmployees = employeesWithStatus.filter(
         (e) => e.status === 'low',
@@ -560,7 +567,7 @@ export default function Index({
         );
         return employeesWithStatus.filter((e) => flaggedIds.has(e.id));
     }, [computedRecords, employeesWithStatus, NET_PAY_THRESHOLD]);
-    
+
     const originallyPassedCount =
         employeesWithStatus.length - originallyFlaggedEmployees.length;
     const totalGross = employeesWithStatus.reduce((s, e) => s + e.grossPay, 0);
@@ -569,6 +576,20 @@ export default function Index({
         0,
     );
     const totalNetPay = employeesWithStatus.reduce((s, e) => s + e.netPay, 0);
+
+    // ── Step 3 pagination ───────────────────────────────────────────────────────
+    const ROWS_PER_PAGE = 20;
+    const [currentPage, setCurrentPage] = useState(1);
+    const totalPages = Math.max(
+        1,
+        Math.ceil(employeesWithStatus.length / ROWS_PER_PAGE),
+    );
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    const endIndex = startIndex + ROWS_PER_PAGE;
+    const currentEmployees = employeesWithStatus.slice(startIndex, endIndex);
+    const goToPage = (page: number) => {
+        setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+    };
 
     // ── Step 5: waiver-adjusted view (reflects Step 4 decisions) ──────────────
     // employeesWithStatus intentionally uses raw values so Step 3 is never
@@ -623,8 +644,14 @@ export default function Index({
                 status: adjustedNet >= NET_PAY_THRESHOLD ? 'ok' : 'low',
             };
         });
-    }, [employeesWithStatus, floorWaivers, itemWaivers, computedRecords, NET_PAY_THRESHOLD]);
-    
+    }, [
+        employeesWithStatus,
+        floorWaivers,
+        itemWaivers,
+        computedRecords,
+        NET_PAY_THRESHOLD,
+    ]);
+
     const finalizedTotalDeductions = finalizedEmployeesWithStatus.reduce(
         (s, e) => s + e.totalDeductions,
         0,
