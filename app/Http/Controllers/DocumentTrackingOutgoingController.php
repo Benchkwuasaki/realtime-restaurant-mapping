@@ -67,6 +67,7 @@ class DocumentTrackingOutgoingController extends Controller
             ->with(['originOffice', 'currentOffice'])
             ->whereIn('document_tracking_id', $forwardedIds)
             ->where('origin_office_id', '!=', $departmentId)
+            ->where('status', '!=', 'completed')
             ->latest()
             ->get()
             ->map($shape);
