@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Employee;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -206,24 +204,21 @@ class DatabaseSeeder extends Seeder
             'department_name' => 'Office of Business Excellence',
             'department_acronym' => 'OBE',
             'department_description' => 'Handles overall business operations and excellence.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $deptOpsId = DB::table('departments')->insertGetId([
             'department_name' => 'Operations and Services Department',
             'department_acronym' => 'OSD',
             'department_description' => 'Oversees daily operations, facilities, and customer-facing services.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $deptGovId = DB::table('departments')->insertGetId([
             'department_name' => 'Governance and Public Affairs Department',
             'department_acronym' => 'GPAD',
             'department_description' => 'Manages governance initiatives, public information, and stakeholder relations.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         // ── 3. Divisions ───────────────────────────────────────────────────
@@ -232,8 +227,7 @@ class DatabaseSeeder extends Seeder
             'division_name' => 'Human Resources Division',
             'division_acronym' => 'HRD',
             'division_description' => 'Manages recruitment, payroll, and employee relations.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $divItId = DB::table('divisions')->insertGetId([
@@ -241,8 +235,7 @@ class DatabaseSeeder extends Seeder
             'division_name' => 'Information Technology Division',
             'division_acronym' => 'ITD',
             'division_description' => 'Manages all IT infrastructure and software systems.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $divFinId = DB::table('divisions')->insertGetId([
@@ -250,8 +243,7 @@ class DatabaseSeeder extends Seeder
             'division_name' => 'Finance and Budget Division',
             'division_acronym' => 'FBD',
             'division_description' => 'Manages financial planning, budget allocation, and accounting.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $divAdminId = DB::table('divisions')->insertGetId([
@@ -259,8 +251,7 @@ class DatabaseSeeder extends Seeder
             'division_name' => 'Administrative Services Division',
             'division_acronym' => 'ASD',
             'division_description' => 'Handles general administrative support and records management.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $divLegalId = DB::table('divisions')->insertGetId([
@@ -268,8 +259,7 @@ class DatabaseSeeder extends Seeder
             'division_name' => 'Legal and Compliance Division',
             'division_acronym' => 'LCD',
             'division_description' => 'Provides legal counsel and ensures regulatory compliance.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $divOpsFieldId = DB::table('divisions')->insertGetId([
@@ -277,8 +267,7 @@ class DatabaseSeeder extends Seeder
             'division_name' => 'Field Operations Division',
             'division_acronym' => 'FOD',
             'division_description' => 'Coordinates field activities and service delivery operations.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $divFacilitiesId = DB::table('divisions')->insertGetId([
@@ -286,8 +275,7 @@ class DatabaseSeeder extends Seeder
             'division_name' => 'Facilities Management Division',
             'division_acronym' => 'FMD',
             'division_description' => 'Manages facilities, assets, and building maintenance.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $divCustomerId = DB::table('divisions')->insertGetId([
@@ -295,8 +283,7 @@ class DatabaseSeeder extends Seeder
             'division_name' => 'Customer Support Division',
             'division_acronym' => 'CSD',
             'division_description' => 'Handles client support, service desk, and feedback resolution.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $divPolicyId = DB::table('divisions')->insertGetId([
@@ -304,8 +291,7 @@ class DatabaseSeeder extends Seeder
             'division_name' => 'Policy and Standards Division',
             'division_acronym' => 'PSD',
             'division_description' => 'Develops policies, standards, and governance frameworks.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $divPublicAffairsId = DB::table('divisions')->insertGetId([
@@ -313,8 +299,7 @@ class DatabaseSeeder extends Seeder
             'division_name' => 'Public Affairs Division',
             'division_acronym' => 'PAD',
             'division_description' => 'Leads public information, communications, and stakeholder engagement.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         // ── 4. Units ───────────────────────────────────────────────────────
@@ -550,9 +535,8 @@ class DatabaseSeeder extends Seeder
             ['dept' => $deptId, 'div' => $divLegalId, 'unit' => null,           'name' => 'Legal Division Chief',    'sg_idx' => 10],
         ];
 
-        $positionIds = [];
         foreach ($positions as $pos) {
-            $positionIds[] = DB::table('positions')->insertGetId([
+            DB::table('positions')->insertGetId([
                 'department_id' => $pos['dept'],
                 'division_id' => $pos['div'],
                 'unit_id' => $pos['unit'],
@@ -564,23 +548,21 @@ class DatabaseSeeder extends Seeder
 
         // ── 6. Items — 4 slots per position; selected positions get a vacant 5th slot ──
         $positionsWithVacantSlot = [1, 4, 7, 10, 13, 16, 19, 21, 23, 24];
-        $itemIds = [];
+
+        $positionIds = DB::table('positions')->orderBy('position_id')->pluck('position_id')->toArray();
+
         foreach ($positionIds as $idx => $posId) {
             $posName = $positions[$idx]['name'];
-            $hasVacantExtraSlot = in_array($idx, $positionsWithVacantSlot, true);
-            $slotLimit = $hasVacantExtraSlot ? 5 : 4;
+            $hasVacantSlot = in_array($idx, $positionsWithVacantSlot, true);
+            $slotLimit = $hasVacantSlot ? 5 : 4;
 
             for ($slot = 1; $slot <= $slotLimit; $slot++) {
-                $itemIds[] = [
-                    'id' => DB::table('items')->insertGetId([
-                        'position_id' => $posId,
-                        'item_name' => "{$posName} Item {$slot}",
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]),
-                    'pos_idx' => $idx,
-                    'is_vacant_slot' => $hasVacantExtraSlot && $slot === 5,
-                ];
+                DB::table('items')->insertGetId([
+                    'position_id' => $posId,
+                    'item_name' => "{$posName} Item {$slot}",
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
         }
 
@@ -1057,6 +1039,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call([
+            EmployeeSeeder::class,
             UserSeeder::class,
             InternalOrganizationSeeder::class,
             LeaveTypeSeeder::class,

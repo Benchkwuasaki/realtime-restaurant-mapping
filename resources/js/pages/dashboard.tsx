@@ -25,7 +25,7 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
 /* ── CLOCK ───────────────────────────────────────────────────────────────── */
@@ -44,67 +44,12 @@ const PRESENT = 200,
     LATE = 100,
     ABSENT = 100;
 
-const leaveTypeData = [
-    { label: 'Vacation', value: 24, fill: '#818cf8' },
-    { label: 'Sick', value: 18, fill: '#fb7185' },
-    { label: 'Special', value: 9, fill: '#22d3ee' },
-    { label: 'Mat/Pat', value: 6, fill: '#f472b6' },
-    { label: 'Other', value: 12, fill: '#fb923c' },
-];
-
-const leaveTrend = [
-    { m: 'J', v: 12 },
-    { m: 'F', v: 19 },
-    { m: 'M', v: 21 },
-    { m: 'A', v: 19 },
-    { m: 'My', v: 20 },
-    { m: 'Jn', v: 20 },
-    { m: 'Jl', v: 20 },
-    { m: 'Au', v: 10 },
-    { m: 'S', v: 20 },
-    { m: 'O', v: 20 },
-    { m: 'N', v: 20 },
-    { m: 'D', v: 20 },
-];
-
 const topLate = [
     { name: 'Earl F. Amoy', dept: 'Operations', min: 47 },
     { name: 'Liam Papasin', dept: 'IT', min: 38 },
     { name: 'Glizzy Go', dept: 'Finance', min: 31 },
     { name: 'Ramon Castillo', dept: 'Security', min: 25 },
     { name: 'M. Buligan', dept: 'Admin', min: 19 },
-];
-
-const topLeave = [
-    { name: 'Glizzy Go', days: 14, type: 'Maternity', color: '#f472b6' },
-    { name: 'Earl F. Amoy', days: 12, type: 'Vacation', color: '#818cf8' },
-    { name: 'Liam Papasin', days: 8, type: 'Sick', color: '#fb7185' },
-    { name: 'Lucia Torres', days: 7, type: 'Sick', color: '#fb7185' },
-    { name: 'M. Buligan', days: 5, type: 'Special', color: '#22d3ee' },
-];
-
-const pendingKPI = [
-    {
-        label: 'Urgent',
-        value: 12,
-        sub: '>3 days',
-        color: '#fb7185',
-        icon: AlertTriangle,
-    },
-    {
-        label: 'Approved',
-        value: 8,
-        sub: 'today',
-        color: '#34d399',
-        icon: CheckCircle2,
-    },
-    {
-        label: 'Avg Wait',
-        value: '2d',
-        sub: 'to approval',
-        color: '#fbbf24',
-        icon: Clock,
-    },
 ];
 
 const TT = {
@@ -116,6 +61,26 @@ const TT = {
     padding: '6px 12px',
     boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
 };
+
+// Colour palette for workforce bars.
+// Falls back gracefully for any classification not explicitly mapped.
+const CLASSIFICATION_COLORS: Record<string, string> = {
+    Regular: '#818cf8',
+    Casual: '#22d3ee',
+    'Job Order': '#fb923c',
+};
+const FALLBACK_COLORS = ['#34d399', '#f472b6', '#fbbf24', '#fb7185'];
+
+/* ── TYPES ───────────────────────────────────────────────────────────────── */
+type ClassificationCount = { classification: string; total: number };
+type LeaveTypeCount = { label: string; value: number; fill: string };
+type TopLeaveTaker = {
+    name: string;
+    days: number;
+    type: string;
+    color: string;
+};
+type LeaveTrendPoint = { m: string; v: number };
 
 /* ── DONUT (attendance) ──────────────────────────────────────────────────── */
 function AttendanceDonut() {
@@ -231,11 +196,19 @@ function LateList() {
 }
 
 /* ── KPI ROW ─────────────────────────────────────────────────────────────── */
-function KpiRow() {
+function KpiRow({
+    totalEmployees,
+    onLeaveCount,
+    pendingLeaveCount,
+}: {
+    totalEmployees: number;
+    onLeaveCount: number;
+    pendingLeaveCount: number;
+}) {
     const kpis = [
         {
             label: 'Total',
-            value: '400',
+            value: totalEmployees,
             icon: Users,
             color: '#818cf8',
             bg: 'rgba(129,140,248,0.1)',
@@ -249,14 +222,14 @@ function KpiRow() {
         },
         {
             label: 'On Leave',
-            value: '20',
+            value: onLeaveCount,
             icon: CalendarClock,
             color: '#fbbf24',
             bg: 'rgba(251,191,36,0.1)',
         },
         {
             label: 'Pending Leave',
-            value: '36',
+            value: pendingLeaveCount,
             icon: Clock,
             color: '#fb7185',
             bg: 'rgba(251,113,133,0.1)',
@@ -278,7 +251,6 @@ function KpiRow() {
                         key={k.label}
                         className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm"
                     >
-                        {/* tinted corner accent */}
                         <div
                             className="absolute -top-4 -right-4 h-16 w-16 rounded-full opacity-20"
                             style={{ background: k.color }}
@@ -308,25 +280,28 @@ function KpiRow() {
 }
 
 /* ── WORKFORCE BARS ──────────────────────────────────────────────────────── */
-function WorkforceBars() {
-    const cats = [
-        { label: 'Regular', value: 180, color: '#818cf8' },
-        { label: 'Casual', value: 95, color: '#22d3ee' },
-        { label: 'Job Order', value: 125, color: '#fb923c' },
-    ];
+function WorkforceBars({ counts }: { counts: ClassificationCount[] }) {
+    const grandTotal = counts.reduce((sum, c) => sum + c.total, 0);
+
     return (
         <div className="flex flex-col gap-5">
-            {cats.map((c) => {
-                const pct = Math.round((c.value / TOTAL) * 100);
+            {counts.map((c, i) => {
+                const color =
+                    CLASSIFICATION_COLORS[c.classification] ??
+                    FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+                const pct =
+                    grandTotal > 0
+                        ? Math.round((c.total / grandTotal) * 100)
+                        : 0;
                 return (
-                    <div key={c.label}>
+                    <div key={c.classification}>
                         <div className="mb-2 flex items-baseline justify-between">
                             <span className="text-xs font-semibold text-foreground">
-                                {c.label}
+                                {c.classification}
                             </span>
                             <div className="flex items-baseline gap-1">
                                 <span className="text-lg leading-none font-black text-foreground">
-                                    {c.value}
+                                    {c.total}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground">
                                     {pct}%
@@ -335,11 +310,8 @@ function WorkforceBars() {
                         </div>
                         <div className="h-2.5 overflow-hidden rounded-full bg-muted">
                             <div
-                                className="h-full rounded-full"
-                                style={{
-                                    width: `${pct}%`,
-                                    background: c.color,
-                                }}
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%`, background: color }}
                             />
                         </div>
                     </div>
@@ -350,7 +322,7 @@ function WorkforceBars() {
                     Total headcount
                 </span>
                 <span className="text-base font-black text-foreground">
-                    {TOTAL}
+                    {grandTotal}
                 </span>
             </div>
         </div>
@@ -358,12 +330,18 @@ function WorkforceBars() {
 }
 
 /* ── LEAVE TYPE CHART ────────────────────────────────────────────────────── */
-function LeaveTypeChart() {
+function LeaveTypeChart({ data }: { data: LeaveTypeCount[] }) {
+    if (!data.length)
+        return (
+            <p className="py-8 text-center text-xs text-muted-foreground">
+                No data available
+            </p>
+        );
     return (
         <div className="h-40 w-full">
             <ResponsiveContainer width="100%" height="120%">
                 <BarChart
-                    data={leaveTypeData}
+                    data={data}
                     margin={{ top: 2, right: 0, left: -30, bottom: 0 }}
                     barSize={24}
                 >
@@ -384,12 +362,12 @@ function LeaveTypeChart() {
                         tickLine={false}
                     />
                     <Tooltip
-                        formatter={(v) => [`${v} employees`]}
+                        formatter={(v) => [`${v} applications`]}
                         contentStyle={TT}
                         cursor={{ fill: 'var(--muted)', opacity: 0.5 }}
                     />
                     <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                        {leaveTypeData.map((e) => (
+                        {data.map((e) => (
                             <Cell key={e.label} fill={e.fill} />
                         ))}
                     </Bar>
@@ -400,11 +378,17 @@ function LeaveTypeChart() {
 }
 
 /* ── TOP LEAVE TAKERS ────────────────────────────────────────────────────── */
-function TopLeaveTakers() {
-    const max = topLeave[0].days;
+function TopLeaveTakers({ takers }: { takers: TopLeaveTaker[] }) {
+    if (!takers.length)
+        return (
+            <p className="py-8 text-center text-xs text-muted-foreground">
+                No data available
+            </p>
+        );
+    const max = takers[0].days;
     return (
         <div className="flex flex-col gap-3">
-            {topLeave.map((e, i) => (
+            {takers.map((e, i) => (
                 <div key={e.name} className="flex items-center gap-3">
                     <span className="w-3 shrink-0 text-[10px] font-black text-muted-foreground">
                         {i + 1}
@@ -455,12 +439,12 @@ function TopLeaveTakers() {
 }
 
 /* ── TREND AREA ──────────────────────────────────────────────────────────── */
-function LeaveTrend() {
+function LeaveTrend({ data }: { data: LeaveTrendPoint[] }) {
     return (
         <div className="h-32 w-full">
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
-                    data={leaveTrend}
+                    data={data}
                     margin={{ top: 4, right: 0, left: -30, bottom: 0 }}
                 >
                     <defs>
@@ -578,6 +562,69 @@ export default function Page() {
         year: 'numeric',
     });
 
+    const {
+        employeeClassificationCounts,
+        onLeaveCount,
+        pendingLeaveCount,
+        leaveTypeCounts,
+        topLeaveTakers,
+        urgentLeaveApplicationCount,
+        approvedTodayCount,
+        avgWaitDays,
+        leaveTrend,
+    } = usePage<{
+        employeeClassificationCounts: ClassificationCount[];
+        onLeaveCount: number;
+        pendingLeaveCount: number;
+        leaveTypeCounts: LeaveTypeCount[];
+        topLeaveTakers: TopLeaveTaker[];
+        urgentLeaveApplicationCount: number;
+        approvedTodayCount: number;
+        avgWaitDays: number;
+        leaveTrend: LeaveTrendPoint[];
+    }>().props;
+
+    const pendingKPI = [
+        {
+            label: 'Urgent',
+            value: urgentLeaveApplicationCount ?? 0,
+            sub: '>3 days',
+            color: '#fb7185',
+            icon: AlertTriangle,
+        },
+        {
+            label: 'Approved',
+            value: approvedTodayCount ?? 0,
+            sub: 'today',
+            color: '#34d399',
+            icon: CheckCircle2,
+        },
+        {
+            label: 'Avg Wait',
+            value: `${avgWaitDays ?? 0}d`,
+            sub: 'to approval',
+            color: '#fbbf24',
+            icon: Clock,
+        },
+    ];
+
+    const trend = leaveTrend ?? [];
+    const peakMonth = trend.reduce((a, b) => (b.v > a.v ? b : a), {
+        m: '—',
+        v: 0,
+    });
+    const lowestMonth = trend.reduce((a, b) => (b.v < a.v ? b : a), {
+        m: '—',
+        v: Infinity,
+    });
+    const totalTrend = trend.reduce((sum, b) => sum + b.v, 0);
+    const avgMonthly = trend.length ? Math.round(totalTrend / trend.length) : 0;
+
+    const totalEmployees = (employeeClassificationCounts ?? []).reduce(
+        (sum, c) => sum + c.total,
+        0,
+    );
+
     return (
         <AppLayout>
             <Head title="Dashboard" />
@@ -595,23 +642,26 @@ export default function Page() {
                             {dateStr}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2 shadow-sm">
+                    <div className="flex h-full items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2 shadow-sm">
                         <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                        <span className="text-[11px] font-medium text-muted-foreground">
+                        <span className="text-sm font-medium text-muted-foreground">
                             Live
                         </span>
-                        <span className="font-mono text-xs font-black text-foreground tabular-nums">
+                        <span className="font-mono text-sm font-black text-foreground tabular-nums">
                             {timeStr}
                         </span>
                     </div>
                 </div>
 
                 {/* ── KPI ROW ─────────────────────────────────────────── */}
-                <KpiRow />
+                <KpiRow
+                    totalEmployees={totalEmployees}
+                    onLeaveCount={onLeaveCount ?? 0}
+                    pendingLeaveCount={pendingLeaveCount ?? 0}
+                />
 
                 {/* ── ROW 2 ───────────────────────────────────────────── */}
                 <div className="grid grid-cols-3 gap-4">
-                    {/* Attendance donut */}
                     <Card>
                         <SH
                             icon={UserCheck}
@@ -622,7 +672,6 @@ export default function Page() {
                         <AttendanceDonut />
                     </Card>
 
-                    {/* Top 5 late */}
                     <Card>
                         <SH
                             icon={Clock}
@@ -633,7 +682,7 @@ export default function Page() {
                         <LateList />
                     </Card>
 
-                    {/* Workforce */}
+                    {/* Workforce — live data from controller */}
                     <Card>
                         <SH
                             icon={Users}
@@ -641,7 +690,9 @@ export default function Page() {
                             title="Workforce"
                             sub="By employment type"
                         />
-                        <WorkforceBars />
+                        <WorkforceBars
+                            counts={employeeClassificationCounts ?? []}
+                        />
                     </Card>
                 </div>
 
@@ -657,20 +708,19 @@ export default function Page() {
                             <p className="mb-3 text-[10px] font-bold tracking-[0.12em] text-muted-foreground uppercase">
                                 By type
                             </p>
-                            <LeaveTypeChart />
+                            <LeaveTypeChart data={leaveTypeCounts ?? []} />
                         </div>
                         <div>
                             <p className="mb-3 text-[10px] font-bold tracking-[0.12em] text-muted-foreground uppercase">
                                 Top takers
                             </p>
-                            <TopLeaveTakers />
+                            <TopLeaveTakers takers={topLeaveTakers ?? []} />
                         </div>
                     </div>
                 </Card>
 
                 {/* ── ROW 4: PENDING + TREND ──────────────────────────── */}
                 <div className="grid grid-cols-2 gap-4">
-                    {/* Pending */}
                     <Card>
                         <SH
                             icon={Clock}
@@ -689,7 +739,7 @@ export default function Page() {
                                     className="text-6xl leading-none font-black"
                                     style={{ color: '#fb7185' }}
                                 >
-                                    36
+                                    {pendingLeaveCount}
                                 </p>
                                 <p className="mt-2 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
                                     total pending
@@ -726,7 +776,6 @@ export default function Page() {
                         </div>
                     </Card>
 
-                    {/* Trend */}
                     <Card>
                         <SH
                             icon={TrendingUp}
@@ -734,22 +783,28 @@ export default function Page() {
                             title="Monthly Leave Trend"
                             sub="Employees on leave per month"
                         />
-                        <LeaveTrend />
+                        <LeaveTrend data={trend} />
                         <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4">
                             {[
                                 {
                                     label: 'Peak',
-                                    value: 'Mar',
-                                    note: '21 staff',
+                                    value: peakMonth.m,
+                                    note: `${peakMonth.v} staff`,
                                 },
                                 {
                                     label: 'Lowest',
-                                    value: 'Aug',
-                                    note: '10 staff',
+                                    value:
+                                        lowestMonth.m === '—'
+                                            ? '—'
+                                            : lowestMonth.m,
+                                    note:
+                                        lowestMonth.v === Infinity
+                                            ? '—'
+                                            : `${lowestMonth.v} staff`,
                                 },
                                 {
                                     label: 'Average',
-                                    value: '18',
+                                    value: avgMonthly,
                                     note: '/ month',
                                 },
                             ].map((s) => (

@@ -171,28 +171,6 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
 export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
     return [
         {
-            id: "select",
-            header: ({ table }) => (
-                <Checkbox
-                    checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
-                    onCheckedChange={v => table.toggleAllPageRowsSelected(!!v)}
-                    aria-label="Select all"
-                    className="translate-y-0.5"
-                />
-            ),
-            cell: ({ row }) => (
-                <Checkbox
-                    checked={row.getIsSelected()}
-                    onCheckedChange={v => row.toggleSelected(!!v)}
-                    aria-label="Select row"
-                    className="translate-y-0.5"
-                    onClick={e => e.stopPropagation()}
-                />
-            ),
-            enableSorting: false,
-            enableHiding: false,
-        },
-        {
             id: "employee_name",
             accessorFn: row => getEmployeeName(row),
             header: ({ column }) => <DataTableColumnHeader column={column} title="Employee" />,

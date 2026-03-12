@@ -273,9 +273,6 @@ function LeaveStatusDist({ requests, filters, setFilters }: { requests: LeaveReq
                                         <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, outline: isActive ? `2px solid ${d.color}` : 'none', outlineOffset: 1 }} />
                                         <span style={{ fontSize: 12, fontWeight: isActive ? 800 : 600, color: 'var(--foreground)' }}>{d.name}</span>
                                     </div>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: d.color }}>
-                                        {d.value} <span style={{ color: 'var(--muted-foreground)', fontWeight: 400 }}>({total ? ((d.value/total)*100).toFixed(1) : 0}%)</span>
-                                    </span>
                                 </div>
                                 <div style={{ height: 6, background: 'var(--muted)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
                                     <div style={{ width: `${total ? (d.value/total)*100 : 0}%`, height: '100%', background: d.color, borderRadius: 'var(--radius-sm)', transition: 'width .4s' }} />
@@ -852,7 +849,6 @@ export default function LeaveOverview() {
                             Comprehensive leave analytics — as of {date}
                         </p>
                     </div>
-                    <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 10, fontWeight: 700, background: 'rgba(16,185,129,0.1)', color: emerald, border: '1px solid rgba(16,185,129,0.25)' }}>● Live Data</span>
                 </div>
 
                 {/* Active filter chips */}
