@@ -39,6 +39,7 @@ export interface Employee {
     id:           string;   // employee_id cast to string
     workId:       string;   // work_id
     name:         string;   // basicInfo.full_name
+    avatarUrl:    string | null,
     department:   string;   // item.position.department.department_name
     division:     string;   // item.position.division.division_name
     position:     string;   // item.position.position_name

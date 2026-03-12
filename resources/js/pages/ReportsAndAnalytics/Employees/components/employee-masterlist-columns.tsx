@@ -4,7 +4,7 @@
 ───────────────────────────────────────────────────────────── */
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
 import {
@@ -16,13 +16,13 @@ import {
 /* ── Badge helpers ───────────────────────────────────────────────────────── */
 
 const STATUS_VARIANT: Record<string, 'green' | 'destructive'> = {
-    Active:   'green',
+    Active: 'green',
     Inactive: 'destructive',
 };
 
 const TYPE_VARIANT: Record<string, 'outline' | 'default' | 'secondary'> = {
-    Regular:     'default',
-    Casual:      'secondary',
+    Regular: 'default',
+    Casual: 'secondary',
     'Job Order': 'outline',
 };
 
@@ -63,6 +63,7 @@ export const employeeMasterlistColumns: ColumnDef<Employee>[] = [
             return (
                 <div className="flex items-center gap-2.5">
                     <Avatar size="sm">
+                        <AvatarImage src={row.original.avatarUrl ?? undefined} alt={name} />
                         <AvatarFallback className="text-white text-xs font-black" style={{ background: color }}>
                             {name.charAt(0)}
                         </AvatarFallback>
@@ -76,7 +77,11 @@ export const employeeMasterlistColumns: ColumnDef<Employee>[] = [
             return (
                 <div className="flex items-center gap-2.5">
                     <Avatar size="sm">
-                        <AvatarFallback className="text-white text-xs font-black" style={{ background: color }}>
+                        <AvatarImage src={row.avatarUrl ?? undefined} alt={row.name} />
+                        <AvatarFallback
+                            className="text-white text-xs font-black"
+                            style={{ background: color }}
+                        >
                             {row.name.charAt(0)}
                         </AvatarFallback>
                     </Avatar>

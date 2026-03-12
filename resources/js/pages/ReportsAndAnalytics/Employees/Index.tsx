@@ -8,7 +8,7 @@ import { useState, useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTable } from '@/components/shared/data-table/data-table';
@@ -106,9 +106,13 @@ function EmployeeDrawer({ employee, onClose }: { employee: Employee | null; onCl
 
                 {/* Header */}
                 <SheetHeader className="flex-row items-start gap-3 p-5 border-b">
-                    <Avatar size="lg">
-                        <AvatarFallback className="text-white text-lg font-black" style={{ background: color }}>
-                            {employee?.name.charAt(0)}
+                    <Avatar size="sm">
+                        <AvatarImage src={employee?.avatarUrl ?? undefined} alt={employee?.name} />
+                        <AvatarFallback
+                            className="text-white text-xs font-black"
+                            style={{ background: color }}
+                        >
+                            {employee?.name?.charAt(0)}
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
