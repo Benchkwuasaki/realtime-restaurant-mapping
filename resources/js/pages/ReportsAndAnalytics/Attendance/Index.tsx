@@ -66,15 +66,31 @@ const TOOLTIP_STYLE: React.CSSProperties = {
     boxShadow: "var(--shadow-md)",
 }
 
-// Chart colours from app.css vars
+// Chart colours — all resolved from app.css vars
 
 const C = {
-    present: "#10b981",
-    late: "var(--color-chart-1)",
-    absent: "var(--color-destructive)",
-    halfDay: "var(--color-chart-2)",
-    rate: "var(--color-primary)",
-    trend: "var(--color-chart-1)",
+    present: "var(--color-chart-2)",   // teal-green
+    late:    "var(--color-chart-4)",   // amber-orange
+    absent:  "var(--color-destructive)",
+    halfDay: "var(--color-chart-1)",   // blue
+    rate:    "var(--color-primary)",
+    trend:   "var(--color-chart-5)",
+} as const
+
+// Semantic icon / dot colours via inline CSS vars
+
+const COLOR = {
+    present: { color: "var(--color-chart-2)" },
+    halfDay: { color: "var(--color-chart-1)" },
+    late:    { color: "var(--color-chart-4)" },
+    absent:  { color: "var(--color-destructive)" },
+} as const
+
+const BG_COLOR = {
+    present: { backgroundColor: "var(--color-chart-2)" },
+    halfDay: { backgroundColor: "var(--color-chart-1)" },
+    late:    { backgroundColor: "var(--color-chart-4)" },
+    absent:  { backgroundColor: "var(--color-destructive)" },
 } as const
 
 // Delta chip
@@ -87,10 +103,10 @@ function DeltaChip({ delta, direction }: { delta: number; direction: "up" | "dow
     )
     const isUp = direction === "up"
     return (
-        <span className={cn(
-            "inline-flex items-center gap-0.5 text-[10px] font-semibold",
-            isUp ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
-        )}>
+        <span
+            className="inline-flex items-center gap-0.5 text-[10px] font-semibold"
+            style={{ color: isUp ? "var(--color-chart-2)" : "var(--color-destructive)" }}
+        >
             {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
             {Math.abs(delta).toFixed(1)}% vs yesterday
         </span>
@@ -205,10 +221,10 @@ function DailyBreakdownChart({ data }: { data: DailyStat[] }) {
                         <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} width={28} />
                         <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "var(--color-muted)" }} />
                         <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                        <Bar dataKey="present" name="Present" fill={C.present} radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="late" name="Late" fill={C.late} radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="half_day" name="Half Day" fill={C.halfDay} radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="absent" name="Absent" fill={C.absent} radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="present"  name="Present"  fill={C.present}  radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="late"     name="Late"     fill={C.late}     radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="half_day" name="Half Day" fill={C.halfDay}  radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="absent"   name="Absent"   fill={C.absent}   radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </CardContent>
@@ -239,7 +255,7 @@ function WeeklyRateChart({ data }: { data: WeeklyStat[] }) {
                         <Tooltip contentStyle={TOOLTIP_STYLE} />
                         <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                         <Bar yAxisId="c" dataKey="present" name="Present" fill={C.present} radius={[3, 3, 0, 0]} opacity={0.45} />
-                        <Bar yAxisId="c" dataKey="absent" name="Absent" fill={C.absent} radius={[3, 3, 0, 0]} opacity={0.45} />
+                        <Bar yAxisId="c" dataKey="absent"  name="Absent"  fill={C.absent}  radius={[3, 3, 0, 0]} opacity={0.45} />
                         <Area yAxisId="r" type="monotone" dataKey="rate" name="Rate %"
                             fill="url(#rateGrad)" stroke="var(--color-primary)" strokeWidth={2.5}
                             dot={{ fill: "var(--color-primary)", r: 4, strokeWidth: 0 }} activeDot={{ r: 6 }} />
@@ -283,7 +299,7 @@ function MonthlyTrendChart({ data }: { data: MonthlyTrend[] }) {
                             fill="url(#yearGrad)" stroke="var(--color-primary)" strokeWidth={2.5}
                             dot={{ fill: "var(--color-primary)", r: 3.5, strokeWidth: 0 }} activeDot={{ r: 6 }} />
                         <Line type="monotone" dataKey="trend" name="trend"
-                            stroke="var(--color-chart-1)" strokeWidth={1.8} strokeDasharray="5 3" dot={false} />
+                            stroke={C.trend} strokeWidth={1.8} strokeDasharray="5 3" dot={false} />
                     </ComposedChart>
                 </ResponsiveContainer>
             </CardContent>
@@ -334,7 +350,7 @@ export default function AttendanceReportIndex({
 
     const rateAccentStyle: React.CSSProperties =
         s.attendance_rate >= 90 ? { borderLeftColor: "var(--color-chart-3)" }
-            : s.attendance_rate >= 85 ? { borderLeftColor: "var(--color-chart-1)" }
+            : s.attendance_rate >= 85 ? { borderLeftColor: "var(--color-chart-4)" }
                 : { borderLeftColor: "var(--color-destructive)" }
 
     return (
@@ -363,13 +379,13 @@ export default function AttendanceReportIndex({
                     <StatCard title="Total Employees" value={s.total_employees} description="Active headcount"
                         icon={<Users className="w-4 h-4 m-2 text-primary" />} />
                     <StatCard title="Present Today" value={s.present_today} description="Clocked in or active"
-                        icon={<UserCheck className="w-4 h-4 m-2 text-emerald-500" />} />
+                        icon={<UserCheck className="w-4 h-4 m-2" style={COLOR.present} />} />
                     <StatCard title="Half Day" value={s.half_day_today} description="Left before time out"
-                        icon={<Coffee className="w-4 h-4 m-2 text-indigo-500" />} />
+                        icon={<Coffee className="w-4 h-4 m-2" style={COLOR.halfDay} />} />
                     <StatCard title="Late Today" value={s.late_today} description="Arrived after schedule"
-                        icon={<AlertTriangle className="w-4 h-4 m-2 text-amber-500" />} />
+                        icon={<AlertTriangle className="w-4 h-4 m-2" style={COLOR.late} />} />
                     <StatCard title="Absent Today" value={s.absent_today} description="No attendance recorded"
-                        icon={<UserX className="w-4 h-4 m-2 text-destructive" />} />
+                        icon={<UserX className="w-4 h-4 m-2" style={COLOR.absent} />} />
                 </div>
 
                 <Card className="border-l-4" style={rateAccentStyle}>
@@ -383,13 +399,13 @@ export default function AttendanceReportIndex({
                         </div>
                         <div className="flex items-center gap-6 text-sm text-muted-foreground flex-wrap">
                             {[
-                                { dot: "bg-emerald-500", label: "Present", val: s.present_today },
-                                { dot: "bg-indigo-500", label: "Half Day", val: s.half_day_today },
-                                { dot: "bg-amber-500", label: "Late", val: s.late_today },
-                                { dot: "bg-destructive", label: "Absent", val: s.absent_today },
-                            ].map(({ dot, label, val }) => (
+                                { bgStyle: BG_COLOR.present, label: "Present",  val: s.present_today },
+                                { bgStyle: BG_COLOR.halfDay, label: "Half Day", val: s.half_day_today },
+                                { bgStyle: BG_COLOR.late,    label: "Late",     val: s.late_today },
+                                { bgStyle: BG_COLOR.absent,  label: "Absent",   val: s.absent_today },
+                            ].map(({ bgStyle, label, val }) => (
                                 <div key={label} className="flex items-center gap-1.5">
-                                    <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", dot)} />
+                                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={bgStyle} />
                                     {label} <span className="font-semibold text-foreground">{val}</span>
                                 </div>
                             ))}
@@ -420,7 +436,6 @@ export default function AttendanceReportIndex({
                         searchPlaceholder="Search department..."
                         filters={[{ columnId: "rate_category", title: "Rating", options: ratingOptions }]}
                         footerRow={buildDeptFooterRow}
-
                     />
                 </div>
 
