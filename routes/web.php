@@ -37,7 +37,7 @@ use App\Http\Controllers\DocumentTrackingIncomingController;
 use App\Http\Controllers\DocumentTrackingOutgoingController;
 use App\Http\Controllers\EmployeeReportController;
 use App\Http\Controllers\GovernmentReportController;
-
+use App\Http\Controllers\LeaveReportController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
