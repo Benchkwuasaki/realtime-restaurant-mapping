@@ -329,10 +329,21 @@ class EmployeeController extends Controller
             'eligibilityInformation',
             'governmentAccounts',
             'uploadedFiles',
-            'leaveBalances.leaveType',   // ← eager-load the leaveType relationship
+            'leaveBalances.leaveType',
             'internalOrganizations',
             'attendanceRecords',
+            'payrollRecords.payrollPeriod',
         ]);
+
+        // ── Reusable employee identity fields for each payslip row ───────────────
+        $basicInfo = $employee->basicInfo;
+        $employeeName = trim(
+            ($basicInfo->last_name ?? '').', '.
+            ($basicInfo->first_name ?? '').' '.
+            ($basicInfo->middle_name ?? '')
+        );
+        $position = $employee->item?->position?->position_name ?? '—';
+        $sgStep = $employee->salaryGradeStep;
 
         return Inertia::render('Employee/Show', [
             'employee' => [
@@ -352,16 +363,17 @@ class EmployeeController extends Controller
                 'basic_info' => $employee->basicInfo,
                 'item' => $employee->item,
                 'salary_grade_step' => $employee->salaryGradeStep,
+
                 'allowances' => $employee->allowances->map(fn ($ea) => [
                     'employee_allowance_id' => $ea->employee_allowance_id,
                     'allowance_type' => $ea->allowance_name,
                     'amount' => $ea->allowance_amount,
                     'taxable' => (bool) $ea->taxable,
                 ]),
+
                 'eligibility_information' => $employee->eligibilityInformation,
                 'government_accounts' => $employee->governmentAccounts,
 
-                // ── Leave balances: map to the shape expected by the frontend ──
                 'leave_balances' => $employee->leaveBalances->map(fn ($b) => [
                     'employee_leave_balance_id' => $b->employee_leave_balance_id,
                     'leave_type_id' => $b->leave_type_id,
@@ -376,14 +388,15 @@ class EmployeeController extends Controller
 
                 'internal_organizations' => $employee->internalOrganizations,
                 'attendance_records' => $employee->attendanceRecords,
-
                 'uploadedFiles' => $employee->uploadedFiles,
+
                 'seminarsAndTrainings' => $employee->seminarsAndTrainings->map(fn ($s) => [
                     'id' => $s->employee_seminar_training_id,
                     'seminar_name' => $s->seminar_training_name,
                     'venue' => $s->venue,
                     'date_attended' => $s->date_attended,
                 ]),
+
                 'serviceRecords' => $employee->serviceRecords->map(fn ($s) => [
                     'id' => $s->employee_service_record_id,
                     'position_name' => $s->service_title,
@@ -391,7 +404,55 @@ class EmployeeController extends Controller
                     'year_start' => $s->durationStart ? substr($s->durationStart, 0, 4) : null,
                     'year_end' => $s->durationEnd ? substr($s->durationEnd, 0, 4) : null,
                 ]),
+
+                // ── Full payslip history (summary + all detail fields for modal) ──
+                'payslips' => $employee->payrollRecords
+                    ->sortByDesc(fn ($r) => optional($r->payrollPeriod)->start_date)
+                    ->values()
+                    ->map(fn ($r) => [
+                        // ── Table summary ──────────────────────────────────────
+                        'payroll_record_id' => $r->payroll_record_id,
+                        'period_label' => $r->payrollPeriod
+                            ? $r->payrollPeriod->start_date->format('M d')
+                              .' – '
+                              .$r->payrollPeriod->end_date->format('M d, Y')
+                            : 'N/A',
+                        'pay_date' => $r->payrollPeriod?->pay_date,
+                        'gross_pay' => $r->gross_pay,         // computed accessor
+                        'total_deductions' => $r->total_deductions,  // computed accessor
+                        'net_pay' => $r->net_pay,
+
+                        // ── Modal / PayslipDocument detail ─────────────────────
+                        'employee_name' => $employeeName,
+                        'position' => $position,
+                        'salary_grade' => (int) ($sgStep?->salary_grade ?? 0),
+                        'step' => (int) ($sgStep?->step ?? 0),
+                        'employment_classification' => ucfirst(strtolower($employee->employment_classification ?? 'regular')),
+                        'basic_pay' => $r->basic_pay,
+                        'pera' => $r->pera,
+                        'rice_allowance' => $r->rice_allowance,
+                        'uniform_allowance' => $r->uniform_allowance,
+                        'gsis_premium' => $r->gsis_premium,
+                        'philhealth' => $r->philhealth,
+                        'pag_ibig' => $r->pag_ibig,
+                        'withholding_tax' => $r->withholding_tax,
+                        'absent_days' => (int) ($r->absent_days ?? 0),
+                        'absent_deduction' => $r->absent_deduction,
+                        'late_minutes' => (int) ($r->late_minutes ?? 0),
+                        'late_deduction' => $r->late_deduction,
+                        'gsis_mpl' => $r->gsis_mpl,
+                        'gsis_emergency' => $r->gsis_emergency,
+                        'pag_ibig_mpl' => $r->pag_ibig_mpl,
+                        'ama_y2k_union' => $r->ama_y2k_union,
+                        'water_bill' => $r->water_bill,
+                        'floor_check_passed' => (bool) ($r->floor_check_passed ?? true),
+                        'posted_date' => $r->posted_at
+                            ? \Carbon\Carbon::parse($r->posted_at)->format('M d, Y')
+                            : '—',
+                        'hr_officer' => $r->hr_officer_name ?? '—',
+                    ]),
             ],
+
             'items' => Item::with([
                 'position.department',
                 'position.division',
@@ -416,9 +477,11 @@ class EmployeeController extends Controller
                             : null,
                     ] : null,
                 ]),
+
             'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')
                 ->orderBy('step')
                 ->get(['salary_grade_step_id', 'salary_grade', 'step', 'monthly_salary']),
+
             'masterAllowances' => Allowance::orderBy('name')
                 ->get(['id', 'name', 'monthly_salary', 'taxable']),
         ]);

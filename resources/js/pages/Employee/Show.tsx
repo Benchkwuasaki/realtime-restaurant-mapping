@@ -79,6 +79,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import { PayslipDocument } from '@/pages/Payroll/Outputs/PaySlipGeneration/PayslipDocument';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -220,6 +221,41 @@ interface InternalOrganization {
     type: string;
     code: string;
 }
+interface Payslip {
+    payroll_record_id: number;
+    // Summary (table display)
+    period_label: string;
+    pay_date?: string;
+    gross_pay: number;
+    total_deductions: number;
+    net_pay: number;
+    // Full detail (modal / PayslipDocument)
+    employee_name: string;
+    position: string;
+    salary_grade: number;
+    step: number;
+    employment_classification: string;
+    basic_pay: number;
+    pera: number;
+    rice_allowance: number;
+    uniform_allowance: number;
+    gsis_premium: number;
+    philhealth: number;
+    pag_ibig: number;
+    withholding_tax: number;
+    absent_days: number;
+    absent_deduction: number;
+    late_minutes: number;
+    late_deduction: number;
+    gsis_mpl: number;
+    gsis_emergency: number;
+    pag_ibig_mpl: number;
+    ama_y2k_union: number;
+    water_bill: number;
+    floor_check_passed: boolean;
+    posted_date: string;
+    hr_officer: string;
+}
 interface Employee {
     employee_id: number;
     work_email: string;
@@ -245,6 +281,7 @@ interface Employee {
     serviceRecords?: ServiceRecord[];
     internal_organizations?: InternalOrganization[];
     attendance_records?: AttendanceRecord[];
+    payslips?: Payslip[];
 }
 interface Props {
     employee: Employee;
@@ -1875,9 +1912,7 @@ function CompensationTab({
                         Payroll Data
                     </span>
                 </div>
-                <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
-                    No payroll data available.
-                </div>
+                <PayslipHistoryTable payslips={employee.payslips ?? []} />
             </div>
 
             <SalaryEditDialog
@@ -1896,6 +1931,148 @@ function CompensationTab({
                 masterAllowances={masterAllowances}
             />
         </div>
+    );
+}
+
+function fmtPeso(amount: number) {
+    return `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+}
+
+function PayslipViewModal({
+    slip,
+    open,
+    onClose,
+}: {
+    slip: Payslip | null;
+    open: boolean;
+    onClose: () => void;
+}) {
+    if (!slip) return null;
+
+    const data = {
+        employee_name: slip.employee_name,
+        position: slip.position,
+        salary_grade: slip.salary_grade,
+        step: slip.step,
+        employment_classification: slip.employment_classification,
+        period_label: slip.period_label,
+        basic_pay: slip.basic_pay,
+        pera: slip.pera,
+        rice_allowance: slip.rice_allowance,
+        uniform_allowance: slip.uniform_allowance,
+        gsis_premium: slip.gsis_premium,
+        philhealth: slip.philhealth,
+        pag_ibig: slip.pag_ibig,
+        withholding_tax: slip.withholding_tax,
+        absent_days: slip.absent_days,
+        absent_deduction: slip.absent_deduction,
+        late_minutes: slip.late_minutes,
+        late_deduction: slip.late_deduction,
+        gsis_mpl: slip.gsis_mpl,
+        gsis_emergency: slip.gsis_emergency,
+        pag_ibig_mpl: slip.pag_ibig_mpl,
+        ama_y2k_union: slip.ama_y2k_union,
+        water_bill: slip.water_bill,
+        net_pay: slip.net_pay,
+        floor_check_passed: slip.floor_check_passed,
+        posted_date: slip.posted_date,
+        hr_officer: slip.hr_officer,
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+            <DialogContent className="w-[800px] !max-w-[800px] overflow-y-auto p-0">
+                <DialogHeader className="flex flex-row items-center justify-between border-b border-border px-5 py-3.5">
+                    <DialogTitle className="text-sm font-semibold">
+                        Pay Slip — {slip.period_label}
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="p-4" id="payslip-modal-print-area">
+                    <PayslipDocument data={data} printId="payslip-modal-doc" />
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+function PayslipHistoryTable({ payslips }: { payslips: Payslip[] }) {
+    const [selected, setSelected] = useState<Payslip | null>(null);
+
+    if (payslips.length === 0) {
+        return (
+            <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
+                No payroll data available.
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-border bg-muted/40">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-muted-foreground sm:px-5">
+                                Period
+                            </th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold tracking-wide text-muted-foreground sm:px-5">
+                                Gross Pay
+                            </th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold tracking-wide text-muted-foreground sm:px-5">
+                                Deductions
+                            </th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold tracking-wide text-muted-foreground sm:px-5">
+                                Net Pay
+                            </th>
+                            <th className="px-4 py-2.5 sm:px-5" />
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                        {payslips.map((slip) => (
+                            <tr
+                                key={slip.payroll_record_id}
+                                className="transition-colors hover:bg-muted/30"
+                            >
+                                <td className="px-4 py-3 sm:px-5">
+                                    <span className="font-medium text-foreground">
+                                        {slip.period_label}
+                                    </span>
+                                    {slip.pay_date && (
+                                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                            Pay date: {fmtShort(slip.pay_date)}
+                                        </p>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3 text-right text-foreground tabular-nums sm:px-5">
+                                    {fmtPeso(slip.gross_pay)}
+                                </td>
+                                <td className="px-4 py-3 text-right text-destructive tabular-nums sm:px-5">
+                                    − {fmtPeso(slip.total_deductions)}
+                                </td>
+                                <td className="px-4 py-3 text-right font-bold text-foreground tabular-nums sm:px-5">
+                                    {fmtPeso(slip.net_pay)}
+                                </td>
+                                <td className="px-4 py-3 text-right sm:px-5">
+                                    <Button
+                                        variant="outline"
+                                        size="xs"
+                                        onClick={() => setSelected(slip)}
+                                    >
+                                        <Eye className="mr-1.5 h-3 w-3" />
+                                        View
+                                    </Button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <PayslipViewModal
+                slip={selected}
+                open={selected !== null}
+                onClose={() => setSelected(null)}
+            />
+        </>
     );
 }
 

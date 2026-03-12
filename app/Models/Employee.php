@@ -69,6 +69,12 @@ class Employee extends Model
         return $this->hasMany(EmployeePayrollData::class, 'employee_id', 'employee_id');
     }
 
+    // ── NEW: links to actual processed payroll records (payslip history) ───────
+    public function payrollRecords(): HasMany
+    {
+        return $this->hasMany(PayrollRecord::class, 'employee_id', 'employee_id');
+    }
+
     public function serviceRecords(): HasMany
     {
         return $this->hasMany(EmployeeServiceRecord::class, 'employee_id', 'employee_id');
@@ -99,25 +105,16 @@ class Employee extends Model
         return $this->hasMany(GovernmentAccount::class, 'employee_id', 'employee_id');
     }
 
-    /**
-     * Leave applications filed by this employee.
-     */
     public function leaveApplications(): HasMany
     {
         return $this->hasMany(LeaveApplication::class, 'employee_id', 'employee_id');
     }
 
-    /**
-     * Leave balances per leave type per cycle year.
-     */
     public function leaveBalances(): HasMany
     {
         return $this->hasMany(EmployeeLeaveBalance::class, 'employee_id', 'employee_id');
     }
 
-    // ── Internal Organizations ─────────────────────────────────────────────────
-
-    // In App\Models\Employee.php
     public function internalOrganizations(): BelongsToMany
     {
         return $this->belongsToMany(
