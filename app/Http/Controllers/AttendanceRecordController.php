@@ -100,6 +100,22 @@ class AttendanceRecordController extends Controller
      * Safe to call anytime; dispatches one job per unique employee+date pair.
      * Returns immediately — jobs run in the background.
      */
+    public function recompute(): \Illuminate\Http\RedirectResponse
+    {
+        $logIds = Attendance::whereNotNull('employee_id')
+            ->select('id')
+            ->orderBy('captured_at')
+            ->pluck('id');
+
+        // Chunk to avoid memory issues on large datasets
+        $logIds->chunk(200)->each(function ($chunk) {
+            foreach ($chunk as $id) {
+                ProcessAttendanceLog::dispatch($id)->onQueue('attendance');
+            }
+        });
+
+        return back()->with('success', "Recompute queued for {$logIds->count()} logs.");
+    }
 
     /**
      * POST /attendance-records/sync-absent
