@@ -126,6 +126,11 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::post('/{employee}/service-record', [EmployeeController::class, 'storeServiceRecord'])->name('service-record.store');
         Route::put('/{employee}/service-record/{record}', [EmployeeController::class, 'updateServiceRecord'])->name('service-record.update');
         Route::delete('/{employee}/service-record/{record}', [EmployeeController::class, 'destroyServiceRecord'])->name('service-record.destroy');
+
+        // Allowances
+        Route::post('/{employee}/allowances', [EmployeeController::class, 'storeAllowance'])->name('allowance.store');
+        Route::put('/{employee}/allowances/{allowance}', [EmployeeController::class, 'updateAllowance'])->name('allowance.update');
+        Route::delete('/{employee}/allowances/{allowance}', [EmployeeController::class, 'destroyAllowance'])->name('allowance.destroy');
     });
 
     /*
