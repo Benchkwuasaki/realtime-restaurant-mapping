@@ -134,4 +134,9 @@ class Employee extends Model
     {
         return $this->hasOne(User::class, 'employee_id', 'employee_id');
     }
+
+    public function attendanceRecords()
+    {
+        return $this->hasMany(AttendanceRecord::class, 'employee_id', 'employee_id');
+    }
 }

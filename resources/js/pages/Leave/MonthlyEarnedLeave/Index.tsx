@@ -1,57 +1,28 @@
-import { router, usePage } from '@inertiajs/react';
-import {
-    useReactTable,
-    getCoreRowModel,
-    getPaginationRowModel,
-    type RowSelectionState,
-} from '@tanstack/react-table';
-import {
-    Plus,
-    TrendingUp,
-    CalendarDays,
-    Hash,
-    User,
-    Briefcase,
-} from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import { router, usePage } from "@inertiajs/react"
+import { Plus, TrendingUp, CalendarDays, Hash, User, Briefcase } from "lucide-react"
+import React, { useMemo, useState } from "react"
 
-import { route } from 'ziggy-js';
-import { DataTable } from '@/components/shared/data-table/data-table';
-import { DataTablePagination } from '@/components/shared/data-table/data-table-pagination';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { route } from "ziggy-js"
+import { DataTable } from "@/components/shared/data-table/data-table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Stepper } from "@/components/ui/stepper"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import AppLayout from "@/layouts/app-layout"
+import { getHistoryColumns, CreditBadge, EmployeeAvatar } from "./components/history-columns"
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+    buildPreviewCreditRows,
+    usePreviewCreditColumns,
+    usePreviewCreditHeaderGroups,
+    type PreviewCreditRow,
+} from "./components/preview-credits-columns"
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Stepper } from '@/components/ui/stepper';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AppLayout from '@/layouts/app-layout';
-import {
-    getHistoryColumns,
-    CreditBadge,
-    EmployeeAvatar,
-} from './components/history-columns';
+    useLeaveBalanceColumns,
+    type LeaveBalanceRow,
+} from "./components/leave-balances-columns"
 import {
     type LeaveType,
     type PreviewRow,
@@ -65,39 +36,22 @@ import {
 // ─── Page props ───────────────────────────────────────────────────────────────
 
 interface PageProps {
-    tab?: 'posting' | 'history';
-    step?: number;
-    period?: { month: number; year: number };
-    previews?: PreviewRow[];
-    leave_types?: LeaveType[];
-    leave_type_ids?: number[];
-    available_leave_types?: LeaveType[];
-    summary?: Summary;
-    post_details?: PostDetails;
-    posting_meta?: PostingMeta;
-    history?: HistoryRow[];
-    history_filter?: { year: number | null; month: number | null };
-    balances_data?: BalanceEmployeeRow[];
-    balances_leave_types?: LeaveType[];
-    balances_cycle_year?: number;
-    balances_cycle_years?: number[];
-}
-
-interface LeaveBalanceEntry {
-    leave_type_id: number;
-    leave_type_name: string;
-    total_days: number;
-    used_days: number;
-    balance: number;
-}
-
-interface BalanceEmployeeRow {
-    employee_id: number;
-    name: string;
-    avatar_url: string | null;
-    department: string;
-    employment_classification: string;
-    leave_balances: LeaveBalanceEntry[];
+    tab?: "posting" | "history"
+    step?: number
+    period?: { month: number; year: number }
+    previews?: PreviewRow[]
+    leave_types?: LeaveType[]
+    leave_type_ids?: number[]
+    available_leave_types?: LeaveType[]
+    summary?: Summary
+    post_details?: PostDetails
+    posting_meta?: PostingMeta
+    history?: HistoryRow[]
+    history_filter?: { year: number | null; month: number | null }
+    balances_data?: LeaveBalanceRow[]
+    balances_leave_types?: LeaveType[]
+    balances_cycle_year?: number
+    balances_cycle_years?: number[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -125,301 +79,14 @@ const breadcrumbs = [
 ];
 
 const WIZARD_STEPS = [
-    { title: 'Select Period', description: 'Step 1' },
-    { title: 'Preview Credits', description: 'Step 2' },
-    { title: 'Confirm Posting', description: 'Step 3' },
-    { title: 'Posted', description: 'Step 4' },
-];
+    { title: "Select Period", description: "Step 1" },
+    { title: "Preview Credits", description: "Step 2" },
+    { title: "Confirm Posting", description: "Step 3" },
+    { title: "Posted", description: "Step 4" },
+]
 
-// ─── Pivoted table ────────────────────────────────────────────────────────────
-// Uses a custom multi-level header (one column group per leave type ×
-// Balance / Credit / New Balance). This layout cannot be expressed through
-// DataTable's flat ColumnDef API, so we keep raw <Table> here and reuse
-// only DataTablePagination for consistent UI.
-
-function PivotedTable({
-    rows,
-    leaveTypes,
-    selectable = false,
-}: {
-    rows: PreviewRow[];
-    leaveTypes: LeaveType[];
-    selectable?: boolean;
-}) {
-    const [search, setSearch] = useState('');
-    const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-    const [pagination, setPagination] = useState({
-        pageIndex: 0,
-        pageSize: 10,
-    });
-
-    const employeeRows = useMemo(() => {
-        const map = new Map<
-            number,
-            {
-                employee_id: number;
-                name: string;
-                department: string;
-                employment_classification: string;
-                avatar_url: string | null;
-                credit_status: PreviewRow['credit_status'];
-                attendance_days: number;
-                leaves: Record<
-                    number,
-                    { before: number; credit: number; after: number }
-                >;
-            }
-        >();
-
-        for (const row of rows) {
-            if (!map.has(row.employee_id)) {
-                map.set(row.employee_id, {
-                    employee_id: row.employee_id,
-                    name: row.name,
-                    department: row.department,
-                    employment_classification: row.employment_classification,
-                    avatar_url: row.avatar_url,
-                    credit_status: row.credit_status,
-                    attendance_days: row.attendance_days,
-                    leaves: {},
-                });
-            }
-            map.get(row.employee_id)!.leaves[row.leave_type_id] = {
-                before: row.balance_before,
-                credit: row.accrual_earned,
-                after: row.balance_after,
-            };
-        }
-        return Array.from(map.values());
-    }, [rows]);
-
-    const filtered = useMemo(() => {
-        const q = search.toLowerCase();
-        return employeeRows.filter(
-            (e) =>
-                e.name.toLowerCase().includes(q) ||
-                e.department.toLowerCase().includes(q) ||
-                e.employment_classification.toLowerCase().includes(q),
-        );
-    }, [employeeRows, search]);
-
-    // Minimal table instance — only to drive DataTablePagination + select-all
-    const table = useReactTable({
-        data: filtered,
-        columns: [{ id: 'select', header: '', cell: () => null }],
-        getRowId: (row) => String(row.employee_id),
-        enableRowSelection: selectable,
-        state: { rowSelection, pagination },
-        onRowSelectionChange: setRowSelection,
-        onPaginationChange: setPagination,
-        getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        manualFiltering: true,
-    });
-
-    const pageRows = filtered.slice(
-        pagination.pageIndex * pagination.pageSize,
-        (pagination.pageIndex + 1) * pagination.pageSize,
-    );
-    const totalFiltered = filtered.length;
-    const pageCount = Math.max(
-        1,
-        Math.ceil(totalFiltered / pagination.pageSize),
-    );
-    const colSpan = (selectable ? 1 : 0) + 5 + leaveTypes.length * 3 + 1;
-
-    return (
-        <div className="flex flex-col gap-4">
-            <Input
-                placeholder="Search employee..."
-                value={search}
-                onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPagination((p) => ({ ...p, pageIndex: 0 }));
-                }}
-                className="h-8 w-56"
-            />
-
-            <div className="border-border overflow-x-auto rounded-md border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {selectable && (
-                                <TableHead className="w-10">
-                                    <Checkbox
-                                        checked={
-                                            table.getIsAllPageRowsSelected() ||
-                                            (table.getIsSomePageRowsSelected() &&
-                                                'indeterminate')
-                                        }
-                                        onCheckedChange={(v) =>
-                                            table.toggleAllPageRowsSelected(!!v)
-                                        }
-                                        aria-label="Select all"
-                                    />
-                                </TableHead>
-                            )}
-                            <TableHead>Employee</TableHead>
-                            <TableHead>Department</TableHead>
-                            <TableHead>Employment Type</TableHead>
-                            <TableHead className="text-center">
-                                Attendance
-                            </TableHead>
-                            {leaveTypes.map((lt) => (
-                                <TableHead
-                                    key={lt.leave_type_id}
-                                    colSpan={3}
-                                    className="border-border border-l text-center"
-                                >
-                                    {lt.leave_type_name}
-                                </TableHead>
-                            ))}
-                            <TableHead className="text-center">
-                                Status
-                            </TableHead>
-                        </TableRow>
-                        <TableRow className="bg-muted/40">
-                            {selectable && <TableHead />}
-                            <TableHead colSpan={4} />
-                            {leaveTypes.map((lt) => (
-                                <React.Fragment key={lt.leave_type_id}>
-                                    <TableHead className="text-muted-foreground border-border border-l text-center text-xs font-normal">
-                                        Balance
-                                    </TableHead>
-                                    <TableHead className="text-muted-foreground text-center text-xs font-normal">
-                                        Credit
-                                    </TableHead>
-                                    <TableHead className="text-muted-foreground text-center text-xs font-normal">
-                                        New Balance
-                                    </TableHead>
-                                </React.Fragment>
-                            ))}
-                            <TableHead />
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {pageRows.length ? (
-                            pageRows.map((emp) => {
-                                const rowId = String(emp.employee_id);
-                                const isSelected = !!rowSelection[rowId];
-                                return (
-                                    <TableRow
-                                        key={emp.employee_id}
-                                        data-state={
-                                            isSelected ? 'selected' : undefined
-                                        }
-                                    >
-                                        {selectable && (
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={isSelected}
-                                                    onCheckedChange={(v) =>
-                                                        setRowSelection(
-                                                            (prev) => {
-                                                                const next = {
-                                                                    ...prev,
-                                                                };
-                                                                v
-                                                                    ? (next[
-                                                                          rowId
-                                                                      ] = true)
-                                                                    : delete next[
-                                                                          rowId
-                                                                      ];
-                                                                return next;
-                                                            },
-                                                        )
-                                                    }
-                                                />
-                                            </TableCell>
-                                        )}
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <EmployeeAvatar
-                                                    url={emp.avatar_url}
-                                                    name={emp.name}
-                                                />
-                                                <span className="text-sm">
-                                                    {emp.name}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">
-                                            {emp.department}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">
-                                            {emp.employment_classification}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-center text-sm">
-                                            {emp.attendance_days}d
-                                        </TableCell>
-                                        {leaveTypes.map((lt) => {
-                                            const d =
-                                                emp.leaves[lt.leave_type_id];
-                                            return (
-                                                <React.Fragment
-                                                    key={lt.leave_type_id}
-                                                >
-                                                    <TableCell className="text-muted-foreground border-border border-l text-center text-sm">
-                                                        {d
-                                                            ? d.before.toFixed(
-                                                                  2,
-                                                              )
-                                                            : '0.00'}
-                                                    </TableCell>
-                                                    <TableCell className="text-center text-sm font-medium text-green-600 dark:text-green-400">
-                                                        {d
-                                                            ? `+${d.credit.toFixed(2)}`
-                                                            : '+0.00'}
-                                                    </TableCell>
-                                                    <TableCell className="text-primary text-center text-sm font-medium">
-                                                        {d
-                                                            ? d.after.toFixed(2)
-                                                            : '0.00'}
-                                                    </TableCell>
-                                                </React.Fragment>
-                                            );
-                                        })}
-                                        <TableCell className="text-center">
-                                            <CreditBadge
-                                                status={emp.credit_status}
-                                            />
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })
-                        ) : (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={colSpan}
-                                    className="text-muted-foreground h-24 text-center"
-                                >
-                                    No results.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-
-            <DataTablePagination
-                table={table}
-                rowSelection={rowSelection}
-                pageIndex={pagination.pageIndex}
-                pageSize={pagination.pageSize}
-                pageCount={pageCount}
-                totalFiltered={totalFiltered}
-                onPageIndexChange={(i) =>
-                    setPagination((p) => ({ ...p, pageIndex: i }))
-                }
-                onPageSizeChange={(s) =>
-                    setPagination({ pageIndex: 0, pageSize: s })
-                }
-            />
-        </div>
-    );
-}
-
+=======
+>>>>>>> a6822789afa3a397a92d3446098c7d0aa5a139b4
 // ─── Step 1 ───────────────────────────────────────────────────────────────────
 
 function StepSelectPeriod({
@@ -550,12 +217,8 @@ function StepSelectPeriod({
             </div>
 
             <div className="flex justify-end">
-                <Button
-                    onClick={handleNext}
-                    disabled={loading || selectedIds.size === 0}
-                    size="sm"
-                >
-                    <Plus /> {loading ? 'Loading…' : 'Next'}
+                <Button onClick={handleNext} disabled={loading || selectedIds.size === 0} size="sm">
+                     {loading ? "Loading…" : "Next"}
                 </Button>
             </div>
         </div>
@@ -575,7 +238,10 @@ function StepPreviewCredits({
     period: { month: number; year: number };
     leaveTypeIds: number[];
 }) {
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false)
+    const employeeRows = useMemo(() => buildPreviewCreditRows(previews), [previews])
+    const columns      = usePreviewCreditColumns(leaveTypes)
+    const headerGroups = usePreviewCreditHeaderGroups(leaveTypes)
 
     return (
         <div className="flex flex-col gap-4 p-6">
@@ -589,7 +255,15 @@ function StepPreviewCredits({
                     {leaveTypes.length !== 1 ? 's' : ''}
                 </p>
             </div>
-            <PivotedTable rows={previews} leaveTypes={leaveTypes} selectable />
+            <DataTable
+                columns={columns}
+                data={employeeRows}
+                getRowId={(row) => String(row.employee_id)}
+                searchColumnId="name"
+                searchPlaceholder="Search employee..."
+                headerGroups={headerGroups}
+                defaultPageSize={10}
+            />
             <div className="flex items-center justify-between pt-2">
                 <Button
                     variant="outline"
@@ -617,7 +291,7 @@ function StepPreviewCredits({
                         );
                     }}
                 >
-                    <Plus /> {loading ? 'Loading…' : 'Next'}
+                    {loading ? "Loading…" : "Next"}
                 </Button>
             </div>
         </div>
@@ -735,7 +409,7 @@ function StepConfirmPosting({
                         );
                     }}
                 >
-                    <Plus /> {loading ? 'Posting…' : 'Confirm & Post'}
+                   {loading ? "Posting…" : "Confirm & Post"}
                 </Button>
             </div>
         </div>
@@ -755,6 +429,10 @@ function StepPostedReview({
     period: { month: number; year: number };
     postingMeta: PostingMeta;
 }) {
+    const employeeRows = useMemo(() => buildPreviewCreditRows(previews), [previews])
+    const columns      = usePreviewCreditColumns(leaveTypes)
+    const headerGroups = usePreviewCreditHeaderGroups(leaveTypes)
+
     return (
         <div className="flex flex-col gap-4 p-6">
             <div className="flex items-start justify-between">
@@ -778,10 +456,14 @@ function StepPostedReview({
                     </Button>
                 </div>
             </div>
-            <PivotedTable
-                rows={previews}
-                leaveTypes={leaveTypes}
-                selectable={false}
+            <DataTable
+                columns={columns}
+                data={employeeRows}
+                getRowId={(row) => String(row.employee_id)}
+                searchColumnId="name"
+                searchPlaceholder="Search employee..."
+                headerGroups={headerGroups}
+                defaultPageSize={10}
             />
         </div>
     );
@@ -1106,13 +788,12 @@ function HistoryTab({
 function BalancesTab({
     data,
     leaveTypes,
-    cycleYear,
-    cycleyears = [],
+    cycleYear: _cycleYear,
 }: {
-    data: BalanceEmployeeRow[];
-    leaveTypes: LeaveType[];
-    cycleYear: number;
-    cycleYears?: number[];
+    data: LeaveBalanceRow[]
+    leaveTypes: LeaveType[]
+    cycleYear: number
+    cycleYears?: number[]
 }) {
     const [search, setSearch] = useState('');
     const [pagination, setPagination] = useState({
@@ -1150,115 +831,18 @@ function BalancesTab({
         Math.ceil(filtered.length / pagination.pageSize),
     );
     const colSpan = 3 + leaveTypes.length;
+    const columns = useLeaveBalanceColumns(leaveTypes)
 
     return (
-        <div className="flex flex-col gap-4">
-            <Input
-                placeholder="Search employee..."
-                value={search}
-                onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPagination((p) => ({ ...p, pageIndex: 0 }));
-                }}
-                className="h-8 w-56"
-            />
-
-            <div className="border-border overflow-x-auto rounded-md border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Employee</TableHead>
-                            <TableHead>Department</TableHead>
-                            <TableHead>Employment Type</TableHead>
-                            {leaveTypes.map((lt) => (
-                                <TableHead
-                                    key={lt.leave_type_id}
-                                    className="border-border border-l text-center"
-                                >
-                                    {lt.leave_type_name}
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {pageRows.length ? (
-                            pageRows.map((emp) => {
-                                const balanceMap = Object.fromEntries(
-                                    emp.leave_balances.map((b) => [
-                                        b.leave_type_id,
-                                        b,
-                                    ]),
-                                );
-                                return (
-                                    <TableRow key={emp.employee_id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <EmployeeAvatar
-                                                    url={emp.avatar_url}
-                                                    name={emp.name}
-                                                />
-                                                <span className="text-sm">
-                                                    {emp.name}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">
-                                            {emp.department}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">
-                                            {emp.employment_classification}
-                                        </TableCell>
-                                        {leaveTypes.map((lt) => {
-                                            const b =
-                                                balanceMap[lt.leave_type_id];
-                                            return (
-                                                <TableCell
-                                                    key={lt.leave_type_id}
-                                                    className="text-primary border-border border-l text-center text-sm font-semibold"
-                                                >
-                                                    {b ? (
-                                                        b.balance.toFixed(2)
-                                                    ) : (
-                                                        <span className="text-destructive">
-                                                            N/A
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                            );
-                                        })}
-                                    </TableRow>
-                                );
-                            })
-                        ) : (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={colSpan}
-                                    className="text-muted-foreground h-24 text-center"
-                                >
-                                    No balance records found for {cycleYear}.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-
-            <DataTablePagination
-                table={table}
-                rowSelection={{}}
-                pageIndex={pagination.pageIndex}
-                pageSize={pagination.pageSize}
-                pageCount={pageCount}
-                totalFiltered={filtered.length}
-                onPageIndexChange={(i) =>
-                    setPagination((p) => ({ ...p, pageIndex: i }))
-                }
-                onPageSizeChange={(s) =>
-                    setPagination({ pageIndex: 0, pageSize: s })
-                }
-            />
-        </div>
-    );
+        <DataTable
+            columns={columns}
+            data={data}
+            getRowId={(row) => String(row.employee_id)}
+            searchColumnId="name"
+            searchPlaceholder="Search employee..."
+            defaultPageSize={10}
+        />
+    )
 }
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
@@ -1280,8 +864,7 @@ export default function MonthlyEarnedLeave() {
         balances_data = [],
         balances_leave_types = [],
         balances_cycle_year = new Date().getFullYear(),
-        balances_cycle_years = [],
-    } = usePage<{ props: PageProps }>().props as unknown as PageProps;
+    } = usePage<{ props: PageProps }>().props as unknown as PageProps
 
     const activeTab =
         tab === 'history'

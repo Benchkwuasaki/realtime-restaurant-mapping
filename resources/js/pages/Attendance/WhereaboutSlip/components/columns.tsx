@@ -415,7 +415,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Where
             cell: ({ row }) => {
                 const v = row.getValue<string>("return_status")
                 return (
-                    <Badge variant={v === "returned" ? "green" : "red"}>
+                    <Badge variant={v === "returned" ? "green" : "destructive"}>
                         {v === "returned" ? "Returned" : "Not Returned"}
                     </Badge>
                 )

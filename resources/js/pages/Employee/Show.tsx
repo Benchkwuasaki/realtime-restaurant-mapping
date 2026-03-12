@@ -20,15 +20,29 @@ import {
     Plus,
     Trash2,
     Save,
-    ChevronUp,
+    ChevronDown,
+    ChevronRight,
     Pen,
     Upload,
     Download,
     FolderOpen,
+    AlertTriangle,
+    Timer,
+    ClipboardList,
 } from 'lucide-react';
 import { useState, useMemo, useRef } from 'react';
 import React from 'react';
 import { route } from 'ziggy-js';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import {
+    useReactTable,
+    getCoreRowModel,
+    flexRender,
+} from '@tanstack/react-table';
+import { leaveBalanceColumns } from './components/leave-balance-columns';
+import type { LeaveBalance as LeaveBalanceRow } from './data/leave-balance-schema';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -60,6 +74,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { X } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 
@@ -89,7 +104,7 @@ interface SalaryGradeStep {
     salary_grade_step_id: number;
     salary_grade: number;
     step: number;
-    monthly_salary: number;
+    salary_amount: number;
 }
 interface Address {
     id?: number;
@@ -129,6 +144,32 @@ interface BasicInfo {
     educations?: Education[];
     family_info?: FamilyMember[];
 }
+interface WhereaboutSlip {
+    whereabout_slip_id: number;
+    purpose_type: 'personal' | 'official';
+    purpose_description: string;
+    time_out?: string;
+    time_returned?: string;
+    return_status: 'returned' | 'not_returned';
+    minutes_gone?: number;
+}
+interface AttendanceRecord {
+    id: number;
+    date: string;
+    scheduled_time_in?: string;
+    scheduled_break_out?: string;
+    scheduled_break_in?: string;
+    scheduled_time_out?: string;
+    grace_minutes?: number;
+    time_in?: string;
+    break_out?: string;
+    break_in?: string;
+    time_out?: string;
+    late_minutes?: number;
+    work_minutes?: number;
+    status?: string;
+    whereabout_slips?: WhereaboutSlip[];
+}
 interface GovernmentAccount {
     government_account_id: number;
     account_type: string;
@@ -142,23 +183,6 @@ interface EligibilityInfo {
 interface Allowance {
     allowance_type: string;
     amount: number;
-}
-interface LeaveBalance {
-    id: number;
-    leave_type: string;
-    remaining: number;
-    used: number;
-}
-interface LeaveAvailment {
-    id: number;
-    employee_name: string;
-    employee_avatar?: string;
-    leave_type: string;
-    leave_date_start: string;
-    leave_date_end: string;
-    duration: number;
-    date_filed: string;
-    status: 'Approved' | 'Pending' | 'Rejected';
 }
 interface UploadedFile {
     id: number;
@@ -205,12 +229,12 @@ interface Employee {
     allowances?: Allowance[];
     eligibility_information?: EligibilityInfo[];
     government_accounts?: GovernmentAccount[];
-    leave_balances?: LeaveBalance[];
-    leave_availments?: LeaveAvailment[];
+    leave_balances?: LeaveBalanceRow[];
     uploadedFiles?: UploadedFile[];
     seminarsAndTrainings?: SeminarTraining[];
     serviceRecords?: ServiceRecord[];
     internal_organizations?: InternalOrganization[];
+    attendance_records?: AttendanceRecord[];
 }
 interface Props {
     employee: Employee;
@@ -280,12 +304,34 @@ function toInputDate(date?: string) {
     if (!date) return '';
     return date.slice(0, 10);
 }
-
 function toInputTime(t?: string): string {
     if (!t) return '';
-    return t.slice(0, 5); // "08:30:00" → "08:30"
+    return t.slice(0, 5);
 }
-
+function toLocalDate(s: string): Date {
+    if (s.length > 10) {
+        const d = new Date(s);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+function fmtTime(t?: string): string {
+    if (!t) return '—';
+    const slice =
+        t.length > 8 ? new Date(t).toTimeString().slice(0, 5) : t.slice(0, 5);
+    const [h, m] = slice.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+function fmtMinutes(mins?: number | null): string {
+    if (mins == null) return '—';
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    const rem = mins % 60;
+    return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
+}
 async function getCroppedImg(
     imageSrc: string,
     croppedAreaPixels: { x: number; y: number; width: number; height: number },
@@ -321,6 +367,75 @@ async function getCroppedImg(
     );
 }
 
+// Attendance status — semantic colour map
+const STATUS_CLASSES: Record<string, string> = {
+    PRESENT: 'bg-emerald-500 text-white border-emerald-500',
+    HALF_DAY: 'bg-yellow-500 text-white border-yellow-500',
+    ABSENT: 'bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+    ON_LEAVE:
+        'bg-violet-100 text-violet-700  border-violet-200/60  dark:bg-violet-950/60  dark:text-violet-400  dark:border-violet-800/60',
+    LATE: 'border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
+};
+const STATUS_LABEL: Record<string, string> = {
+    PRESENT: 'Present',
+    HALF_DAY: 'Half Day',
+    ABSENT: 'Absent',
+    ON_LEAVE: 'On Leave',
+    LATE: 'Late',
+};
+function statusKey(raw?: string): string {
+    return (raw ?? 'ABSENT').toUpperCase().replace(/[-\s]/g, '_');
+}
+
+/** Attendance status badge */
+function StatusBadge({ status }: { status?: string }) {
+    const key = statusKey(status);
+    return (
+        <Badge
+            variant="outline"
+            className={cn('text-[10px]', STATUS_CLASSES[key])}
+        >
+            {STATUS_LABEL[key] ?? status ?? '—'}
+        </Badge>
+    );
+}
+
+/** Personal / Official purpose */
+function PurposeBadge({ type }: { type: 'personal' | 'official' }) {
+    return type === 'personal' ? (
+        <Badge variant="secondary">Personal</Badge>
+    ) : (
+        <Badge variant="default">Official</Badge>
+    );
+}
+
+/** Returned / Not Returned */
+function ReturnBadge({ status }: { status: 'returned' | 'not_returned' }) {
+    return status === 'returned' ? (
+        <Badge variant="green">Returned</Badge>
+    ) : (
+        <Badge variant="yellow">Not Returned</Badge>
+    );
+}
+
+/** Generic primary-tinted value badge — uses your --primary CSS var */
+function ValueBadge({ value }: { value: string }) {
+    return (
+        <Badge className="max-w-full truncate rounded-md text-xs font-semibold">
+            {value}
+        </Badge>
+    );
+}
+
+/** Active / Inactive */
+function ActiveBadge({ active }: { active: boolean }) {
+    return active ? (
+        <Badge variant="default">Active</Badge>
+    ) : (
+        <Badge variant="destructive">Inactive</Badge>
+    );
+}
+
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
 
 function InfoRow({
@@ -335,17 +450,17 @@ function InfoRow({
     onEdit?: () => void;
 }) {
     return (
-        <div className="border-border group/row flex items-start gap-3 border-b py-3 last:border-0">
-            <div className="bg-accent mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-                <Icon className="text-primary h-4 w-4" />
+        <div className="group/row flex items-start gap-3 border-b border-border py-3 last:border-0">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent">
+                <Icon className="h-4 w-4 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase leading-none tracking-widest">
+                <p className="mb-1 text-[10px] leading-none tracking-widest text-muted-foreground uppercase">
                     {label}
                 </p>
-                <p className="text-foreground break-words text-sm font-medium leading-snug">
+                <p className="text-sm leading-snug font-medium break-words text-foreground">
                     {value || (
-                        <span className="text-muted-foreground/40 text-xs font-normal italic">
+                        <span className="text-xs font-normal text-muted-foreground/40 italic">
                             Not provided
                         </span>
                     )}
@@ -378,9 +493,9 @@ function DetailCard({
     onEdit?: () => void;
 }) {
     return (
-        <div className="bg-card border-border hover:border-primary/20 group rounded-xl border p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+        <div className="group rounded-xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-primary/20 hover:shadow-md">
             <div className="mb-4 flex items-center justify-between">
-                <span className="text-muted-foreground text-xs font-semibold tracking-wide">
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground">
                     {title}
                 </span>
                 {isStatus ? (
@@ -397,40 +512,19 @@ function DetailCard({
             </div>
             <div className="flex items-center gap-2">
                 {isStatus ? (
-                    statusValue ? (
-                        <>
-                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/10">
-                                <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                            </div>
-                            <Badge className="rounded-md border-0 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
-                                Active
-                            </Badge>
-                        </>
-                    ) : (
-                        <>
-                            <div className="bg-destructive/10 border-destructive/20 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border">
-                                <div className="bg-destructive h-2 w-2 rounded-full" />
-                            </div>
-                            <Badge className="bg-destructive/10 text-destructive rounded-md border-0 px-2.5 py-0.5 text-xs font-semibold">
-                                Inactive
-                            </Badge>
-                        </>
-                    )
+                    <>
+                        <ActiveBadge active={statusValue ?? false} />
+                    </>
                 ) : value ? (
                     <>
-                        <div className="bg-primary/10 border-primary/20 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border">
-                            <div className="bg-primary h-2 w-2 rounded-full" />
-                        </div>
-                        <Badge className="bg-primary text-primary-foreground max-w-full truncate rounded-md border-0 px-2.5 py-0.5 text-xs font-semibold">
-                            {value}
-                        </Badge>
+                        <ValueBadge value={value} />
                     </>
                 ) : (
                     <>
-                        <div className="bg-muted flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
-                            <XCircle className="text-muted-foreground/40 h-3.5 w-3.5" />
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted">
+                            <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />
                         </div>
-                        <span className="text-muted-foreground/50 text-sm font-normal italic">
+                        <span className="text-sm font-normal text-muted-foreground/50 italic">
                             Not set
                         </span>
                     </>
@@ -474,7 +568,14 @@ function BasicInfoEditDialog({
     const save = () =>
         router.put(route('employee.update', employee.employee_id), form, {
             preserveScroll: true,
-            onSuccess: onClose,
+            onSuccess: () => {
+                toast.success('Basic information updated successfully.');
+                onClose();
+            },
+            onError: () =>
+                toast.error(
+                    'Failed to update basic information. Please try again.',
+                ),
         });
 
     return (
@@ -485,7 +586,7 @@ function BasicInfoEditDialog({
                 </DialogHeader>
                 <div className="grid grid-cols-1 gap-3 py-2 sm:grid-cols-2">
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             First Name *
                         </Label>
                         <Input
@@ -494,7 +595,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             Last Name *
                         </Label>
                         <Input
@@ -503,7 +604,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             Middle Name
                         </Label>
                         <Input
@@ -512,7 +613,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             Extension
                         </Label>
                         <Input
@@ -524,7 +625,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             Date of Birth
                         </Label>
                         <Input
@@ -534,7 +635,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             Sex
                         </Label>
                         <Select
@@ -551,7 +652,7 @@ function BasicInfoEditDialog({
                         </Select>
                     </div>
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             Civil Status
                         </Label>
                         <Select
@@ -572,7 +673,7 @@ function BasicInfoEditDialog({
                         </Select>
                     </div>
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             Place of Birth
                         </Label>
                         <Input
@@ -583,7 +684,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             Personal Email
                         </Label>
                         <Input
@@ -595,7 +696,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             Phone Number
                         </Label>
                         <Input
@@ -606,13 +707,13 @@ function BasicInfoEditDialog({
                         />
                     </div>
                 </div>
-                <div className="border-border mt-1 border-t pt-3">
-                    <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-widest">
+                <div className="mt-1 border-t border-border pt-3">
+                    <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                         Address
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="col-span-full">
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Street Address
                             </Label>
                             <Input
@@ -623,7 +724,7 @@ function BasicInfoEditDialog({
                             />
                         </div>
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 City
                             </Label>
                             <Input
@@ -632,7 +733,7 @@ function BasicInfoEditDialog({
                             />
                         </div>
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Province / State
                             </Label>
                             <Input
@@ -641,7 +742,7 @@ function BasicInfoEditDialog({
                             />
                         </div>
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Zip Code
                             </Label>
                             <Input
@@ -688,7 +789,14 @@ function SalaryEditDialog({
     const save = () =>
         router.put(route('employee.update', employee.employee_id), form, {
             preserveScroll: true,
-            onSuccess: onClose,
+            onSuccess: () => {
+                toast.success('Salary classification updated successfully.');
+                onClose();
+            },
+            onError: () =>
+                toast.error(
+                    'Failed to update salary classification. Please try again.',
+                ),
         });
 
     return (
@@ -699,7 +807,7 @@ function SalaryEditDialog({
                 </DialogHeader>
                 <div className="space-y-3 py-2">
                     <div>
-                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                             Salary Grade Step ID
                         </Label>
                         <Input
@@ -713,10 +821,10 @@ function SalaryEditDialog({
                             placeholder="Enter salary grade step ID"
                         />
                         {sgs && (
-                            <p className="text-muted-foreground mt-1.5 text-xs">
+                            <p className="mt-1.5 text-xs text-muted-foreground">
                                 Current: SG-{sgs.salary_grade}, Step {sgs.step}{' '}
                                 — ₱
-                                {Number(sgs.monthly_salary).toLocaleString(
+                                {Number(sgs.salary_amount).toLocaleString(
                                     'en-PH',
                                     { minimumFractionDigits: 2 },
                                 )}
@@ -753,6 +861,17 @@ type EditField =
     | 'break_time'
     | null;
 
+const employmentFieldLabels: Record<NonNullable<EditField>, string> = {
+    position: 'Position updated successfully.',
+    date_hired: 'Date hired updated successfully.',
+    unit_division_department: 'Unit / Division / Department updated.',
+    employment_classification:
+        'Employment classification updated successfully.',
+    date_applied: 'Date applied updated successfully.',
+    work_schedule: 'Work schedule updated successfully.',
+    break_time: 'Break time updated successfully.',
+};
+
 function EmploymentEditDialog({
     employee,
     field,
@@ -767,12 +886,12 @@ function EmploymentEditDialog({
     const open = field !== null;
     const positionGroups = useMemo(() => buildPositionGroups(items), [items]);
     const currentItemId = employee.item?.item_id?.toString() ?? '';
-    const currentPositionName = useMemo(() => {
-        return (
+    const currentPositionName = useMemo(
+        () =>
             items.find((i) => i.item_id.toString() === currentItemId)?.position
-                ?.position_name ?? ''
-        );
-    }, [items, currentItemId]);
+                ?.position_name ?? '',
+        [items, currentItemId],
+    );
 
     const [form, setForm] = useState({
         item_id: currentItemId,
@@ -785,7 +904,6 @@ function EmploymentEditDialog({
         break_start: toInputTime(employee.break_start),
         break_end: toInputTime(employee.break_end),
     });
-
     const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
     const handlePositionSelect = (positionName: string) => {
@@ -837,7 +955,16 @@ function EmploymentEditDialog({
             data = { break_start: form.break_start, break_end: form.break_end };
         router.put(route('employee.update', employee.employee_id), data, {
             preserveScroll: true,
-            onSuccess: onClose,
+            onSuccess: () => {
+                toast.success(
+                    field
+                        ? employmentFieldLabels[field]
+                        : 'Updated successfully.',
+                );
+                onClose();
+            },
+            onError: () =>
+                toast.error('Failed to save changes. Please try again.'),
         });
     };
 
@@ -857,12 +984,11 @@ function EmploymentEditDialog({
                 <DialogHeader>
                     <DialogTitle>{field ? titles[field] : ''}</DialogTitle>
                 </DialogHeader>
-
                 <div className="space-y-3 py-2">
                     {field === 'position' && (
                         <div className="space-y-3">
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Position
                                 </Label>
                                 <Select
@@ -902,11 +1028,17 @@ function EmploymentEditDialog({
                                                         </span>
                                                         {grp.totalSlots > 1 &&
                                                             (isDisabled ? (
-                                                                <Badge className="bg-destructive/10 text-destructive shrink-0 rounded-md border-0 px-2 py-0.5 text-[10px] font-bold">
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="shrink-0 border-rose-200 bg-rose-100 text-[10px] font-bold text-rose-600 dark:border-rose-800 dark:bg-rose-950/60"
+                                                                >
                                                                     Full
                                                                 </Badge>
                                                             ) : (
-                                                                <Badge className="bg-accent text-accent-foreground shrink-0 rounded-md border-0 px-2 py-0.5 text-[10px] font-semibold">
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="shrink-0 text-[10px]"
+                                                                >
                                                                     {
                                                                         grp.availableSlots
                                                                     }
@@ -919,7 +1051,10 @@ function EmploymentEditDialog({
                                                             ))}
                                                         {grp.totalSlots === 1 &&
                                                             isDisabled && (
-                                                                <Badge className="bg-destructive/10 text-destructive shrink-0 rounded-md border-0 px-2 py-0.5 text-[10px] font-bold">
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="shrink-0 border-rose-200 bg-rose-100 text-[10px] font-bold text-rose-600 dark:border-rose-800 dark:bg-rose-950/60"
+                                                                >
                                                                     Full
                                                                 </Badge>
                                                             )}
@@ -931,7 +1066,7 @@ function EmploymentEditDialog({
                                 </Select>
                                 {selectedGroup &&
                                     selectedGroup.totalSlots > 1 && (
-                                        <p className="text-muted-foreground mt-1.5 text-xs">
+                                        <p className="mt-1.5 text-xs text-muted-foreground">
                                             {selectedGroup.availableSlots === 0
                                                 ? 'All slots are currently occupied.'
                                                 : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slot${selectedGroup.totalSlots > 1 ? 's' : ''} available — a slot will be auto-assigned.`}
@@ -939,13 +1074,13 @@ function EmploymentEditDialog({
                                     )}
                             </div>
                             {selectedGroup?.position && (
-                                <div className="border-border divide-border bg-muted/20 divide-y rounded-lg border">
+                                <div className="divide-y divide-border rounded-lg border border-border bg-muted/20">
                                     {selectedGroup.position.department && (
                                         <div className="flex justify-between px-4 py-2">
-                                            <span className="text-muted-foreground text-xs">
+                                            <span className="text-xs text-muted-foreground">
                                                 Department
                                             </span>
-                                            <span className="text-foreground text-xs font-medium">
+                                            <span className="text-xs font-medium">
                                                 {
                                                     selectedGroup.position
                                                         .department
@@ -956,10 +1091,10 @@ function EmploymentEditDialog({
                                     )}
                                     {selectedGroup.position.division && (
                                         <div className="flex justify-between px-4 py-2">
-                                            <span className="text-muted-foreground text-xs">
+                                            <span className="text-xs text-muted-foreground">
                                                 Division
                                             </span>
-                                            <span className="text-foreground text-xs font-medium">
+                                            <span className="text-xs font-medium">
                                                 {
                                                     selectedGroup.position
                                                         .division.division_name
@@ -969,10 +1104,10 @@ function EmploymentEditDialog({
                                     )}
                                     {selectedGroup.position.unit && (
                                         <div className="flex justify-between px-4 py-2">
-                                            <span className="text-muted-foreground text-xs">
+                                            <span className="text-xs text-muted-foreground">
                                                 Unit
                                             </span>
-                                            <span className="text-foreground text-xs font-medium">
+                                            <span className="text-xs font-medium">
                                                 {
                                                     selectedGroup.position.unit
                                                         .unit_name
@@ -984,10 +1119,9 @@ function EmploymentEditDialog({
                             )}
                         </div>
                     )}
-
                     {field === 'date_hired' && (
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Date Hired
                             </Label>
                             <Input
@@ -1002,35 +1136,35 @@ function EmploymentEditDialog({
                     )}
                     {field === 'unit_division_department' && (
                         <div className="space-y-2">
-                            <p className="text-muted-foreground text-sm">
+                            <p className="text-sm text-muted-foreground">
                                 Unit, Division, and Department are determined by
                                 the assigned <strong>Position</strong>. To
                                 change them, update the Position.
                             </p>
-                            <div className="border-border divide-border divide-y rounded-lg border">
+                            <div className="divide-y divide-border rounded-lg border border-border">
                                 <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-muted-foreground text-sm">
+                                    <span className="text-sm text-muted-foreground">
                                         Unit
                                     </span>
-                                    <span className="text-foreground text-sm font-medium">
+                                    <span className="text-sm font-medium">
                                         {employee.item?.position?.unit
                                             ?.unit_name ?? '—'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-muted-foreground text-sm">
+                                    <span className="text-sm text-muted-foreground">
                                         Division
                                     </span>
-                                    <span className="text-foreground text-sm font-medium">
+                                    <span className="text-sm font-medium">
                                         {employee.item?.position?.division
                                             ?.division_name ?? '—'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-muted-foreground text-sm">
+                                    <span className="text-sm text-muted-foreground">
                                         Department
                                     </span>
-                                    <span className="text-foreground text-sm font-medium">
+                                    <span className="text-sm font-medium">
                                         {employee.item?.position?.department
                                             ?.department_name ?? '—'}
                                     </span>
@@ -1040,7 +1174,7 @@ function EmploymentEditDialog({
                     )}
                     {field === 'employment_classification' && (
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Employment Classification
                             </Label>
                             <Select
@@ -1068,7 +1202,7 @@ function EmploymentEditDialog({
                     )}
                     {field === 'date_applied' && (
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Date Applied
                             </Label>
                             <Input
@@ -1084,7 +1218,7 @@ function EmploymentEditDialog({
                     {field === 'work_schedule' && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Start Time
                                 </Label>
                                 <Input
@@ -1100,7 +1234,7 @@ function EmploymentEditDialog({
                                 />
                             </div>
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     End Time
                                 </Label>
                                 <Input
@@ -1116,7 +1250,7 @@ function EmploymentEditDialog({
                     {field === 'break_time' && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Break Start
                                 </Label>
                                 <Input
@@ -1129,7 +1263,7 @@ function EmploymentEditDialog({
                                 />
                             </div>
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Break End
                                 </Label>
                                 <Input
@@ -1143,7 +1277,6 @@ function EmploymentEditDialog({
                         </div>
                     )}
                 </div>
-
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>
                         Cancel
@@ -1175,16 +1308,26 @@ function EmploymentDetailsTab({
     const position = employee.item?.position;
     const [editField, setEditField] = useState<EditField>(null);
     const orgs = employee.internal_organizations ?? [];
+
     const toggleStatus = () =>
         router.patch(
             route('employee.toggleStatus', employee.employee_id),
             {},
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: () =>
+                    toast.success(
+                        `Employee marked as ${employee.status ? 'inactive' : 'active'}.`,
+                    ),
+                onError: () =>
+                    toast.error(
+                        'Failed to update employee status. Please try again.',
+                    ),
+            },
         );
 
     return (
         <div className="space-y-4 p-3 sm:p-5">
-            {/* Responsive grid: 1 col on mobile, 2 on sm, 3 on lg */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <DetailCard
                     title="Position"
@@ -1248,32 +1391,35 @@ function EmploymentDetailsTab({
                 />
             </div>
 
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                <div className="border-border border-b px-4 py-3.5 sm:px-5">
-                    <span className="text-foreground text-sm font-bold">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="border-b border-border px-4 py-3.5 sm:px-5">
+                    <span className="text-sm font-bold text-foreground">
                         Internal Organizations
                     </span>
                 </div>
                 {orgs.length === 0 ? (
-                    <div className="text-muted-foreground px-5 py-6 text-center text-sm italic">
+                    <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">
                         Not a member of any internal organization.
                     </div>
                 ) : (
-                    <div className="divide-border divide-y">
+                    <div className="divide-y divide-border">
                         {orgs.map((org) => (
                             <div
                                 key={org.internal_organization_id}
                                 className="flex items-center gap-4 px-4 py-3 sm:px-5"
                             >
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-foreground text-sm font-medium">
+                                    <p className="text-sm font-medium text-foreground">
                                         {org.name}
                                     </p>
-                                    <p className="text-muted-foreground text-xs">
+                                    <p className="text-xs text-muted-foreground">
                                         {org.code}
                                     </p>
                                 </div>
-                                <Badge className="bg-accent text-accent-foreground shrink-0 rounded-md border-0 px-2.5 py-0.5 text-[10px] font-semibold">
+                                <Badge
+                                    variant="secondary"
+                                    className="shrink-0 text-[10px]"
+                                >
                                     {org.type}
                                 </Badge>
                             </div>
@@ -1301,11 +1447,10 @@ function CompensationTab({ employee }: { employee: Employee }) {
 
     return (
         <div className="space-y-4 p-3 sm:p-5">
-            {/* Stack on mobile, side-by-side on md+ */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="bg-card border-border overflow-hidden rounded-xl border">
-                    <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                        <span className="text-foreground text-sm font-bold">
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                    <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+                        <span className="text-sm font-bold text-foreground">
                             Salary Classification
                         </span>
                         <Button
@@ -1317,30 +1462,30 @@ function CompensationTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                     {sgs ? (
-                        <div className="divide-border divide-y">
+                        <div className="divide-y divide-border">
                             <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-                                <span className="text-muted-foreground text-sm">
+                                <span className="text-sm text-muted-foreground">
                                     Salary Grade
                                 </span>
-                                <span className="text-foreground text-sm font-bold">
+                                <span className="text-sm font-bold">
                                     SG-{sgs.salary_grade}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-                                <span className="text-muted-foreground text-sm">
+                                <span className="text-sm text-muted-foreground">
                                     Step Number
                                 </span>
-                                <span className="text-foreground text-sm font-bold">
+                                <span className="text-sm font-bold">
                                     Step {sgs.step}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-                                <span className="text-muted-foreground text-sm">
+                                <span className="text-sm text-muted-foreground">
                                     Amount
                                 </span>
-                                <span className="text-foreground text-sm font-bold">
+                                <span className="text-sm font-bold">
                                     ₱
-                                    {Number(sgs.monthly_salary).toLocaleString(
+                                    {Number(sgs.salary_amount).toLocaleString(
                                         'en-PH',
                                         { minimumFractionDigits: 2 },
                                     )}
@@ -1348,37 +1493,40 @@ function CompensationTab({ employee }: { employee: Employee }) {
                             </div>
                         </div>
                     ) : (
-                        <div className="text-muted-foreground px-5 py-8 text-center text-sm italic">
+                        <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
                             No salary data.
                         </div>
                     )}
                 </div>
 
-                <div className="bg-card border-border overflow-hidden rounded-xl border">
-                    <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                        <span className="text-foreground text-sm font-bold">
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                    <div className="border-b border-border px-4 py-3.5 sm:px-5">
+                        <span className="text-sm font-bold text-foreground">
                             Allowances
                         </span>
                     </div>
                     {allowances.length > 0 ? (
-                        <div className="divide-border divide-y">
+                        <div className="divide-y divide-border">
                             {allowances.map((a, i) => (
                                 <div
                                     key={i}
                                     className="flex items-center justify-between px-4 py-3 sm:px-5"
                                 >
-                                    <span className="text-muted-foreground text-sm">
+                                    <span className="text-sm text-muted-foreground">
                                         {a.allowance_type}
                                     </span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-foreground text-sm font-bold">
+                                        <span className="text-sm font-bold">
                                             ₱
                                             {Number(a.amount).toLocaleString(
                                                 'en-PH',
                                                 { minimumFractionDigits: 2 },
                                             )}
                                         </span>
-                                        <Badge className="bg-accent text-accent-foreground rounded-md border-0 px-2 py-0.5 text-[10px] font-semibold">
+                                        <Badge
+                                            variant="outline"
+                                            className="border-emerald-200/60 bg-emerald-100 text-[10px] text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/60 dark:text-emerald-400"
+                                        >
                                             Present
                                         </Badge>
                                     </div>
@@ -1386,20 +1534,20 @@ function CompensationTab({ employee }: { employee: Employee }) {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-muted-foreground px-5 py-8 text-center text-sm italic">
+                        <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
                             No allowances on file.
                         </div>
                     )}
                 </div>
             </div>
 
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                    <span className="text-foreground text-sm font-bold">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="border-b border-border px-4 py-3.5 sm:px-5">
+                    <span className="text-sm font-bold text-foreground">
                         Payroll Data
                     </span>
                 </div>
-                <div className="text-muted-foreground px-5 py-8 text-center text-sm italic">
+                <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
                     No payroll data available.
                 </div>
             </div>
@@ -1416,377 +1564,540 @@ function CompensationTab({ employee }: { employee: Employee }) {
 // ─── Leave Information Tab ────────────────────────────────────────────────────
 
 function LeaveInformationTab({ employee }: { employee: Employee }) {
-    const balances = employee.leave_balances ?? [];
-    const availments = employee.leave_availments ?? [];
-
-    const [balanceDialog, setBalanceDialog] = useState<{
-        open: boolean;
-        id?: number;
-        leave_type: string;
-        remaining: string;
-        used: string;
-    }>({ open: false, leave_type: '', remaining: '', used: '' });
-    const [deleteBalanceId, setDeleteBalanceId] = useState<number | null>(null);
-
-    const openBalanceDialog = (b?: LeaveBalance) =>
-        setBalanceDialog({
-            open: true,
-            id: b?.id,
-            leave_type: b?.leave_type ?? '',
-            remaining: b?.remaining?.toString() ?? '',
-            used: b?.used?.toString() ?? '',
-        });
-
-    const saveBalance = () => {
-        const data = {
-            leave_type: balanceDialog.leave_type,
-            remaining: parseFloat(balanceDialog.remaining),
-            used: parseFloat(balanceDialog.used),
-        };
-        if (balanceDialog.id) {
-            router.put(
-                route('employee.leave-balance.update', {
-                    employee: employee.employee_id,
-                    balance: balanceDialog.id,
-                }),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () =>
-                        setBalanceDialog((p) => ({ ...p, open: false })),
-                },
-            );
-        } else {
-            router.post(
-                route('employee.leave-balance.store', employee.employee_id),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () =>
-                        setBalanceDialog((p) => ({ ...p, open: false })),
-                },
-            );
-        }
-    };
-
-    const confirmDeleteBalance = () => {
-        if (!deleteBalanceId) return;
-        router.delete(
-            route('employee.leave-balance.destroy', {
-                employee: employee.employee_id,
-                balance: deleteBalanceId,
-            }),
-            { preserveScroll: true, onSuccess: () => setDeleteBalanceId(null) },
-        );
-    };
+    const data = (employee.leave_balances ?? []) as LeaveBalanceRow[];
+    const table = useReactTable({
+        data,
+        columns: leaveBalanceColumns,
+        getCoreRowModel: getCoreRowModel(),
+    });
 
     return (
         <div className="space-y-5 p-3 sm:p-5">
-            {/* Leave Balances */}
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                    <span className="text-foreground text-sm font-bold">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+                    <span className="text-sm font-bold text-foreground">
                         Leave Balances
                     </span>
-                    <button
-                        onClick={() => openBalanceDialog()}
-                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
-                    >
-                        <Plus className="h-4 w-4" />
-                    </button>
+                    {data.length > 0 && (
+                        <Badge
+                            variant="outline"
+                            className="rounded-full text-[10px]"
+                        >
+                            {data.length}
+                        </Badge>
+                    )}
                 </div>
-                {balances.length === 0 ? (
-                    <div className="px-5 py-8 text-center">
-                        <p className="text-muted-foreground mb-3 text-sm italic">
+                {data.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-3 py-14">
+                        <Calendar className="h-10 w-10 text-muted-foreground/30" />
+                        <p className="text-sm text-muted-foreground italic">
                             No leave balances on file.
                         </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openBalanceDialog()}
-                            className="gap-1.5"
-                        >
-                            <Plus className="h-3.5 w-3.5" /> Add Leave Balance
-                        </Button>
-                    </div>
-                ) : (
-                    /* Horizontal scroll on small screens */
-                    <div className="overflow-x-auto">
-                        <div className="min-w-[480px]">
-                            <div className="border-border bg-muted/30 grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 border-b px-5 py-2.5">
-                                <div className="w-5" />
-                                <span className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
-                                    Leave Type <ChevronUp className="h-3 w-3" />
-                                </span>
-                                <span className="text-muted-foreground text-right text-xs font-semibold">
-                                    Remaining
-                                </span>
-                                <span className="text-muted-foreground text-right text-xs font-semibold">
-                                    Used
-                                </span>
-                                <span className="text-muted-foreground text-right text-xs font-semibold">
-                                    Actions
-                                </span>
-                            </div>
-                            <div className="divide-border divide-y">
-                                {balances.map((b) => (
-                                    <div
-                                        key={b.id}
-                                        className="hover:bg-muted/20 group/row grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-3 transition-colors"
-                                    >
-                                        <Checkbox className="h-4 w-4" />
-                                        <span className="text-muted-foreground text-sm">
-                                            {b.leave_type}
-                                        </span>
-                                        <span className="text-foreground text-right text-sm font-medium">
-                                            {b.remaining}
-                                        </span>
-                                        <span className="text-foreground text-right text-sm font-medium">
-                                            {b.used}
-                                        </span>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button
-                                                onClick={() =>
-                                                    openBalanceDialog(b)
-                                                }
-                                                variant="ghost"
-                                                size="icon-xs"
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                onClick={() =>
-                                                    setDeleteBalanceId(b.id)
-                                                }
-                                                variant="ghost"
-                                                size="icon-xs"
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Leave Availments */}
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                    <span className="text-foreground text-sm font-bold">
-                        Leave Availments
-                    </span>
-                    <button className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors">
-                        <Plus className="h-4 w-4" />
-                    </button>
-                </div>
-                {availments.length === 0 ? (
-                    <div className="text-muted-foreground px-5 py-8 text-center text-sm italic">
-                        No leave availments on record.
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <div className="min-w-[700px]">
-                            <div className="border-border bg-muted/30 grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 border-b px-5 py-2.5">
-                                <div className="w-5" />
-                                <div className="w-8" />
-                                <span className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
-                                    Leave Type <ChevronUp className="h-3 w-3" />
-                                </span>
-                                <span className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
-                                    Leave Date <ChevronUp className="h-3 w-3" />
-                                </span>
-                                <span className="text-muted-foreground text-xs font-semibold">
-                                    Duration
-                                </span>
-                                <span className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
-                                    Date Filed <ChevronUp className="h-3 w-3" />
-                                </span>
-                                <span className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
-                                    Status <ChevronUp className="h-3 w-3" />
-                                </span>
-                            </div>
-                            <div className="divide-border divide-y">
-                                {availments.map((a) => (
-                                    <div
-                                        key={a.id}
-                                        className="hover:bg-muted/20 grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-3 transition-colors"
+                        <table className="w-full min-w-[520px]">
+                            <thead>
+                                {table.getHeaderGroups().map((hg) => (
+                                    <tr
+                                        key={hg.id}
+                                        className="border-b border-border bg-muted/30"
                                     >
-                                        <Checkbox className="h-4 w-4" />
-                                        <div className="bg-muted border-border h-8 w-8 shrink-0 overflow-hidden rounded-full border">
-                                            <img
-                                                src={
-                                                    a.employee_avatar ??
-                                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(a.employee_name)}&background=5854cc&color=fff&size=32`
-                                                }
-                                                alt={a.employee_name}
-                                                className="h-full w-full object-cover"
-                                            />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-foreground truncate text-sm font-medium">
-                                                {a.employee_name}
-                                            </p>
-                                            <p className="text-muted-foreground truncate text-xs">
-                                                {a.leave_type}
-                                            </p>
-                                        </div>
-                                        <span className="text-muted-foreground text-sm">
-                                            {fmtShort(a.leave_date_start)} —{' '}
-                                            {fmtShort(a.leave_date_end)}
-                                        </span>
-                                        <span className="text-foreground text-sm font-medium">
-                                            {a.duration} days
-                                        </span>
-                                        <span className="text-muted-foreground text-sm">
-                                            {fmtShort(a.date_filed)}
-                                        </span>
-                                        <Badge
-                                            className={`w-fit rounded-full border-0 px-2.5 py-0.5 text-[10px] font-bold ${
-                                                a.status === 'Approved'
-                                                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
-                                                    : a.status === 'Pending'
-                                                      ? 'bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400'
-                                                      : 'bg-destructive/10 text-destructive'
-                                            }`}
-                                        >
-                                            ● {a.status}
-                                        </Badge>
-                                    </div>
+                                        {hg.headers.map((header, i) => (
+                                            <th
+                                                key={header.id}
+                                                className={`px-5 py-2.5 font-normal ${i === 0 ? 'text-left' : 'text-right'}`}
+                                            >
+                                                {flexRender(
+                                                    header.column.columnDef
+                                                        .header,
+                                                    header.getContext(),
+                                                )}
+                                            </th>
+                                        ))}
+                                    </tr>
                                 ))}
-                            </div>
-                        </div>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {table.getRowModel().rows.map((row) => (
+                                    <tr
+                                        key={row.id}
+                                        className="transition-colors hover:bg-muted/20"
+                                    >
+                                        {row
+                                            .getVisibleCells()
+                                            .map((cell, i) => (
+                                                <td
+                                                    key={cell.id}
+                                                    className={`px-5 py-3 ${i === 0 ? 'text-left' : 'text-right'}`}
+                                                >
+                                                    {flexRender(
+                                                        cell.column.columnDef
+                                                            .cell,
+                                                        cell.getContext(),
+                                                    )}
+                                                </td>
+                                            ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
+        </div>
+    );
+}
 
-            <Dialog
-                open={balanceDialog.open}
-                onOpenChange={(open) =>
-                    setBalanceDialog((p) => ({ ...p, open }))
-                }
-            >
-                <DialogContent className="sm:max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {balanceDialog.id ? 'Edit' : 'Add'} Leave Balance
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3 py-2">
-                        <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
-                                Leave Type
-                            </Label>
-                            <Select
-                                value={balanceDialog.leave_type}
-                                onValueChange={(v) =>
-                                    setBalanceDialog((p) => ({
-                                        ...p,
-                                        leave_type: v,
-                                    }))
-                                }
+// ─── Whereabout Slip List ─────────────────────────────────────────────────────
+
+function WhereaboutSlipList({
+    slips,
+    hasTimedOut,
+}: {
+    slips: WhereaboutSlip[];
+    hasTimedOut: boolean;
+}) {
+    if (slips.length === 0) return null;
+    return (
+        <div className="flex flex-col gap-1.5">
+            {slips.map((slip) => {
+                const isPersonal = slip.purpose_type === 'personal';
+                const isReturned = slip.return_status === 'returned';
+                const isDeducted =
+                    isPersonal &&
+                    isReturned &&
+                    slip.minutes_gone != null &&
+                    hasTimedOut;
+                const isPendingDeduct =
+                    isPersonal &&
+                    isReturned &&
+                    slip.minutes_gone != null &&
+                    !hasTimedOut;
+
+                return (
+                    <div
+                        key={slip.whereabout_slip_id}
+                        className={cn(
+                            'overflow-hidden rounded-lg border bg-background',
+                            isDeducted
+                                ? 'border-rose-300 dark:border-rose-800'
+                                : 'border-border',
+                        )}
+                    >
+                        <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-3 py-2">
+                            <div className="flex min-w-0 items-center gap-2">
+                                <MapPin className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                <span className="max-w-[220px] truncate text-xs font-medium">
+                                    {slip.purpose_description}
+                                </span>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                                <PurposeBadge type={slip.purpose_type} />
+                                <ReturnBadge status={slip.return_status} />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-px bg-border/40">
+                            {[
+                                {
+                                    label: 'Left At',
+                                    value: fmtTime(slip.time_out),
+                                },
+                                {
+                                    label: 'Returned At',
+                                    value: slip.time_returned
+                                        ? fmtTime(slip.time_returned)
+                                        : '—',
+                                },
+                                {
+                                    label: 'Duration',
+                                    value:
+                                        slip.minutes_gone != null
+                                            ? fmtMinutes(slip.minutes_gone)
+                                            : '—',
+                                    highlight: isDeducted,
+                                },
+                            ].map(({ label, value, highlight }) => (
+                                <div
+                                    key={label}
+                                    className="flex flex-col gap-0.5 bg-background px-3 py-2"
+                                >
+                                    <span className="text-[9px] tracking-wide text-muted-foreground uppercase">
+                                        {label}
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            'font-mono text-xs font-medium',
+                                            highlight &&
+                                                'text-rose-600 dark:text-rose-400',
+                                        )}
+                                    >
+                                        {value}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {isPersonal ? (
+                            <div
+                                className={cn(
+                                    'flex items-center gap-1.5 border-t px-3 py-1.5 text-[10px] font-semibold',
+                                    isDeducted
+                                        ? 'border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-800/60 dark:bg-rose-950/30 dark:text-rose-400'
+                                        : isPendingDeduct
+                                          ? 'border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-400'
+                                          : 'border-border/40 bg-muted/30 text-muted-foreground',
+                                )}
                             >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select leave type…" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {[
-                                        'Vacation Leave',
-                                        'Sick Leave',
-                                        'Special Leave',
-                                        'Bereavement Leave',
-                                        'Maternity/Paternity Leave',
-                                        'Privilege Leave',
-                                    ].map((t) => (
-                                        <SelectItem key={t} value={t}>
-                                            {t}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
-                                    Remaining
-                                </Label>
-                                <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={balanceDialog.remaining}
-                                    onChange={(e) =>
-                                        setBalanceDialog((p) => ({
-                                            ...p,
-                                            remaining: e.target.value,
-                                        }))
-                                    }
-                                />
+                                <AlertTriangle className="h-3 w-3 shrink-0" />
+                                {isDeducted
+                                    ? `${fmtMinutes(slip.minutes_gone)} deducted from work hours`
+                                    : isPendingDeduct
+                                      ? 'Will be deducted once employee clocks out'
+                                      : 'No deduction — employee has not returned yet'}
                             </div>
-                            <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
-                                    Used
-                                </Label>
-                                <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={balanceDialog.used}
-                                    onChange={(e) =>
-                                        setBalanceDialog((p) => ({
-                                            ...p,
-                                            used: e.target.value,
-                                        }))
-                                    }
-                                />
+                        ) : (
+                            <div className="flex items-center gap-1.5 border-t border-border/40 bg-muted/10 px-3 py-1.5 text-[10px] text-muted-foreground">
+                                <ClipboardList className="h-3 w-3 shrink-0" />
+                                Official — no deduction applied
                             </div>
-                        </div>
+                        )}
                     </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setBalanceDialog((p) => ({ ...p, open: false }))
-                            }
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={saveBalance}
-                            disabled={!balanceDialog.leave_type}
-                        >
-                            <Save className="mr-1.5 h-3.5 w-3.5" />
-                            Save
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                );
+            })}
+        </div>
+    );
+}
 
-            <AlertDialog
-                open={!!deleteBalanceId}
-                onOpenChange={(open) => !open && setDeleteBalanceId(null)}
+// ─── Attendance Table Row ─────────────────────────────────────────────────────
+
+function AttendanceRow({ record }: { record: AttendanceRecord }) {
+    const [expanded, setExpanded] = useState(false);
+    const slips = record.whereabout_slips ?? [];
+    const hasTimedOut = !!record.time_out;
+    const isLate = (record.late_minutes ?? 0) > 0;
+    const hasSlips = slips.length > 0;
+
+    const personalDeductionMins = hasTimedOut
+        ? slips
+              .filter(
+                  (s) =>
+                      s.purpose_type === 'personal' &&
+                      s.return_status === 'returned' &&
+                      s.minutes_gone != null,
+              )
+              .reduce((sum, s) => sum + (s.minutes_gone ?? 0), 0)
+        : 0;
+
+    const dateLabel = (() => {
+        try {
+            return format(toLocalDate(record.date), 'EEE, MMM d, yyyy');
+        } catch {
+            return record.date;
+        }
+    })();
+
+    return (
+        <>
+            <tr
+                className={cn(
+                    'border-b border-border/50 transition-colors',
+                    hasSlips
+                        ? 'cursor-pointer hover:bg-muted/40'
+                        : 'hover:bg-muted/20',
+                    expanded && 'bg-muted/30',
+                )}
+                onClick={() => hasSlips && setExpanded((e) => !e)}
             >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            Delete Leave Balance
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Are you sure you want to delete this leave balance?
-                            This cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={confirmDeleteBalance}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                <td className="w-8 py-2.5 pl-3">
+                    {hasSlips ? (
+                        expanded ? (
+                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        ) : (
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        )
+                    ) : (
+                        <span className="block h-3.5 w-3.5" />
+                    )}
+                </td>
+                <td className="py-2.5 pr-4 text-xs font-medium whitespace-nowrap">
+                    {dateLabel}
+                </td>
+                <td className="py-2.5 pr-4">
+                    <StatusBadge status={record.status} />
+                </td>
+                <td className="py-2.5 pr-4">
+                    <span
+                        className={cn(
+                            'font-mono text-xs',
+                            isLate &&
+                                'font-semibold text-rose-600 dark:text-rose-400',
+                        )}
+                    >
+                        {fmtTime(record.time_in)}
+                    </span>
+                </td>
+                <td className="py-2.5 pr-4 font-mono text-xs text-muted-foreground">
+                    {fmtTime(record.break_out)}
+                </td>
+                <td className="py-2.5 pr-4 font-mono text-xs text-muted-foreground">
+                    {fmtTime(record.break_in)}
+                </td>
+                <td className="py-2.5 pr-4 font-mono text-xs text-foreground">
+                    {fmtTime(record.time_out)}
+                </td>
+                <td className="py-2.5 pr-4 font-mono text-xs font-semibold">
+                    {fmtMinutes(record.work_minutes)}
+                </td>
+                <td className="py-2.5 pr-4">
+                    {isLate ? (
+                        <span className="font-mono text-xs font-semibold text-rose-600 dark:text-rose-400">
+                            {fmtMinutes(record.late_minutes)}
+                        </span>
+                    ) : (
+                        <span className="font-mono text-xs text-muted-foreground/40">
+                            —
+                        </span>
+                    )}
+                </td>
+                <td className="py-2.5 pr-3">
+                    {personalDeductionMins > 0 ? (
+                        <span className="font-mono text-xs font-semibold text-rose-600 dark:text-rose-400">
+                            -{fmtMinutes(personalDeductionMins)}
+                        </span>
+                    ) : slips.some(
+                          (s) =>
+                              s.purpose_type === 'personal' &&
+                              s.return_status === 'returned' &&
+                              !hasTimedOut,
+                      ) ? (
+                        <span className="text-[10px] font-semibold text-amber-500">
+                            Pending
+                        </span>
+                    ) : (
+                        <span className="font-mono text-xs text-muted-foreground/40">
+                            —
+                        </span>
+                    )}
+                </td>
+            </tr>
+
+            {expanded && hasSlips && (
+                <tr className="border-b border-border/50 bg-muted/10">
+                    <td colSpan={10} className="px-4 pt-2 pb-3">
+                        <div className="mb-2 flex items-center gap-1.5 px-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                            <ClipboardList className="h-3 w-3" />
+                            Whereabout Slips
+                        </div>
+                        <WhereaboutSlipList
+                            slips={slips}
+                            hasTimedOut={hasTimedOut}
+                        />
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+}
+
+// ─── Attendance Record Tab ────────────────────────────────────────────────────
+
+function AttendanceRecordTab({ employee }: { employee: Employee }) {
+    const records = (employee.attendance_records ?? []) as AttendanceRecord[];
+    const today = new Date();
+    const oneMonthAgo = new Date(today);
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
+
+    const [dateFrom, setDateFrom] = useState(toDateStr(oneMonthAgo));
+    const [dateTo, setDateTo] = useState(toDateStr(today));
+
+    const from = dateFrom ? toLocalDate(dateFrom) : null;
+    const to = dateTo ? toLocalDate(dateTo) : null;
+
+    const filtered = records.filter((r) => {
+        const d = toLocalDate(r.date);
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+    });
+
+    const stats = [
+        {
+            label: 'Present',
+            count: records.filter((r) => statusKey(r.status) === 'PRESENT')
+                .length,
+            cls: STATUS_CLASSES.PRESENT,
+        },
+        {
+            label: 'Half Day',
+            count: records.filter((r) => statusKey(r.status) === 'HALF_DAY')
+                .length,
+            cls: STATUS_CLASSES.HALF_DAY,
+        },
+        {
+            label: 'Absent',
+            count: records.filter((r) => statusKey(r.status) === 'ABSENT')
+                .length,
+            cls: STATUS_CLASSES.ABSENT,
+        },
+        {
+            label: 'Late',
+            count: records.filter((r) => (r.late_minutes ?? 0) > 0).length,
+            cls: STATUS_CLASSES.LATE,
+        },
+    ];
+
+    return (
+        <div className="space-y-4 p-3 sm:p-5">
+            {records.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {stats.map(({ label, count, cls }) => (
+                        <div
+                            key={label}
+                            className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3"
                         >
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                            <span className="text-xs font-medium text-muted-foreground">
+                                {label}
+                            </span>
+                            <Badge
+                                variant="outline"
+                                className={cn(
+                                    'rounded-full text-xs font-bold',
+                                    cls,
+                                )}
+                            >
+                                {count}
+                            </Badge>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="flex flex-col gap-3 border-b border-border px-4 py-3.5 sm:flex-row sm:items-center sm:px-5">
+                    <div className="flex shrink-0 items-center gap-2">
+                        <span className="text-sm font-bold text-foreground">
+                            Attendance Records
+                        </span>
+                        {records.length > 0 && (
+                            <Badge
+                                variant="outline"
+                                className="rounded-full text-[10px]"
+                            >
+                                {filtered.length}
+                                {filtered.length !== records.length &&
+                                    ` / ${records.length}`}
+                            </Badge>
+                        )}
+                    </div>
+                    {records.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                                Filter
+                            </span>
+                            <Input
+                                type="date"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className="h-7 w-36 text-xs"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                                —
+                            </span>
+                            <Input
+                                type="date"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className="h-7 w-36 text-xs"
+                            />
+                            {(dateFrom || dateTo) && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs text-muted-foreground"
+                                    onClick={() => {
+                                        setDateFrom('');
+                                        setDateTo('');
+                                    }}
+                                >
+                                    <X className="mr-1 h-3 w-3" /> Clear
+                                </Button>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {records.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-3 py-14">
+                        <Clock className="h-10 w-10 text-muted-foreground/30" />
+                        <p className="text-sm text-muted-foreground italic">
+                            No attendance records found.
+                        </p>
+                    </div>
+                ) : filtered.length === 0 ? (
+                    <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+                        No records match the selected date range.
+                    </div>
+                ) : (
+                    <div className="max-h-[590px] overflow-auto">
+                        <table className="w-full min-w-[760px] border-collapse text-sm">
+                            <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
+                                <tr className="border-b border-border">
+                                    <th className="w-8 py-2.5 pl-3" />
+                                    {[
+                                        { label: 'Date' },
+                                        { label: 'Status' },
+                                        { label: 'Time In' },
+                                        { label: 'Break (Out)' },
+                                        { label: 'Break (In)' },
+                                        { label: 'Time Out' },
+                                        {
+                                            label: 'Work Hrs',
+                                            icon: <Timer className="h-3 w-3" />,
+                                        },
+                                        {
+                                            label: 'Late',
+                                            icon: (
+                                                <AlertTriangle className="h-3 w-3" />
+                                            ),
+                                        },
+                                        {
+                                            label: 'Slip Ded.',
+                                            icon: (
+                                                <ClipboardList className="h-3 w-3" />
+                                            ),
+                                        },
+                                    ].map(({ label, icon }) => (
+                                        <th
+                                            key={label}
+                                            className="py-2.5 pr-4 text-left text-[10px] font-semibold tracking-wide whitespace-nowrap text-muted-foreground uppercase"
+                                        >
+                                            {icon ? (
+                                                <span className="flex items-center gap-1">
+                                                    {icon}
+                                                    {label}
+                                                </span>
+                                            ) : (
+                                                label
+                                            )}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filtered.map((r) => (
+                                    <AttendanceRow
+                                        key={r.id ?? r.date}
+                                        record={r}
+                                    />
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -1828,16 +2139,6 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
             customTypeName: '',
         });
 
-    const openAddCustomDialog = () =>
-        setGovDialog({
-            open: true,
-            mode: 'custom',
-            type: '',
-            id: undefined,
-            value: '',
-            customTypeName: '',
-        });
-
     const saveGovAccount = () => {
         if (!govDialog.value.trim()) return;
         const accountType =
@@ -1845,7 +2146,6 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 ? govDialog.customTypeName
                 : govDialog.type;
         if (!accountType.trim()) return;
-
         if (govDialog.id) {
             router.put(
                 route('employee.government-account.update', {
@@ -1855,8 +2155,16 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 { account_number: govDialog.value },
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setGovDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success(
+                            `${accountType} number updated successfully.`,
+                        );
+                        setGovDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to update government account. Please try again.',
+                        ),
                 },
             );
         } else {
@@ -1868,11 +2176,41 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 { account_type: accountType, account_number: govDialog.value },
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setGovDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success(
+                            `${accountType} number added successfully.`,
+                        );
+                        setGovDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to add government account. Please try again.',
+                        ),
                 },
             );
         }
+    };
+
+    const [deleteGovId, setDeleteGovId] = useState<number | null>(null);
+    const confirmDeleteGovAccount = () => {
+        if (!deleteGovId) return;
+        router.delete(
+            route('employee.government-account.destroy', {
+                employee: employee.employee_id,
+                account: deleteGovId,
+            }),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success('Government account deleted.');
+                    setDeleteGovId(null);
+                },
+                onError: () =>
+                    toast.error(
+                        'Failed to delete government account. Please try again.',
+                    ),
+            },
+        );
     };
 
     const accountMap = Object.fromEntries(
@@ -1889,7 +2227,6 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
         name: string;
         year: string;
     }>({ open: false, name: '', year: '' });
-
     const openEligDialog = (existing?: EligibilityInfo) =>
         setEligDialog({
             open: true,
@@ -1897,7 +2234,6 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
             name: existing?.eligibility_name ?? '',
             year: existing?.year_passed?.slice(0, 10) ?? '',
         });
-
     const saveEligibility = () => {
         if (!eligDialog.name.trim()) return;
         const data = {
@@ -1913,8 +2249,14 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 data,
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setEligDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success('Eligibility updated successfully.');
+                        setEligDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to update eligibility. Please try again.',
+                        ),
                 },
             );
         } else {
@@ -1923,8 +2265,14 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 data,
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setEligDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success('Eligibility added successfully.');
+                        setEligDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to add eligibility. Please try again.',
+                        ),
                 },
             );
         }
@@ -1933,19 +2281,29 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
     return (
         <div className="space-y-5 p-3 sm:p-5">
             {/* Government IDs */}
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                    <span className="text-foreground text-sm font-bold">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+                    <span className="text-sm font-bold text-foreground">
                         Government ID Numbers
                     </span>
-                    <button
-                        onClick={openAddCustomDialog}
-                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
+                    <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() =>
+                            setGovDialog({
+                                open: true,
+                                mode: 'custom',
+                                type: '',
+                                id: undefined,
+                                value: '',
+                                customTypeName: '',
+                            })
+                        }
                     >
                         <Plus className="h-4 w-4" />
-                    </button>
+                    </Button>
                 </div>
-                <div className="divide-border divide-y">
+                <div className="divide-y divide-border">
                     {STANDARD_GOV_ID_TYPES.map((type) => {
                         const key = type.toLowerCase();
                         const account = accountMap[key];
@@ -1955,10 +2313,10 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 key={type}
                                 className="flex items-center gap-2 px-4 py-3 sm:gap-4 sm:px-5"
                             >
-                                <span className="text-foreground w-20 shrink-0 text-sm font-medium sm:w-28">
+                                <span className="w-20 shrink-0 text-sm font-medium text-foreground sm:w-28">
                                     {type}
                                 </span>
-                                <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-sm tracking-widest">
+                                <span className="min-w-0 flex-1 truncate font-mono text-sm tracking-widest text-muted-foreground">
                                     {account ? (
                                         isVisible ? (
                                             account.account_number
@@ -1966,7 +2324,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                             '•'.repeat(10)
                                         )
                                     ) : (
-                                        <span className="text-muted-foreground/40 font-sans text-xs italic tracking-normal">
+                                        <span className="font-sans text-xs tracking-normal text-muted-foreground/40 italic">
                                             Not provided
                                         </span>
                                     )}
@@ -1974,18 +2332,19 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 <div className="flex shrink-0 items-center gap-1">
                                     {account ? (
                                         <>
-                                            <button
+                                            <Button
+                                                variant="ghost"
+                                                size="icon-xs"
                                                 onClick={() =>
                                                     toggleVisibility(key)
                                                 }
-                                                className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                                             >
                                                 {isVisible ? (
                                                     <EyeOff className="h-3.5 w-3.5" />
                                                 ) : (
                                                     <Eye className="h-3.5 w-3.5" />
                                                 )}
-                                            </button>
+                                            </Button>
                                             <Button
                                                 onClick={() =>
                                                     openEditGovDialog(
@@ -1993,10 +2352,22 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                                         account,
                                                     )
                                                 }
-                                                variant={'ghost'}
-                                                size={'icon-xs'}
+                                                variant="ghost"
+                                                size="icon-xs"
                                             >
                                                 <Pencil className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button
+                                                onClick={() =>
+                                                    setDeleteGovId(
+                                                        account.government_account_id,
+                                                    )
+                                                }
+                                                variant="ghost"
+                                                size="icon-xs"
+                                                className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         </>
                                     ) : (
@@ -2011,8 +2382,8 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                                     customTypeName: '',
                                                 })
                                             }
-                                            variant={'ghost'}
-                                            size={'icon-xs'}
+                                            variant="ghost"
+                                            size="icon-xs"
                                         >
                                             <Plus className="h-3.5 w-3.5" />
                                         </Button>
@@ -2029,25 +2400,26 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 key={account.government_account_id}
                                 className="flex items-center gap-2 px-4 py-3 sm:gap-4 sm:px-5"
                             >
-                                <span className="text-foreground w-20 shrink-0 text-sm font-medium sm:w-28">
+                                <span className="w-20 shrink-0 text-sm font-medium text-foreground sm:w-28">
                                     {account.account_type}
                                 </span>
-                                <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-sm tracking-widest">
+                                <span className="min-w-0 flex-1 truncate font-mono text-sm tracking-widest text-muted-foreground">
                                     {isVisible
                                         ? account.account_number
                                         : '•'.repeat(10)}
                                 </span>
                                 <div className="flex shrink-0 items-center gap-1">
-                                    <button
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-xs"
                                         onClick={() => toggleVisibility(key)}
-                                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                                     >
                                         {isVisible ? (
                                             <EyeOff className="h-3.5 w-3.5" />
                                         ) : (
                                             <Eye className="h-3.5 w-3.5" />
                                         )}
-                                    </button>
+                                    </Button>
                                     <Button
                                         onClick={() =>
                                             openEditGovDialog(
@@ -2060,6 +2432,18 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                     >
                                         <Pencil className="h-3.5 w-3.5" />
                                     </Button>
+                                    <Button
+                                        onClick={() =>
+                                            setDeleteGovId(
+                                                account.government_account_id,
+                                            )
+                                        }
+                                        variant="ghost"
+                                        size="icon-xs"
+                                        className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                 </div>
                             </div>
                         );
@@ -2068,21 +2452,22 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Eligibility */}
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                    <span className="text-foreground text-sm font-bold">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+                    <span className="text-sm font-bold text-foreground">
                         Eligibility and Credentials
                     </span>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => openEligDialog()}
-                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
-                    </button>
+                    </Button>
                 </div>
                 {eligibilities.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="text-muted-foreground mb-3 text-sm italic">
+                        <p className="mb-3 text-sm text-muted-foreground italic">
                             No eligibility records on file.
                         </p>
                         <Button
@@ -2097,39 +2482,41 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <div className="min-w-[480px]">
-                            <div className="divide-border divide-y">
-                                {eligibilities.map((e) => (
-                                    <div
-                                        key={e.eligibility_information_id}
-                                        className="flex items-center gap-4 px-5 py-3"
+                        <div className="min-w-[480px] divide-y divide-border">
+                            {eligibilities.map((e) => (
+                                <div
+                                    key={e.eligibility_information_id}
+                                    className="flex items-center gap-4 px-5 py-3"
+                                >
+                                    <span className="flex-1 text-sm font-medium text-foreground">
+                                        {e.eligibility_name}
+                                    </span>
+                                    <span className="w-36 shrink-0 text-right text-sm text-muted-foreground">
+                                        {e.year_passed
+                                            ? fmt(e.year_passed)
+                                            : '—'}
+                                    </span>
+                                    <Badge
+                                        variant="outline"
+                                        className="shrink-0 border-emerald-200/60 bg-emerald-100 text-[10px] text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/60 dark:text-emerald-400"
                                     >
-                                        <span className="text-foreground flex-1 text-sm font-medium">
-                                            {e.eligibility_name}
-                                        </span>
-                                        <span className="text-muted-foreground w-36 shrink-0 text-right text-sm">
-                                            {e.year_passed
-                                                ? fmt(e.year_passed)
-                                                : '—'}
-                                        </span>
-                                        <Badge className="shrink-0 rounded-md border-0 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
-                                            ✓ Active
-                                        </Badge>
-                                        <Button
-                                            onClick={() => openEligDialog(e)}
-                                            variant={'ghost'}
-                                            size={'icon-xs'}
-                                        >
-                                            <Pencil className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
+                                        ✓ Active
+                                    </Badge>
+                                    <Button
+                                        onClick={() => openEligDialog(e)}
+                                        variant="ghost"
+                                        size="icon-xs"
+                                    >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
             </div>
 
+            {/* Government Account Dialog */}
             <Dialog
                 open={govDialog.open}
                 onOpenChange={(open) => setGovDialog((p) => ({ ...p, open }))}
@@ -2147,7 +2534,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     <div className="space-y-3 py-2">
                         {govDialog.mode === 'custom' && !govDialog.id && (
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     ID Type / Name
                                 </Label>
                                 <Input
@@ -2164,7 +2551,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                             </div>
                         )}
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Account / ID Number
                             </Label>
                             <Input
@@ -2209,6 +2596,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
+            {/* Eligibility Dialog */}
             <Dialog
                 open={eligDialog.open}
                 onOpenChange={(open) => setEligDialog((p) => ({ ...p, open }))}
@@ -2221,7 +2609,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Eligibility Name
                             </Label>
                             <Input
@@ -2237,7 +2625,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                             />
                         </div>
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Year Passed
                             </Label>
                             <Input
@@ -2271,6 +2659,33 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Confirm */}
+            <AlertDialog
+                open={!!deleteGovId}
+                onOpenChange={(o) => !o && setDeleteGovId(null)}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            Delete Government Account?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently remove the account number.
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDeleteGovAccount}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -2336,8 +2751,14 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 data,
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setFamilyDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success('Family member updated successfully.');
+                        setFamilyDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to update family member. Please try again.',
+                        ),
                 },
             );
         } else {
@@ -2346,8 +2767,14 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 data,
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setFamilyDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success('Family member added successfully.');
+                        setFamilyDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to add family member. Please try again.',
+                        ),
                 },
             );
         }
@@ -2361,7 +2788,14 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             }),
             {
                 preserveScroll: true,
-                onSuccess: () => setDeleteFamilyIndex(null),
+                onSuccess: () => {
+                    toast.success('Family member removed.');
+                    setDeleteFamilyIndex(null);
+                },
+                onError: () =>
+                    toast.error(
+                        'Failed to remove family member. Please try again.',
+                    ),
             },
         );
     };
@@ -2412,8 +2846,14 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 data,
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setEducDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success('Education record updated successfully.');
+                        setEducDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to update education record. Please try again.',
+                        ),
                 },
             );
         } else {
@@ -2422,8 +2862,14 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 data,
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setEducDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success('Education record added successfully.');
+                        setEducDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to add education record. Please try again.',
+                        ),
                 },
             );
         }
@@ -2435,10 +2881,19 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 employee: employee.employee_id,
                 index: deleteEducIndex,
             }),
-            { preserveScroll: true, onSuccess: () => setDeleteEducIndex(null) },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success('Education record deleted.');
+                    setDeleteEducIndex(null);
+                },
+                onError: () =>
+                    toast.error(
+                        'Failed to delete education record. Please try again.',
+                    ),
+            },
         );
     };
-
     const educByLevel = educations.reduce<Record<string, Education[]>>(
         (acc, edu) => {
             const key = edu.level ?? 'Other';
@@ -2466,7 +2921,6 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             venue: s?.venue ?? '',
             date_attended: toInputDate(s?.date_attended),
         });
-
     const saveSeminar = () => {
         const data = {
             seminar_name: seminarDialog.seminar_name,
@@ -2482,8 +2936,16 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 data,
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setSeminarDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success(
+                            'Seminar / training updated successfully.',
+                        );
+                        setSeminarDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to update seminar. Please try again.',
+                        ),
                 },
             );
         } else {
@@ -2492,8 +2954,12 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 data,
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setSeminarDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success('Seminar / training added successfully.');
+                        setSeminarDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error('Failed to add seminar. Please try again.'),
                 },
             );
         }
@@ -2505,7 +2971,15 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 employee: employee.employee_id,
                 seminar: deleteSeminarId,
             }),
-            { preserveScroll: true, onSuccess: () => setDeleteSeminarId(null) },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success('Seminar / training deleted.');
+                    setDeleteSeminarId(null);
+                },
+                onError: () =>
+                    toast.error('Failed to delete seminar. Please try again.'),
+            },
         );
     };
 
@@ -2534,7 +3008,6 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             year_start: s?.year_start ?? '',
             year_end: s?.year_end ?? '',
         });
-
     const saveServiceRecord = () => {
         const data = {
             position_name: serviceDialog.position_name,
@@ -2551,8 +3024,14 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 data,
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setServiceDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success('Service record updated successfully.');
+                        setServiceDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to update service record. Please try again.',
+                        ),
                 },
             );
         } else {
@@ -2561,8 +3040,14 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 data,
                 {
                     preserveScroll: true,
-                    onSuccess: () =>
-                        setServiceDialog((p) => ({ ...p, open: false })),
+                    onSuccess: () => {
+                        toast.success('Service record added successfully.');
+                        setServiceDialog((p) => ({ ...p, open: false }));
+                    },
+                    onError: () =>
+                        toast.error(
+                            'Failed to add service record. Please try again.',
+                        ),
                 },
             );
         }
@@ -2574,28 +3059,39 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 employee: employee.employee_id,
                 record: deleteServiceId,
             }),
-            { preserveScroll: true, onSuccess: () => setDeleteServiceId(null) },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success('Service record deleted.');
+                    setDeleteServiceId(null);
+                },
+                onError: () =>
+                    toast.error(
+                        'Failed to delete service record. Please try again.',
+                    ),
+            },
         );
     };
 
     return (
         <div className="space-y-5 p-3 sm:p-5">
             {/* Family Information */}
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                    <span className="text-foreground text-sm font-bold">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+                    <span className="text-sm font-bold text-foreground">
                         Family Information
                     </span>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => openFamilyDialog()}
-                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
-                    </button>
+                    </Button>
                 </div>
                 {familyMembers.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="text-muted-foreground mb-3 text-sm italic">
+                        <p className="mb-3 text-sm text-muted-foreground italic">
                             No family information on file.
                         </p>
                         <Button
@@ -2610,53 +3106,50 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[640px]">
-                            <div className="border-border bg-muted/30 grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 border-b px-5 py-2.5">
+                            <div className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 border-b border-border bg-muted/30 px-5 py-2.5">
                                 <div className="w-4" />
-                                <span className="text-muted-foreground text-xs font-semibold">
-                                    Full Name
-                                </span>
-                                <span className="text-muted-foreground text-xs font-semibold">
-                                    Relationship
-                                </span>
-                                <span className="text-muted-foreground text-xs font-semibold">
-                                    Sex
-                                </span>
-                                <span className="text-muted-foreground text-xs font-semibold">
-                                    Date of Birth
-                                </span>
-                                <span className="text-muted-foreground text-xs font-semibold">
-                                    Place of Birth
-                                </span>
-                                <span className="text-muted-foreground text-right text-xs font-semibold">
-                                    Actions
-                                </span>
+                                {[
+                                    'Full Name',
+                                    'Relationship',
+                                    'Sex',
+                                    'Date of Birth',
+                                    'Place of Birth',
+                                    '',
+                                ].map((h) => (
+                                    <span
+                                        key={h}
+                                        className="text-xs font-semibold text-muted-foreground"
+                                    >
+                                        {h}
+                                    </span>
+                                ))}
                             </div>
-                            <div className="divide-border divide-y">
+                            <div className="divide-y divide-border">
                                 {familyMembers.map((member, i) => (
                                     <div
                                         key={i}
-                                        className="hover:bg-muted/20 grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-3 transition-colors"
+                                        className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
                                     >
                                         <Checkbox className="h-4 w-4" />
-                                        <span className="text-foreground truncate text-sm font-medium">
+                                        <span className="truncate text-sm font-medium text-foreground">
                                             {member.full_name}
                                         </span>
-                                        <span className="text-muted-foreground text-sm">
+                                        <span className="text-sm text-muted-foreground">
                                             {member.relationship ?? '—'}
                                         </span>
-                                        <span className="text-muted-foreground text-sm">
+                                        <span className="text-sm text-muted-foreground">
                                             {member.sex !== undefined
                                                 ? member.sex
                                                     ? 'Male'
                                                     : 'Female'
                                                 : '—'}
                                         </span>
-                                        <span className="text-muted-foreground text-sm">
+                                        <span className="text-sm text-muted-foreground">
                                             {member.date_of_birth
                                                 ? fmtShort(member.date_of_birth)
                                                 : '—'}
                                         </span>
-                                        <span className="text-muted-foreground truncate text-sm">
+                                        <span className="truncate text-sm text-muted-foreground">
                                             {member.place_of_birth ?? '—'}
                                         </span>
                                         <div className="flex items-center justify-end gap-1">
@@ -2672,7 +3165,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button
                                                 variant="ghost"
                                                 size="icon-xs"
-                                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
                                                 onClick={() =>
                                                     setDeleteFamilyIndex(i)
                                                 }
@@ -2689,21 +3182,22 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Educational Background */}
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                    <span className="text-foreground text-sm font-bold">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+                    <span className="text-sm font-bold text-foreground">
                         Educational Background
                     </span>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => openEducDialog()}
-                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
-                    </button>
+                    </Button>
                 </div>
                 {educations.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="text-muted-foreground mb-3 text-sm italic">
+                        <p className="mb-3 text-sm text-muted-foreground italic">
                             No educational records on file.
                         </p>
                         <Button
@@ -2721,32 +3215,32 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             {Object.entries(educByLevel).map(
                                 ([level, edus]) => (
                                     <div key={level}>
-                                        <div className="bg-muted/30 border-border border-y px-5 py-2">
-                                            <span className="text-muted-foreground text-xs font-semibold">
+                                        <div className="border-y border-border bg-muted/30 px-5 py-2">
+                                            <span className="text-xs font-semibold text-muted-foreground">
                                                 {level}
                                             </span>
                                         </div>
-                                        <div className="divide-border divide-y">
+                                        <div className="divide-y divide-border">
                                             {edus.map((edu, i) => {
                                                 const globalIndex =
                                                     educations.indexOf(edu);
                                                 return (
                                                     <div
                                                         key={i}
-                                                        className="hover:bg-muted/20 grid grid-cols-[auto_1fr_1fr_1fr_80px_80px] items-center gap-3 px-5 py-3 transition-colors"
+                                                        className="grid grid-cols-[auto_1fr_1fr_1fr_80px_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
                                                     >
                                                         <Checkbox className="h-4 w-4" />
-                                                        <span className="text-foreground text-sm font-medium">
+                                                        <span className="text-sm font-medium text-foreground">
                                                             {edu.school_name}
                                                         </span>
-                                                        <span className="text-muted-foreground text-sm">
+                                                        <span className="text-sm text-muted-foreground">
                                                             {edu.school_address ??
                                                                 '—'}
                                                         </span>
-                                                        <span className="text-muted-foreground text-sm">
+                                                        <span className="text-sm text-muted-foreground">
                                                             {edu.degree ?? '—'}
                                                         </span>
-                                                        <span className="text-muted-foreground text-right text-sm">
+                                                        <span className="text-right text-sm text-muted-foreground">
                                                             {edu.graduation_date
                                                                 ? new Date(
                                                                       edu.graduation_date,
@@ -2769,7 +3263,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon-xs"
-                                                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                                className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
                                                                 onClick={() =>
                                                                     setDeleteEducIndex(
                                                                         globalIndex,
@@ -2792,21 +3286,22 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Seminars and Trainings */}
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                    <span className="text-foreground text-sm font-bold">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+                    <span className="text-sm font-bold text-foreground">
                         Seminars and Trainings
                     </span>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => openSeminarDialog()}
-                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
-                    </button>
+                    </Button>
                 </div>
                 {seminars.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="text-muted-foreground mb-3 text-sm italic">
+                        <p className="mb-3 text-sm text-muted-foreground italic">
                             No seminars or trainings on file.
                         </p>
                         <Button
@@ -2821,35 +3316,40 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[520px]">
-                            <div className="border-border bg-muted/30 grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 border-b px-5 py-2.5">
+                            <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 border-b border-border bg-muted/30 px-5 py-2.5">
                                 <div className="w-4" />
-                                <span className="text-muted-foreground text-xs font-semibold">
-                                    Seminar / Training
-                                </span>
-                                <span className="text-muted-foreground text-xs font-semibold">
-                                    Organizer
-                                </span>
-                                <span className="text-muted-foreground text-right text-xs font-semibold">
-                                    Date Attended
-                                </span>
-                                <span className="text-muted-foreground text-right text-xs font-semibold">
-                                    Actions
-                                </span>
+                                {[
+                                    'Seminar / Training',
+                                    'Organizer',
+                                    'Date Attended',
+                                    '',
+                                ].map((h) => (
+                                    <span
+                                        key={h}
+                                        className={cn(
+                                            'text-xs font-semibold text-muted-foreground',
+                                            h === 'Date Attended' &&
+                                                'text-right',
+                                        )}
+                                    >
+                                        {h}
+                                    </span>
+                                ))}
                             </div>
-                            <div className="divide-border divide-y">
+                            <div className="divide-y divide-border">
                                 {seminars.map((s) => (
                                     <div
                                         key={s.id}
-                                        className="hover:bg-muted/20 grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 transition-colors"
+                                        className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
                                     >
                                         <Checkbox className="h-4 w-4" />
-                                        <span className="text-foreground text-sm font-medium">
+                                        <span className="text-sm font-medium text-foreground">
                                             {s.seminar_name}
                                         </span>
-                                        <span className="text-muted-foreground text-sm">
+                                        <span className="text-sm text-muted-foreground">
                                             {s.venue ?? '—'}
                                         </span>
-                                        <span className="text-muted-foreground text-right text-sm">
+                                        <span className="text-right text-sm text-muted-foreground">
                                             {fmtShort(s.date_attended)}
                                         </span>
                                         <div className="flex items-center justify-end gap-1">
@@ -2865,7 +3365,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button
                                                 variant="ghost"
                                                 size="icon-xs"
-                                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
                                                 onClick={() =>
                                                     setDeleteSeminarId(s.id)
                                                 }
@@ -2882,21 +3382,22 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Service Records */}
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
-                    <span className="text-foreground text-sm font-bold">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+                    <span className="text-sm font-bold text-foreground">
                         Service Records
                     </span>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => openServiceDialog()}
-                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
-                    </button>
+                    </Button>
                 </div>
                 {serviceRecs.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="text-muted-foreground mb-3 text-sm italic">
+                        <p className="mb-3 text-sm text-muted-foreground italic">
                             No service records on file.
                         </p>
                         <Button
@@ -2911,35 +3412,37 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[480px]">
-                            <div className="border-border bg-muted/30 grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 border-b px-5 py-2.5">
+                            <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 border-b border-border bg-muted/30 px-5 py-2.5">
                                 <div className="w-4" />
-                                <span className="text-muted-foreground text-xs font-semibold">
-                                    Position
-                                </span>
-                                <span className="text-muted-foreground text-xs font-semibold">
-                                    Department
-                                </span>
-                                <span className="text-muted-foreground text-right text-xs font-semibold">
-                                    Duration
-                                </span>
-                                <span className="text-muted-foreground text-right text-xs font-semibold">
-                                    Actions
-                                </span>
+                                {['Position', 'Department', 'Duration', ''].map(
+                                    (h) => (
+                                        <span
+                                            key={h}
+                                            className={cn(
+                                                'text-xs font-semibold text-muted-foreground',
+                                                h === 'Duration' &&
+                                                    'text-right',
+                                            )}
+                                        >
+                                            {h}
+                                        </span>
+                                    ),
+                                )}
                             </div>
-                            <div className="divide-border divide-y">
+                            <div className="divide-y divide-border">
                                 {serviceRecs.map((s) => (
                                     <div
                                         key={s.id}
-                                        className="hover:bg-muted/20 grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 transition-colors"
+                                        className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
                                     >
                                         <Checkbox className="h-4 w-4" />
-                                        <span className="text-foreground text-sm font-medium">
+                                        <span className="text-sm font-medium text-foreground">
                                             {s.position_name}
                                         </span>
-                                        <span className="text-muted-foreground text-sm">
+                                        <span className="text-sm text-muted-foreground">
                                             {s.department_name ?? '—'}
                                         </span>
-                                        <span className="text-muted-foreground text-right text-sm">
+                                        <span className="text-right text-sm text-muted-foreground">
                                             {s.year_start && s.year_end
                                                 ? `${s.year_start}–${s.year_end}`
                                                 : (s.year_start ?? '—')}
@@ -2957,7 +3460,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button
                                                 variant="ghost"
                                                 size="icon-xs"
-                                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
                                                 onClick={() =>
                                                     setDeleteServiceId(s.id)
                                                 }
@@ -2973,7 +3476,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* Dialogs */}
+            {/* ── All dialogs ── */}
             <Dialog
                 open={familyDialog.open}
                 onOpenChange={(o) =>
@@ -2989,7 +3492,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Full Name *
                             </Label>
                             <Input
@@ -3005,7 +3508,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Relationship
                                 </Label>
                                 <Select
@@ -3037,7 +3540,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 </Select>
                             </div>
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Sex
                                 </Label>
                                 <Select
@@ -3063,7 +3566,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Date of Birth
                                 </Label>
                                 <Input
@@ -3078,7 +3581,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 />
                             </div>
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Contact Number
                                 </Label>
                                 <Input
@@ -3094,7 +3597,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             </div>
                         </div>
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Place of Birth
                             </Label>
                             <Input
@@ -3142,7 +3645,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Education Level
                             </Label>
                             <Select
@@ -3172,7 +3675,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             </Select>
                         </div>
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="tracking-widests mb-1.5 block text-xs text-muted-foreground uppercase">
                                 School Name *
                             </Label>
                             <Input
@@ -3187,7 +3690,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             />
                         </div>
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 School Address
                             </Label>
                             <Input
@@ -3202,7 +3705,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Degree / Course
                                 </Label>
                                 <Input
@@ -3216,7 +3719,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 />
                             </div>
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Graduation Date
                                 </Label>
                                 <Input
@@ -3267,7 +3770,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Seminar / Training Name *
                             </Label>
                             <Input
@@ -3282,7 +3785,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             />
                         </div>
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Organizer
                             </Label>
                             <Input
@@ -3296,7 +3799,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             />
                         </div>
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Date Attended
                             </Label>
                             <Input
@@ -3345,7 +3848,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Position Name *
                             </Label>
                             <Input
@@ -3360,7 +3863,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             />
                         </div>
                         <div>
-                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Department
                             </Label>
                             <Input
@@ -3375,7 +3878,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Year Start
                                 </Label>
                                 <Input
@@ -3393,7 +3896,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 />
                             </div>
                             <div>
-                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                     Year End
                                 </Label>
                                 <Input
@@ -3432,6 +3935,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
+            {/* Confirm delete dialogs — unified pattern */}
             {[
                 {
                     open: deleteFamilyIndex !== null,
@@ -3488,77 +3992,63 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
 // ─── Documents Tab ────────────────────────────────────────────────────────────
 
-const FILE_ICONS: Record<string, { icon: string; color: string; bg: string }> =
-    {
-        pdf: {
-            icon: 'PDF',
-            color: 'text-red-600',
-            bg: 'bg-red-50 dark:bg-red-950/40',
-        },
-        doc: {
-            icon: 'DOC',
-            color: 'text-blue-600',
-            bg: 'bg-blue-50 dark:bg-blue-950/40',
-        },
-        docx: {
-            icon: 'DOCX',
-            color: 'text-blue-600',
-            bg: 'bg-blue-50 dark:bg-blue-950/40',
-        },
-        xls: {
-            icon: 'XLS',
-            color: 'text-emerald-600',
-            bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-        },
-        xlsx: {
-            icon: 'XLSX',
-            color: 'text-emerald-600',
-            bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-        },
-        png: {
-            icon: 'PNG',
-            color: 'text-purple-600',
-            bg: 'bg-purple-50 dark:bg-purple-950/40',
-        },
-        jpg: {
-            icon: 'JPG',
-            color: 'text-purple-600',
-            bg: 'bg-purple-50 dark:bg-purple-950/40',
-        },
-        jpeg: {
-            icon: 'JPEG',
-            color: 'text-purple-600',
-            bg: 'bg-purple-50 dark:bg-purple-950/40',
-        },
-        txt: { icon: 'TXT', color: 'text-muted-foreground', bg: 'bg-muted' },
-        zip: {
-            icon: 'ZIP',
-            color: 'text-amber-600',
-            bg: 'bg-amber-50 dark:bg-amber-950/40',
-        },
-    };
+const FILE_META: Record<string, { icon: string; className: string }> = {
+    pdf: {
+        icon: 'PDF',
+        className: 'text-rose-600  bg-rose-50  dark:bg-rose-950/40',
+    },
+    doc: {
+        icon: 'DOC',
+        className: 'text-sky-600   bg-sky-50   dark:bg-sky-950/40',
+    },
+    docx: {
+        icon: 'DOCX',
+        className: 'text-sky-600   bg-sky-50   dark:bg-sky-950/40',
+    },
+    xls: {
+        icon: 'XLS',
+        className: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40',
+    },
+    xlsx: {
+        icon: 'XLSX',
+        className: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40',
+    },
+    png: {
+        icon: 'PNG',
+        className: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40',
+    },
+    jpg: {
+        icon: 'JPG',
+        className: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40',
+    },
+    jpeg: {
+        icon: 'JPEG',
+        className: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40',
+    },
+    txt: { icon: 'TXT', className: 'text-muted-foreground bg-muted' },
+    zip: {
+        icon: 'ZIP',
+        className: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40',
+    },
+};
 
 function getFileExt(name: string) {
     return name.split('.').pop()?.toLowerCase() ?? '';
 }
-
-function getFileIcon(name: string) {
+function getFileMeta(name: string) {
     const ext = getFileExt(name);
     return (
-        FILE_ICONS[ext] ?? {
+        FILE_META[ext] ?? {
             icon: ext.toUpperCase() || 'FILE',
-            color: 'text-muted-foreground',
-            bg: 'bg-muted',
+            className: 'text-muted-foreground bg-muted',
         }
     );
 }
-
 function isViewable(name: string) {
     return ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'txt'].includes(
         getFileExt(name),
     );
 }
-
 function isImage(name: string) {
     return ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(getFileExt(name));
 }
@@ -3570,13 +4060,11 @@ function DocumentsTab({ employee }: { employee: Employee }) {
     const [viewFile, setViewFile] = useState<UploadedFile | null>(null);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
-
-    const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+    const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         if (file.size > MAX_FILE_SIZE) {
             setUploadError(
                 `File is too large. Maximum size is 25 MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)} MB.`,
@@ -3584,9 +4072,9 @@ function DocumentsTab({ employee }: { employee: Employee }) {
             e.target.value = '';
             return;
         }
-
         setUploadError(null);
         setUploading(true);
+        const toastId = toast.loading(`Uploading "${file.name}"…`);
         const formData = new FormData();
         formData.append('file', file);
         router.post(
@@ -3594,11 +4082,20 @@ function DocumentsTab({ employee }: { employee: Employee }) {
             formData,
             {
                 preserveScroll: true,
-                onFinish: () => setUploading(false),
-                onError: () => {
-                    setUploadError('Upload failed. Please try again.');
+                onSuccess: () => {
+                    toast.success(`"${file.name}" uploaded successfully.`, {
+                        id: toastId,
+                    });
                     setUploading(false);
                 },
+                onError: (errors) => {
+                    const msg =
+                        errors?.file ?? 'Upload failed. Please try again.';
+                    toast.error(msg, { id: toastId });
+                    setUploadError(msg);
+                    setUploading(false);
+                },
+                onFinish: () => setUploading(false),
             },
         );
         e.target.value = '';
@@ -3606,12 +4103,25 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 
     const confirmDeleteFile = () => {
         if (!deleteFileId) return;
+        const fileName = uploadedFiles.find(
+            (f) => f.id === deleteFileId,
+        )?.file_name;
         router.delete(
             route('employee.file.destroy', {
                 employee: employee.employee_id,
                 file: deleteFileId,
             }),
-            { preserveScroll: true, onSuccess: () => setDeleteFileId(null) },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success(
+                        fileName ? `"${fileName}" deleted.` : 'File deleted.',
+                    );
+                    setDeleteFileId(null);
+                },
+                onError: () =>
+                    toast.error('Failed to delete file. Please try again.'),
+            },
         );
     };
 
@@ -3623,28 +4133,31 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 
     return (
         <div className="space-y-4 p-3 sm:p-5">
-            <div className="bg-card border-border overflow-hidden rounded-xl border">
-                {/* ── Header ── */}
-                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
                     <div className="flex items-center gap-2">
-                        <span className="text-foreground text-sm font-bold">
+                        <span className="text-sm font-bold text-foreground">
                             Uploaded Files
                         </span>
                         {uploadedFiles.length > 0 && (
-                            <Badge className="bg-accent text-accent-foreground rounded-full border-0 px-2 py-0.5 text-[10px] font-semibold">
+                            <Badge
+                                variant="default"
+                                className="rounded-full text-[10px]"
+                            >
                                 {uploadedFiles.length}
                             </Badge>
                         )}
                     </div>
-                    <button
+                    <Button
+                        variant="default"
+                        size="sm"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
-                        className="text-primary bg-primary/10 hover:bg-primary/20 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                        title="Upload file"
+                        className="h-7 gap-1.5 text-xs"
                     >
                         <Upload className="h-3.5 w-3.5" />
                         {uploading ? 'Uploading…' : 'Upload'}
-                    </button>
+                    </Button>
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -3653,43 +4166,38 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                     />
                 </div>
 
-                {/* ── Upload error ── */}
                 {uploadError && (
-                    <div className="bg-destructive/10 border-destructive/20 mx-4 mt-3 flex items-start gap-2.5 rounded-lg border px-4 py-3 sm:mx-5">
-                        <XCircle className="text-destructive mt-0.5 h-4 w-4 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-destructive text-sm leading-snug">
-                                {uploadError}
-                            </p>
-                        </div>
+                    <div className="mx-4 mt-3 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 sm:mx-5">
+                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                        <p className="flex-1 text-sm leading-snug text-destructive">
+                            {uploadError}
+                        </p>
                         <button
                             onClick={() => setUploadError(null)}
-                            className="text-destructive/60 hover:text-destructive shrink-0 transition-colors"
+                            className="shrink-0 text-destructive/60 transition-colors hover:text-destructive"
                         >
                             <XCircle className="h-3.5 w-3.5" />
                         </button>
                     </div>
                 )}
 
-                {/* ── Size hint ── */}
-                <div className="border-border bg-muted/20 border-b px-4 py-2 sm:px-5">
-                    <p className="text-muted-foreground text-[11px]">
+                <div className="border-b border-border bg-muted/20 px-4 py-2 sm:px-5">
+                    <p className="text-[11px] text-muted-foreground">
                         Maximum file size:{' '}
                         <span className="font-semibold">25 MB</span>. All file
                         types accepted.
                     </p>
                 </div>
 
-                {/* ── Empty state ── */}
                 {uploadedFiles.length === 0 ? (
                     <div className="px-5 py-14 text-center">
-                        <div className="bg-muted mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
-                            <FolderOpen className="text-muted-foreground/30 h-7 w-7" />
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                            <FolderOpen className="h-7 w-7 text-muted-foreground/30" />
                         </div>
-                        <p className="text-foreground mb-1 text-sm font-medium">
+                        <p className="mb-1 text-sm font-medium text-foreground">
                             No files uploaded yet
                         </p>
-                        <p className="text-muted-foreground mb-4 text-xs">
+                        <p className="mb-4 text-xs text-muted-foreground">
                             Upload documents, certificates, or any relevant
                             files.
                         </p>
@@ -3703,17 +4211,16 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    /* ── File list ── */
-                    <div className="divide-border divide-y">
+                    <div className="divide-y divide-border">
                         {uploadedFiles.map((file) => {
-                            const { icon, color, bg } = getFileIcon(
+                            const { icon, className } = getFileMeta(
                                 file.file_name,
                             );
                             const canView = isViewable(file.file_name);
                             return (
                                 <div
                                     key={file.id}
-                                    className="hover:bg-muted/20 group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors sm:px-5"
+                                    className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/20 sm:px-5"
                                     onClick={() =>
                                         canView
                                             ? setViewFile(file)
@@ -3723,23 +4230,21 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                               )
                                     }
                                 >
-                                    {/* File type badge */}
                                     <div
-                                        className={`h-9 w-9 rounded-xl sm:h-10 sm:w-10 ${bg} flex shrink-0 items-center justify-center`}
+                                        className={cn(
+                                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10',
+                                            className,
+                                        )}
                                     >
-                                        <span
-                                            className={`text-[9px] font-black ${color} tracking-tight`}
-                                        >
+                                        <span className="text-[9px] font-black tracking-tight">
                                             {icon}
                                         </span>
                                     </div>
-
-                                    {/* File info — takes all remaining space */}
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-foreground truncate text-sm font-medium leading-snug">
+                                        <p className="truncate text-sm leading-snug font-medium text-foreground">
                                             {file.file_name}
                                         </p>
-                                        <p className="text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 text-xs">
+                                        <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
                                             <span>
                                                 {formatBytes(file.file_size)}
                                             </span>
@@ -3750,13 +4255,10 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                                 {fmtShort(file.created_at)}
                                             </span>
                                         </p>
-                                        {/* Date shown below name on mobile */}
-                                        <p className="text-muted-foreground mt-0.5 text-xs sm:hidden">
+                                        <p className="mt-0.5 text-xs text-muted-foreground sm:hidden">
                                             {fmtShort(file.created_at)}
                                         </p>
                                     </div>
-
-                                    {/* Actions */}
                                     <div
                                         className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
                                         onClick={(e) => e.stopPropagation()}
@@ -3772,7 +4274,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                                     variant="ghost"
                                                     size="icon-xs"
                                                     title="Download"
-                                                    className="text-muted-foreground hover:text-primary h-8 w-8 sm:h-7 sm:w-7"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-primary sm:h-7 sm:w-7"
                                                 >
                                                     <Download className="h-3.5 w-3.5" />
                                                 </Button>
@@ -3781,7 +4283,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                         <Button
                                             variant="ghost"
                                             size="icon-xs"
-                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8 sm:h-7 sm:w-7"
+                                            className="h-8 w-8 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 sm:h-7 sm:w-7 dark:hover:bg-rose-950/40"
                                             onClick={() =>
                                                 setDeleteFileId(file.id)
                                             }
@@ -3797,26 +4299,27 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* ── View / Preview Dialog ── */}
+            {/* Preview Dialog */}
             <Dialog
                 open={!!viewFile}
                 onOpenChange={(o) => !o && setViewFile(null)}
             >
                 <DialogContent className="max-h-[90vh] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-3xl">
-                    <DialogHeader className="border-border flex shrink-0 flex-row items-center justify-between border-b px-5 py-4">
+                    <DialogHeader className="flex shrink-0 flex-row items-center justify-between border-b border-border px-5 py-4">
                         <div className="flex min-w-0 items-center gap-3">
                             {viewFile &&
                                 (() => {
-                                    const { icon, color, bg } = getFileIcon(
+                                    const { icon, className } = getFileMeta(
                                         viewFile.file_name,
                                     );
                                     return (
                                         <div
-                                            className={`h-8 w-8 rounded-lg ${bg} flex shrink-0 items-center justify-center`}
+                                            className={cn(
+                                                'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                                                className,
+                                            )}
                                         >
-                                            <span
-                                                className={`text-[9px] font-black ${color}`}
-                                            >
+                                            <span className="text-[9px] font-black">
                                                 {icon}
                                             </span>
                                         </div>
@@ -3826,7 +4329,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                 <DialogTitle className="truncate text-sm font-bold">
                                     {viewFile?.file_name}
                                 </DialogTitle>
-                                <p className="text-muted-foreground text-xs">
+                                <p className="text-xs text-muted-foreground">
                                     {viewFile
                                         ? formatBytes(viewFile.file_size)
                                         : ''}{' '}
@@ -3835,10 +4338,8 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                             </div>
                         </div>
                     </DialogHeader>
-
-                    {/* Preview body */}
                     <div
-                        className="bg-muted/30 min-h-0 flex-1 overflow-auto"
+                        className="min-h-0 flex-1 overflow-auto bg-muted/30"
                         style={{ maxHeight: 'calc(90vh - 80px)' }}
                     >
                         {viewFile && isImage(viewFile.file_name) && (
@@ -3864,7 +4365,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                 <div className="p-6">
                                     <iframe
                                         src={viewFile.file_url}
-                                        className="border-border bg-card min-h-96 w-full rounded-xl border"
+                                        className="min-h-96 w-full rounded-xl border border-border bg-card"
                                         title={viewFile.file_name}
                                     />
                                 </div>
@@ -3873,7 +4374,6 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
-            {/* ── Delete Confirm ── */}
             <AlertDialog
                 open={!!deleteFileId}
                 onOpenChange={(o) => !o && setDeleteFileId(null)}
@@ -3883,7 +4383,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                         <AlertDialogTitle>Delete File?</AlertDialogTitle>
                         <AlertDialogDescription>
                             This will permanently delete{' '}
-                            <span className="text-foreground font-semibold">
+                            <span className="font-semibold text-foreground">
                                 {
                                     uploadedFiles.find(
                                         (f) => f.id === deleteFileId,
@@ -3923,16 +4423,16 @@ function AvatarPreviewDialog({
 }) {
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="border-border gap-0 overflow-hidden rounded-2xl border p-0 shadow-2xl sm:max-w-xs">
-                <div className="bg-card relative flex flex-col items-center overflow-hidden rounded-2xl">
+            <DialogContent className="gap-0 overflow-hidden rounded-2xl border border-border p-0 shadow-2xl sm:max-w-xs">
+                <div className="relative flex flex-col items-center overflow-hidden rounded-2xl bg-card">
                     <img
                         src={src}
                         alt={name}
                         className="aspect-square w-full object-cover"
                     />
                     {name && (
-                        <div className="border-border bg-card w-full border-t px-5 py-3.5">
-                            <p className="text-foreground text-center text-sm font-semibold">
+                        <div className="w-full border-t border-border bg-card px-5 py-3.5">
+                            <p className="text-center text-sm font-semibold text-foreground">
                                 {name}
                             </p>
                         </div>
@@ -3943,19 +4443,16 @@ function AvatarPreviewDialog({
     );
 }
 
-// ─── Avatar file validator ────────────────────────────────────────────────────
+// ─── Avatar Upload Dialog ─────────────────────────────────────────────────────
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
-
 function validateAvatarFile(file: File): string | null {
     if (!ALLOWED_AVATAR_TYPES.includes(file.type))
         return 'Only JPEG, JPG, or PNG images are allowed.';
     if (file.size > MAX_AVATAR_SIZE) return 'File size must not exceed 5 MB.';
     return null;
 }
-
-// ─── Avatar Upload Dialog ─────────────────────────────────────────────────────
 
 function AvatarUploadDialog({
     open,
@@ -3975,8 +4472,6 @@ function AvatarUploadDialog({
     const [cameraError, setCameraError] = useState<string | null>(null);
     const [cameraReady, setCameraReady] = useState(false);
     const [fileError, setFileError] = useState<string | null>(null);
-
-    // Crop state
     const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
@@ -3992,7 +4487,6 @@ function AvatarUploadDialog({
         streamRef.current = null;
         setCameraReady(false);
     };
-
     const goToCrop = (src: string) => {
         stopCamera();
         setRawImageSrc(src);
@@ -4017,7 +4511,7 @@ function AvatarUploadDialog({
                 return;
             }
         } catch {
-            /* Permissions API not supported */
+            /* not supported */
         }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -4052,8 +4546,7 @@ function AvatarUploadDialog({
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext('2d')?.drawImage(video, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-        goToCrop(dataUrl);
+        goToCrop(canvas.toDataURL('image/jpeg', 0.92));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -4076,13 +4569,12 @@ function AvatarUploadDialog({
         if (!rawImageSrc || !croppedAreaPixels) return;
         try {
             const blob = await getCroppedImg(rawImageSrc, croppedAreaPixels);
-            const file = new File([blob], 'avatar-cropped.jpg', {
-                type: 'image/jpeg',
-            });
-            onFileSelected(file);
+            onFileSelected(
+                new File([blob], 'avatar-cropped.jpg', { type: 'image/jpeg' }),
+            );
             handleClose();
         } catch {
-            setCameraError('Failed to crop image. Please try again.');
+            toast.error('Failed to crop image. Please try again.');
         }
     };
 
@@ -4094,7 +4586,6 @@ function AvatarUploadDialog({
         setRawImageSrc(null);
         onClose();
     };
-
     const backToChoose = () => {
         stopCamera();
         setRawImageSrc(null);
@@ -4106,7 +4597,7 @@ function AvatarUploadDialog({
     return (
         <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
             <DialogContent className="gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-sm">
-                <DialogHeader className="border-border border-b px-5 pb-3 pt-5">
+                <DialogHeader className="border-b border-border px-5 pt-5 pb-3">
                     <DialogTitle className="text-base font-bold">
                         {mode === 'camera'
                             ? 'Take a Photo'
@@ -4116,45 +4607,44 @@ function AvatarUploadDialog({
                     </DialogTitle>
                 </DialogHeader>
 
-                {/* ── Choose mode ── */}
                 {mode === 'choose' && (
                     <div className="space-y-4 px-5 py-5">
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                             Choose how you'd like to update your profile photo.
                         </p>
                         <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="border-border hover:border-primary/50 hover:bg-accent/40 group flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all"
-                            >
-                                <div className="bg-primary/10 group-hover:bg-primary/20 flex h-12 w-12 items-center justify-center rounded-full transition-colors">
-                                    <Upload className="text-primary h-5 w-5" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-foreground text-sm font-semibold">
-                                        Select Image
-                                    </p>
-                                    <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-                                        Choose from device
-                                    </p>
-                                </div>
-                            </button>
-                            <button
-                                onClick={startCamera}
-                                className="border-border hover:border-primary/50 hover:bg-accent/40 group flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all"
-                            >
-                                <div className="bg-primary/10 group-hover:bg-primary/20 flex h-12 w-12 items-center justify-center rounded-full transition-colors">
-                                    <Camera className="text-primary h-5 w-5" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-foreground text-sm font-semibold">
-                                        Take a Photo
-                                    </p>
-                                    <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-                                        Use your camera
-                                    </p>
-                                </div>
-                            </button>
+                            {[
+                                {
+                                    icon: Upload,
+                                    label: 'Select Image',
+                                    sub: 'Choose from device',
+                                    action: () => fileInputRef.current?.click(),
+                                },
+                                {
+                                    icon: Camera,
+                                    label: 'Take a Photo',
+                                    sub: 'Use your camera',
+                                    action: startCamera,
+                                },
+                            ].map(({ icon: Icon, label, sub, action }) => (
+                                <button
+                                    key={label}
+                                    onClick={action}
+                                    className="group flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-border p-5 transition-all hover:border-primary/50 hover:bg-accent/40"
+                                >
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 transition-colors group-hover:bg-primary/20">
+                                        <Icon className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-sm font-semibold">
+                                            {label}
+                                        </p>
+                                        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                                            {sub}
+                                        </p>
+                                    </div>
+                                </button>
+                            ))}
                         </div>
                         <input
                             ref={fileInputRef}
@@ -4164,9 +4654,9 @@ function AvatarUploadDialog({
                             onChange={handleFileChange}
                         />
                         {fileError && (
-                            <div className="bg-destructive/10 border-destructive/20 flex items-start gap-2.5 rounded-lg border px-4 py-3">
-                                <XCircle className="text-destructive mt-0.5 h-4 w-4 shrink-0" />
-                                <p className="text-destructive text-sm leading-snug">
+                            <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3">
+                                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                                <p className="text-sm leading-snug text-destructive">
                                     {fileError}
                                 </p>
                             </div>
@@ -4174,15 +4664,14 @@ function AvatarUploadDialog({
                     </div>
                 )}
 
-                {/* ── Camera mode ── */}
                 {mode === 'camera' && (
                     <div className="space-y-4 px-5 py-5">
                         {cameraError ? (
-                            <div className="bg-destructive/10 border-destructive/20 space-y-3 rounded-xl border p-4 text-center">
-                                <div className="bg-destructive/10 mx-auto flex h-10 w-10 items-center justify-center rounded-full">
-                                    <XCircle className="text-destructive h-5 w-5" />
+                            <div className="space-y-3 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-center">
+                                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                                    <XCircle className="h-5 w-5 text-destructive" />
                                 </div>
-                                <p className="text-destructive text-sm leading-snug">
+                                <p className="text-sm leading-snug text-destructive">
                                     {cameraError}
                                 </p>
                             </div>
@@ -4196,9 +4685,9 @@ function AvatarUploadDialog({
                                     className="h-full w-full scale-x-[-1] object-cover"
                                 />
                                 {!cameraReady && (
-                                    <div className="bg-muted absolute inset-0 flex flex-col items-center justify-center gap-2">
-                                        <Camera className="text-muted-foreground/30 h-8 w-8 animate-pulse" />
-                                        <p className="text-muted-foreground animate-pulse text-xs">
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted">
+                                        <Camera className="h-8 w-8 animate-pulse text-muted-foreground/30" />
+                                        <p className="animate-pulse text-xs text-muted-foreground">
                                             Starting camera…
                                         </p>
                                     </div>
@@ -4233,10 +4722,8 @@ function AvatarUploadDialog({
                     </div>
                 )}
 
-                {/* ── Crop mode ── */}
                 {mode === 'crop' && rawImageSrc && (
                     <div className="space-y-4 px-5 py-5">
-                        {/* Crop area */}
                         <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-black">
                             <Cropper
                                 image={rawImageSrc}
@@ -4247,19 +4734,17 @@ function AvatarUploadDialog({
                                 showGrid={false}
                                 onCropChange={setCrop}
                                 onZoomChange={setZoom}
-                                onCropComplete={(
-                                    _croppedArea,
-                                    croppedAreaPixels,
-                                ) => setCroppedAreaPixels(croppedAreaPixels)}
+                                onCropComplete={(_area, pixels) =>
+                                    setCroppedAreaPixels(pixels)
+                                }
                             />
                         </div>
-                        {/* Zoom slider */}
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground text-xs font-medium">
+                                <span className="text-xs font-medium text-muted-foreground">
                                     Zoom
                                 </span>
-                                <span className="text-muted-foreground text-xs">
+                                <span className="text-xs text-muted-foreground">
                                     {zoom.toFixed(1)}×
                                 </span>
                             </div>
@@ -4272,7 +4757,7 @@ function AvatarUploadDialog({
                                 onChange={(e) =>
                                     setZoom(Number(e.target.value))
                                 }
-                                className="accent-primary w-full cursor-pointer"
+                                className="w-full cursor-pointer accent-primary"
                             />
                         </div>
                         <div className="flex gap-2.5">
@@ -4312,12 +4797,24 @@ export default function ShowEmployee({ employee, items }: Props) {
     const [avatarUploadOpen, setAvatarUploadOpen] = useState(false);
 
     const handleAvatarFileSelected = (file: File) => {
+        const toastId = toast.loading('Updating profile photo…');
         const formData = new FormData();
         formData.append('avatar', file);
         router.post(
             route('employee.avatar.update', employee.employee_id),
             formData,
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: () =>
+                    toast.success('Profile photo updated successfully.', {
+                        id: toastId,
+                    }),
+                onError: () =>
+                    toast.error(
+                        'Failed to update profile photo. Please try again.',
+                        { id: toastId },
+                    ),
+            },
         );
     };
 
@@ -4334,7 +4831,7 @@ export default function ShowEmployee({ employee, items }: Props) {
         { value: 'employment', label: 'Employment Details', icon: Briefcase },
         { value: 'compensation', label: 'Compensation', icon: FileText },
         { value: 'leave', label: 'Leave Information', icon: Calendar },
-        { value: 'time', label: 'Time Records', icon: Clock },
+        { value: 'time', label: 'Attendance Record', icon: Clock },
         {
             value: 'government',
             label: 'Government Eligibility',
@@ -4348,15 +4845,11 @@ export default function ShowEmployee({ employee, items }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${basic?.full_name ?? 'Employee'} — Profile`} />
 
-            {/*
-             * Outer wrapper: stacks vertically on mobile, side-by-side on lg+
-             * p-3 on mobile, p-5 on sm+
-             */}
-            <div className="bg-background flex min-h-full flex-col gap-4 p-3 sm:p-5 lg:flex-row lg:gap-5">
-                {/* ── Left Panel ── full-width on mobile, fixed 288px on lg+ */}
-                <div className="bg-card border-border flex w-full shrink-0 flex-col overflow-hidden rounded-2xl border shadow-sm lg:w-72">
-                    <div className="from-accent/30 to-card border-border relative flex flex-col items-center border-b bg-gradient-to-b px-5 pb-5 pt-8">
-                        <div className="absolute right-3 top-3">
+            <div className="flex flex-col gap-4 bg-background p-3 sm:p-5 lg:flex-row lg:gap-5">
+                {/* ── Left Panel ── */}
+                <div className="flex w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:w-72">
+                    <div className="relative flex flex-col items-center border-b border-border bg-gradient-to-b from-accent/30 to-card px-5 pt-8 pb-5">
+                        <div className="absolute top-3 right-3">
                             <Button
                                 size={'icon-xs'}
                                 onClick={() => setBasicEditOpen(true)}
@@ -4368,7 +4861,7 @@ export default function ShowEmployee({ employee, items }: Props) {
                         <div className="relative">
                             <button
                                 onClick={() => setAvatarPreviewOpen(true)}
-                                className="bg-muted border-card ring-primary/20 hover:ring-primary/50 h-24 w-24 cursor-pointer overflow-hidden rounded-full border-4 shadow-lg ring-2 transition-all"
+                                className="h-24 w-24 cursor-pointer overflow-hidden rounded-full border-4 border-card bg-muted shadow-lg ring-2 ring-primary/20 transition-all hover:ring-primary/50"
                                 title="View photo"
                             >
                                 <img
@@ -4380,34 +4873,27 @@ export default function ShowEmployee({ employee, items }: Props) {
                             <button
                                 onClick={() => setAvatarUploadOpen(true)}
                                 title="Change photo"
-                                className="bg-primary text-primary-foreground border-card absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-md transition-opacity hover:opacity-90"
+                                className="absolute -right-1 -bottom-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground shadow-md transition-opacity hover:opacity-90"
                             >
                                 <Camera className="h-3 w-3" />
                             </button>
                         </div>
                         <div className="mt-4 text-center">
-                            <h1 className="text-foreground text-base font-bold leading-tight">
+                            <h1 className="text-base leading-tight font-bold text-foreground">
                                 {basic?.full_name ?? '—'}
                             </h1>
-                            <p className="text-primary mt-0.5 text-xs font-semibold">
+                            <p className="mt-0.5 text-xs font-semibold text-primary">
                                 {position?.position_name ??
                                     'No Position Assigned'}
                             </p>
                         </div>
-                        <Badge
-                            className={`mt-2.5 rounded-full border-0 px-3 py-0.5 text-[10px] font-bold ${employee.status ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'}`}
-                        >
-                            {employee.status ? '● Active' : '● Inactive'}
-                        </Badge>
+                        <div className="mt-2.5">
+                            <ActiveBadge active={employee.status} />
+                        </div>
                     </div>
 
-                    {/*
-                     * On mobile the info rows sit below the avatar in a 2-column
-                     * grid so they don't take up too much vertical space.
-                     * On lg+ they revert to a single-column stacked list.
-                     */}
-                    <div className="flex-1 overflow-y-auto px-4 py-3">
-                        <p className="text-muted-foreground mb-1 text-[10px] font-bold uppercase tracking-widest">
+                    <div className="flex-1 px-4 py-3">
+                        <p className="mb-1 text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
                             Basic Information
                         </p>
                         <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 lg:grid-cols-1">
@@ -4466,23 +4952,18 @@ export default function ShowEmployee({ employee, items }: Props) {
                     </div>
                 </div>
 
-                {/* ── Right Panel ── takes remaining width, min-w-0 prevents overflow */}
-                <div className="bg-card border-border flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border shadow-sm">
-                    <Tabs
-                        defaultValue="employment"
-                        className="flex flex-1 flex-col"
-                    >
-                        {/* Horizontally scrollable tab bar on all screen sizes */}
-                        <div className="border-border shrink-0 overflow-x-auto border-b px-2 pt-1 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
+                {/* ── Right Panel ── */}
+                <div className="min-w-0 flex-1 rounded-2xl border border-border bg-card shadow-sm">
+                    <Tabs defaultValue="employment">
+                        <div className="shrink-0 overflow-x-auto border-b border-border px-2 pt-1 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
                             <TabsList className="flex h-auto w-max min-w-full flex-nowrap gap-0 bg-transparent p-0">
                                 {tabs.map(({ value, label, icon: Icon }) => (
                                     <TabsTrigger
                                         key={value}
                                         value={value}
-                                        className="text-muted-foreground data-[state=active]:border-b-primary data-[state=active]:text-primary hover:text-foreground relative flex items-center gap-1.5 whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold transition-colors data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-4"
+                                        className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
                                     >
                                         <Icon className="h-3.5 w-3.5 shrink-0" />
-                                        {/* Hide label text on very small screens, show icon only */}
                                         <span className="xs:inline hidden sm:inline">
                                             {label}
                                         </span>
@@ -4491,54 +4972,28 @@ export default function ShowEmployee({ employee, items }: Props) {
                             </TabsList>
                         </div>
 
-                        <TabsContent
-                            value="employment"
-                            className="mt-0 flex-1 overflow-y-auto"
-                        >
+                        <TabsContent value="employment" className="mt-0">
                             <EmploymentDetailsTab
                                 employee={employee}
                                 items={items}
                             />
                         </TabsContent>
-                        <TabsContent
-                            value="compensation"
-                            className="mt-0 flex-1 overflow-y-auto"
-                        >
+                        <TabsContent value="compensation" className="mt-0">
                             <CompensationTab employee={employee} />
                         </TabsContent>
-                        <TabsContent
-                            value="leave"
-                            className="mt-0 flex-1 overflow-y-auto"
-                        >
+                        <TabsContent value="leave" className="mt-0">
                             <LeaveInformationTab employee={employee} />
                         </TabsContent>
-                        <TabsContent
-                            value="time"
-                            className="mt-0 flex-1 overflow-y-auto"
-                        >
-                            <div className="flex h-64 flex-col items-center justify-center gap-3">
-                                <Clock className="text-muted-foreground/30 h-10 w-10" />
-                                <p className="text-muted-foreground text-sm italic">
-                                    Time records coming soon.
-                                </p>
-                            </div>
+                        <TabsContent value="time" className="mt-0">
+                            <AttendanceRecordTab employee={employee} />
                         </TabsContent>
-                        <TabsContent
-                            value="government"
-                            className="mt-0 flex-1 overflow-y-auto"
-                        >
+                        <TabsContent value="government" className="mt-0">
                             <GovernmentEligibilityTab employee={employee} />
                         </TabsContent>
-                        <TabsContent
-                            value="background"
-                            className="mt-0 flex-1 overflow-y-auto"
-                        >
+                        <TabsContent value="background" className="mt-0">
                             <BackgroundInformationTab employee={employee} />
                         </TabsContent>
-                        <TabsContent
-                            value="documents"
-                            className="mt-0 flex-1 overflow-y-auto"
-                        >
+                        <TabsContent value="documents" className="mt-0">
                             <DocumentsTab employee={employee} />
                         </TabsContent>
                     </Tabs>

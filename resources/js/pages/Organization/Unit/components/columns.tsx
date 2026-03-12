@@ -61,22 +61,22 @@ function DeleteConfirmDialog({ unit, onClose }: DeleteConfirmDialogProps) {
                 className="gap-0 overflow-hidden p-0 sm:max-w-sm"
                 onClick={(e) => e.stopPropagation()}
             >
-                <DialogHeader className="border-border border-b px-5 py-4">
-                    <DialogTitle className="text-foreground text-sm font-semibold">
+                <DialogHeader className="border-b border-border px-5 py-4">
+                    <DialogTitle className="text-sm font-semibold text-foreground">
                         Delete Unit
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="text-muted-foreground px-5 py-4 text-sm">
+                <div className="px-5 py-4 text-sm text-muted-foreground">
                     Are you sure you want to delete{' '}
-                    <span className="text-foreground font-medium">
+                    <span className="font-medium text-foreground">
                         {unit?.unit_name}
                     </span>
                     ? This will also affect any positions assigned to this unit.
                     This action cannot be undone.
                 </div>
 
-                <DialogFooter className="border-border bg-muted/30 flex flex-row justify-end border-t px-5 py-4">
+                <DialogFooter className="flex flex-row justify-end border-t border-border bg-muted/30 px-5 py-4">
                     <Button
                         type="button"
                         variant="outline"
@@ -125,39 +125,39 @@ function MobileUnitCard({ row, onEdit }: MobileUnitCardProps) {
     return (
         <>
             <div
-                className="bg-background flex flex-col overflow-hidden"
+                className="flex flex-col overflow-hidden bg-background"
                 onClick={(e) => {
                     if (suppressNextClick.current) e.stopPropagation();
                 }}
             >
                 {/* ── Card Body ── */}
-                <div className="space-y-2 px-4 pb-5 pt-4">
+                <div className="space-y-2 px-4 pt-4 pb-5">
                     <div className="flex items-center justify-between gap-2">
-                        <span className="text-foreground text-base font-semibold">
+                        <span className="text-base font-semibold text-foreground">
                             {row.unit_name}
                         </span>
                         <Badge
-                            variant="default"
+                            variant="outline"
                             className="shrink-0 font-mono text-xs"
                         >
                             {row.unit_acronym}
                         </Badge>
                     </div>
 
-                    <div className="text-muted-foreground text-xs">
+                    <div className="text-xs text-muted-foreground">
                         {row.division?.division_name ?? '—'}
                     </div>
 
                     {row.unit_description && (
-                        <p className="text-muted-foreground line-clamp-3 text-sm">
+                        <p className="line-clamp-3 text-sm text-muted-foreground">
                             {row.unit_description}
                         </p>
                     )}
                 </div>
 
                 {/* ── Card Footer ── */}
-                <div className="border-border bg-muted/30 flex items-center justify-between border-t px-4 py-2.5">
-                    <span className="text-muted-foreground text-xs">
+                <div className="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-2.5">
+                    <span className="text-xs text-muted-foreground">
                         {row.positions?.length ?? 0} position
                         {(row.positions?.length ?? 0) !== 1 ? 's' : ''}
                     </span>
@@ -165,7 +165,7 @@ function MobileUnitCard({ row, onEdit }: MobileUnitCardProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground hover:text-foreground h-12 w-12 p-0 text-xs"
+                            className="h-12 w-12 p-0 text-xs text-muted-foreground hover:text-foreground"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onEdit(row);
@@ -176,7 +176,7 @@ function MobileUnitCard({ row, onEdit }: MobileUnitCardProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground hover:text-destructive h-12 w-12 p-0 text-xs"
+                            className="h-12 w-12 p-0 text-xs text-muted-foreground hover:text-destructive"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setConfirmUnit(row);
@@ -249,7 +249,7 @@ export function getColumns({
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
-                <Badge variant="default" className="font-mono text-xs">
+                <Badge variant="outline" className="font-mono text-xs">
                     {row.getValue('unit_acronym')}
                 </Badge>
             ),
@@ -277,7 +277,7 @@ export function getColumns({
                 <DataTableColumnHeader column={column} title="Description" />
             ),
             cell: ({ row }) => (
-                <div className="text-muted-foreground min-w-[200px] max-w-[300px] truncate text-sm">
+                <div className="max-w-[300px] min-w-[200px] truncate text-sm text-muted-foreground">
                     {row.getValue('unit_description') || '—'}
                 </div>
             ),
@@ -302,7 +302,7 @@ export function getColumns({
                                 description: (u) => (
                                     <>
                                         Are you sure you want to delete{' '}
-                                        <span className="text-foreground font-medium">
+                                        <span className="font-medium text-foreground">
                                             {u.unit_name}
                                         </span>
                                         ? This will also affect any positions

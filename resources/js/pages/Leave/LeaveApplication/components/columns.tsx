@@ -68,16 +68,16 @@ function employeeName(row: LeaveFiling): string {
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
 const STATUS_CLASS: Record<string, string> = {
-    'Pending':          'bg-yellow-100 text-yellow-800 border-yellow-200',
-    'For Approval':     'bg-blue-100 text-blue-800 border-blue-200',
-    'For Disapproval':  'bg-orange-100 text-orange-800 border-orange-200',
-    'Approved':         'bg-green-100 text-green-800 border-green-200',
-    'Disapproved':      'bg-red-100 text-red-800 border-red-200',
+    'Pending':          'bg-yellow-500 text-white border-yellow-500',
+    'For Approval':     'bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90',
+    'For Disapproval':  'bg-red-500 text-white border-red-500',
+    'Approved':         'bg-emerald-500 text-white border-emerald-500',
+    'Disapproved':      'bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
 };
 
 function StatusBadge({ status }: { status: string }) {
     return (
-        <Badge variant="outline" className={`text-xs font-medium ${STATUS_CLASS[status] ?? ''}`}>
+        <Badge className={`text-xs font-medium ${STATUS_CLASS[status] ?? ''}`}>
             {status}
         </Badge>
     );

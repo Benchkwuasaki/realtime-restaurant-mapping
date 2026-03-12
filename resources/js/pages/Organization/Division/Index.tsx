@@ -224,10 +224,7 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
                         </div>
                     </div>
 
-                    <DialogFooter className="px-5 py-4 border-t border-border xs:flex xs:flex-row xs:justify-between bg-muted/30">
-                        <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
-                            Cancel
-                        </Button>
+                    <DialogFooter className="px-5 py-4 border-t border-border xs:flex xs:flex-row xs:justify-between bg-muted/30" showCloseButton>
                         <Button type="submit" size="sm" disabled={processing} className="text-xs">
                             {processing ? "Saving…" : isEdit ? "Update Division" : "Create Division"}
                         </Button>

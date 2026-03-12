@@ -33,9 +33,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
+import {
+    OrganizationDialog,
+    type InternalOrgType,
+} from './components/OrganizationDialog';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,7 +63,8 @@ interface InternalOrganization {
     internal_organization_id: string;
     code: string;
     name: string;
-    type: 'Union' | 'Cooperative' | 'Association';
+    internal_org_type_id: number;
+    org_type?: InternalOrgType; // eager-loaded relation
     head: string;
     payroll_deduction_linked: boolean;
     status: boolean;
@@ -70,6 +76,7 @@ interface InternalOrganization {
 interface Props {
     organization: InternalOrganization;
     availableEmployees: AvailableEmployee[];
+    orgTypes: InternalOrgType[];
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -82,11 +89,18 @@ function formatDate(dateString: string) {
     });
 }
 
-const typeColorMap: Record<string, string> = {
+// Fallback palette for unknown / dynamically added types
+const knownTypeColors: Record<string, string> = {
     Union: 'bg-primary/10 text-primary border-primary/20',
     Cooperative: 'bg-chart-2/10 text-chart-2 border-chart-2/20',
     Association: 'bg-chart-3/10 text-chart-3 border-chart-3/20',
 };
+const fallbackTypeColor = 'bg-muted text-muted-foreground border-border';
+
+function getTypeColor(typeName?: string) {
+    if (!typeName) return fallbackTypeColor;
+    return knownTypeColors[typeName] ?? fallbackTypeColor;
+}
 
 // ─── Info Row ──────────────────────────────────────────────────────────────────
 
@@ -101,7 +115,7 @@ function InfoRow({
 }) {
     return (
         <div className="flex flex-col gap-1 py-3">
-            <span className="text-muted-foreground flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
                 <span className="text-primary/50">{icon}</span>
                 {label}
             </span>
@@ -118,27 +132,23 @@ interface MobileMemberCardProps {
 
 function MobileMemberCard({ row }: MobileMemberCardProps) {
     return (
-        <div className="bg-background flex flex-col overflow-hidden">
-            {/* ── Card Body ── */}
-            <div className="space-y-2 px-4 pb-5 pt-4">
-                <span className="text-foreground text-base font-semibold">
+        <div className="flex flex-col overflow-hidden bg-background">
+            <div className="space-y-2 px-4 pt-4 pb-5">
+                <span className="text-base font-semibold text-foreground">
                     {row.name}
                 </span>
-
                 <div className="flex flex-col gap-0.5">
                     {row.position && (
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                             {row.position}
                             {row.department && <> · {row.department}</>}
                         </span>
                     )}
                 </div>
             </div>
-
-            {/* ── Card Footer ── */}
-            <div className="border-border bg-muted/30 flex items-center justify-between border-t px-4 py-2.5">
+            <div className="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-2.5">
                 <Badge
-                    variant={row.status ? 'default' : 'secondary'}
+                    variant={row.status ? 'default' : 'destructive'}
                     className="text-xs"
                 >
                     {row.status ? 'Active' : 'Inactive'}
@@ -195,7 +205,7 @@ const memberColumns: ColumnDef<OrganizationMember>[] = [
         ),
         cell: ({ row }) => (
             <div className="min-w-[120px]">
-                <span className="bg-primary text-primary-foreground inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium">
+                <span className="inline-flex items-center rounded-md bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
                     {row.getValue('position')}
                 </span>
             </div>
@@ -220,7 +230,7 @@ const memberColumns: ColumnDef<OrganizationMember>[] = [
         cell: ({ row }) => {
             const isActive: boolean = row.getValue('status');
             return (
-                <Badge variant={isActive ? 'default' : 'secondary'}>
+                <Badge variant={isActive ? 'default' : 'destructive'}>
                     {isActive ? 'Active' : 'Inactive'}
                 </Badge>
             );
@@ -322,7 +332,7 @@ function AddMemberDialog({
                         <DialogTitle>Add Members</DialogTitle>
                         <DialogDescription>
                             Search and select employees to add to{' '}
-                            <span className="text-foreground font-semibold">
+                            <span className="font-semibold text-foreground">
                                 {organization.name}
                             </span>
                             .
@@ -330,7 +340,7 @@ function AddMemberDialog({
                     </DialogHeader>
 
                     <div className="relative">
-                        <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             className="pl-9"
                             placeholder="Search by name, position, or department..."
@@ -352,7 +362,7 @@ function AddMemberDialog({
                             aria-label="Select all filtered"
                             disabled={filtered.length === 0}
                         />
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                             {filtered.length === 0
                                 ? 'No employees to select'
                                 : allFilteredSelected
@@ -366,7 +376,7 @@ function AddMemberDialog({
 
                 <ScrollArea className="min-h-0 flex-1 border-y">
                     {filtered.length === 0 ? (
-                        <div className="text-muted-foreground flex h-24 items-center justify-center text-sm">
+                        <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                             {availableEmployees.length === 0
                                 ? 'All employees are already members.'
                                 : 'No employees match your search.'}
@@ -392,12 +402,12 @@ function AddMemberDialog({
                                             aria-label={`Select ${employee.name}`}
                                         />
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-foreground truncate text-sm font-medium">
+                                            <p className="truncate text-sm font-medium text-foreground">
                                                 {employee.name}
                                             </p>
                                             {(employee.position ||
                                                 employee.department) && (
-                                                <p className="text-muted-foreground truncate text-xs">
+                                                <p className="truncate text-xs text-muted-foreground">
                                                     {[
                                                         employee.position,
                                                         employee.department,
@@ -408,7 +418,7 @@ function AddMemberDialog({
                                             )}
                                         </div>
                                         {isSelected && (
-                                            <span className="text-primary shrink-0 text-xs font-medium">
+                                            <span className="shrink-0 text-xs font-medium text-primary">
                                                 ✓
                                             </span>
                                         )}
@@ -471,7 +481,7 @@ function DeleteDialog({ open, onOpenChange, organization }: DeleteDialogProps) {
                     <DialogTitle>Delete Organization</DialogTitle>
                     <DialogDescription>
                         Are you sure you want to delete{' '}
-                        <span className="text-foreground font-semibold">
+                        <span className="font-semibold text-foreground">
                             {organization.name}
                         </span>
                         ? This action cannot be undone.
@@ -493,9 +503,14 @@ function DeleteDialog({ open, onOpenChange, organization }: DeleteDialogProps) {
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-export default function Show({ organization, availableEmployees }: Props) {
+export default function Show({
+    organization,
+    availableEmployees,
+    orgTypes,
+}: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
 
     const { patch, processing } = useForm();
 
@@ -525,28 +540,27 @@ export default function Show({ organization, availableEmployees }: Props) {
         );
     }
 
-    const typeClass =
-        typeColorMap[organization.type] ??
-        'bg-muted text-muted-foreground border-border';
+    const typeName = organization.org_type?.internal_org_type;
+    const typeClass = getTypeColor(typeName);
     const members = organization.members ?? [];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={organization.name} />
 
-            <div className="bg-background flex min-h-full gap-5 p-5">
+            <div className="flex min-h-full gap-5 bg-background p-5">
                 {/* ── Left Sidebar ───────────────────────────────────────────────────── */}
-                <aside className="bg-card border-border flex w-72 shrink-0 flex-col overflow-hidden rounded-2xl border p-5 shadow-sm">
+                <aside className="flex w-72 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm">
                     <div className="mb-4 flex flex-col items-center gap-3 text-center">
-                        <div className="bg-primary/10 border-primary/20 flex h-20 w-20 items-center justify-center rounded-2xl border-2">
-                            <Building2 className="text-primary h-10 w-10" />
+                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-primary/20 bg-primary/10">
+                            <Building2 className="h-10 w-10 text-primary" />
                         </div>
 
                         <div>
-                            <h1 className="text-foreground text-lg font-semibold leading-tight">
+                            <h1 className="text-lg leading-tight font-semibold text-foreground">
                                 {organization.name}
                             </h1>
-                            <p className="text-muted-foreground font-mono text-sm">
+                            <p className="font-mono text-sm text-muted-foreground">
                                 {organization.code}
                             </p>
                         </div>
@@ -555,17 +569,17 @@ export default function Show({ organization, availableEmployees }: Props) {
                             {organization.status ? (
                                 <>
                                     <span className="relative flex h-2 w-2">
-                                        <span className="bg-chart-5 absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
-                                        <span className="bg-chart-5 relative inline-flex h-2 w-2 rounded-full" />
+                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-chart-5 opacity-75" />
+                                        <span className="relative inline-flex h-2 w-2 rounded-full bg-chart-5" />
                                     </span>
-                                    <span className="text-chart-5 text-xs font-medium">
+                                    <span className="text-xs font-medium text-chart-5">
                                         Active
                                     </span>
                                 </>
                             ) : (
                                 <>
-                                    <span className="bg-muted-foreground/40 h-2 w-2 rounded-full" />
-                                    <span className="text-muted-foreground text-xs font-medium">
+                                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                                    <span className="text-xs font-medium text-muted-foreground">
                                         Inactive
                                     </span>
                                 </>
@@ -578,14 +592,7 @@ export default function Show({ organization, availableEmployees }: Props) {
                             variant="outline"
                             size="sm"
                             className="flex-1 text-xs"
-                            onClick={() =>
-                                router.visit(
-                                    route(
-                                        'internal-organization.edit',
-                                        organization.internal_organization_id,
-                                    ),
-                                )
-                            }
+                            onClick={() => setEditDialogOpen(true)}
                         >
                             <Pencil className="mr-1.5 h-3 w-3" />
                             Edit
@@ -593,7 +600,7 @@ export default function Show({ organization, availableEmployees }: Props) {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="text-destructive border-destructive/30 hover:bg-destructive/5 hover:text-destructive text-xs"
+                            className="border-destructive/30 text-xs text-destructive hover:bg-destructive/5 hover:text-destructive"
                             onClick={() => setDeleteDialogOpen(true)}
                         >
                             <Trash2 className="h-3 w-3" />
@@ -602,7 +609,7 @@ export default function Show({ organization, availableEmployees }: Props) {
 
                     <Separator className="mb-2" />
 
-                    <div className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-widest">
+                    <div className="mb-1 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
                         Organization Info
                     </div>
 
@@ -610,14 +617,14 @@ export default function Show({ organization, availableEmployees }: Props) {
                         <span
                             className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${typeClass}`}
                         >
-                            {organization.type}
+                            {typeName ?? '—'}
                         </span>
                     </InfoRow>
 
                     <Separator />
 
                     <InfoRow label="Head" icon={<User className="h-3 w-3" />}>
-                        <span className="bg-primary text-primary-foreground inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium">
+                        <span className="inline-flex items-center rounded-md bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
                             {organization.head}
                         </span>
                     </InfoRow>
@@ -630,11 +637,11 @@ export default function Show({ organization, availableEmployees }: Props) {
                     >
                         {organization.payroll_deduction_linked ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-                                <CheckCircle2 className="text-chart-5 h-3.5 w-3.5" />
+                                <CheckCircle2 className="h-3.5 w-3.5 text-chart-5" />
                                 Linked
                             </span>
                         ) : (
-                            <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-medium">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                                 <XCircle className="h-3.5 w-3.5" />
                                 Not Linked
                             </span>
@@ -647,7 +654,7 @@ export default function Show({ organization, availableEmployees }: Props) {
                         label="Date Created"
                         icon={<Calendar className="h-3 w-3" />}
                     >
-                        <span className="text-foreground text-xs">
+                        <span className="text-xs text-foreground">
                             {formatDate(organization.created_at)}
                         </span>
                     </InfoRow>
@@ -659,39 +666,41 @@ export default function Show({ organization, availableEmployees }: Props) {
                         icon={<CheckCircle2 className="h-3 w-3" />}
                     >
                         <Button
-                            variant="outline"
+                            variant={
+                                organization.status ? 'default' : 'destructive'
+                            }
                             size="sm"
                             className="h-6 text-xs"
                             onClick={handleToggleStatus}
                             disabled={processing}
                         >
-                            {organization.status ? 'Deactivate' : 'Activate'}
+                            {organization.status ? 'Activate' : 'Deactivate'}
                         </Button>
                     </InfoRow>
 
                     <Separator className="mb-3" />
 
-                    <p className="text-muted-foreground text-[10px]">
+                    <p className="text-[10px] text-muted-foreground">
                         Last updated {formatDate(organization.updated_at)}
                     </p>
                 </aside>
 
                 {/* ── Right Content ──────────────────────────────────────────────────── */}
-                <main className="bg-card border-border flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border p-5 shadow-sm">
+                <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-foreground text-lg font-semibold">
+                            <h2 className="text-lg font-semibold text-foreground">
                                 Members
                             </h2>
-                            <p className="text-muted-foreground text-sm">
+                            <p className="text-sm text-muted-foreground">
                                 Employees under{' '}
-                                <span className="text-foreground font-medium">
+                                <span className="font-medium text-foreground">
                                     {organization.name}
                                 </span>
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="outline" className="text-xs">
                                 {members.length}{' '}
                                 {members.length === 1 ? 'member' : 'members'}
                             </Badge>
@@ -716,6 +725,14 @@ export default function Show({ organization, availableEmployees }: Props) {
                     />
                 </main>
             </div>
+
+            {/* ── Edit Organization Modal ─────────────────────────────────────────── */}
+            <OrganizationDialog
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+                organization={organization}
+                orgTypes={orgTypes}
+            />
 
             <AddMemberDialog
                 open={addMemberDialogOpen}

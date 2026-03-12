@@ -1,31 +1,30 @@
 "use client"
 
+import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
 
-import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { type LeaveApplication } from "../data/schema"
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
-const STATUS_BADGE: Record<
-    LeaveApplication["status"],
-    React.ComponentProps<typeof Badge>["variant"]
-> = {
-    approved:  "green",
-    pending:   "yellow",
-    rejected:  "red",
-    cancelled: "red",
-    draft:     "secondary",
+const STATUS_BADGE: Record<LeaveApplication["status"], React.ComponentProps<typeof Badge>["variant"]> = {
+    approved:       "green",
+    for_approval:   "yellow",
+    pending:        "yellow",
+    for_disapproval:"red",
+    rejected:       "red",
+    cancelled:      "secondary",
 }
 
 const STATUS_LABEL: Record<LeaveApplication["status"], string> = {
-    approved:  "Approved",
-    pending:   "Pending",
-    rejected:  "Rejected",
-    cancelled: "Cancelled",
-    draft:     "Draft",
+    approved:        "Approved",
+    for_approval:    "For Approval",
+    pending:         "Pending",
+    for_disapproval: "For Disapproval",
+    rejected:        "Rejected",
+    cancelled:       "Cancelled",
 }
 
 function formatDate(value: string) {

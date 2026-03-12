@@ -30,6 +30,40 @@ interface ColumnOptions {
     onEdit: (org: InternalOrganization) => void;
 }
 
+// ─── Status Toggle Badge ───────────────────────────────────────────────────────
+
+function StatusBadge({ org }: { org: InternalOrganization }) {
+    const [processing, setProcessing] = useState(false);
+
+    function handleToggle(e: React.MouseEvent) {
+        e.stopPropagation();
+        setProcessing(true);
+        router.patch(
+            route(
+                'internal-organization.toggle-status',
+                org.internal_organization_id,
+            ),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setProcessing(false),
+            },
+        );
+    }
+
+    return (
+        <Badge
+            asChild
+            variant={org.status ? 'default' : 'destructive'}
+            className="cursor-pointer transition-opacity hover:opacity-80"
+        >
+            <button onClick={handleToggle} disabled={processing}>
+                {processing ? 'Saving…' : org.status ? 'Active' : 'Inactive'}
+            </button>
+        </Badge>
+    );
+}
+
 // ─── Mobile Delete Confirm Dialog ─────────────────────────────────────────────
 
 interface DeleteConfirmDialogProps {
@@ -68,21 +102,21 @@ function DeleteConfirmDialog({ org, onClose }: DeleteConfirmDialogProps) {
                 className="gap-0 overflow-hidden p-0 sm:max-w-sm"
                 onClick={(e) => e.stopPropagation()}
             >
-                <DialogHeader className="border-border border-b px-5 py-4">
-                    <DialogTitle className="text-foreground text-sm font-semibold">
+                <DialogHeader className="border-b border-border px-5 py-4">
+                    <DialogTitle className="text-sm font-semibold text-foreground">
                         Delete Organization
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="text-muted-foreground px-5 py-4 text-sm">
+                <div className="px-5 py-4 text-sm text-muted-foreground">
                     Are you sure you want to delete{' '}
-                    <span className="text-foreground font-medium">
+                    <span className="font-medium text-foreground">
                         {org?.name}
                     </span>
                     ? This action cannot be undone.
                 </div>
 
-                <DialogFooter className="border-border xs:flex xs:flex-row xs:justify-end bg-muted/30 border-t px-5 py-4">
+                <DialogFooter className="xs:flex xs:flex-row xs:justify-end border-t border-border bg-muted/30 px-5 py-4">
                     <Button
                         type="button"
                         variant="outline"
@@ -132,15 +166,15 @@ function MobileOrgCard({ row, onEdit }: MobileOrgCardProps) {
     return (
         <>
             <div
-                className="bg-background flex flex-col overflow-hidden"
+                className="flex flex-col overflow-hidden bg-background"
                 onClick={(e) => {
                     if (suppressNextClick.current) e.stopPropagation();
                 }}
             >
                 {/* ── Card Body ── */}
-                <div className="space-y-2 px-4 pb-5 pt-4">
+                <div className="space-y-2 px-4 pt-4 pb-5">
                     <div className="flex items-center justify-between gap-2">
-                        <span className="text-foreground text-base font-semibold">
+                        <span className="text-base font-semibold text-foreground">
                             {row.name}
                         </span>
                         <Badge
@@ -152,11 +186,11 @@ function MobileOrgCard({ row, onEdit }: MobileOrgCardProps) {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-muted-foreground text-xs">
-                            {row.type}
+                        <span className="text-xs text-muted-foreground">
+                            {row.org_type?.internal_org_type ?? '—'}
                         </span>
                         {row.head && (
-                            <span className="text-muted-foreground text-xs">
+                            <span className="text-xs text-muted-foreground">
                                 · {row.head}
                             </span>
                         )}
@@ -170,9 +204,9 @@ function MobileOrgCard({ row, onEdit }: MobileOrgCardProps) {
                 </div>
 
                 {/* ── Card Footer ── */}
-                <div className="border-border bg-muted/30 flex items-center justify-between border-t px-4 py-2.5">
+                <div className="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-2.5">
                     <Badge
-                        variant={row.status ? 'default' : 'secondary'}
+                        variant={row.status ? 'default' : 'destructive'}
                         className="text-xs"
                     >
                         {row.status ? 'Active' : 'Inactive'}
@@ -181,7 +215,7 @@ function MobileOrgCard({ row, onEdit }: MobileOrgCardProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground hover:text-foreground h-12 w-12 p-0 text-xs"
+                            className="h-12 w-12 p-0 text-xs text-muted-foreground hover:text-foreground"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onEdit(row);
@@ -192,7 +226,7 @@ function MobileOrgCard({ row, onEdit }: MobileOrgCardProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground hover:text-destructive h-12 w-12 p-0 text-xs"
+                            className="h-12 w-12 p-0 text-xs text-muted-foreground hover:text-destructive"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setConfirmOrg(row);
@@ -269,7 +303,8 @@ export const columns = ({
         mobileCard: (row) => <MobileOrgCard row={row} onEdit={onEdit} />,
     },
     {
-        accessorKey: 'type',
+        id: 'type',
+        accessorFn: (row) => row.org_type?.internal_org_type ?? '—',
         header: ({ column }) => (
             <DataTableColumnHeader column={column} title="Type" />
         ),
@@ -304,7 +339,7 @@ export const columns = ({
             const linked: boolean = row.getValue('payroll_deduction_linked');
             return (
                 <div className="min-w-[100px]">
-                    <Badge variant={linked ? 'default' : 'secondary'}>
+                    <Badge variant={linked ? 'default' : 'destructive'}>
                         {linked ? 'Yes' : 'No'}
                     </Badge>
                 </div>
@@ -324,7 +359,7 @@ export const columns = ({
             const isActive: boolean = row.getValue('status');
             return (
                 <div className="min-w-[90px]">
-                    <Badge variant={isActive ? 'default' : 'secondary'}>
+                    <Badge variant={isActive ? 'default' : 'destructive'}>
                         {isActive ? 'Active' : 'Inactive'}
                     </Badge>
                 </div>
@@ -356,7 +391,7 @@ export const columns = ({
                             description: (org) => (
                                 <>
                                     Are you sure you want to delete{' '}
-                                    <span className="text-foreground font-medium">
+                                    <span className="font-medium text-foreground">
                                         {org.name}
                                     </span>
                                     ? This action cannot be undone.
