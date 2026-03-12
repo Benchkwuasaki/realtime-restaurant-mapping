@@ -291,11 +291,11 @@ function ActionCell({ row }: { row: IncomingRow }) {
                             <Undo2 className="w-4 h-4 text-yellow-500" />
                             Return
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
+                        {/* <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => setOpen("cancel")} className="gap-2 cursor-pointer text-destructive focus:text-destructive">
                             <XCircle className="w-4 h-4" />
                             Cancel Request
-                        </DropdownMenuItem>
+                        </DropdownMenuItem> */}
                     </>)}
                 </DropdownMenuContent>
             </DropdownMenu>
