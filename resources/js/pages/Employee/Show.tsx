@@ -68,7 +68,9 @@ import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
@@ -104,7 +106,7 @@ interface SalaryGradeStep {
     salary_grade_step_id: number;
     salary_grade: number;
     step: number;
-    salary_amount: number;
+    monthly_salary: number;
 }
 interface Address {
     id?: number;
@@ -239,6 +241,7 @@ interface Employee {
 interface Props {
     employee: Employee;
     items: Item[];
+    salaryGradeSteps: SalaryGradeStep[];
 }
 
 // ─── Position group ───────────────────────────────────────────────────────────
@@ -777,15 +780,31 @@ function SalaryEditDialog({
     employee,
     open,
     onClose,
+    salaryGradeSteps,
 }: {
     employee: Employee;
     open: boolean;
     onClose: () => void;
+    salaryGradeSteps: SalaryGradeStep[];
 }) {
     const sgs = employee.salary_grade_step;
     const [form, setForm] = useState({
         salary_grade_step_id: sgs?.salary_grade_step_id?.toString() ?? '',
     });
+
+    const grouped = useMemo(() => {
+        const map = new Map<number, SalaryGradeStep[]>();
+        for (const s of salaryGradeSteps ?? []) {
+            if (!map.has(s.salary_grade)) map.set(s.salary_grade, []);
+            map.get(s.salary_grade)!.push(s);
+        }
+        return Array.from(map.entries()).sort(([a], [b]) => a - b);
+    }, [salaryGradeSteps]);
+
+    const selectedStep = (salaryGradeSteps ?? []).find(
+        (s) => s.salary_grade_step_id.toString() === form.salary_grade_step_id,
+    );
+
     const save = () =>
         router.put(route('employee.update', employee.employee_id), form, {
             preserveScroll: true,
@@ -808,28 +827,66 @@ function SalaryEditDialog({
                 <div className="space-y-3 py-2">
                     <div>
                         <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Salary Grade Step ID
+                            Salary Grade &amp; Step
                         </Label>
-                        <Input
-                            type="number"
+                        <Select
                             value={form.salary_grade_step_id}
-                            onChange={(e) =>
-                                setForm({
-                                    salary_grade_step_id: e.target.value,
-                                })
+                            onValueChange={(v) =>
+                                setForm({ salary_grade_step_id: v })
                             }
-                            placeholder="Enter salary grade step ID"
-                        />
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select salary grade and step…" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72">
+                                {grouped.map(([grade, steps]) => (
+                                    <SelectGroup key={grade}>
+                                        <SelectLabel className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                                            Salary Grade {grade}
+                                        </SelectLabel>
+                                        {[...steps]
+                                            .sort((a, b) => a.step - b.step)
+                                            .map((s) => (
+                                                <SelectItem
+                                                    key={s.salary_grade_step_id}
+                                                    value={s.salary_grade_step_id.toString()}
+                                                >
+                                                    SG-{s.salary_grade}, Step{' '}
+                                                    {s.step} — ₱
+                                                    {Number(
+                                                        s.monthly_salary,
+                                                    ).toLocaleString('en-PH', {
+                                                        minimumFractionDigits: 2,
+                                                    })}
+                                                </SelectItem>
+                                            ))}
+                                    </SelectGroup>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         {sgs && (
                             <p className="mt-1.5 text-xs text-muted-foreground">
                                 Current: SG-{sgs.salary_grade}, Step {sgs.step}{' '}
                                 — ₱
-                                {Number(sgs.salary_amount).toLocaleString(
+                                {Number(sgs.monthly_salary).toLocaleString(
                                     'en-PH',
                                     { minimumFractionDigits: 2 },
                                 )}
                             </p>
                         )}
+                        {selectedStep &&
+                            selectedStep.salary_grade_step_id !==
+                                sgs?.salary_grade_step_id && (
+                                <p className="mt-1 text-xs font-medium text-primary">
+                                    New: SG-{selectedStep.salary_grade}, Step{' '}
+                                    {selectedStep.step} — ₱
+                                    {Number(
+                                        selectedStep.monthly_salary,
+                                    ).toLocaleString('en-PH', {
+                                        minimumFractionDigits: 2,
+                                    })}
+                                </p>
+                            )}
                     </div>
                 </div>
                 <DialogFooter>
@@ -1440,7 +1497,13 @@ function EmploymentDetailsTab({
 
 // ─── Compensation Tab ─────────────────────────────────────────────────────────
 
-function CompensationTab({ employee }: { employee: Employee }) {
+function CompensationTab({
+    employee,
+    salaryGradeSteps,
+}: {
+    employee: Employee;
+    salaryGradeSteps: SalaryGradeStep[];
+}) {
     const sgs = employee.salary_grade_step;
     const allowances = employee.allowances ?? [];
     const [salaryEditOpen, setSalaryEditOpen] = useState(false);
@@ -1485,7 +1548,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
                                 </span>
                                 <span className="text-sm font-bold">
                                     ₱
-                                    {Number(sgs.salary_amount).toLocaleString(
+                                    {Number(sgs.monthly_salary).toLocaleString(
                                         'en-PH',
                                         { minimumFractionDigits: 2 },
                                     )}
@@ -1556,6 +1619,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
                 employee={employee}
                 open={salaryEditOpen}
                 onClose={() => setSalaryEditOpen(false)}
+                salaryGradeSteps={salaryGradeSteps}
             />
         </div>
     );
@@ -4782,7 +4846,11 @@ function AvatarUploadDialog({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function ShowEmployee({ employee, items }: Props) {
+export default function ShowEmployee({
+    employee,
+    items,
+    salaryGradeSteps,
+}: Props) {
     const basic = employee.basic_info;
     const position = employee.item?.position;
     const firstAddress = (basic?.addresses ?? [])[0];
@@ -4979,7 +5047,10 @@ export default function ShowEmployee({ employee, items }: Props) {
                             />
                         </TabsContent>
                         <TabsContent value="compensation" className="mt-0">
-                            <CompensationTab employee={employee} />
+                            <CompensationTab
+                                employee={employee}
+                                salaryGradeSteps={salaryGradeSteps}
+                            />
                         </TabsContent>
                         <TabsContent value="leave" className="mt-0">
                             <LeaveInformationTab employee={employee} />

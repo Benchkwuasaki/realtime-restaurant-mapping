@@ -87,7 +87,9 @@ class EmployeeController extends Controller
                             : null,
                     ] : null,
                 ]),
-            'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),
+            'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')
+                ->orderBy('step')
+                ->get(['salary_grade_step_id', 'salary_grade', 'step', 'monthly_salary']),
             'employmentClassifications' => \App\Models\EmploymentClassification::orderBy('name')->get(['id', 'name', 'description']),
             'roles' => Role::orderBy('name')->get(['id', 'name']),
         ]);
@@ -155,7 +157,7 @@ class EmployeeController extends Controller
             'eligibility_information.*.year_passed' => ['required_with:eligibility_information.*', 'date'],
         ]);
 
-        if (!empty($request->government_accounts)) {
+        if (! empty($request->government_accounts)) {
             $accountTypes = collect($request->government_accounts)->pluck('account_type');
             if ($accountTypes->count() !== $accountTypes->unique()->count()) {
                 return back()->withErrors([
@@ -313,7 +315,7 @@ class EmployeeController extends Controller
                 'government_accounts' => $employee->governmentAccounts,
 
                 // ── Leave balances: map to the shape expected by the frontend ──
-                'leave_balances' => $employee->leaveBalances->map(fn($b) => [
+                'leave_balances' => $employee->leaveBalances->map(fn ($b) => [
                     'employee_leave_balance_id' => $b->employee_leave_balance_id,
                     'leave_type_id' => $b->leave_type_id,
                     'cycle_year' => $b->cycle_year,
@@ -335,7 +337,7 @@ class EmployeeController extends Controller
                     'venue' => $s->venue,
                     'date_attended' => $s->date_attended,
                 ]),
-                'serviceRecords' => $employee->serviceRecords->map(fn($s) => [
+                'serviceRecords' => $employee->serviceRecords->map(fn ($s) => [
                     'id' => $s->employee_service_record_id,
                     'position_name' => $s->service_title,
                     'department_name' => $s->department,
@@ -348,6 +350,7 @@ class EmployeeController extends Controller
                 'position.division',
                 'position.unit',
                 'employee',
+
             ])
                 ->get()
                 ->map(fn (Item $item) => [
@@ -367,6 +370,10 @@ class EmployeeController extends Controller
                             : null,
                     ] : null,
                 ]),
+
+            'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')
+                ->orderBy('step')
+                ->get(['salary_grade_step_id', 'salary_grade', 'step', 'monthly_salary']),
         ]);
     }
 
@@ -812,8 +819,8 @@ class EmployeeController extends Controller
         $employee->serviceRecords()->create([
             'service_title' => $request->position_name,
             'department' => $request->filled('department_name') ? $request->department_name : null,
-            'durationStart' => $request->filled('year_start') ? $request->year_start . '-01-01' : null,
-            'durationEnd' => $request->filled('year_end') ? $request->year_end . '-01-01' : null,
+            'durationStart' => $request->filled('year_start') ? $request->year_start.'-01-01' : null,
+            'durationEnd' => $request->filled('year_end') ? $request->year_end.'-01-01' : null,
         ]);
 
         return back()->with('success', 'Service record added.');
@@ -833,8 +840,8 @@ class EmployeeController extends Controller
         $serviceRecord->update([
             'service_title' => $request->position_name,
             'department' => $request->filled('department_name') ? $request->department_name : null,
-            'durationStart' => $request->filled('year_start') ? $request->year_start . '-01-01' : null,
-            'durationEnd' => $request->filled('year_end') ? $request->year_end . '-01-01' : null,
+            'durationStart' => $request->filled('year_start') ? $request->year_start.'-01-01' : null,
+            'durationEnd' => $request->filled('year_end') ? $request->year_end.'-01-01' : null,
         ]);
 
         return back()->with('success', 'Service record updated.');
@@ -875,10 +882,8 @@ class EmployeeController extends Controller
         return back()->with('success', 'Avatar updated successfully.');
     }
 
-
     public function storeFile(Request $request, Employee $employee)
     {
-
 
         $request->validate([
             'file' => ['required', 'file', 'max:25600'], // 25MB

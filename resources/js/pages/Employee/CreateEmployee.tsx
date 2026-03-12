@@ -81,7 +81,7 @@ export interface SalaryGradeStep {
     salary_grade_step_id: number;
     salary_grade: number;
     step: number;
-    salary_amount: number;
+    monthly_salary: number;
 }
 
 export interface EmploymentClassification {
@@ -1157,7 +1157,7 @@ function EmploymentStep({
                                     >
                                         Step {sgs.step} — ₱
                                         {Number(
-                                            sgs.salary_amount,
+                                            sgs.monthly_salary,
                                         ).toLocaleString('en-PH', {
                                             minimumFractionDigits: 2,
                                         })}
@@ -2059,7 +2059,7 @@ function ReviewStep({
                 label="Salary Grade & Step"
                 value={
                     selectedSGS
-                        ? `SG ${selectedSGS.salary_grade} — Step ${selectedSGS.step} (₱${Number(selectedSGS.salary_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })})`
+                        ? `SG ${selectedSGS.salary_grade} — Step ${selectedSGS.step} (₱${Number(selectedSGS.monthly_salary).toLocaleString('en-PH', { minimumFractionDigits: 2 })})`
                         : data.salary_grade_step_id || undefined
                 }
             />
