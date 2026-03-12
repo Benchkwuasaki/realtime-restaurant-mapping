@@ -1,62 +1,7 @@
 // Payroll Processing Index.tsx
-
-import React, { useState, useEffect, useMemo } from 'react';
-import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { route } from 'ziggy-js';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { DataTable } from '@/components/shared/data-table/data-table';
-import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
-import { type DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Stepper } from '@/components/ui/stepper';
-import Heading from '@/components/heading';
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
-import {
-    InputGroup,
-    InputGroupAddon,
-    InputGroupInput,
-    InputGroupText,
-} from '@/components/ui/input-group';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { format } from 'date-fns';
 import {
     Download,
     PlayCircle,
@@ -73,7 +18,9 @@ import {
     Loader2,
     X,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import React, { useState, useEffect, useMemo } from 'react';
+import { route } from 'ziggy-js';
+import Heading from '@/components/heading';
 import {
     createLoadEmployeeColumns,
     finalizedColumns,
@@ -83,7 +30,61 @@ import {
     type FinalizedEmployee,
 } from '@/components/Payroll/PayrollProcessing/data/types';
 import { peso } from '@/components/Payroll/PayrollProcessing/data/utils';
+import { DataTable } from '@/components/shared/data-table/data-table';
+import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
+import { type DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+    InputGroup,
+    InputGroupInput,
+} from '@/components/ui/input-group';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Stepper } from '@/components/ui/stepper';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import AppLayout from '@/layouts/app-layout';
 
+// Where is the attendance data??
+// Check for PayrollProcessingController if it was extracted from there
+// Employee and FinalizedEmployee Classifications are imported from ./types
+// peso formatter is imported from ./utils
 
 interface ComputedRecord {
     employee_id: number;
@@ -109,9 +110,11 @@ interface ComputedRecord {
     water_bill: number;
     // Savings + Share_Capital — deducted on BOTH cut-offs
     internal_org_savings: number;
-    // Dues + Org Loans — 2nd cut-off only
+    // Dues only — 2nd cut-off only (from InternalOrgDeduction)
     internal_org_second: number;
-    internal_org_deductions: number; // total of savings + second (for display)
+    // Loans only — 2nd cut-off only (from loans table)
+    internal_org_loans: number;
+    internal_org_deductions: number; // total of savings + dues + loans
     other_deductions: number;
     // Per-item breakdown for org dues (no loans here anymore)
     internal_org_items: Array<{
@@ -188,7 +191,7 @@ export default function Index({
     const [monthPickerYear, setMonthPickerYear] = useState(
         new Date().getFullYear(),
     );
-    const [employeeClassification, setemployeeClassification] = useState('');
+    const [employeeClassification, setEmployeeClassification] = useState('');
     const [workingDays, setWorkingDays] = useState('');
     const [isTypingCustom, setIsTypingCustom] = useState(false);
     const [customDaysInput, setCustomDaysInput] = useState('');
@@ -224,6 +227,7 @@ export default function Index({
             };
         }
     }, [payrollMonth, cutoffType]);
+    
     const defaultHrName =
         auth.user.name ??
         (auth.user.first_name || auth.user.last_name
@@ -260,10 +264,6 @@ export default function Index({
     );
     const [processingErrors, setProcessingErrors] = useState<string[]>([]);
 
-    // ── Step 3 pagination ──────────────────────────────────────────────────────
-    const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 10;
-
     // ── Step 4 state ───────────────────────────────────────────────────────────
     const [reviewedIds, setReviewedIds] = useState<number[]>([]);
     const [floorWaivers, setFloorWaivers] = useState<Record<number, string[]>>(
@@ -289,9 +289,8 @@ export default function Index({
             setProcessedPeriodId(incomingProcessedPeriodId);
             setProcessingErrors(incomingProcessingErrors);
             setHasComputed(true);
-            setCurrentPage(1);
         }
-    }, [incomingProcessedPeriodId]);
+    }, [incomingProcessedPeriodId, incomingComputedRecords, incomingProcessingErrors]);
 
     const filteredEmployees = useMemo(
         () =>
@@ -409,6 +408,7 @@ export default function Index({
                         (r.internal_org_savings ?? 0),
                     internalOrgSavings: r.internal_org_savings ?? 0,
                     internalOrgSecond: r.internal_org_second ?? 0,
+                    internalOrgLoans: r.internal_org_loans ?? 0,
                     internalOrgDeductions: r.internal_org_deductions ?? 0,
                     otherDeductionsMisc: r.other_deductions ?? 0,
                     attendanceDeduction:
@@ -440,6 +440,7 @@ export default function Index({
                 otherDeductions: 0,
                 internalOrgSavings: 0,
                 internalOrgSecond: 0,
+                internalOrgLoans: 0,
                 internalOrgDeductions: 0,
                 otherDeductionsMisc: 0,
                 attendanceDeduction: 0,
@@ -454,7 +455,7 @@ export default function Index({
                 status: e.basic_pay >= NET_PAY_THRESHOLD ? 'ok' : 'low',
             }))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [hasComputed, computedRecords, includedEmployees, includedEmployeeIds]);
+    }, [hasComputed, computedRecords, includedEmployees, includedEmployeeIds, NET_PAY_THRESHOLD]);
 
     const flaggedEmployees = employeesWithStatus.filter(
         (e) => e.status === 'low',
@@ -469,7 +470,8 @@ export default function Index({
                 .map((r) => r.employee_id),
         );
         return employeesWithStatus.filter((e) => flaggedIds.has(e.id));
-    }, [computedRecords, employeesWithStatus]);
+    }, [computedRecords, employeesWithStatus, NET_PAY_THRESHOLD]);
+    
     const originallyPassedCount =
         employeesWithStatus.length - originallyFlaggedEmployees.length;
     const totalGross = employeesWithStatus.reduce((s, e) => s + e.grossPay, 0);
@@ -532,7 +534,8 @@ export default function Index({
                 status: adjustedNet >= NET_PAY_THRESHOLD ? 'ok' : 'low',
             };
         });
-    }, [employeesWithStatus, floorWaivers, itemWaivers, computedRecords]);
+    }, [employeesWithStatus, floorWaivers, itemWaivers, computedRecords, NET_PAY_THRESHOLD]);
+    
     const finalizedTotalDeductions = finalizedEmployeesWithStatus.reduce(
         (s, e) => s + e.totalDeductions,
         0,
@@ -541,11 +544,6 @@ export default function Index({
         (s, e) => s + e.netPay,
         0,
     );
-
-    const totalPages = Math.ceil(employeesWithStatus.length / rowsPerPage);
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = startIndex + rowsPerPage;
-    const currentEmployees = employeesWithStatus.slice(startIndex, endIndex);
 
     const computedDays =
         startDate && endDate
@@ -809,7 +807,6 @@ export default function Index({
         }
         setValidationError('');
         setHasComputed(false);
-        setCurrentPage(1);
         setCurrentStep(3);
     };
 
@@ -839,7 +836,6 @@ export default function Index({
             if (data.computedRecords?.length > 0) {
                 setComputedRecords(data.computedRecords);
                 setHasComputed(true);
-                setCurrentPage(1);
                 setProcessingErrors(data.processingErrors ?? []);
                 setFloorWaivers({});
                 setItemWaivers({});
@@ -1034,6 +1030,7 @@ export default function Index({
                 water_bill: r.water_bill,
                 internal_org_savings: r.internal_org_savings ?? 0,
                 internal_org_second: r.internal_org_second ?? 0,
+                internal_org_loans: r.internal_org_loans ?? 0,
                 waived: floorWaivers[r.employee_id] ?? [],
                 waived_item_ids: (itemWaivers[r.employee_id] ?? []).map((k) =>
                     parseInt(k.split(':')[1]),
@@ -1066,7 +1063,6 @@ export default function Index({
         setValidationError('');
         setCurrentStep((s) => Math.max(1, s - 1));
     };
-    const goToPage = (page: number) => setCurrentPage(page);
 
     const steps = [
         { title: 'Selected Period', description: 'Step 1', icon: CalendarIcon },
@@ -1136,9 +1132,7 @@ export default function Index({
                     onStepChange={() => {}}
                 />
 
-                {/* ════════════════════════════════════════════════════════════ */}
-                {/* STEP 1 — Period Setup                                       */}
-                {/* ════════════════════════════════════════════════════════════ */}
+                {/* STEP 1 — Period Setup */}
                 {currentStep === 1 && (
                     <Card>
                         <CardContent className="pt-6">
@@ -1148,7 +1142,7 @@ export default function Index({
                             />
 
                             <div className="grid grid-cols-1 items-end gap-x-6 gap-y-8 md:grid-cols-4">
-                                {/* ── Payroll Month ─────────────────────────── */}
+                                {/* Payroll Month */}
                                 <Field>
                                     <FieldLabel>Payroll Month</FieldLabel>
                                     <Popover
@@ -1249,7 +1243,7 @@ export default function Index({
                                     </Popover>
                                 </Field>
 
-                                {/* ── Cut-off Type ──────────────────────────── */}
+                                {/* Cut-off Type */}
                                 <Field>
                                     <FieldLabel>Cut-off</FieldLabel>
                                     <Select
@@ -1284,7 +1278,7 @@ export default function Index({
                                     </Select>
                                 </Field>
 
-                                {/* ── Computed Payroll Period (read-only) ───── */}
+                                {/* Computed Payroll Period (read-only) */}
                                 <Field>
                                     <FieldLabel>Payroll Period</FieldLabel>
                                     <FieldDescription>
@@ -1298,7 +1292,7 @@ export default function Index({
                                     />
                                 </Field>
 
-                                {/* ── Employee Classification ─────────────────────────── */}
+                                {/* Employee Classification */}
                                 <Field>
                                     <FieldLabel>
                                         Employee Classification
@@ -1306,7 +1300,7 @@ export default function Index({
                                     <Select
                                         value={employeeClassification}
                                         onValueChange={(v) => {
-                                            setemployeeClassification(v);
+                                            setEmployeeClassification(v);
                                             setValidationError('');
                                         }}
                                     >
@@ -1330,7 +1324,7 @@ export default function Index({
                                     </Select>
                                 </Field>
 
-                                {/* ── Working Days ──────────────────────────── */}
+                                {/* Working Days */}
                                 <Field>
                                     <FieldLabel>
                                         Working days this period
@@ -1522,7 +1516,7 @@ export default function Index({
                                 </div>
                             )}
 
-                            {/* ── Duplicate payroll alert ───────────────────── */}
+                            {/* Duplicate payroll alert */}
                             {isDuplicateChecking && (
                                 <div className="mt-6">
                                     <Alert>
@@ -1636,9 +1630,7 @@ export default function Index({
                     </Card>
                 )}
 
-                {/* ════════════════════════════════════════════════════════════ */}
-                {/* STEP 2 — Load Employees + Attendance                        */}
-                {/* ════════════════════════════════════════════════════════════ */}
+                {/* STEP 2 — Load Employees + Attendance */}
                 {currentStep === 2 && (
                     <Card>
                         <CardContent className="pt-6">
@@ -1750,37 +1742,7 @@ export default function Index({
                     </Card>
                 )}
 
-                {/* ════════════════════════════════════════════════════════════ */}
-                {/* STEP 3 — Compute                                            */}
-                {/* ════════════════════════════════════════════════════════════ */}
-                {/*
-                 * WHY THIS STEP DOES NOT USE THE SHARED <DataTable> COMPONENT
-                 * ─────────────────────────────────────────────────────────────
-                 * The shared DataTable renders a single flat header row.
-                 * This step requires a two-row grouped header:
-                 *
-                 *   Row 1 (group labels):  #  | Employee | ── Earnings ──── | ──────────────── Deductions ──────────────── | Net Pay | Remarks
-                 *   Row 2 (sub-columns):             | Basic Pay | Allowances | Gross | Absent | Tardy | GSIS | PH | PI | Tax | Org | Other | Total |
-                 *
-                 * These groups use colSpan/rowSpan with distinct background
-                 * colour bands (blue for Earnings, red for Deductions, green
-                 * for Net Pay) that are critical for readability of the
-                 * payroll ledger.
-                 *
-                 * TanStack Table supports column grouping via parent column
-                 * definitions, but the shared DataTable component would need
-                 * to be enhanced to iterate multiple header groups and apply
-                 * the colour-band styling — a non-trivial change that risks
-                 * breaking other tables that use it.
-                 *
-                 * Additionally, Step 3 has a custom <tfoot> totals row that
-                 * is page-aware (sums only the current page slice), which
-                 * DataTable also does not currently support.
-                 *
-                 * Decision: keep the native <table> here and revisit if/when
-                 * DataTable is extended to support grouped headers and footer
-                 * aggregation rows.
-                 */}
+                {/* STEP 3 — Compute */}
                 {currentStep === 3 && (
                     <Card>
                         <CardContent className="pt-6">
@@ -1845,534 +1807,77 @@ export default function Index({
                                 </div>
                             ) : (
                                 <>
-                                    <div className="overflow-x-auto rounded-lg border">
-                                        <table className="w-full border-collapse text-sm">
-                                            <thead className='items-center'>
-                                                {/* Group header row */}
-                                                <tr className="text-xs font-semibold tracking-wide uppercase">
-                                                    <th
-                                                        rowSpan={2}
-                                                        className="w-8 border-r border-b bg-slate-100 px-2 py-2 text-center text-slate-500"
-                                                    >
-                                                        #
-                                                    </th>
-                                                    <th
-                                                        rowSpan={2}
-                                                        className="border-r border-b text-center bg-slate-100 px-3 py-2 text-slate-600"
-                                                    >
-                                                        Employee Name
-                                                    </th>
-                                                    {/* Earnings group */}
-                                                    <th
-                                                        colSpan={3}
-                                                        className="border-r border-b bg-blue-50 px-3 py-1.5 text-center text-blue-700"
-                                                    >
-                                                        Earnings
-                                                    </th>
-                                                    {/* Deductions group */}
-                                                    <th
-                                                        colSpan={10}
-                                                        className="border-r border-b bg-red-50 px-3 py-1.5 text-center text-red-700"
-                                                    >
-                                                        Deductions{' '}
-                                                        {/* <span className="font-normal text-red-400 normal-case">
-                                                            (2nd cut-off, based
-                                                            on monthly salary)
-                                                        </span> */}
-                                                    </th>
-                                                    {/* Net Pay */}
-                                                    <th
-                                                        rowSpan={2}
-                                                        className="border-r border-b bg-green-50 px-3 py-2 text-center text-green-700"
-                                                    >
-                                                        Net Pay
-                                                    </th>
-                                                    <th
-                                                        rowSpan={2}
-                                                        className="border-b bg-slate-100 px-3 py-2 text-center text-slate-500"
-                                                    >
-                                                        Remarks
-                                                    </th>
-                                                </tr>
-                                                {/* Sub-header row */}
-                                                <tr className="text-[11px] font-medium text-slate-600">
-                                                    {/* Earnings sub-cols */}
-                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center">
-                                                        <div>Basic Pay</div>
-                                                        <div className="text-[10px] font-normal text-blue-400">
-                                                            semi-monthly
-                                                        </div>
-                                                    </th>
-                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center">
-                                                        Allowances
-                                                    </th>
-                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center font-semibold">
-                                                        Gross Pay
-                                                    </th>
-                                                    {/* Deductions sub-cols */}
-                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
-                                                        <div>Absent</div>
-                                                        <div className="text-[10px] font-normal text-orange-400">
-                                                            days / amt
-                                                        </div>
-                                                    </th>
-                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
-                                                        <div>Tardy</div>
-                                                        <div className="text-[10px] font-normal text-orange-400">
-                                                            mins / amt
-                                                        </div>
-                                                    </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
-                                                        GSIS
-                                                    </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
-                                                        PhilHealth
-                                                    </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
-                                                        Pag-IBIG
-                                                    </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
-                                                        Tax
-                                                    </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
-                                                        <div>Org Savings</div>
-                                                        <div className="text-[10px] font-normal text-red-400">
-                                                            both cut-offs
-                                                        </div>
-                                                    </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
-                                                        <div>Org Dues &amp; Loans</div>
-                                                        <div className="text-[10px] font-normal text-red-400">
-                                                            2nd cut-off
-                                                        </div>
-                                                    </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
-                                                        <div>Other Ded.</div>
-                                                        <div className="text-[10px] font-normal text-red-400">
-                                                            water, misc
-                                                        </div>
-                                                    </th>
-                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center font-semibold">
-                                                        Total Ded.
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {currentEmployees.map(
-                                                    (employee, index) => (
-                                                        <tr
-                                                            key={employee.id}
-                                                            className={`border-b transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-blue-50/30`}
-                                                        >
-                                                            <td className="border-r px-2 py-2.5 text-center text-xs text-slate-400">
-                                                                {startIndex +
-                                                                    index +
-                                                                    1}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 font-medium text-slate-800">
-                                                                {employee.name}
-                                                            </td>
-                                                            {/* Earnings */}
-                                                            <td className="border-r px-3 py-2.5 text-right text-slate-700 tabular-nums">
-                                                                {peso(
-                                                                    employee.basicPay,
-                                                                )}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 text-right text-slate-700 tabular-nums">
-                                                                {peso(
-                                                                    employee.allowances,
-                                                                )}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 text-right font-semibold text-blue-700 tabular-nums">
-                                                                {peso(
-                                                                    employee.grossPay,
-                                                                )}
-                                                            </td>
-                                                            {/* Deductions */}
-                                                            {/* Absent */}
-                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
-                                                                {employee.absentDays >
-                                                                0 ? (
-                                                                    <div>
-                                                                        <div className="text-[11px] text-orange-500">
-                                                                            {
-                                                                                employee.absentDays
-                                                                            }{' '}
-                                                                            day
-                                                                            {employee.absentDays !==
-                                                                            1
-                                                                                ? 's'
-                                                                                : ''}
-                                                                        </div>
-                                                                        <div className="font-medium text-orange-600">
-                                                                            {peso(
-                                                                                employee.absentDeduction,
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-slate-400">
-                                                                        —
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            {/* Tardy */}
-                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
-                                                                {employee.lateMinutes >
-                                                                0 ? (
-                                                                    <div>
-                                                                        <div className="text-[11px] text-orange-500">
-                                                                            {
-                                                                                employee.lateMinutes
-                                                                            }{' '}
-                                                                            min
-                                                                        </div>
-                                                                        <div className="font-medium text-orange-600">
-                                                                            {peso(
-                                                                                employee.lateDeduction,
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-slate-400">
-                                                                        —
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
-                                                                {peso(
-                                                                    employee.gsis,
-                                                                )}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
-                                                                {peso(
-                                                                    employee.philhealth,
-                                                                )}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
-                                                                {peso(
-                                                                    employee.pagibig,
-                                                                )}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
-                                                                {peso(
-                                                                    employee.tax,
-                                                                )}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
-                                                                {peso(
-                                                                    employee.internalOrgSavings,
-                                                                )}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
-                                                                {peso(
-                                                                    employee.internalOrgDeductions - employee.internalOrgSavings,
-                                                                )}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
-                                                                {peso(
-                                                                    employee.otherDeductionsMisc,
-                                                                )}
-                                                            </td>
-                                                            <td className="border-r px-3 py-2.5 text-right font-semibold text-red-700 tabular-nums">
-                                                                {peso(
-                                                                    employee.totalDeductions,
-                                                                )}
-                                                            </td>
-                                                            {/* Net Pay */}
-                                                            <td
-                                                                className={`border-r px-3 py-2.5 text-right font-bold tabular-nums ${employee.status === 'low' ? 'text-red-600' : 'text-green-700'}`}
-                                                            >
-                                                                {peso(
-                                                                    employee.netPay,
-                                                                )}
-                                                            </td>
-                                                            <td className="px-3 py-2.5 text-center">
-                                                                <div className="flex flex-col items-center gap-1">
-                                                                    <Badge
-                                                                        variant={
-                                                                            employee.status ===
-                                                                            'ok'
-                                                                                ? 'secondary'
-                                                                                : 'destructive'
-                                                                        }
-                                                                        className={
-                                                                            employee.status ===
-                                                                            'ok'
-                                                                                ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300'
-                                                                                : ''
-                                                                        }
-                                                                    >
-                                                                        {employee.status ===
-                                                                        'ok'
-                                                                            ? 'OK'
-                                                                            : 'Low'}
-                                                                    </Badge>
-                                                                    {employee.floorCutAmount >
-                                                                        0 && (
-                                                                        <TooltipProvider>
-                                                                            <Tooltip>
-                                                                                <TooltipTrigger
-                                                                                    asChild
-                                                                                >
-                                                                                    <span className="inline-flex cursor-help items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                                                                                        <AlertTriangle className="h-2.5 w-2.5" />
-                                                                                        Cut
-                                                                                    </span>
-                                                                                </TooltipTrigger>
-                                                                                <TooltipContent
-                                                                                    side="left"
-                                                                                    className="max-w-xs"
-                                                                                >
-                                                                                    <p className="text-xs">
-                                                                                        <span className="font-semibold">
-                                                                                            ₱
-                                                                                            {employee.floorCutAmount.toLocaleString(
-                                                                                                'en-PH',
-                                                                                                {
-                                                                                                    minimumFractionDigits: 2,
-                                                                                                },
-                                                                                            )}
-                                                                                        </span>{' '}
-                                                                                        in
-                                                                                        deductions
-                                                                                        were
-                                                                                        cut
-                                                                                        because
-                                                                                        applying
-                                                                                        them
-                                                                                        would
-                                                                                        bring
-                                                                                        net
-                                                                                        pay
-                                                                                        below
-                                                                                        the
-                                                                                        minimum
-                                                                                        take-home
-                                                                                        threshold.
-                                                                                    </p>
-                                                                                </TooltipContent>
-                                                                            </Tooltip>
-                                                                        </TooltipProvider>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    ),
-                                                )}
-                                            </tbody>
-                                            {/* Totals row */}
-                                            <tfoot>
-                                                <tr className="border-t-2 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-700">
-                                                    <td
-                                                        colSpan={2}
-                                                        className="border-r px-3 py-2.5 text-left text-xs tracking-wide text-slate-500 uppercase"
-                                                    >
-                                                        Page Totals (
-                                                        {
-                                                            currentEmployees.length
-                                                        }{' '}
-                                                        employees)
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.basicPay,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.allowances,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-blue-700 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.grossPay,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.absentDeduction,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.lateDeduction,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s + e.gsis,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.philhealth,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.pagibig,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s + e.tax,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.internalOrgSavings,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    (e.internalOrgDeductions - e.internalOrgSavings),
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.otherDeductionsMisc,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.totalDeductions,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="border-r px-3 py-2.5 text-right text-green-700 tabular-nums">
-                                                        {peso(
-                                                            currentEmployees.reduce(
-                                                                (s, e) =>
-                                                                    s +
-                                                                    e.netPay,
-                                                                0,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="px-3 py-2.5" />
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-
-                                    <div className="mt-4 flex items-center justify-between">
-                                        <div className="text-sm text-muted-foreground">
-                                            Showing {startIndex + 1} to{' '}
-                                            {Math.min(
-                                                endIndex,
-                                                employeesWithStatus.length,
-                                            )}{' '}
-                                            of {employeesWithStatus.length}{' '}
-                                            entries
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() =>
-                                                    goToPage(currentPage - 1)
-                                                }
-                                                disabled={currentPage === 1}
-                                            >
-                                                <ChevronLeft className="h-4 w-4" />
-                                            </Button>
-                                            {Array.from(
-                                                { length: totalPages },
-                                                (_, i) => i + 1,
-                                            ).map((page) => (
-                                                <Button
-                                                    key={page}
-                                                    variant={
-                                                        currentPage === page
-                                                            ? 'default'
-                                                            : 'outline'
-                                                    }
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        goToPage(page)
-                                                    }
-                                                    className="w-8"
-                                                >
-                                                    {page}
-                                                </Button>
-                                            ))}
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() =>
-                                                    goToPage(currentPage + 1)
-                                                }
-                                                disabled={
-                                                    currentPage === totalPages
-                                                }
-                                            >
-                                                <ChevronRight className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
+                                    <DataTable
+                                        columns={computedColumns}
+                                        data={employeesWithStatus}
+                                        getRowId={(row) => String(row.id)}
+                                        searchColumnId="name"
+                                        searchPlaceholder="Search employee..."
+                                        filters={[
+                                            {
+                                                columnId: 'status',
+                                                title: 'Status',
+                                                options: [
+                                                    { label: 'OK', value: 'ok' },
+                                                    { label: 'Low', value: 'low' },
+                                                ],
+                                            },
+                                        ]}
+                                        defaultPageSize={10}
+                                        striped
+                                        headerGroups={computedHeaderGroups}
+                                        footerRow={(rows) => [
+                                            <td key="label" colSpan={2} className="border-r px-3 py-2.5 text-left text-xs tracking-wide text-slate-500 uppercase">
+                                                Page Totals ({rows.length} employees)
+                                            </td>,
+                                            <td key="basicPay" className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.basicPay, 0))}
+                                            </td>,
+                                            <td key="allowances" className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.allowances, 0))}
+                                            </td>,
+                                            <td key="grossPay" className="border-r px-3 py-2.5 text-right text-blue-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.grossPay, 0))}
+                                            </td>,
+                                            <td key="absent" className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.absentDeduction, 0))}
+                                            </td>,
+                                            <td key="tardy" className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.lateDeduction, 0))}
+                                            </td>,
+                                            <td key="gsis" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.gsis, 0))}
+                                            </td>,
+                                            <td key="philhealth" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.philhealth, 0))}
+                                            </td>,
+                                            <td key="pagibig" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.pagibig, 0))}
+                                            </td>,
+                                            <td key="tax" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.tax, 0))}
+                                            </td>,
+                                            <td key="orgSavings" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.internalOrgSavings, 0))}
+                                            </td>,
+                                            <td key="orgDues" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.internalOrgSecond, 0))}
+                                            </td>,
+                                            <td key="orgLoans" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.internalOrgLoans, 0))}
+                                            </td>,
+                                            <td key="otherDed" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.otherDeductionsMisc, 0))}
+                                            </td>,
+                                            <td key="totalDed" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.totalDeductions, 0))}
+                                            </td>,
+                                            <td key="netPay" className="border-r px-3 py-2.5 text-right text-green-700 tabular-nums">
+                                                {peso(rows.reduce((s, r) => s + r.original.netPay, 0))}
+                                            </td>,
+                                            <td key="remarks" className="px-3 py-2.5" />,
+                                        ]}
+                                    />
 
                                     {flaggedEmployees.length > 0 && (
                                         <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -2399,7 +1904,7 @@ export default function Index({
                                         rate). GSIS, PhilHealth, Pag-IBIG, and
                                         withholding tax are computed based on
                                         the full monthly salary and are deducted
-                                        on the 2nd cut-off only.
+                                        on both cut-offs.
                                     </p>
                                 </>
                             )}
@@ -2421,9 +1926,7 @@ export default function Index({
                     </Card>
                 )}
 
-                {/* ════════════════════════════════════════════════════════════ */}
-                {/* STEP 4 — Floor Check                                        */}
-                {/* ════════════════════════════════════════════════════════════ */}
+                {/* STEP 4 — Floor Check */}
                 {currentStep === 4 && (
                     <Card>
                         <CardContent className="pt-6">
@@ -3405,9 +2908,7 @@ export default function Index({
                     </Card>
                 )}
 
-                {/* ════════════════════════════════════════════════════════════ */}
-                {/* STEP 5 — Post and Finalize                                  */}
-                {/* ════════════════════════════════════════════════════════════ */}
+                {/* STEP 5 — Post and Finalize */}
                 {currentStep === 5 && (
                     <Card>
                         <CardContent className="pt-6">
@@ -3561,7 +3062,6 @@ export default function Index({
                                             <ChevronLeft className="mr-2 h-4 w-4" />{' '}
                                             Back
                                         </Button>
-                                        {/* FIXED BUTTON - removed !processedPeriodId condition */}
                                         <Button
                                             onClick={handleFinalize}
                                             disabled={isFinalizing}
@@ -3591,12 +3091,6 @@ export default function Index({
                                         >
                                             View in Payroll Register
                                         </Button>
-
-                                        {/* CHANGE THIS TO Create Another Payroll Process Transaction?? Purpose is that to make payroll for other Employment Classification */}
-                                        {/* <Button variant="outline">
-                                            <Download className="mr-2 h-4 w-4" />
-                                            Export Payroll
-                                        </Button> */}
                                         <Button
                                             variant="outline"
                                             onClick={() =>
@@ -3614,7 +3108,7 @@ export default function Index({
                     </Card>
                 )}
             </div>
-            {/* ── Step 5: Employee Breakdown Modal ───────────────────────── */}
+            {/* Step 5: Employee Breakdown Modal */}
             {(() => {
                 const raw =
                     selectedBreakdownId !== null
@@ -3712,7 +3206,7 @@ export default function Index({
                         }
                     >
                         <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
-                            {/* ── Header ───────────────────────────────────── */}
+                            {/* Header */}
                             <div className="flex items-start justify-between border-b px-6 pt-5 pb-4">
                                 <div>
                                     <DialogTitle className="text-base font-semibold">
@@ -3878,11 +3372,11 @@ export default function Index({
                                         </>
                                     )}
 
-                                    {/* Org Dues & Loans */}
+                                    {/* Org Savings & Dues */}
                                     {orgItemsWithStatus.length > 0 && (
                                         <>
                                             <p className="mt-3 mb-1 text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
-                                                Org Dues &amp; Loans
+                                                Org Savings &amp; Dues
                                             </p>
                                             {orgItemsWithStatus.map((item) => (
                                                 <div
