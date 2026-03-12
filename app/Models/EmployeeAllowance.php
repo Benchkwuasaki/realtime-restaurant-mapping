@@ -1,5 +1,4 @@
 <?php
-// ── EmployeeAllowance ──────────────────────────────────────────────
 
 namespace App\Models;
 
@@ -10,7 +9,17 @@ class EmployeeAllowance extends Model
 {
     protected $primaryKey = 'employee_allowance_id';
 
-    protected $fillable = ['employee_id', 'allowance_name', 'allowance_amount'];
+    protected $fillable = [
+        'employee_id',
+        'allowance_name',
+        'allowance_amount',
+        'taxable',          // ← snapshot of taxable flag at time of assignment
+    ];
+
+    protected $casts = [
+        'allowance_amount' => 'float',
+        'taxable' => 'boolean',
+    ];
 
     public function employee(): BelongsTo
     {

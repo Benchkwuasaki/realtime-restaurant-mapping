@@ -1314,25 +1314,26 @@ class PayrollProcessingController extends Controller
 
     /**
      * Resolve allowance amounts for an employee.
+     *
+     * Reads from employee_allowances (the snapshot assigned at hire time),
+     * NOT from the master Allowance table. This ensures payroll always uses
+     * the amount HR actually assigned to this specific employee, and historical
+     * payroll is never affected by master rate changes.
      */
     private function resolveAllowances(
         Employee $employee,
-        $mandatoryAllowances,
+        $mandatoryAllowances, // kept for signature compatibility — no longer used
     ): array {
         $pera = 0.0;
         $riceAllowance = 0.0;
         $uniformAllowance = 0.0;
         $taxableAllowancesMonthly = 0.0;
-        $classification = $employee->employment_classification;
 
-        foreach ($mandatoryAllowances as $allowance) {
-            if (! $allowance->isApplicableTo($classification)) {
-                continue;
-            }
+        foreach ($employee->allowances as $ea) {
+            $nameLower = strtolower($ea->allowance_name);
+            $semiAmount = round((float) $ea->allowance_amount / 2, 2);
 
-            $semiAmount = round($allowance->monthly_salary / 2, 2);
-            $nameLower = strtolower($allowance->name);
-
+            // ── Identify the allowance type by name keyword ───────────────────
             if (str_contains($nameLower, 'pera')) {
                 $pera = $semiAmount;
             } elseif (str_contains($nameLower, 'rice')) {
@@ -1341,20 +1342,9 @@ class PayrollProcessingController extends Controller
                 $uniformAllowance = $semiAmount;
             }
 
-            if ($allowance->taxable) {
-                $taxableAllowancesMonthly += $allowance->monthly_salary;
-            }
-        }
-
-        foreach ($employee->allowances as $empAllowance) {
-            /** @var Allowance|null $def */
-            $def = $empAllowance->allowance ?? null;
-            if (! $def) {
-                continue;
-            }
-
-            if ($def->taxable) {
-                $taxableAllowancesMonthly += $def->monthly_salary;
+            // ── Accumulate taxable allowances for withholding tax ─────────────
+            if ($ea->taxable) {
+                $taxableAllowancesMonthly += (float) $ea->allowance_amount;
             }
         }
 

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('employee_id')->constrained('employees', 'employee_id')->onDelete('cascade');
             $table->string('allowance_name');
             $table->decimal('allowance_amount', 10, 2);
+            $table->boolean('taxable')->default(false);
             $table->timestamps();
         });
     }

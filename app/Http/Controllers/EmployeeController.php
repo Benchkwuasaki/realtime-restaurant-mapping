@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Allowance;
 use App\Models\EligibilityInformation;
 use App\Models\Employee;
 use App\Models\EmployeeAddress;
+use App\Models\EmployeeAllowance;
 use App\Models\EmployeeBasicInfo;
 use App\Models\EmployeeEducation;
 use App\Models\EmployeeUploadedFile;
@@ -87,9 +89,7 @@ class EmployeeController extends Controller
                             : null,
                     ] : null,
                 ]),
-            'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')
-                ->orderBy('step')
-                ->get(['salary_grade_step_id', 'salary_grade', 'step', 'monthly_salary']),
+            'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),
             'employmentClassifications' => \App\Models\EmploymentClassification::orderBy('name')->get(['id', 'name', 'description']),
             'roles' => Role::orderBy('name')->get(['id', 'name']),
         ]);
@@ -255,6 +255,16 @@ class EmployeeController extends Controller
             ]);
 
             $user->syncRoles($request->roles);
+
+            // ── Auto-assign mandatory allowances ──────────────────────────────
+            Allowance::where('mandatory', true)
+                ->get()
+                ->filter(fn ($a) => $a->isApplicableTo($request->employment_classification))
+                ->each(fn ($a) => $employee->allowances()->create([
+                    'allowance_name' => $a->name,
+                    'allowance_amount' => $a->monthly_salary,
+                    'taxable' => $a->taxable,
+                ]));
         });
 
         $this->activityLogService->createLog([
@@ -310,9 +320,11 @@ class EmployeeController extends Controller
                 'basic_info' => $employee->basicInfo,
                 'item' => $employee->item,
                 'salary_grade_step' => $employee->salaryGradeStep,
-                'allowances' => $employee->allowances->map(fn ($a) => [
-                    'allowance_type' => $a->name,
-                    'amount' => $a->monthly_salary,
+                'allowances' => $employee->allowances->map(fn ($ea) => [
+                    'employee_allowance_id' => $ea->employee_allowance_id,
+                    'allowance_type' => $ea->allowance_name,
+                    'amount' => $ea->allowance_amount,
+                    'taxable' => (bool) $ea->taxable,
                 ]),
                 'eligibility_information' => $employee->eligibilityInformation,
                 'government_accounts' => $employee->governmentAccounts,
@@ -353,7 +365,6 @@ class EmployeeController extends Controller
                 'position.division',
                 'position.unit',
                 'employee',
-
             ])
                 ->get()
                 ->map(fn (Item $item) => [
@@ -373,10 +384,11 @@ class EmployeeController extends Controller
                             : null,
                     ] : null,
                 ]),
-
             'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')
                 ->orderBy('step')
                 ->get(['salary_grade_step_id', 'salary_grade', 'step', 'monthly_salary']),
+            'masterAllowances' => Allowance::orderBy('name')
+                ->get(['id', 'name', 'monthly_salary', 'taxable']),
         ]);
     }
 
@@ -856,6 +868,47 @@ class EmployeeController extends Controller
         $serviceRecord->delete();
 
         return back()->with('success', 'Service record deleted.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Allowances
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function storeAllowance(Request $request, Employee $employee)
+    {
+        $validated = $request->validate([
+            'allowance_name' => 'required|string|max:255',
+            'allowance_amount' => 'required|numeric|min:0',
+            'taxable' => 'required|boolean',
+        ]);
+
+        $employee->allowances()->create($validated);
+
+        return back()->with('success', 'Allowance added.');
+    }
+
+    public function updateAllowance(Request $request, Employee $employee, EmployeeAllowance $allowance)
+    {
+        abort_if($allowance->employee_id !== $employee->employee_id, 403);
+
+        $validated = $request->validate([
+            'allowance_name' => 'required|string|max:255',
+            'allowance_amount' => 'required|numeric|min:0',
+            'taxable' => 'required|boolean',
+        ]);
+
+        $allowance->update($validated);
+
+        return back()->with('success', 'Allowance updated.');
+    }
+
+    public function destroyAllowance(Employee $employee, EmployeeAllowance $allowance)
+    {
+        abort_if($allowance->employee_id !== $employee->employee_id, 403);
+
+        $allowance->delete();
+
+        return back()->with('success', 'Allowance removed.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────

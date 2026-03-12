@@ -30,7 +30,7 @@ import {
     Timer,
     ClipboardList,
 } from 'lucide-react';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import React from 'react';
 import { route } from 'ziggy-js';
 import { toast } from 'sonner';
@@ -182,9 +182,17 @@ interface EligibilityInfo {
     eligibility_name: string;
     year_passed?: string;
 }
+interface MasterAllowance {
+    id: number;
+    name: string;
+    monthly_salary: number;
+    taxable: boolean;
+}
 interface Allowance {
+    employee_allowance_id: number;
     allowance_type: string;
     amount: number;
+    taxable: boolean;
 }
 interface UploadedFile {
     id: number;
@@ -242,6 +250,7 @@ interface Props {
     employee: Employee;
     items: Item[];
     salaryGradeSteps: SalaryGradeStep[];
+    masterAllowances: MasterAllowance[];
 }
 
 // ─── Position group ───────────────────────────────────────────────────────────
@@ -1495,18 +1504,222 @@ function EmploymentDetailsTab({
     );
 }
 
+// ─── Allowance Edit / Add Dialog ─────────────────────────────────────────────
+
+function AllowanceEditDialog({
+    employee,
+    open,
+    target,
+    onClose,
+    masterAllowances,
+}: {
+    employee: Employee;
+    open: boolean;
+    target: Allowance | null;
+    onClose: () => void;
+    masterAllowances: MasterAllowance[];
+}) {
+    const isEdit = target !== null;
+
+    const [form, setForm] = useState({
+        selected_master_id: '',
+        allowance_name: target?.allowance_type ?? '',
+        allowance_amount: target?.amount?.toString() ?? '',
+        taxable: target?.taxable ? 'true' : 'false',
+    });
+
+    // Reset when dialog opens
+    useEffect(() => {
+        setForm({
+            selected_master_id: '',
+            allowance_name: target?.allowance_type ?? '',
+            allowance_amount: target?.amount?.toString() ?? '',
+            taxable: target?.taxable ? 'true' : 'false',
+        });
+    }, [target, open]);
+
+    // When a master allowance is selected, auto-fill name, amount, taxable
+    const handleMasterSelect = (id: string) => {
+        const master = masterAllowances.find((a) => a.id.toString() === id);
+        if (!master) return;
+        setForm({
+            selected_master_id: id,
+            allowance_name: master.name,
+            allowance_amount: master.monthly_salary.toString(),
+            taxable: master.taxable ? 'true' : 'false',
+        });
+    };
+
+    const handleSave = () => {
+        const payload = {
+            allowance_name: form.allowance_name,
+            allowance_amount: parseFloat(form.allowance_amount) || 0,
+            taxable: form.taxable === 'true',
+        };
+
+        if (isEdit) {
+            router.put(
+                route('employee.allowance.update', {
+                    employee: employee.employee_id,
+                    allowance: target!.employee_allowance_id,
+                }),
+                payload,
+                { preserveScroll: true, onSuccess: onClose },
+            );
+        } else {
+            router.post(
+                route('employee.allowance.store', {
+                    employee: employee.employee_id,
+                }),
+                payload,
+                { preserveScroll: true, onSuccess: onClose },
+            );
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+            <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                    <DialogTitle>
+                        {isEdit ? 'Edit Allowance' : 'Add Allowance'}
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                    {!isEdit && (
+                        <div>
+                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                Select from Master List
+                            </Label>
+                            <Select
+                                value={form.selected_master_id}
+                                onValueChange={handleMasterSelect}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Choose an allowance…" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-60">
+                                    {masterAllowances.map((a) => (
+                                        <SelectItem
+                                            key={a.id}
+                                            value={a.id.toString()}
+                                        >
+                                            {a.name} — ₱
+                                            {Number(
+                                                a.monthly_salary,
+                                            ).toLocaleString('en-PH', {
+                                                minimumFractionDigits: 2,
+                                            })}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="mt-1.5 text-xs text-muted-foreground">
+                                Selecting will auto-fill the fields below.
+                            </p>
+                        </div>
+                    )}
+
+                    <div>
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            Allowance Name
+                        </Label>
+                        <Input
+                            value={form.allowance_name}
+                            onChange={(e) =>
+                                setForm((f) => ({
+                                    ...f,
+                                    allowance_name: e.target.value,
+                                }))
+                            }
+                            placeholder="e.g. PERA"
+                        />
+                    </div>
+
+                    <div>
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            Amount (Monthly)
+                        </Label>
+                        <Input
+                            type="number"
+                            value={form.allowance_amount}
+                            onChange={(e) =>
+                                setForm((f) => ({
+                                    ...f,
+                                    allowance_amount: e.target.value,
+                                }))
+                            }
+                            placeholder="0.00"
+                        />
+                        <p className="mt-1.5 text-xs text-muted-foreground">
+                            Semi-monthly in payroll: ₱
+                            {(
+                                parseFloat(form.allowance_amount || '0') / 2
+                            ).toLocaleString('en-PH', {
+                                minimumFractionDigits: 2,
+                            })}
+                        </p>
+                    </div>
+
+                    <div>
+                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            Taxable?
+                        </Label>
+                        <Select
+                            value={form.taxable}
+                            onValueChange={(v) =>
+                                setForm((f) => ({ ...f, taxable: v }))
+                            }
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="false">
+                                    Non-Taxable
+                                </SelectItem>
+                                <SelectItem value="true">Taxable</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleSave}
+                        disabled={
+                            !form.allowance_name || !form.allowance_amount
+                        }
+                    >
+                        <Save className="mr-1.5 h-3.5 w-3.5" />
+                        {isEdit ? 'Save Changes' : 'Add Allowance'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 // ─── Compensation Tab ─────────────────────────────────────────────────────────
 
 function CompensationTab({
     employee,
     salaryGradeSteps,
+    masterAllowances,
 }: {
     employee: Employee;
     salaryGradeSteps: SalaryGradeStep[];
+    masterAllowances: MasterAllowance[];
 }) {
     const sgs = employee.salary_grade_step;
     const allowances = employee.allowances ?? [];
     const [salaryEditOpen, setSalaryEditOpen] = useState(false);
+    const [allowanceDialog, setAllowanceDialog] = useState<{
+        open: boolean;
+        target: Allowance | null;
+    }>({ open: false, target: null });
 
     return (
         <div className="space-y-4 p-3 sm:p-5">
@@ -1563,21 +1776,40 @@ function CompensationTab({
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-border bg-card">
-                    <div className="border-b border-border px-4 py-3.5 sm:px-5">
+                    <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
                         <span className="text-sm font-bold text-foreground">
                             Allowances
                         </span>
+                        <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() =>
+                                setAllowanceDialog({ open: true, target: null })
+                            }
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                        </Button>
                     </div>
                     {allowances.length > 0 ? (
                         <div className="divide-y divide-border">
-                            {allowances.map((a, i) => (
+                            {allowances.map((a) => (
                                 <div
-                                    key={i}
+                                    key={a.employee_allowance_id}
                                     className="flex items-center justify-between px-4 py-3 sm:px-5"
                                 >
-                                    <span className="text-sm text-muted-foreground">
-                                        {a.allowance_type}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">
+                                            {a.allowance_type}
+                                        </span>
+                                        {a.taxable && (
+                                            <Badge
+                                                variant="outline"
+                                                className="border-amber-200/60 bg-amber-100 text-[10px] text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/60 dark:text-amber-400"
+                                            >
+                                                Taxable
+                                            </Badge>
+                                        )}
+                                    </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm font-bold">
                                             ₱
@@ -1592,6 +1824,39 @@ function CompensationTab({
                                         >
                                             Present
                                         </Badge>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            onClick={() =>
+                                                setAllowanceDialog({
+                                                    open: true,
+                                                    target: a,
+                                                })
+                                            }
+                                        >
+                                            <Pen className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            className="text-destructive hover:text-destructive"
+                                            onClick={() =>
+                                                router.delete(
+                                                    route(
+                                                        'employee.allowance.destroy',
+                                                        {
+                                                            employee:
+                                                                employee.employee_id,
+                                                            allowance:
+                                                                a.employee_allowance_id,
+                                                        },
+                                                    ),
+                                                    { preserveScroll: true },
+                                                )
+                                            }
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </Button>
                                     </div>
                                 </div>
                             ))}
@@ -1620,6 +1885,15 @@ function CompensationTab({
                 open={salaryEditOpen}
                 onClose={() => setSalaryEditOpen(false)}
                 salaryGradeSteps={salaryGradeSteps}
+            />
+            <AllowanceEditDialog
+                employee={employee}
+                open={allowanceDialog.open}
+                target={allowanceDialog.target}
+                onClose={() =>
+                    setAllowanceDialog({ open: false, target: null })
+                }
+                masterAllowances={masterAllowances}
             />
         </div>
     );
@@ -4850,6 +5124,7 @@ export default function ShowEmployee({
     employee,
     items,
     salaryGradeSteps,
+    masterAllowances,
 }: Props) {
     const basic = employee.basic_info;
     const position = employee.item?.position;
@@ -5050,6 +5325,7 @@ export default function ShowEmployee({
                             <CompensationTab
                                 employee={employee}
                                 salaryGradeSteps={salaryGradeSteps}
+                                masterAllowances={masterAllowances}
                             />
                         </TabsContent>
                         <TabsContent value="leave" className="mt-0">
