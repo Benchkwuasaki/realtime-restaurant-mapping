@@ -32,6 +32,7 @@ use App\Http\Controllers\OtherDeductionEntryController;
 use App\Http\Controllers\PayrollDeductionSettingsController;
 use App\Http\Controllers\PayrollProcessingController;
 use App\Http\Controllers\PayrollRegisterController;
+// Leave
 use App\Http\Controllers\PayrollReportController;
 use App\Http\Controllers\PaySlipGenerationController;
 use App\Http\Controllers\PositionController;
@@ -39,12 +40,12 @@ use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\SalaryGradeTableController;
 use App\Http\Controllers\UnitController;
-// Leave
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WhereaboutSlipController;
 use Illuminate\Support\Facades\Route;
-// reports and analytics
+// Leave
 use Inertia\Inertia;
+// reports and analytics
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
@@ -244,8 +245,6 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     /*
     |--------------------------------------------------------------------------
     | Attendance - Recognition Logs
-    | ⚠️ TODO: Doc 3 uses RecognitionLogController, Doc 4 uses AttendanceLogController
-    |          for this same route. Confirm which is correct and remove the other.
     |--------------------------------------------------------------------------
     */
     Route::prefix('attendance/recognition-logs')->name('recognition-logs.')->group(function () {
@@ -268,19 +267,18 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Attendance - Records (from main - NEW)
+    | Attendance - Records (computed daily attendance)
     |--------------------------------------------------------------------------
     */
+    // Attendance Records
     Route::get('attendance/records', [AttendanceRecordController::class, 'index'])
         ->name('attendance-record.index');
-    Route::post('attendance/records/recompute', [AttendanceRecordController::class, 'recompute'])
-        ->name('attendance-record.recompute');
     Route::post('attendance/records/sync-absent', [AttendanceRecordController::class, 'syncAbsent'])
         ->name('attendance-record.sync-absent');
 
     /*
     |--------------------------------------------------------------------------
-    | Attendance - Settings (from main - NEW)
+    | Attendance - Settings
     |--------------------------------------------------------------------------
     */
     Route::get('attendance/settings', [AttendanceSettingController::class, 'index'])

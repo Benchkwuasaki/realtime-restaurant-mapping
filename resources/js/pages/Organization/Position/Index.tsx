@@ -83,7 +83,7 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
                         <Users className="h-4 w-4 text-primary" />
                         <span>{position?.position_name}</span>
                         <Badge
-                            variant="secondary"
+                            variant="outline"
                             className="text-xs font-normal"
                         >
                             {employees.length} / {position?.total_slots ?? '?'}{' '}
