@@ -33,9 +33,11 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
-import { ScrollArea } from "@/components/ui/scroll-area"
+
+import { OrganizationDialog, type InternalOrgType } from "./components/OrganizationDialog"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,7 +60,8 @@ interface InternalOrganization {
     internal_organization_id: string
     code: string
     name: string
-    type: "Union" | "Cooperative" | "Association"
+    internal_org_type_id: number
+    org_type?: InternalOrgType       // eager-loaded relation
     head: string
     payroll_deduction_linked: boolean
     status: boolean
@@ -70,6 +73,7 @@ interface InternalOrganization {
 interface Props {
     organization: InternalOrganization
     availableEmployees: AvailableEmployee[]
+    orgTypes: InternalOrgType[]
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -82,10 +86,17 @@ function formatDate(dateString: string) {
     })
 }
 
-const typeColorMap: Record<string, string> = {
+// Fallback palette for unknown / dynamically added types
+const knownTypeColors: Record<string, string> = {
     Union: "bg-primary/10 text-primary border-primary/20",
     Cooperative: "bg-chart-2/10 text-chart-2 border-chart-2/20",
     Association: "bg-chart-3/10 text-chart-3 border-chart-3/20",
+}
+const fallbackTypeColor = "bg-muted text-muted-foreground border-border"
+
+function getTypeColor(typeName?: string) {
+    if (!typeName) return fallbackTypeColor
+    return knownTypeColors[typeName] ?? fallbackTypeColor
 }
 
 // ─── Info Row ──────────────────────────────────────────────────────────────────
@@ -119,12 +130,10 @@ interface MobileMemberCardProps {
 function MobileMemberCard({ row }: MobileMemberCardProps) {
     return (
         <div className="flex flex-col bg-background overflow-hidden">
-            {/* ── Card Body ── */}
             <div className="px-4 pt-4 pb-5 space-y-2">
                 <span className="font-semibold text-base text-foreground">
                     {row.name}
                 </span>
-
                 <div className="flex flex-col gap-0.5">
                     {row.position && (
                         <span className="text-xs text-muted-foreground">
@@ -134,10 +143,8 @@ function MobileMemberCard({ row }: MobileMemberCardProps) {
                     )}
                 </div>
             </div>
-
-            {/* ── Card Footer ── */}
             <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
-                <Badge variant={row.status ? "default" : "secondary"} className="text-xs">
+                <Badge variant={row.status ? "default" : "destructive"} className="text-xs">
                     {row.status ? "Active" : "Inactive"}
                 </Badge>
             </div>
@@ -205,7 +212,7 @@ const memberColumns: ColumnDef<OrganizationMember>[] = [
         cell: ({ row }) => {
             const isActive: boolean = row.getValue("status")
             return (
-                <Badge variant={isActive ? "default" : "secondary"}>
+                <Badge variant={isActive ? "default" : "destructive"}>
                     {isActive ? "Active" : "Inactive"}
                 </Badge>
             )
@@ -437,9 +444,10 @@ function DeleteDialog({ open, onOpenChange, organization }: DeleteDialogProps) {
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-export default function Show({ organization, availableEmployees }: Props) {
+export default function Show({ organization, availableEmployees, orgTypes }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false)
+    const [editDialogOpen, setEditDialogOpen] = useState(false)
 
     const { patch, processing } = useForm()
 
@@ -454,8 +462,8 @@ export default function Show({ organization, availableEmployees }: Props) {
         })
     }
 
-    const typeClass =
-        typeColorMap[organization.type] ?? "bg-muted text-muted-foreground border-border"
+    const typeName = organization.org_type?.internal_org_type
+    const typeClass = getTypeColor(typeName)
     const members = organization.members ?? []
 
     return (
@@ -502,9 +510,7 @@ export default function Show({ organization, availableEmployees }: Props) {
                             variant="outline"
                             size="sm"
                             className="flex-1 text-xs"
-                            onClick={() =>
-                                router.visit(route("internal-organization.edit", organization.internal_organization_id))
-                            }
+                            onClick={() => setEditDialogOpen(true)}
                         >
                             <Pencil className="mr-1.5 h-3 w-3" />
                             Edit
@@ -527,7 +533,7 @@ export default function Show({ organization, availableEmployees }: Props) {
 
                     <InfoRow label="Type" icon={<Tag className="h-3 w-3" />}>
                         <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${typeClass}`}>
-                            {organization.type}
+                            {typeName ?? "—"}
                         </span>
                     </InfoRow>
 
@@ -565,13 +571,13 @@ export default function Show({ organization, availableEmployees }: Props) {
 
                     <InfoRow label="Status" icon={<CheckCircle2 className="h-3 w-3" />}>
                         <Button
-                            variant="outline"
+                            variant={organization.status ? "default" : "destructive"}
                             size="sm"
                             className="h-6 text-xs"
                             onClick={handleToggleStatus}
                             disabled={processing}
                         >
-                            {organization.status ? "Deactivate" : "Activate"}
+                            {organization.status ? "Activate" : "Deactivate"}
                         </Button>
                     </InfoRow>
 
@@ -594,7 +600,7 @@ export default function Show({ organization, availableEmployees }: Props) {
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="outline" className="text-xs">
                                 {members.length} {members.length === 1 ? "member" : "members"}
                             </Badge>
                             <Button
@@ -618,6 +624,14 @@ export default function Show({ organization, availableEmployees }: Props) {
                     />
                 </main>
             </div>
+
+            {/* ── Edit Organization Modal ─────────────────────────────────────────── */}
+            <OrganizationDialog
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+                organization={organization}
+                orgTypes={orgTypes}
+            />
 
             <AddMemberDialog
                 open={addMemberDialogOpen}

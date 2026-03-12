@@ -116,7 +116,7 @@ function MobileUnitCard({ row, onEdit }: MobileUnitCardProps) {
                         <span className="font-semibold text-base text-foreground">
                             {row.unit_name}
                         </span>
-                        <Badge variant="default" className="font-mono text-xs shrink-0">
+                        <Badge variant="outline" className="font-mono text-xs shrink-0">
                             {row.unit_acronym}
                         </Badge>
                     </div>
@@ -221,7 +221,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Unit>[
                 <DataTableColumnHeader column={column} title="Acronym" />
             ),
             cell: ({ row }) => (
-                <Badge variant="default" className="font-mono text-xs">
+                <Badge variant="outline" className="font-mono text-xs">
                     {row.getValue("unit_acronym")}
                 </Badge>
             ),

@@ -9,6 +9,10 @@ import { configureEcho } from '@laravel/echo-react';
 
 configureEcho({
     broadcaster: 'reverb',
+});
+
+configureEcho({
+    broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY,
     wsHost: import.meta.env.VITE_REVERB_HOST,
     wsPort: Number(import.meta.env.VITE_REVERB_PORT) || 8080,
@@ -46,7 +50,18 @@ createInertiaApp({
 // This will set light / dark mode on load...
 initializeTheme();
 
-
+// Employee Avatar error
 // npm install react-easy-crop 
+
+// For Attendance Logs
 // npm install reverb
-// php artisan reverb: start
+// php artisan install:broadcasting
+// composer require laravel/reverb
+// npm install --save-dev laravel-echo pusher-js
+// php artisan reverb:start
+
+
+// For document upload error
+// C:\php\php.ini
+// upload_max_filesize = 25M
+// post_max_size = 30M

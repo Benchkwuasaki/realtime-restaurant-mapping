@@ -169,6 +169,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{internalOrganization}/toggle-status', [InternalOrganizationController::class, 'toggleStatus'])->name('toggle-status');
         Route::delete('/{internalOrganization}', [InternalOrganizationController::class, 'destroy'])->name('destroy');
         Route::post('/{internalOrganization}/members', [InternalOrganizationController::class, 'storeMembers'])->name('members.store');
+        Route::post('/org-types', [InternalOrganizationController::class, 'storeOrgType'])->name('org-type.store');
     });
 
     /*

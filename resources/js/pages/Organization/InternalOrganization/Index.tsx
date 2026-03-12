@@ -1,403 +1,46 @@
-import { Head, router, useForm } from "@inertiajs/react"
+import { Head, router } from "@inertiajs/react"
 import { Building2, CheckCircle2, XCircle } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { route } from "ziggy-js"
 
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { StatCard } from "@/components/shared/stat-card"
-import { Button } from "@/components/ui/button"
-
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
 
 import { columns } from "./components/columns"
+import { OrganizationDialog, type InternalOrgType } from "./components/OrganizationDialog"
 import { type InternalOrganization } from "./data/schema"
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
-type OrganizationType = "Union" | "Cooperative" | "Association"
-
-// ─── Breadcrumbs ───────────────────────────────────────────────────────────────
+// ─── Breadcrumbs ──────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
   { title: "Internal Organizations", href: route("internal-organization.index") },
 ]
 
-// ─── Add Organization Dialog ───────────────────────────────────────────────────
-
-interface AddOrganizationDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}
-
-
-
-function AddOrganizationDialog({ open, onOpenChange }: AddOrganizationDialogProps) {
-  const { data, setData, post, processing, errors, reset } = useForm({
-    code: "",
-    name: "",
-    type: "" as OrganizationType | "",
-    head: "",
-    payroll_deduction_linked: false,
-    status: true,
-  })
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    post(route("internal-organization.store"), {
-      preserveScroll: true,
-      onSuccess: () => {
-        reset()
-        onOpenChange(false)
-      },
-    })
-  }
-
-  function handleOpenChange(value: boolean) {
-    if (!value) reset()
-    onOpenChange(value)
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Add Organization</DialogTitle>
-          <DialogDescription>
-            Fill in the details below to create a new internal organization.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form id="add-organization-form" onSubmit={handleSubmit} className="grid gap-4 py-2">
-
-          {/* ── Row: Code + Type ─────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="code">Code</Label>
-              <Input
-                id="code"
-                value={data.code}
-                onChange={(e) => setData("code", e.target.value)}
-                placeholder="e.g. ORG-001"
-              />
-              {errors.code && (
-                <p className="text-destructive text-xs">{errors.code}</p>
-              )}
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label htmlFor="type">Type</Label>
-              <Select
-                value={data.type}
-                onValueChange={(v) => setData("type", v as OrganizationType)}
-              >
-                <SelectTrigger id="type">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Union">Union</SelectItem>
-                  <SelectItem value="Cooperative">Cooperative</SelectItem>
-                  <SelectItem value="Association">Association</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.type && (
-                <p className="text-destructive text-xs">{errors.type}</p>
-              )}
-            </div>
-          </div>
-
-          {/* ── Name ─────────────────────────────────────────────────────── */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              value={data.name}
-              onChange={(e) => setData("name", e.target.value)}
-              placeholder="Organization name"
-            />
-            {errors.name && (
-              <p className="text-destructive text-xs">{errors.name}</p>
-            )}
-          </div>
-
-          {/* ── Head ─────────────────────────────────────────────────────── */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="head">Head</Label>
-            <Input
-              id="head"
-              value={data.head}
-              onChange={(e) => setData("head", e.target.value)}
-              placeholder="Name of the organization head"
-            />
-            {errors.head && (
-              <p className="text-destructive text-xs">{errors.head}</p>
-            )}
-          </div>
-
-          {/* ── Toggles ───────────────────────────────────────────────────── */}
-          <div className="grid gap-3">
-            <div className="bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3">
-              <div className="grid gap-0.5">
-                <Label htmlFor="payroll_deduction_linked" className="cursor-pointer text-sm font-medium">
-                  Payroll Deduction Linked
-                </Label>
-                <p className="text-muted-foreground text-xs">
-                  Link this organization to payroll deductions
-                </p>
-              </div>
-              <Switch
-                id="payroll_deduction_linked"
-                checked={data.payroll_deduction_linked}
-                onCheckedChange={(checked) => setData("payroll_deduction_linked", checked)}
-              />
-            </div>
-
-            <div className="bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3">
-              <div className="grid gap-0.5">
-                <Label htmlFor="status" className="cursor-pointer text-sm font-medium">
-                  Active
-                </Label>
-                <p className="text-muted-foreground text-xs">
-                  Set the organization as active or inactive
-                </p>
-              </div>
-              <Switch
-                id="status"
-                checked={data.status}
-                onCheckedChange={(checked) => setData("status", checked)}
-              />
-            </div>
-          </div>
-        </form>
-
-        <DialogFooter showCloseButton>
-          <Button
-            type="submit"
-            form="add-organization-form"
-            disabled={processing}
-          >
-            {processing ? "Saving..." : "Save Organization"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// ─── Edit Organization Dialog ──────────────────────────────────────────────────
-
-interface EditOrganizationDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  organization: InternalOrganization | null
-}
-
-function EditOrganizationDialog({ open, onOpenChange, organization }: EditOrganizationDialogProps) {
-  const { data, setData, put, processing, errors, reset } = useForm({
-    code: "",
-    name: "",
-    type: "" as OrganizationType | "",
-    head: "",
-    payroll_deduction_linked: false,
-    status: true,
-  })
-
-  useEffect(() => {
-    if (organization) {
-      setData({
-        code: organization.code ?? "",
-        name: organization.name ?? "",
-        type: (organization.type ?? "") as OrganizationType | "",
-        head: organization.head ?? "",
-        payroll_deduction_linked: organization.payroll_deduction_linked ?? false,
-        status: organization.status ?? true,
-      })
-    }
-  }, [organization])
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!organization) return
-    put(route("internal-organization.update", organization.internal_organization_id), {
-      preserveScroll: true,
-      onSuccess: () => {
-        reset()
-        onOpenChange(false)
-      },
-    })
-  }
-
-  function handleOpenChange(value: boolean) {
-    if (!value) reset()
-    onOpenChange(value)
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Edit Organization</DialogTitle>
-          <DialogDescription>
-            Update the details for this internal organization.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form id="edit-organization-form" onSubmit={handleSubmit} className="grid gap-4 py-2">
-
-          {/* ── Row: Code + Type ─────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="edit-code">Code</Label>
-              <Input
-                id="edit-code"
-                value={data.code}
-                onChange={(e) => setData("code", e.target.value)}
-                placeholder="e.g. ORG-001"
-              />
-              {errors.code && (
-                <p className="text-destructive text-xs">{errors.code}</p>
-              )}
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label htmlFor="edit-type">Type</Label>
-              <Select
-                value={data.type}
-                onValueChange={(v) => setData("type", v as OrganizationType)}
-              >
-                <SelectTrigger id="edit-type">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Union">Union</SelectItem>
-                  <SelectItem value="Cooperative">Cooperative</SelectItem>
-                  <SelectItem value="Association">Association</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.type && (
-                <p className="text-destructive text-xs">{errors.type}</p>
-              )}
-            </div>
-          </div>
-
-          {/* ── Name ─────────────────────────────────────────────────────── */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="edit-name">Name</Label>
-            <Input
-              id="edit-name"
-              value={data.name}
-              onChange={(e) => setData("name", e.target.value)}
-              placeholder="Organization name"
-            />
-            {errors.name && (
-              <p className="text-destructive text-xs">{errors.name}</p>
-            )}
-          </div>
-
-          {/* ── Head ─────────────────────────────────────────────────────── */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="edit-head">Head</Label>
-            <Input
-              id="edit-head"
-              value={data.head}
-              onChange={(e) => setData("head", e.target.value)}
-              placeholder="Name of the organization head"
-            />
-            {errors.head && (
-              <p className="text-destructive text-xs">{errors.head}</p>
-            )}
-          </div>
-
-          {/* ── Toggles ───────────────────────────────────────────────────── */}
-          <div className="grid gap-3">
-            <div className="bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3">
-              <div className="grid gap-0.5">
-                <Label htmlFor="edit-payroll" className="cursor-pointer text-sm font-medium">
-                  Payroll Deduction Linked
-                </Label>
-                <p className="text-muted-foreground text-xs">
-                  Link this organization to payroll deductions
-                </p>
-              </div>
-              <Switch
-                id="edit-payroll"
-                checked={data.payroll_deduction_linked}
-                onCheckedChange={(checked) => setData("payroll_deduction_linked", checked)}
-              />
-            </div>
-
-            <div className="bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3">
-              <div className="grid gap-0.5">
-                <Label htmlFor="edit-status" className="cursor-pointer text-sm font-medium">
-                  Active
-                </Label>
-                <p className="text-muted-foreground text-xs">
-                  Set the organization as active or inactive
-                </p>
-              </div>
-              <Switch
-                id="edit-status"
-                checked={data.status}
-                onCheckedChange={(checked) => setData("status", checked)}
-              />
-            </div>
-          </div>
-        </form>
-
-        <DialogFooter showCloseButton>
-          <Button
-            type="submit"
-            form="edit-organization-form"
-            disabled={processing}
-          >
-            {processing ? "Saving..." : "Update Organization"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// ─── Props ─────────────────────────────────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
   organizations: InternalOrganization[]
+  orgTypes: InternalOrgType[]
   totalOrganizations: number
   activeOrganizations: number
   inactiveOrganizations: number
 }
 
-// ─── Page ──────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Index({
   organizations,
+  orgTypes,
   totalOrganizations,
   activeOrganizations,
   inactiveOrganizations,
 }: Props) {
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [editingOrg, setEditingOrg] = useState<InternalOrganization | null>(null)
+  const [dialogOrg, setDialogOrg] = useState<InternalOrganization | null | undefined>(undefined)
 
   const tableColumns = useMemo(
-    () => columns({ onEdit: (org) => setEditingOrg(org) }),
+    () => columns({ onEdit: (org) => setDialogOrg(org) }),
     []
   )
 
@@ -427,7 +70,8 @@ export default function Index({
             icon={<XCircle className="size-4 text-destructive" />}
           />
         </div>
-        {/* ── Table ────────────────────────────────────────────────────────── */}
+
+        {/* ── Table ──────────────────────────────────────────────────────── */}
         <DataTable
           data={organizations}
           columns={tableColumns}
@@ -440,7 +84,7 @@ export default function Index({
           searchPlaceholder="Search organizations..."
           addButton={{
             label: "Add Organization",
-            onClick: () => setAddDialogOpen(true),
+            onClick: () => setDialogOrg(null),
           }}
           bulkDelete={{
             route: route("internal-organization.bulk-destroy"),
@@ -450,17 +94,12 @@ export default function Index({
         />
       </div>
 
-      {/* ── Add Organization Modal ──────────────────────────────────────────── */}
-      <AddOrganizationDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-      />
-
-      {/* ── Edit Organization Modal ─────────────────────────────────────────── */}
-      <EditOrganizationDialog
-        open={!!editingOrg}
-        onOpenChange={(open) => { if (!open) setEditingOrg(null) }}
-        organization={editingOrg}
+      {/* ── Organization Modal (Add / Edit) ────────────────────────────────── */}
+      <OrganizationDialog
+        open={dialogOrg !== undefined}
+        onOpenChange={(open) => { if (!open) setDialogOrg(undefined) }}
+        organization={dialogOrg}
+        orgTypes={orgTypes}
       />
     </AppLayout>
   )

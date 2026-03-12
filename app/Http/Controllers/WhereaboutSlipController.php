@@ -58,9 +58,9 @@ class WhereaboutSlipController extends Controller
             ->values();
 
         $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'attendance',
-            'activity' => "Viewed whereabout slip management",
+            'user_id'     => Auth::id(),
+            'module'      => 'attendance',
+            'description' => 'Viewed whereabout slip management',
         ]);
 
         return Inertia::render('Attendance/WhereaboutSlip/Index', [
@@ -87,9 +87,9 @@ class WhereaboutSlipController extends Controller
         WhereaboutSlip::create($validated);
 
         $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'attendance',
-            'activity' => "Created whereabout slip for {$employee->basicInfo->full_name}",
+            'user_id'     => Auth::id(),
+            'module'      => 'attendance',
+            'description' => "Created whereabout slip for {$employee->basicInfo->full_name}",
         ]);
 
         return back()->with('success', 'Whereabout slip created successfully.');

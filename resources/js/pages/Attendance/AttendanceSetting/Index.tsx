@@ -1,13 +1,12 @@
 import { Head, router, useForm } from "@inertiajs/react"
 import { useState } from "react"
 import { route } from "ziggy-js"
-import { BadgeCheck, Pencil, Plus, Shield, Trash2 } from "lucide-react"
+import { BadgeCheck, Pencil, Plus, Shield, Trash2, Star } from "lucide-react"
 
 import AppLayout from "@/layouts/app-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import {
     Dialog,
     DialogContent,
@@ -48,10 +47,10 @@ const WINDOW_OPTIONS = [0, 15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 420, 480
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: "Attendance", href: "#" },
-    { title: "Settings",   href: route("attendance-settings.index") },
+    { title: "Settings", href: route("attendance-settings.index") },
 ]
 
-// ─── Field helpers ────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtMins(n: number): string {
     if (n === 0) return "None"
@@ -62,6 +61,8 @@ function fmtMins(n: number): string {
     }
     return `${n} min`
 }
+
+// ─── Select field ─────────────────────────────────────────────────────────────
 
 function SelectField({
     label,
@@ -113,20 +114,27 @@ function SettingDialog({
         is_default:            setting?.is_default             ?? false,
     })
 
-    const submit = () => {
+    function handleClose() {
+        reset()
+        onClose()
+    }
+
+    function submit() {
         if (isEdit) {
             put(route("attendance-settings.update", setting!.id), {
-                onSuccess: () => { onClose(); reset() },
+                preserveState: false,
+                onSuccess: handleClose,
             })
         } else {
             post(route("attendance-settings.store"), {
-                onSuccess: () => { onClose(); reset() },
+                preserveState: false,
+                onSuccess: handleClose,
             })
         }
     }
 
     return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+        <Dialog open={open} onOpenChange={v => !v && handleClose()}>
             <DialogContent className="max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{isEdit ? "Edit Setting" : "New Attendance Setting"}</DialogTitle>
@@ -142,7 +150,7 @@ function SettingDialog({
                             placeholder="e.g. Standard Policy"
                         />
                         {errors.name && (
-                            <p className="text-xs text-destructive">{errors.name}</p>
+                            <p className="text-xs text-rose-600 dark:text-rose-400">{errors.name}</p>
                         )}
                     </div>
 
@@ -164,23 +172,28 @@ function SettingDialog({
                         />
                     </div>
 
-                    {/* Default toggle */}
-                    <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+                    {/* Default toggle — disabled for the existing default to prevent accidental un-defaulting */}
+                    <div className={`flex items-center justify-between rounded-lg border border-border px-4 py-3 ${
+                        isEdit && setting?.is_default ? "opacity-60 pointer-events-none" : ""
+                    }`}>
                         <div>
                             <p className="text-sm font-medium">Set as default</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                This setting will be used for all attendance calculations
+                                {isEdit && setting?.is_default
+                                    ? "Already the default — use another setting's card to change this"
+                                    : "This setting will be used for all attendance calculations"}
                             </p>
                         </div>
                         <Switch
                             checked={data.is_default}
                             onCheckedChange={v => setData("is_default", v)}
+                            disabled={isEdit && setting?.is_default}
                         />
                     </div>
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button variant="outline" onClick={handleClose}>Cancel</Button>
                     <Button onClick={submit} disabled={processing}>
                         {isEdit ? "Save Changes" : "Create Setting"}
                     </Button>
@@ -196,10 +209,12 @@ function SettingCard({
     setting,
     onEdit,
     onDelete,
+    onMakeDefault,
 }: {
     setting: AttendanceSetting
     onEdit: () => void
     onDelete: () => void
+    onMakeDefault: () => void
 }) {
     const rows = [
         { label: "Early Time-in Allows", value: fmtMins(setting.early_time_in_minutes) },
@@ -214,17 +229,30 @@ function SettingCard({
         }`}>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-                <div className="flex items-center gap-2">
-                    <Shield className={`w-4 h-4 ${setting.is_default ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className="font-semibold text-sm">{setting.name}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                    <Shield className={`w-4 h-4 shrink-0 ${setting.is_default ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className="font-semibold text-sm truncate">{setting.name}</span>
                     {setting.is_default && (
-                        <Badge variant="secondary" className="text-[10px] gap-1 px-1.5 py-0 text-primary bg-primary/10 border-primary/20">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded-full border border-primary/20 shrink-0">
                             <BadgeCheck className="w-3 h-3" />
                             Default
-                        </Badge>
+                        </span>
                     )}
                 </div>
-                <div className="flex items-center gap-1">
+
+                <div className="flex items-center gap-1 shrink-0">
+                    {/* One-click promote — only shown for non-default cards */}
+                    {!setting.is_default && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            title="Make default"
+                            onClick={onMakeDefault}
+                        >
+                            <Star className="w-3.5 h-3.5" />
+                        </Button>
+                    )}
                     <Button
                         variant="ghost"
                         size="icon"
@@ -236,9 +264,10 @@ function SettingCard({
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="h-7 w-7 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-30 disabled:pointer-events-none"
                         onClick={onDelete}
                         disabled={setting.is_default}
+                        title={setting.is_default ? "Cannot delete the default setting" : "Delete"}
                     >
                         <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -267,7 +296,13 @@ export default function AttendanceSettingsIndex({ settings }: Props) {
 
     const deletingRecord = settings.find(s => s.id === deletingId)
 
-    const confirmDelete = () => {
+    function handleMakeDefault(setting: AttendanceSetting) {
+        router.post(route("attendance-settings.set-default", setting.id), {}, {
+            preserveScroll: true,
+        })
+    }
+
+    function confirmDelete() {
         if (!deletingId) return
         router.delete(route("attendance-settings.destroy", deletingId), {
             onSuccess: () => setDeletingId(null),
@@ -311,6 +346,7 @@ export default function AttendanceSettingsIndex({ settings }: Props) {
                                 setting={s}
                                 onEdit={() => setEditing(s)}
                                 onDelete={() => setDeletingId(s.id)}
+                                onMakeDefault={() => handleMakeDefault(s)}
                             />
                         ))}
                     </div>
@@ -323,8 +359,9 @@ export default function AttendanceSettingsIndex({ settings }: Props) {
                 onClose={() => setCreateOpen(false)}
             />
 
-            {/* Edit dialog */}
+            {/* Edit dialog — key forces full remount so useForm re-initialises */}
             <SettingDialog
+                key={editing?.id ?? "edit"}
                 open={!!editing}
                 onClose={() => setEditing(null)}
                 setting={editing ?? undefined}

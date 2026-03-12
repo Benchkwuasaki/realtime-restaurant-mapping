@@ -105,7 +105,7 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
                                         </span>
                                     </div>
                                     <Badge
-                                        variant={emp.is_active ? "default" : "secondary"}
+                                        variant={emp.is_active ? "default" : "destructive"}
                                         className="shrink-0 text-xs"
                                     >
                                         {emp.is_active ? "Active" : "Inactive"}
@@ -340,10 +340,7 @@ function PositionModal({
                         </div>
                     </div>
 
-                    <DialogFooter className="border-t border-border xs:flex xs:flex-row xs:justify-between bg-muted/30 px-5 py-4">
-                        <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
-                            Cancel
-                        </Button>
+                    <DialogFooter className="border-t border-border xs:flex xs:flex-row xs:justify-between bg-muted/30 px-5 py-4" showCloseButton>
                         <Button type="submit" size="sm" disabled={processing} className="text-xs">
                             {processing ? "Saving…" : isEdit ? "Update Position" : "Create Position"}
                         </Button>

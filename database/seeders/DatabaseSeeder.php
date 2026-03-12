@@ -747,9 +747,9 @@ class DatabaseSeeder extends Seeder
 
             $workEmail = strtolower(
                 preg_replace('/[^a-z0-9]/', '', $firstName) . '.' .
-                    preg_replace('/[^a-z0-9]/', '', $lastName) .
-                    ($i > 0 ? $i : '') .
-                    '@obx.gov.ph'
+                preg_replace('/[^a-z0-9]/', '', $lastName) .
+                ($i > 0 ? $i : '') .
+                '@obx.gov.ph'
             );
 
             // Basic info
@@ -1025,6 +1025,7 @@ class DatabaseSeeder extends Seeder
             LeaveBalanceSeeder::class,
             LeaveApplicationSeeder::class,
             AttendanceSeeder::class,
+            HolidaySeeder::class,
             // LeaveEntitlementSeeder::class,
         ]);
     }
