@@ -11,9 +11,24 @@ class LeaveApplicationDetail extends Model
 
     protected $fillable = [
         'leave_application_id',
+        // 6.B Vacation / Special Privilege Leave
+        'leave_location_type',
         'leave_location',
-        'illness_details',
-        'study_leave_purpose',
+
+        // 6.B Sick Leave / Rehabilitation Leave
+        'sick_type',
+        'sick_details',
+
+        // 6.B Special Leave Benefits for Women
+        'women_illness',
+
+        // 6.B Study Leave
+        'study_purpose',
+
+        // 6.B Other purpose
+        'other_purpose',
+        'monetization_vl_days',
+        'monetization_sl_days',
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────────
