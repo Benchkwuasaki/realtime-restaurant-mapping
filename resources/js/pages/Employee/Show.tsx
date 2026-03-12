@@ -849,14 +849,13 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                         Not a member of any internal organization.
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
+                    <div className="divide-y divide-border overflow-y-auto max-h-48">
                         {orgs.map(org => (
                             <div key={org.internal_organization_id} className="flex items-center gap-4 px-5 py-3">
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-foreground">{org.name}</p>
                                     <p className="text-xs text-muted-foreground">{org.code}</p>
                                 </div>
-                                <Badge variant="secondary" className="text-[10px] shrink-0">{org.type}</Badge>
                             </div>
                         ))}
                     </div>
