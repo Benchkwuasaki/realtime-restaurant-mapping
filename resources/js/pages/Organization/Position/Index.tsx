@@ -77,7 +77,7 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
                     <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Users className="w-4 h-4 text-primary" />
                         <span>{position?.position_name}</span>
-                        <Badge variant="secondary" className="text-xs font-normal">
+                        <Badge variant="outline" className="text-xs font-normal">
                             {employees.length} / {position?.total_slots ?? "?"} slots filled
                         </Badge>
                     </DialogTitle>

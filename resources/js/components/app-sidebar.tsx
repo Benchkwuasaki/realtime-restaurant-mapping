@@ -30,8 +30,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/use-auth"
-import { url } from "node_modules/zod/v4/classic/external.cjs"
-import { title } from "process"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { hasRole } = useAuth()
@@ -206,7 +204,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             },
             {
               title: "Government Reports",
-              url: "/reports_and_analytics/government",
+              url: route('reports_and_analytics.government-report.index'),
             },
           ],
         },

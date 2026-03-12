@@ -5,6 +5,7 @@ import { type Table, type RowSelectionState } from "@tanstack/react-table"
 import { Plus, Trash2, X } from "lucide-react"
 import React from "react"
 
+import { toast } from "sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +20,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTableFacetedFilter, type FacetedFilterOption } from "./data-table-faceted-filter"
 import { DataTableViewOptions } from "./data-table-view-option"
-import { toast } from "sonner"
 
 // ─── Config types ──────────────────────────────────────────────────────────────
 
@@ -121,11 +121,12 @@ export function DataTableToolbar<TData>({
 
           {filters.map(({ columnId, title, options }) =>
             table.getColumn(columnId) ? (
-              <DataTableFacetedFilter
+          <DataTableFacetedFilter
                 key={columnId}
                 column={table.getColumn(columnId)}
                 title={title}
                 options={options}
+                table={table}
               />
             ) : null
           )}

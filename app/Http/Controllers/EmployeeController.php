@@ -12,6 +12,7 @@ use App\Models\FamilyInfo;
 use App\Models\GovernmentAccount;
 use App\Models\EligibilityInformation;
 use App\Models\EmployeeUploadedFile;
+use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -111,13 +112,14 @@ class EmployeeController extends Controller
             'civil_status' => ['required', 'string', 'in:single,married,divorced,widowed'],
             'place_of_birth' => ['nullable', 'string', 'max:255'],
             'personal_email' => ['nullable', 'email', 'max:255'],
-            'phone_number' => ['required', 'string', 'regex:/^09\d{9}$/'],
+            'phone_number' => ['required', 'string', 'max:20'],
             'item_id' => ['required', 'exists:items,item_id'],
             'salary_grade_step_id' => ['required', 'exists:salary_grade_steps,salary_grade_step_id'],
             'employment_classification' => ['required', 'string', 'exists:employment_classifications,name'],
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['string', 'exists:roles,name'],
             'work_email' => ['required', 'email', 'max:255', Rule::unique('employees', 'work_email')->whereNull('deleted_at')],
+            'work_id' => ['required', 'string', 'max:255', Rule::unique('employees', 'work_id')->whereNull('deleted_at')],
             'password' => [
                 'required',
                 'string',
@@ -145,7 +147,7 @@ class EmployeeController extends Controller
             'family_info.*.place_of_birth' => ['nullable', 'string', 'max:255'],
             'government_accounts' => ['nullable', 'array'],
             'government_accounts.*.account_type' => ['required_with:government_accounts.*', 'string', 'max:100'],
-            'government_accounts.*.account_number' => ['required_with:government_accounts.*', 'string', 'max:100'],
+            'government_accounts.*.account_number' => ['required_with:government_accounts.*', 'string', 'min:4', 'max:100'],
             'education' => ['nullable', 'array'],
             'education.*.level' => ['required_with:education.*', 'string', 'max:100'],
             'education.*.school_name' => ['required_with:education.*', 'string', 'max:255'],
@@ -163,6 +165,37 @@ class EmployeeController extends Controller
                 return back()->withErrors([
                     'government_accounts' => 'Each government account type must be unique.',
                 ])->withInput();
+            }
+
+            $formatErrors = [];
+            foreach ($request->government_accounts as $i => $account) {
+                $type = strtolower($account['account_type'] ?? '');
+                $number = $account['account_number'] ?? '';
+
+                $passes = match ($type) {
+                    'philhealth' => (bool) preg_match('/^\d{2}-\d{9}-\d$/', $number),
+                    'pag-ibig' => (bool) preg_match('/^\d{4}-\d{4}-\d{4}$/', $number),
+                    'gsis' => (bool) preg_match('/^\d{10,12}$/', $number),
+                    'sss' => (bool) preg_match('/^\d{2}-\d{7}-\d$/', $number),
+                    'tin' => (bool) preg_match('/^\d{3}-\d{3}-\d{3}(-\d{3})?$/', $number),
+                    default => true,   // other IDs: no strict format required
+                };
+
+                if (!$passes) {
+                    $label = match ($type) {
+                        'philhealth' => 'PhilHealth number must follow the format 00-000000000-0.',
+                        'pag-ibig' => 'Pag-IBIG number must follow the format 0000-0000-0000.',
+                        'gsis' => 'GSIS number must be 10–12 digits.',
+                        'sss' => 'SSS number must follow the format 00-0000000-0.',
+                        'tin' => 'TIN must follow the format 000-000-000 or 000-000-000-000.',
+                        default => "Invalid format for {$account['account_type']} number.",
+                    };
+                    $formatErrors["government_accounts.{$i}.account_number"] = $label;
+                }
+            }
+
+            if (!empty($formatErrors)) {
+                return back()->withErrors($formatErrors)->withInput();
             }
         }
 
@@ -406,6 +439,7 @@ class EmployeeController extends Controller
             'salary_grade_step_id' => 'sometimes|required|exists:salary_grade_steps,salary_grade_step_id',
             'employment_classification' => 'sometimes|required|string|exists:employment_classifications,name',
             'work_email' => 'sometimes|required|email|unique:employees,work_email,' . $employee->employee_id . ',employee_id',
+            'work_id' => ['sometimes', 'required', 'string', 'max:255', Rule::unique('employees', 'work_id')->ignore($employee->employee_id, 'employee_id')->whereNull('deleted_at')],
             'password' => 'nullable|string|min:8',
             'date_applied' => 'sometimes|required|date',
             'date_hired' => 'sometimes|required|date',
@@ -524,15 +558,27 @@ class EmployeeController extends Controller
         ];
     }
 
+   
+
     // ─────────────────────────────────────────────────────────────────────────
     // Government Accounts
     // ─────────────────────────────────────────────────────────────────────────
 
     public function storeGovernmentAccount(Request $request, Employee $employee)
     {
+
+        $accountType = strtolower($request->account_type ?? '');
+
+        $numberRules = match ($accountType) {
+            'philhealth' => ['required', 'string', 'regex:/^\d{2}-\d{9}-\d$/'],
+            'pag-ibig' => ['required', 'string', 'regex:/^\d{4}-\d{4}-\d{4}$/'],
+            'gsis' => ['required', 'string', 'regex:/^\d{10,12}$/'],
+            default => ['required', 'string', 'max:100'],
+        };
+
         $request->validate([
             'account_type' => ['required', 'string', 'max:100'],
-            'account_number' => ['required', 'string', 'max:100'],
+            'account_number' => $numberRules,
         ]);
 
         $employee->governmentAccounts()
@@ -550,8 +596,20 @@ class EmployeeController extends Controller
 
     public function updateGovernmentAccount(Request $request, Employee $employee, GovernmentAccount $account)
     {
-        $request->validate(['account_number' => ['required', 'string', 'max:100']]);
         abort_if($account->employee_id !== $employee->employee_id, 403);
+
+        $accountType = strtolower($account->account_type);
+
+        $numberRules = match ($accountType) {
+            'philhealth' => ['required', 'string', 'regex:/^\d{2}-\d{9}-\d$/'],
+            'pag-ibig' => ['required', 'string', 'regex:/^\d{4}-\d{4}-\d{4}$/'],
+            'gsis' => ['required', 'string', 'regex:/^\d{10,12}$/'],
+            default => ['required', 'string', 'max:100'],
+        };
+
+        $request->validate([
+            'account_number' => $numberRules,
+        ]);
 
         $account->update(['account_number' => $request->account_number]);
 
@@ -758,32 +816,30 @@ class EmployeeController extends Controller
     {
         $request->validate([
             'seminar_name' => ['required', 'string', 'max:255'],
-            'organizer' => ['nullable', 'string', 'max:255'],
+            'venue' => ['nullable', 'string', 'max:255'],
             'date_attended' => ['nullable', 'date'],
         ]);
 
         $employee->seminarsAndTrainings()->create([
-            'seminar_name' => $request->seminar_training_name, // ← should be $request->seminar_name
-            'organizer' => $request->venue,
+            'seminar_training_name' => $request->seminar_name,  // ← DB column name
+            'venue' => $request->filled('venue') ? $request->venue : null,
             'date_attended' => $request->filled('date_attended') ? $request->date_attended : null,
         ]);
-
-        return back()->with('success', 'Seminar added.');
     }
 
     public function updateSeminar(Request $request, Employee $employee, $seminar)
     {
         $request->validate([
             'seminar_name' => ['required', 'string', 'max:255'],
-            'organizer' => ['nullable', 'string', 'max:255'],
+            'venue' => ['nullable', 'string', 'max:255'],
             'date_attended' => ['nullable', 'date'],
         ]);
 
         $record = $employee->seminarsAndTrainings()->findOrFail($seminar);
 
         $record->update([
-            'seminar_name' => $request->seminar_training_name,
-            'organizer' => $request->filled('venue') ? $request->venue : null,
+            'seminar_training_name' => $request->seminar_name,  // ← was $request->seminar_training_name
+            'venue' => $request->filled('venue') ? $request->venue : null,
             'date_attended' => $request->filled('date_attended') ? $request->date_attended : null,
         ]);
 

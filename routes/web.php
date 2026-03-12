@@ -1,16 +1,12 @@
 <?php
 
-use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
-use App\Http\Controllers\EmployeeReportController;
 use App\Http\Controllers\PayrollController;
-use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AttendanceLogController;
-use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\AttendanceRecordController;
 use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
@@ -21,15 +17,15 @@ use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\InternalOrganizationController;
-use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
-use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\PayrollReportController;
+use Illuminate\Support\Facades\Http;
+
 // Leave
 use App\Http\Controllers\LeaveSettingsController;
 use App\Http\Controllers\LeaveTypeController;
@@ -39,6 +35,9 @@ use App\Http\Controllers\LeaveApplicationController;
 // reports and analytics
 use App\Http\Controllers\LeaveReportController;
 use App\Http\Controllers\AttendanceReportController;
+use App\Http\Controllers\EmployeeReportController;
+use App\Http\Controllers\GovernmentReportController;
+
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -296,11 +295,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
-<<<<<<< HEAD
         Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
         Route::inertia('/leave', 'ReportsAndAnalytics\Leave\LeaveIndexa')->name('leave');
-=======
->>>>>>> 5e4044bd0fcf779da9d7b188281e1a6ddfc62495
 
         Route::get('/attendance-report', [AttendanceReportController::class, 'index'])
             ->name('attendance-report.index');
@@ -314,6 +310,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/payroll-report', [PayrollReportController::class, 'index'])
             ->name('payroll-report.index');
         
+        Route::get('/government-report', [GovernmentReportController::class, 'index'])
+            ->name('government-report.index');
 
     });
 
@@ -343,8 +341,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Attendance Records
     Route::get('attendance/records', [AttendanceRecordController::class, 'index'])
         ->name('attendance-record.index');
-    Route::post('attendance/records/recompute', [AttendanceRecordController::class, 'recompute'])
-        ->name('attendance-record.recompute');
     Route::post('attendance/records/sync-absent', [AttendanceRecordController::class, 'syncAbsent'])
         ->name('attendance-record.sync-absent');
 
