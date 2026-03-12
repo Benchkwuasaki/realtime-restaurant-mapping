@@ -1392,7 +1392,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         <Plus className="w-4 h-4" />
                     </Button>
                 </div>
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border overflow-y-auto max-h-64">
                     {STANDARD_GOV_ID_TYPES.map(type => {
                         const key = type.toLowerCase()
                         const account = accountMap[key]
@@ -1468,7 +1468,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                         <Button variant="outline" size="sm" onClick={() => openEligDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" />Add Eligibility</Button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                         <div className="min-w-[480px] divide-y divide-border">
                             {eligibilities.map(e => (
                                 <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3 hover:bg-muted/20 transition-colors group">
@@ -1842,7 +1842,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                         <div className="min-w-[640px]">
                             {/* Header */}
                             <div className="grid grid-cols-[1fr_120px_80px_120px_1fr_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
@@ -1889,7 +1889,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                         <div className="min-w-[580px]">
                             {Object.entries(educByLevel).map(([level, edus]) => (
                                 <div key={level}>
@@ -1946,7 +1946,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                         <div className="min-w-[480px]">
                             {/* Header */}
                             <div className="grid grid-cols-[1fr_1fr_140px_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
@@ -1991,7 +1991,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                         <div className="min-w-[440px]">
                             {/* Header */}
                             <div className="grid grid-cols-[1fr_1fr_140px_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
@@ -2311,7 +2311,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
+                    <div className="divide-y divide-border overflow-y-auto max-h-64">
                         {uploadedFiles.map(file => {
                             const { icon, className } = getFileMeta(file.file_name)
                             const canView = isViewable(file.file_name)
