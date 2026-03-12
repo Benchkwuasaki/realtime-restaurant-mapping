@@ -61,7 +61,7 @@ interface SalaryGradeStep {
     salary_grade_step_id: number
     salary_grade: number
     step: number
-    salary_amount: number
+    monthly_salary: number
 }
 interface Address {
     id?: number
@@ -520,7 +520,7 @@ function SalaryEditDialog({ employee, open, onClose }: { employee: Employee; ope
                         <Input type="number" value={form.salary_grade_step_id} onChange={e => setForm({ salary_grade_step_id: e.target.value })} placeholder="Enter salary grade step ID" />
                         {sgs && (
                             <p className="text-xs text-muted-foreground mt-1.5">
-                                Current: SG-{sgs.salary_grade}, Step {sgs.step} — ₱{Number(sgs.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                                Current: SG-{sgs.salary_grade}, Step {sgs.step} — ₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                             </p>
                         )}
                     </div>
@@ -875,7 +875,7 @@ function CompensationTab({ employee }: { employee: Employee }) {
     const [salaryEditOpen, setSalaryEditOpen] = useState(false)
 
     const totalAllowances = allowances.reduce((sum, a) => sum + Number(a.amount), 0)
-    const baseSalary = sgs ? Number(sgs.salary_amount) : 0
+    const baseSalary = sgs ? Number(sgs.monthly_salary) : 0
     const grossPay = baseSalary + totalAllowances
 
     const fmt = (n: number) => n.toLocaleString("en-PH", { minimumFractionDigits: 2 })

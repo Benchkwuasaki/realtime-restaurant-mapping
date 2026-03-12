@@ -486,7 +486,7 @@ class EmployeeSeeder extends Seeder
         $baseSalary = DB::table('salary_grade_steps')
             ->orderBy('salary_grade_step_id')
             ->skip($sgIdx)
-            ->value('salary_amount');
+            ->value('monthly_salary');
 
         $deduction   = round($baseSalary * 0.12, 2);
         $finalAmount = round($baseSalary - $deduction, 2);

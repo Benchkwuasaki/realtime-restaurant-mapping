@@ -54,7 +54,7 @@ export interface SalaryGradeStep {
     salary_grade_step_id: number
     salary_grade: number
     step: number
-    salary_amount: number
+    monthly_salary: number
 }
 
 export interface EmploymentClassification {
@@ -689,7 +689,7 @@ function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmen
                                 .sort((a, b) => a.step - b.step)
                                 .map(sgs => (
                                     <SelectItem key={sgs.salary_grade_step_id} value={String(sgs.salary_grade_step_id)}>
-                                        Step {sgs.step} — ₱{Number(sgs.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                                        Step {sgs.step} — ₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                                     </SelectItem>
                                 ))}
                         </SelectContent>
@@ -1269,7 +1269,7 @@ function ReviewStep({ data, items, salaryGradeSteps, addresses, family, governme
             <ReviewRow
                 label="Salary Grade & Step"
                 value={selectedSGS
-                    ? `SG ${selectedSGS.salary_grade} — Step ${selectedSGS.step} (₱${Number(selectedSGS.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })})`
+                    ? `SG ${selectedSGS.salary_grade} — Step ${selectedSGS.step} (₱${Number(selectedSGS.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })})`
                     : data.salary_grade_step_id || undefined}
             />
             <ReviewRow label="Status" value={data.status === "1" ? "Active" : data.status === "0" ? "Inactive" : undefined} />
