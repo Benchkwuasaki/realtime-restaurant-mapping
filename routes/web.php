@@ -449,6 +449,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
     // Attendance Report (from main - NEW)
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
+        Route::inertia('/leave', 'ReportsAndAnalytics\Leave\LeaveIndexa')->name('leave');
 
         Route::get('/attendance-report', [AttendanceReportController::class, 'index'])
             ->name('attendance-report.index');

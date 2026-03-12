@@ -197,6 +197,8 @@ export const columns: DataTableColumnDef<Employee>[] = [
         ),
         enableSorting: true,
         enableHiding: true,
+        filterFn: (row, id, value: boolean[]) =>
+            value.includes(row.getValue(id)),
     },
     {
         accessorKey: 'status',

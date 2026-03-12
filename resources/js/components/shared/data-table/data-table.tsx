@@ -16,6 +16,7 @@ import {
     type VisibilityState,
 } from '@tanstack/react-table';
 import * as React from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 
 import {
@@ -78,11 +79,11 @@ interface DataTableProps<TData, TValue> {
     defaultPageSize?: number;
 
     // ── Toolbar config ──────────────────────────────────────────────────────────
-    searchColumnId: string
-    searchPlaceholder?: string
-    filters?: ToolbarFilterConfig[]
-    addButton?: ToolbarAddButtonConfig
-    bulkDelete?: ToolbarBulkDeleteConfig
+    searchColumnId: string;
+    searchPlaceholder?: string;
+    filters?: ToolbarFilterConfig[];
+    addButton?: ToolbarAddButtonConfig;
+    bulkDelete?: ToolbarBulkDeleteConfig;
 
     // ── Visual extensions ───────────────────────────────────────────────────────
 
@@ -125,7 +126,7 @@ interface DataTableProps<TData, TValue> {
      *
      * Tables that do NOT pass this prop are completely unaffected.
      */
-    headerGroups?: DataTableHeaderGroupCell[]
+    headerGroups?: DataTableHeaderGroupCell[];
 
     /**
      * When provided, renders a <tfoot> row after the last body row.
@@ -140,13 +141,13 @@ interface DataTableProps<TData, TValue> {
      *   <td className="text-right">{peso(rows.reduce((s,r) => s + r.original.grossPay, 0))}</td>,
      * ]}
      */
-    footerRow?: (rows: Row<TData>[]) => React.ReactNode[]
+    footerRow?: (rows: Row<TData>[]) => React.ReactNode[];
 
     /**
      * Zebra-stripe body rows (index % 2 === 0 → white, odd → slate-50/50).
      * Defaults to `false` to preserve existing table appearance.
      */
-    striped?: boolean
+    striped?: boolean;
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -179,8 +180,40 @@ export function DataTable<TData, TValue>({
         pageSize: defaultPageSize,
     });
 
+    // ── "New record first" tracking ─────────────────────────────────────────────
+    // Compares incoming data to the previous render to detect a newly added row.
+    // The newest record is pinned to position 0 until the user sorts or filters.
+    const [newestId, setNewestId] = React.useState<string | null>(null);
+    const prevDataRef = React.useRef<TData[]>(data);
+
+    React.useEffect(() => {
+        const prev = prevDataRef.current;
+        // Only act when a net-new record appears (count went up)
+        if (data.length > prev.length && getRowId) {
+            const prevIds = new Set(prev.map(getRowId));
+            const added = data.find((row) => !prevIds.has(getRowId(row)));
+            if (added) {
+                setNewestId(getRowId(added));
+                // Jump to first page so the pinned row is immediately visible
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }
+        }
+        prevDataRef.current = data;
+    }, [data, getRowId]);
+
+    // Reorder data so the newest record is always first (until sort/filter clears it)
+    const displayData = React.useMemo<TData[]>(() => {
+        if (!newestId || !getRowId) return data;
+        const idx = data.findIndex((row) => getRowId(row) === newestId);
+        if (idx <= 0) return data; // already first or not found
+        const reordered = [...data];
+        const [pinned] = reordered.splice(idx, 1);
+        reordered.unshift(pinned);
+        return reordered;
+    }, [data, newestId, getRowId]);
+
     const table = useReactTable({
-        data,
+        data: displayData,
         columns,
         enableRowSelection: true,
         getRowId,
@@ -195,10 +228,14 @@ export function DataTable<TData, TValue>({
         autoResetPageIndex: false,
         onRowSelectionChange: setRowSelection,
         onSortingChange: (updater) => {
+            // User explicitly sorted — release the pinned row
+            setNewestId(null);
             setSorting(updater);
             setPagination((prev) => ({ ...prev, pageIndex: 0 }));
         },
         onColumnFiltersChange: (updater) => {
+            // User filtered — release the pinned row
+            setNewestId(null);
             setColumnFilters(updater);
             setPagination((prev) => ({ ...prev, pageIndex: 0 }));
         },
@@ -231,7 +268,14 @@ export function DataTable<TData, TValue>({
                 bulkDelete={bulkDelete}
             />
 
-            <div className="rounded-md border border-gray-200">
+            <div
+                className={[
+                    'rounded-md border border-gray-200 transition-all duration-200',
+                    newestId ? 'ml-8' : '',
+                ]
+                    .filter(Boolean)
+                    .join(' ')}
+            >
                 {isMobile ? (
                     <div className="divide-y divide-gray-200">
                         {/* ── Select-all header ── */}
@@ -261,6 +305,8 @@ export function DataTable<TData, TValue>({
                                 const cardColumns = (
                                     columns as DataTableColumnDef<TData>[]
                                 ).filter((col) => col.mobileCard);
+                                const isNewest =
+                                    newestId !== null && row.id === newestId;
                                 return (
                                     <div
                                         key={row.id}
@@ -273,15 +319,22 @@ export function DataTable<TData, TValue>({
                                                 : undefined
                                         }
                                         className={[
-                                            'flex items-center gap-3 px-4 py-3 transition-colors',
+                                            'relative flex items-center gap-3 px-4 py-3 transition-colors',
                                             row.getIsSelected()
                                                 ? 'bg-muted'
-                                                : 'bg-background',
+                                                : isNewest
+                                                  ? 'bg-primary/5'
+                                                  : 'bg-background',
                                             onRowClick
                                                 ? 'cursor-pointer active:bg-muted'
                                                 : '',
                                         ].join(' ')}
                                     >
+                                        {isNewest && (
+                                            <Badge className="pointer-events-none absolute top-1/2 -left-3 h-5 -translate-x-full -translate-y-1/2 rounded-full px-1.5 py-0 text-[10px] font-semibold shadow-sm select-none">
+                                                New
+                                            </Badge>
+                                        )}
                                         {/* Per-row checkbox */}
                                         <div
                                             onClick={(e) => e.stopPropagation()}
@@ -326,7 +379,7 @@ export function DataTable<TData, TValue>({
                     </div>
                 ) : (
                     /* ── Table view (desktop) ── */
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-visible overflow-y-visible">
                         <Table>
                             {headerGroups && headerGroups.length > 0 ? (
                                 /*
@@ -512,51 +565,74 @@ export function DataTable<TData, TValue>({
 
                             <TableBody>
                                 {pageRows?.length ? (
-                                    pageRows.map((row, index) => (
-                                        <TableRow
-                                            key={row.id}
-                                            data-state={
-                                                row.getIsSelected() &&
-                                                'selected'
-                                            }
-                                            className={[
-                                                onRowClick
-                                                    ? 'cursor-pointer'
-                                                    : '',
-                                                striped
-                                                    ? index % 2 === 0
-                                                        ? 'bg-white hover:bg-blue-50/30'
-                                                        : 'bg-slate-50/50 hover:bg-blue-50/30'
-                                                    : '',
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' ')}
-                                            onClick={
-                                                onRowClick
-                                                    ? () => onRowClick(row)
-                                                    : undefined
-                                            }
-                                        >
-                                            {row
-                                                .getVisibleCells()
-                                                .map((cell) => (
-                                                    <TableCell
-                                                        key={cell.id}
-                                                        className={
-                                                            cell.column
-                                                                .columnDef.meta
-                                                                ?.className
-                                                        }
-                                                    >
-                                                        {flexRender(
-                                                            cell.column
-                                                                .columnDef.cell,
-                                                            cell.getContext(),
-                                                        )}
-                                                    </TableCell>
-                                                ))}
-                                        </TableRow>
-                                    ))
+                                    pageRows.map((row, index) => {
+                                        const isNewest =
+                                            newestId !== null &&
+                                            row.id === newestId;
+                                        return (
+                                            <TableRow
+                                                key={row.id}
+                                                data-state={
+                                                    row.getIsSelected() &&
+                                                    'selected'
+                                                }
+                                                className={[
+                                                    onRowClick
+                                                        ? 'cursor-pointer'
+                                                        : '',
+                                                    striped
+                                                        ? index % 2 === 0
+                                                            ? 'bg-white hover:bg-blue-50/30'
+                                                            : 'bg-slate-50/50 hover:bg-blue-50/30'
+                                                        : '',
+                                                    isNewest
+                                                        ? 'bg-primary/5'
+                                                        : '',
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' ')}
+                                                onClick={
+                                                    onRowClick
+                                                        ? () => onRowClick(row)
+                                                        : undefined
+                                                }
+                                            >
+                                                {row
+                                                    .getVisibleCells()
+                                                    .map((cell, cellIndex) => (
+                                                        <TableCell
+                                                            key={cell.id}
+                                                            className={[
+                                                                cell.column
+                                                                    .columnDef
+                                                                    .meta
+                                                                    ?.className,
+                                                                isNewest &&
+                                                                cellIndex === 0
+                                                                    ? 'relative overflow-visible'
+                                                                    : '',
+                                                            ]
+                                                                .filter(Boolean)
+                                                                .join(' ')}
+                                                        >
+                                                            {isNewest &&
+                                                                cellIndex ===
+                                                                    0 && (
+                                                                    <Badge className="pointer-events-none absolute top-1/2 -left-2 h-5 -translate-x-full -translate-y-1/2 rounded-full px-1.5 py-0 text-xs shadow-sm select-none">
+                                                                        New
+                                                                    </Badge>
+                                                                )}
+                                                            {flexRender(
+                                                                cell.column
+                                                                    .columnDef
+                                                                    .cell,
+                                                                cell.getContext(),
+                                                            )}
+                                                        </TableCell>
+                                                    ))}
+                                            </TableRow>
+                                        );
+                                    })
                                 ) : (
                                     <TableRow>
                                         <TableCell

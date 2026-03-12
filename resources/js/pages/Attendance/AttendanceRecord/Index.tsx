@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { route } from "ziggy-js"
 import { format, parseISO } from "date-fns"
 import {
-    AlertTriangle, BadgeCheck, Coffee, RefreshCw, Timer, UserCheck,
+    AlertTriangle, BadgeCheck, Coffee, Timer, UserCheck,
     UserX, Settings, Plus, Trash2, Pencil,
     Check, X, ClipboardList, MapPin, ChevronDown, ChevronRight,
 } from "lucide-react"
@@ -205,7 +205,6 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
                 </td>
 
                 <td className="py-2.5 pr-4">
-                    {/* STATUS_PILL bundles multi-property colour classes — kept as outline + className */}
                     <Badge variant="outline" className={cn("text-[10px] gap-1", STATUS_PILL[r.status])}>
                         <Icon className="w-2.5 h-2.5" />
                         {STATUS_LABEL[r.status]}
@@ -497,8 +496,7 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
                                     <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/60">
                                         <div className="flex items-center gap-2 min-w-0">
                                             {s.is_default && (
-                                                // "Default" uses primary colours — variant="default" applies bg-primary text-primary-foreground
-                                                <Badge variant="default" className="text-[10px] gap-1 font-bold uppercase tracking-wide shrink-0">
+                                                <Badge variant="default" className="text-[10px] gap-1 uppercase tracking-wide shrink-0">
                                                     <BadgeCheck className="w-2.5 h-2.5" /> Default
                                                 </Badge>
                                             )}
@@ -558,7 +556,6 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
     const [records, setRecords] = useState<RecordWithHistory[]>(initialRecords)
     const [selected, setSelected] = useState<RecordWithHistory | null>(null)
     const [settingsOpen, setSettingsOpen] = useState(false)
-    const [recomputing, setRecomputing] = useState(false)
     const channelRef = useRef<any>(null)
 
     const present   = records.filter(r => r.status === "PRESENT").length
@@ -599,11 +596,6 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
         return () => { echo.leave("attendance-records") }
     }, [])
 
-    function handleRecompute() {
-        setRecomputing(true)
-        router.post(route("attendance-record.recompute"), {}, { onFinish: () => setRecomputing(false), preserveScroll: true })
-    }
-
     const columns = getColumns()
 
     return (
@@ -622,10 +614,6 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                     <div className="flex items-center gap-2 shrink-0">
                         <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
                             <Settings className="w-3.5 h-3.5 mr-1.5" /> Settings
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handleRecompute} disabled={recomputing}>
-                            <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", recomputing && "animate-spin")} />
-                            {recomputing ? "Queuing…" : "Recompute All"}
                         </Button>
                     </div>
                 </div>

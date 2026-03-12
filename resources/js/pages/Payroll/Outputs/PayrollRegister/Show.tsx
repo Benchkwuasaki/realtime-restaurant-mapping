@@ -500,7 +500,7 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
                                             <ColTh
                                                 rowSpan={2}
-                                                className="w-[9%] bg-muted/70 pl-2 text-left"
+                                                className="w-[9%] bg-muted/70 pl-2 text-left"git
                                             >
                                                 Employee Name
                                             </ColTh>

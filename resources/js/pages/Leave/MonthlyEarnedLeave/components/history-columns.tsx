@@ -20,7 +20,7 @@ export function CreditBadge({ status }: { status: CreditStatus }) {
     const variantMap = {
         full_credit: "green",
         prorated:    "yellow",
-        ineligible:  "red",
+        ineligible:  "destructive",
     } as const
 
     const labelMap = {
