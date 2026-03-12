@@ -56,8 +56,6 @@ export const EmployeeCardCompact: React.FC<{
                     className="h-11 w-11 sm:h-14 sm:w-14 ring-2 ring-border group-hover:ring-primary/40
                         transition-all bg-accent text-accent-foreground font-bold text-lg"
                 />
-                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500
-                    rounded-full ring-2 ring-background" />
             </div>
             <div className="text-center w-full">
                 <p className="text-xs font-semibold text-foreground leading-tight truncate max-w-full">
@@ -98,13 +96,11 @@ export const EmployeeCardFull: React.FC<{
                     className="h-11 w-11 sm:h-14 sm:w-14 ring-2 ring-border
                         bg-accent text-accent-foreground font-bold text-xl"
                 />
-                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500
-                    rounded-full ring-2 ring-background" />
             </div>
             <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-foreground break-words leading-snug">{name}</h3>
+                <h3 className="font-semibold text-foreground wrap-break-word leading-snug">{name}</h3>
                 {positionName && (
-                    <Badge variant="secondary" className="mt-1 text-xs">{positionName}</Badge>
+                    <Badge variant="default" className="mt-1 text-xs">{positionName}</Badge>
                 )}
                 <div className="mt-2 space-y-1">
                     {employee.email && (
@@ -120,7 +116,7 @@ export const EmployeeCardFull: React.FC<{
                         </div>
                     )}
                     {(department || division || unit) && (
-                        <p className="text-xs text-muted-foreground break-words leading-relaxed">
+                        <p className="text-xs text-muted-foreground wrap-break-word leading-relaxed">
                             {[unit, division, department].filter(Boolean).join(' · ')}
                         </p>
                     )}

@@ -204,7 +204,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             },
             {
               title: "Government Reports",
-              url: "/reports_and_analytics/government",
+              url: route('reports_and_analytics.government-report.index'),
             },
           ],
         },

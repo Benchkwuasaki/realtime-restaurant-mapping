@@ -746,7 +746,7 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                 <DataTable
                     columns={columns}
                     data={records}
-                    getRowId={row => String(row.id)}
+                    getRowId={row => String(row.employee_id)}
                     searchColumnId="employee_name"
                     searchPlaceholder="Search by name or work ID…"
                     filters={[{ columnId: "status", title: "Status", options: statusOptions }]}

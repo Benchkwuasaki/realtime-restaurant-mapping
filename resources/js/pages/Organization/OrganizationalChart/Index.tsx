@@ -131,8 +131,6 @@ export default function OrganizationalChartIndex({ organizationalChart }: Props)
                                                             {head ? head.initials : acronym}
                                                         </div>
                                                     )}
-                                                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3
-                                                        bg-green-500 rounded-full ring-2 ring-background" />
                                                 </div>
                                                 <Badge variant="outline" className="font-mono text-xs shrink-0">
                                                     {dept.acronym}

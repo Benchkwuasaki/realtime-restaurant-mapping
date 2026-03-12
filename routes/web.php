@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
-use App\Http\Controllers\EmployeeReportController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\ActivityLogsController;
@@ -25,6 +24,8 @@ use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
 use App\Http\Controllers\PayrollReportController;
+use Illuminate\Support\Facades\Http;
+
 // Leave
 use App\Http\Controllers\LeaveSettingsController;
 use App\Http\Controllers\LeaveTypeController;
@@ -34,6 +35,9 @@ use App\Http\Controllers\LeaveApplicationController;
 // reports and analytics
 use App\Http\Controllers\LeaveReportController;
 use App\Http\Controllers\AttendanceReportController;
+use App\Http\Controllers\EmployeeReportController;
+use App\Http\Controllers\GovernmentReportController;
+
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -291,6 +295,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
+        Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
         Route::inertia('/leave', 'ReportsAndAnalytics\Leave\LeaveIndexa')->name('leave');
 
         Route::get('/attendance-report', [AttendanceReportController::class, 'index'])
@@ -305,6 +310,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/payroll-report', [PayrollReportController::class, 'index'])
             ->name('payroll-report.index');
         
+        Route::get('/government-report', [GovernmentReportController::class, 'index'])
+            ->name('government-report.index');
 
     });
 
