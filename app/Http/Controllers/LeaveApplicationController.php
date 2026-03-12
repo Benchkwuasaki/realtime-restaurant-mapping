@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
-use App\Models\Employee;
 use App\Models\LeaveApplication;
 use App\Models\LeaveEntitlement;
 use Carbon\Carbon;

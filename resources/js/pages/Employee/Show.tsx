@@ -2023,14 +2023,14 @@ function PayslipHistoryTable({ payslips }: { payslips: Payslip[] }) {
                             <th className="px-4 py-2.5 text-right text-xs font-semibold tracking-wide text-muted-foreground sm:px-5">
                                 Net Pay
                             </th>
-                            <th className="px-4 py-2.5 sm:px-5" />
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                         {payslips.map((slip) => (
                             <tr
                                 key={slip.payroll_record_id}
-                                className="transition-colors hover:bg-muted/30"
+                                className="cursor-pointer transition-colors hover:bg-muted/30"
+                                onClick={() => setSelected(slip)}
                             >
                                 <td className="px-4 py-3 sm:px-5">
                                     <span className="font-medium text-foreground">
@@ -2050,16 +2050,6 @@ function PayslipHistoryTable({ payslips }: { payslips: Payslip[] }) {
                                 </td>
                                 <td className="px-4 py-3 text-right font-bold text-foreground tabular-nums sm:px-5">
                                     {fmtPeso(slip.net_pay)}
-                                </td>
-                                <td className="px-4 py-3 text-right sm:px-5">
-                                    <Button
-                                        variant="outline"
-                                        size="xs"
-                                        onClick={() => setSelected(slip)}
-                                    >
-                                        <Eye className="mr-1.5 h-3 w-3" />
-                                        View
-                                    </Button>
                                 </td>
                             </tr>
                         ))}
