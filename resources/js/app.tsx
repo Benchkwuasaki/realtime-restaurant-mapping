@@ -65,3 +65,7 @@ initializeTheme();
 // C:\php\php.ini
 // upload_max_filesize = 25M
 // post_max_size = 30M
+
+
+// Phone contact
+// npm install react-phone-number-input

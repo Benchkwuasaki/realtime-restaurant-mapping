@@ -72,6 +72,7 @@
         "react-dom": "^19.2.4",
         "react-easy-crop": "^5.5.6",
         "react-hook-form": "^7.71.2",
+        "react-phone-number-input": "^3.4.16",
         "react-resizable-panels": "^4.6.5",
         "react-webcam": "^7.2.0",
         "rechart": "^0.0.1",
