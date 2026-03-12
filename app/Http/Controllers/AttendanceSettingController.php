@@ -21,18 +21,18 @@ class AttendanceSettingController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name'                  => 'required|string|max:100|unique:attendance_settings,name',
+            'name' => 'required|string|max:100|unique:attendance_settings,name',
             'early_time_in_minutes' => 'required|integer|min:0|max:480',
             'late_time_out_minutes' => 'required|integer|min:0|max:480',
-            'is_default'            => 'boolean',
+            'is_default' => 'boolean',
         ]);
 
         DB::transaction(function () use ($data) {
             $setting = AttendanceSetting::create([
-                'name'                  => $data['name'],
+                'name' => $data['name'],
                 'early_time_in_minutes' => $data['early_time_in_minutes'],
                 'late_time_out_minutes' => $data['late_time_out_minutes'],
-                'is_default'            => false,
+                'is_default' => false,
             ]);
 
             if (!empty($data['is_default'])) {
@@ -45,24 +45,30 @@ class AttendanceSettingController extends Controller
 
     public function update(Request $request, AttendanceSetting $attendanceSetting): RedirectResponse
     {
+
         $data = $request->validate([
-            'name'                  => "required|string|max:100|unique:attendance_settings,name,{$attendanceSetting->id}",
+            'name' => "required|string|max:100|unique:attendance_settings,name,{$attendanceSetting->id}",
             'early_time_in_minutes' => 'required|integer|min:0|max:480',
             'late_time_out_minutes' => 'required|integer|min:0|max:480',
-            'is_default'            => 'boolean',
+            'is_default' => 'boolean',
         ]);
 
         DB::transaction(function () use ($data, $attendanceSetting) {
             // Separate is_default from the main update to avoid Eloquent
             // dirty-tracking skipping markAsDefault() when the value hasn't changed.
             $attendanceSetting->update([
-                'name'                  => $data['name'],
+                'name' => $data['name'],
                 'early_time_in_minutes' => $data['early_time_in_minutes'],
                 'late_time_out_minutes' => $data['late_time_out_minutes'],
             ]);
 
             if (!empty($data['is_default'])) {
                 $attendanceSetting->markAsDefault();
+            } elseif ($attendanceSetting->is_default) {
+                // Already default — do nothing, preserve it
+            } else {
+                // Explicitly ensure it stays false for non-defaults
+                $attendanceSetting->update(['is_default' => false]);
             }
         });
 

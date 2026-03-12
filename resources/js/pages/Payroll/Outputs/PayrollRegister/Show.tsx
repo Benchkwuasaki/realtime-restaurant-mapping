@@ -261,12 +261,15 @@ function Td({
 function TotTd({
     children,
     className = '',
+    colSpan,
 }: {
     children: React.ReactNode;
     className?: string;
+    colSpan?: number;
 }) {
     return (
         <td
+            colSpan={colSpan}
             className={`border border-border/60 bg-muted/50 px-1 py-1 text-right text-[8.5px] font-bold tabular-nums ${className}`}
         >
             {children}
@@ -500,7 +503,7 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
                                             <ColTh
                                                 rowSpan={2}
-                                                className="w-[9%] bg-muted/70 pl-2 text-left"git
+                                                className="w-[9%] bg-muted/70 pl-2 text-left"
                                             >
                                                 Employee Name
                                             </ColTh>

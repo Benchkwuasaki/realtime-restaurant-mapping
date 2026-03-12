@@ -16,8 +16,8 @@ import {
     type VisibilityState,
 } from '@tanstack/react-table';
 import * as React from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 
 import {
     Table,
@@ -148,6 +148,13 @@ interface DataTableProps<TData, TValue> {
      * Defaults to `false` to preserve existing table appearance.
      */
     striped?: boolean;
+
+    /**
+     * Column id (accessorKey or id) next to which the "New" badge appears after
+     * a record is created. Defaults to the second visible cell (index 1),
+     * which skips the checkbox column.
+     */
+    newBadgeColumnId?: string;
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -166,6 +173,7 @@ export function DataTable<TData, TValue>({
     headerGroups,
     footerRow,
     striped = false,
+    newBadgeColumnId,
 }: DataTableProps<TData, TValue>) {
     const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
         {},
@@ -268,14 +276,7 @@ export function DataTable<TData, TValue>({
                 bulkDelete={bulkDelete}
             />
 
-            <div
-                className={[
-                    'rounded-md border border-gray-200 transition-all duration-200',
-                    newestId ? 'ml-8' : '',
-                ]
-                    .filter(Boolean)
-                    .join(' ')}
-            >
+            <div className="rounded-md border border-gray-200">
                 {isMobile ? (
                     <div className="divide-y divide-gray-200">
                         {/* ── Select-all header ── */}
@@ -319,7 +320,7 @@ export function DataTable<TData, TValue>({
                                                 : undefined
                                         }
                                         className={[
-                                            'relative flex items-center gap-3 px-4 py-3 transition-colors',
+                                            'flex items-center gap-3 px-4 py-3 transition-colors',
                                             row.getIsSelected()
                                                 ? 'bg-muted'
                                                 : isNewest
@@ -330,11 +331,6 @@ export function DataTable<TData, TValue>({
                                                 : '',
                                         ].join(' ')}
                                     >
-                                        {isNewest && (
-                                            <Badge className="pointer-events-none absolute top-1/2 -left-3 h-5 -translate-x-full -translate-y-1/2 rounded-full px-1.5 py-0 text-[10px] font-semibold shadow-sm select-none">
-                                                New
-                                            </Badge>
-                                        )}
                                         {/* Per-row checkbox */}
                                         <div
                                             onClick={(e) => e.stopPropagation()}
@@ -368,6 +364,12 @@ export function DataTable<TData, TValue>({
                                                 );
                                             })}
                                         </div>
+
+                                        {isNewest && (
+                                            <Badge className="pointer-events-none h-5 shrink-0 self-start rounded-full px-1.5 py-0 text-[10px] shadow-sm select-none">
+                                                New
+                                            </Badge>
+                                        )}
                                     </div>
                                 );
                             })
@@ -379,7 +381,7 @@ export function DataTable<TData, TValue>({
                     </div>
                 ) : (
                     /* ── Table view (desktop) ── */
-                    <div className="overflow-x-visible overflow-y-visible">
+                    <div className="overflow-x-auto">
                         <Table>
                             {headerGroups && headerGroups.length > 0 ? (
                                 /*
@@ -599,37 +601,53 @@ export function DataTable<TData, TValue>({
                                             >
                                                 {row
                                                     .getVisibleCells()
-                                                    .map((cell, cellIndex) => (
-                                                        <TableCell
-                                                            key={cell.id}
-                                                            className={[
-                                                                cell.column
-                                                                    .columnDef
-                                                                    .meta
-                                                                    ?.className,
-                                                                isNewest &&
-                                                                cellIndex === 0
-                                                                    ? 'relative overflow-visible'
-                                                                    : '',
-                                                            ]
-                                                                .filter(Boolean)
-                                                                .join(' ')}
-                                                        >
-                                                            {isNewest &&
-                                                                cellIndex ===
-                                                                    0 && (
-                                                                    <Badge className="pointer-events-none absolute top-1/2 -left-2 h-5 -translate-x-full -translate-y-1/2 rounded-full px-1.5 py-0 text-xs shadow-sm select-none">
-                                                                        New
-                                                                    </Badge>
+                                                    .map((cell, cellIndex) => {
+                                                        const colId =
+                                                            cell.column.id;
+                                                        const isBadgeCol =
+                                                            newBadgeColumnId
+                                                                ? colId ===
+                                                                  newBadgeColumnId
+                                                                : cellIndex ===
+                                                                  1;
+                                                        const showBadge =
+                                                            isNewest &&
+                                                            isBadgeCol;
+                                                        return (
+                                                            <TableCell
+                                                                key={cell.id}
+                                                                className={
+                                                                    cell.column
+                                                                        .columnDef
+                                                                        .meta
+                                                                        ?.className
+                                                                }
+                                                            >
+                                                                {showBadge ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        {flexRender(
+                                                                            cell
+                                                                                .column
+                                                                                .columnDef
+                                                                                .cell,
+                                                                            cell.getContext(),
+                                                                        )}
+                                                                        <Badge className="pointer-events-none h-5 shrink-0 rounded-full px-1.5 py-0 text-[10px] font-semibold shadow-sm select-none">
+                                                                            New
+                                                                        </Badge>
+                                                                    </div>
+                                                                ) : (
+                                                                    flexRender(
+                                                                        cell
+                                                                            .column
+                                                                            .columnDef
+                                                                            .cell,
+                                                                        cell.getContext(),
+                                                                    )
                                                                 )}
-                                                            {flexRender(
-                                                                cell.column
-                                                                    .columnDef
-                                                                    .cell,
-                                                                cell.getContext(),
-                                                            )}
-                                                        </TableCell>
-                                                    ))}
+                                                            </TableCell>
+                                                        );
+                                                    })}
                                             </TableRow>
                                         );
                                     })

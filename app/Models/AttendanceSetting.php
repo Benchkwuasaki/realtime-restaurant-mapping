@@ -23,10 +23,10 @@ class AttendanceSetting extends Model
     public static function getDefault(): self
     {
         return static::where('is_default', true)->first() ?? new self([
-            'name'                  => 'Default',
+            'name' => 'Default',
             'early_time_in_minutes' => 60,
             'late_time_out_minutes' => 60,
-            'is_default'            => true,
+            'is_default' => true,
         ]);
     }
 
@@ -35,7 +35,9 @@ class AttendanceSetting extends Model
      */
     public function markAsDefault(): void
     {
-        static::where('is_default', true)->update(['is_default' => false]);
+        static::where('is_default', true)
+            ->where('id', '!=', $this->id)
+            ->update(['is_default' => false]);
         $this->update(['is_default' => true]);
     }
 }

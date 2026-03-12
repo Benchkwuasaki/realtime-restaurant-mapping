@@ -482,7 +482,7 @@ export default function Index({
                         (r.internal_org_savings ?? 0),
                     internalOrgSavings: r.internal_org_savings ?? 0,
                     internalOrgSecond: r.internal_org_second ?? 0,
-                    internalOrgLoans: r.internal_org_loans ?? 0,
+                    internalOrgLoans: r.internal_org_second ?? 0,
                     internalOrgDeductions: r.internal_org_deductions ?? 0,
                     otherDeductionsMisc:
                         (r.other_deductions ?? 0) + (r.water_bill ?? 0),
@@ -1243,7 +1243,7 @@ export default function Index({
                 water_bill: r.water_bill,
                 internal_org_savings: r.internal_org_savings ?? 0,
                 internal_org_second: r.internal_org_second ?? 0,
-                internal_org_loans: r.internal_org_loans ?? 0,
+                internal_org_loans: r.internal_org_second ?? 0,
                 waived: floorWaivers[r.employee_id] ?? [],
                 waived_item_ids: (itemWaivers[r.employee_id] ?? []).map((k) =>
                     parseInt(k.split(':')[1]),
@@ -1306,7 +1306,6 @@ export default function Index({
                 setAllIncluded,
                 setEmployeeIncluded,
                 updateAttendance,
-                updateAttendanceFloat,
             }),
         [includedEmployeeIds, filteredEmployees, attendance],
     );

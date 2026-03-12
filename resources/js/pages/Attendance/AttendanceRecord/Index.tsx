@@ -122,9 +122,9 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                         {/* Time grid */}
                         <div className="grid grid-cols-3 gap-px bg-border/40">
                             {[
-                                { label: "Left At",     value: fmtTime(slip.time_out) },
+                                { label: "Left At", value: fmtTime(slip.time_out) },
                                 { label: "Returned At", value: slip.time_returned ? fmtTime(slip.time_returned) : "—" },
-                                { label: "Duration",    value: slip.minutes_gone != null ? fmtMinutes(slip.minutes_gone) : "—", highlight: isDeducted },
+                                { label: "Duration", value: slip.minutes_gone != null ? fmtMinutes(slip.minutes_gone) : "—", highlight: isDeducted },
                             ].map(({ label, value, highlight }) => (
                                 <div key={label} className="flex flex-col gap-0.5 px-3 py-2 bg-background">
                                     <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
@@ -395,7 +395,7 @@ function SettingForm({ initial, onSubmit, onCancel, submitting, isExistingDefaul
             <div className="grid grid-cols-2 gap-3">
                 {([
                     { key: "early_time_in_minutes" as const, label: "Early Time-In", description: "How early before scheduled time-in scans are accepted" },
-                    { key: "late_time_out_minutes" as const, label: "Late Time-Out",  description: "How late after scheduled time-out scans are accepted" },
+                    { key: "late_time_out_minutes" as const, label: "Late Time-Out", description: "How late after scheduled time-out scans are accepted" },
                 ] as const).map(({ key, label, description }) => (
                     <div key={key} className="flex flex-col gap-1.5">
                         <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</Label>
@@ -472,64 +472,175 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
     return (
         <>
             <Dialog open={open} onOpenChange={v => !v && onClose()}>
-                <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Settings className="w-4 h-4 text-muted-foreground" />
-                            {mode === "create" ? "New Attendance Setting" : mode === "edit" ? `Edit — ${editing?.name}` : "Attendance Settings"}
-                        </DialogTitle>
-                    </DialogHeader>
-
-                    {mode === "create" && <SettingForm onSubmit={handleCreate} onCancel={resetToList} submitting={submitting} />}
-                    {mode === "edit" && editing && <SettingForm key={editing.id} initial={editing} onSubmit={handleUpdate} onCancel={resetToList} submitting={submitting} isExistingDefault={editing.is_default} />}
-
-                    {mode === "list" && (
-                        <div className="flex flex-col gap-3 mt-1">
-                            {settings.length === 0 && (
-                                <p className="text-sm text-muted-foreground text-center py-6">No settings yet.</p>
+                <DialogContent className="max-w-lg w-full gap-0 p-0 overflow-hidden flex flex-col max-h-[80vh] [&>button]:top-4">                    {/* ── Header ── */}
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+                        <div className="flex items-center gap-2.5">
+                            {mode !== "list" && (
+                                <button
+                                    onClick={resetToList}
+                                    className="text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    <ChevronRight className="w-4 h-4 rotate-180" />
+                                </button>
                             )}
-                            {settings.map(s => (
-                                <div key={s.id} className={cn(
-                                    "rounded-lg border overflow-hidden transition-colors",
-                                    s.is_default ? "border-primary/40 bg-primary/5" : "border-border bg-background",
-                                )}>
-                                    <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/60">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            {s.is_default && (
-                                                <Badge variant="default" className="text-[10px] gap-1 uppercase tracking-wide shrink-0">
-                                                    <BadgeCheck className="w-2.5 h-2.5" /> Default
-                                                </Badge>
-                                            )}
-                                            <span className="text-sm font-semibold truncate">{s.name}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(s); setMode("edit") }}>
-                                                <Pencil className="w-3.5 h-3.5" />
-                                            </Button>
-                                            {!s.is_default && (
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleting(s)}>
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-px bg-border/50">
-                                        {[
-                                            { label: "Early Time-In", value: `${s.early_time_in_minutes}m` },
-                                            { label: "Late Time-Out",  value: `${s.late_time_out_minutes}m` },
-                                        ].map(({ label, value }) => (
-                                            <div key={label} className={cn("flex flex-col gap-0.5 px-3 py-2", s.is_default ? "bg-primary/5" : "bg-background")}>
-                                                <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
-                                                <span className="font-mono text-sm font-semibold">{value}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                            <Button variant="outline" size="sm" className="w-full mt-1" onClick={() => setMode("create")}>
-                                <Plus className="w-3.5 h-3.5 mr-1.5" /> New Setting
-                            </Button>
+                            <div>
+                                <p className="text-sm font-semibold leading-none">
+                                    {mode === "create" ? "New Policy" : mode === "edit" ? "Edit Policy" : "Attendance Settings"}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {mode === "create"
+                                        ? "Define scan acceptance windows"
+                                        : mode === "edit"
+                                            ? editing?.name
+                                            : `${settings.length} ${settings.length === 1 ? "policy" : "policies"} configured`}
+                                </p>
+                            </div>
                         </div>
+                        {mode === "list" && (
+                            <Button size="sm" variant="default" className="h-8 text-xs gap-1.5 mr-7" onClick={() => setMode("create")}>
+                                <Plus className="w-3.5 h-3.5" /> New Setting
+                            </Button>
+                        )}
+                    </div>
+
+                    {/* ── Form (create / edit) ── */}
+                    {(mode === "create" || (mode === "edit" && editing)) && (
+                        <div className="px-5 py-4 overflow-y-auto">
+                            <SettingForm
+                                key={editing?.id ?? "create"}
+                                initial={editing ?? undefined}
+                                onSubmit={mode === "create" ? handleCreate : handleUpdate}
+                                onCancel={resetToList}
+                                submitting={submitting}
+                                isExistingDefault={editing?.is_default}
+                            />
+                        </div>
+                    )}
+
+                    {/* ── Card list ── */}
+                    {mode === "list" && (
+                        <>
+                            {/* Scrollable area */}
+                            <div className="overflow-y-auto flex-1 min-h-0">
+                                {settings.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                                            <Settings className="w-4 h-4 text-muted-foreground opacity-40" />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-sm font-medium">No settings yet</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">Create your first attendance policy</p>
+                                        </div>
+                                        <Button size="sm" variant="outline" onClick={() => setMode("create")}>
+                                            <Plus className="w-3.5 h-3.5 mr-1.5" /> New Setting
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <table className="w-full text-sm border-collapse table-fixed">
+                                        <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border">
+                                            <tr>
+                                                <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-full">
+                                                    Policy Name
+                                                </th>
+                                                <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-28">
+                                                    Early Time-In
+                                                </th>
+                                                <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-28">
+                                                    Late Time-Out
+                                                </th>
+                                                <th className="w-20" />
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {settings.map(s => (
+                                                <tr
+                                                    key={s.id}
+                                                    className={cn(
+                                                        "group border-b border-border/50 transition-colors",
+                                                        s.is_default ? "bg-primary/5" : "hover:bg-muted/30",
+                                                    )}
+                                                >
+                                                    {/* Name */}
+                                                    <td className="px-5 py-3.5">
+                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                            <div className={cn(
+                                                                "w-2 h-2 rounded-full shrink-0 ring-2",
+                                                                s.is_default
+                                                                    ? "bg-primary ring-primary/30"
+                                                                    : "bg-border ring-transparent",
+                                                            )} />
+                                                            <span className="font-medium truncate">{s.name}</span>
+                                                            {s.is_default && (
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20 shrink-0">
+                                                                    <BadgeCheck className="w-3 h-3" /> Default
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Early time-in */}
+                                                    <td className="px-5 py-3.5">
+                                                        <span className={cn(
+                                                            "inline-flex items-center font-mono text-xs font-medium px-2.5 py-1 rounded-md",
+                                                            s.early_time_in_minutes === 0
+                                                                ? "text-muted-foreground/50"
+                                                                : "text-foreground bg-muted border border-border/60",
+                                                        )}>
+                                                            {fmtMins(s.early_time_in_minutes)}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Late time-out */}
+                                                    <td className="px-5 py-3.5">
+                                                        <span className={cn(
+                                                            "inline-flex items-center font-mono text-xs font-medium px-2.5 py-1 rounded-md",
+                                                            s.late_time_out_minutes === 0
+                                                                ? "text-muted-foreground/50"
+                                                                : "text-foreground bg-muted border border-border/60",
+                                                        )}>
+                                                            {fmtMins(s.late_time_out_minutes)}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Actions */}
+                                                    <td className="pr-4 py-3.5">
+                                                        <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                                                onClick={() => { setEditing(s); setMode("edit") }}
+                                                            >
+                                                                <Pencil className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                            {!s.is_default && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-7 w-7 text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                                                    onClick={() => setDeleting(s)}
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+
+                            {/* Pinned footer */}
+                            {settings.length > 0 && (
+                                <div className="shrink-0 px-5 py-3 border-t border-border bg-muted/20 mt-auto">
+                                    <p className="text-xs text-muted-foreground">
+                                        Only the <span className="font-semibold text-foreground">Default</span> policy applies to attendance computation
+                                    </p>
+                                </div>
+                            )}
+                        </>
                     )}
                 </DialogContent>
             </Dialog>
@@ -538,11 +649,18 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete "{deleting?.name}"?</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone. Existing records will not be affected.</AlertDialogDescription>
+                        <AlertDialogDescription>
+                            This action cannot be undone. Existing attendance records will not be affected.
+                        </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90 text-destructive-foreground" onClick={handleDelete}>Delete</AlertDialogAction>
+                        <AlertDialogAction
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                            onClick={handleDelete}
+                        >
+                            Delete
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -558,9 +676,9 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
     const [settingsOpen, setSettingsOpen] = useState(false)
     const channelRef = useRef<any>(null)
 
-    const present   = records.filter(r => r.status === "PRESENT").length
-    const halfDay   = records.filter(r => r.status === "HALF_DAY").length
-    const absent    = records.filter(r => r.status === "ABSENT").length
+    const present = records.filter(r => r.status === "PRESENT").length
+    const halfDay = records.filter(r => r.status === "HALF_DAY").length
+    const absent = records.filter(r => r.status === "ABSENT").length
     const lateCount = records.filter(r => (r.late_minutes ?? 0) > 0).length
 
     useEffect(() => {
@@ -570,7 +688,7 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
         channelRef.current = channel
 
         channel
-            .subscribed(() => {})
+            .subscribed(() => { })
             .listen(".record.updated", (incoming: AttendanceRecord) => {
                 const parsed = attendanceRecordSchema.safeParse(incoming)
                 if (!parsed.success) return
@@ -619,16 +737,16 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <StatCard title="Present"  value={present}   description="Completed full day"           icon={<UserCheck     className="w-4 h-4 m-2 text-primary" />} />
-                    <StatCard title="Half Day" value={halfDay}   description="Partial attendance"           icon={<Coffee        className="w-4 h-4 m-2 text-secondary-foreground" />} />
-                    <StatCard title="Absent"   value={absent}    description="No attendance recorded"       icon={<UserX         className="w-4 h-4 m-2 text-destructive" />} />
-                    <StatCard title="Late"     value={lateCount} description="Arrived after scheduled time" icon={<AlertTriangle className="w-4 h-4 m-2 text-accent-foreground" />} />
+                    <StatCard title="Present" value={present} description="Completed full day" icon={<UserCheck className="w-4 h-4 m-2 text-primary" />} />
+                    <StatCard title="Half Day" value={halfDay} description="Partial attendance" icon={<Coffee className="w-4 h-4 m-2 text-secondary-foreground" />} />
+                    <StatCard title="Absent" value={absent} description="No attendance recorded" icon={<UserX className="w-4 h-4 m-2 text-destructive" />} />
+                    <StatCard title="Late" value={lateCount} description="Arrived after scheduled time" icon={<AlertTriangle className="w-4 h-4 m-2 text-accent-foreground" />} />
                 </div>
 
                 <DataTable
                     columns={columns}
                     data={records}
-                    getRowId={row => String(row.id)}
+                    getRowId={row => String(row.employee_id)}
                     searchColumnId="employee_name"
                     searchPlaceholder="Search by name or work ID…"
                     filters={[{ columnId: "status", title: "Status", options: statusOptions }]}
