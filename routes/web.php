@@ -296,7 +296,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
-        Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
         Route::inertia('/leave', 'ReportsAndAnalytics\Leave\LeaveIndexa')->name('leave');
 
         Route::get('/attendance-report', [AttendanceReportController::class, 'index'])
