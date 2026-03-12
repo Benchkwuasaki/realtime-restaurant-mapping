@@ -26,7 +26,7 @@ function CardField({
 }) {
     return (
         <div className="flex items-center justify-between gap-4 text-sm">
-            <span className="text-muted-foreground shrink-0">{label}</span>
+            <span className="shrink-0 text-muted-foreground">{label}</span>
             <span className="text-right">{value}</span>
         </div>
     );
@@ -186,6 +186,19 @@ export const columns: DataTableColumnDef<Employee>[] = [
         enableHiding: true,
     },
     {
+        accessorKey: 'employmentClassification',
+        header: ({ column }) => (
+            <DataTableColumnHeader column={column} title="Classification" />
+        ),
+        cell: ({ row }) => (
+            <div className="min-w-[120px]">
+                {row.getValue('employmentClassification')}
+            </div>
+        ),
+        enableSorting: true,
+        enableHiding: true,
+    },
+    {
         accessorKey: 'status',
         header: ({ column }) => (
             <DataTableColumnHeader column={column} title="Status" />
@@ -197,7 +210,7 @@ export const columns: DataTableColumnDef<Employee>[] = [
             value.includes(row.getValue(id)),
         mobileCard: (row) => (
             <div className="flex flex-col gap-1">
-                <span className="text-muted-foreground ml-2 text-xs">
+                <span className="ml-2 text-xs text-muted-foreground">
                     Status
                 </span>
                 <StatusBadge employee={row} />

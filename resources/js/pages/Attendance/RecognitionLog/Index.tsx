@@ -1,6 +1,5 @@
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import axios from 'axios';
 import {
     Search,
     CalendarDays,
@@ -258,7 +257,7 @@ function CameraFormDialog({
             <DialogContent className="gap-4 sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-base">
-                        <Camera className="text-primary h-4 w-4" />
+                        <Camera className="h-4 w-4 text-primary" />
                         {initial ? 'Edit Camera' : 'Add Camera'}
                     </DialogTitle>
                 </DialogHeader>
@@ -266,7 +265,7 @@ function CameraFormDialog({
                 <div className="flex flex-col gap-3">
                     {/* Label */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-muted-foreground text-xs font-medium">
+                        <label className="text-xs font-medium text-muted-foreground">
                             Label
                         </label>
                         <Input
@@ -279,7 +278,7 @@ function CameraFormDialog({
 
                     {/* Stream URL */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-muted-foreground text-xs font-medium">
+                        <label className="text-xs font-medium text-muted-foreground">
                             MediaMTX Stream URL
                         </label>
                         <Input
@@ -288,7 +287,7 @@ function CameraFormDialog({
                             placeholder="http://192.168.x.x:8889/stream-name"
                             className="h-9 font-mono text-sm"
                         />
-                        <p className="text-muted-foreground/70 text-[11px]">
+                        <p className="text-[11px] text-muted-foreground/70">
                             The base URL of your MediaMTX stream. The{' '}
                             <code>/whep</code> suffix is added automatically.
                         </p>
@@ -405,14 +404,14 @@ function CctvStream({
                     {status === 'connecting' ? (
                         <>
                             <Loader2 className="h-8 w-8 animate-spin text-white/30" />
-                            <p className="text-xs uppercase tracking-widest text-white/30">
+                            <p className="text-xs tracking-widest text-white/30 uppercase">
                                 Connecting…
                             </p>
                         </>
                     ) : (
                         <>
                             <WifiOff className="h-8 w-8 text-white/20" />
-                            <p className="text-xs uppercase tracking-widest text-white/30">
+                            <p className="text-xs tracking-widest text-white/30 uppercase">
                                 Stream Offline
                             </p>
                             <button
@@ -426,15 +425,15 @@ function CctvStream({
                 </div>
             )}
 
-            <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5">
+            <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
                 <span className="rounded-md bg-black/60 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
                     {label}
                 </span>
                 {status === 'live' && (
-                    <span className="text-primary-foreground bg-primary/80 flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm">
+                    <span className="flex items-center gap-1 rounded-md bg-primary/80 px-2 py-0.5 text-[10px] font-bold text-primary-foreground backdrop-blur-sm">
                         <span className="relative flex h-1.5 w-1.5">
-                            <span className="bg-primary-foreground absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
-                            <span className="bg-primary-foreground relative inline-flex h-1.5 w-1.5 rounded-full" />
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-foreground opacity-75" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary-foreground" />
                         </span>
                         LIVE
                     </span>
@@ -463,7 +462,7 @@ function LiveClock() {
         return () => clearInterval(id);
     }, []);
     return (
-        <div className="absolute bottom-2 right-2 z-10 rounded-md bg-black/60 px-2 py-0.5 font-mono text-[10px] tabular-nums text-white/70 backdrop-blur-sm">
+        <div className="absolute right-2 bottom-2 z-10 rounded-md bg-black/60 px-2 py-0.5 font-mono text-[10px] text-white/70 tabular-nums backdrop-blur-sm">
             {time}
         </div>
     );
@@ -491,7 +490,7 @@ function CameraGrid({
 
     if (cameras.length === 0) {
         return (
-            <div className="border-border bg-muted/20 text-muted-foreground flex aspect-video flex-col items-center justify-center gap-3 rounded-xl border border-dashed">
+            <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 text-muted-foreground">
                 <Camera className="h-8 w-8 opacity-30" />
                 <p className="text-sm">No cameras added yet.</p>
             </div>
@@ -622,7 +621,7 @@ function CameraTile({
 
     return (
         <div
-            className="border-border relative overflow-hidden rounded-xl border bg-black shadow-sm"
+            className="relative overflow-hidden rounded-xl border border-border bg-black shadow-sm"
             style={sizeStyle}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
@@ -636,7 +635,7 @@ function CameraTile({
 
             {/* Controls — appear on hover */}
             <div
-                className="absolute right-2 top-2 z-30 flex items-center gap-1 transition-opacity duration-150"
+                className="absolute top-2 right-2 z-30 flex items-center gap-1 transition-opacity duration-150"
                 style={{
                     opacity: hovered ? 1 : 0,
                     pointerEvents: hovered ? 'auto' : 'none',
@@ -645,7 +644,7 @@ function CameraTile({
                 <button
                     onClick={onPin}
                     title={isPinned ? 'Unpin' : 'Pin (focus)'}
-                    className="hover:bg-primary/90 flex h-7 w-7 items-center justify-center rounded-lg bg-black/70 text-white backdrop-blur-sm transition-colors"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-black/70 text-white backdrop-blur-sm transition-colors hover:bg-primary/90"
                 >
                     {isPinned ? (
                         <PinOff className="h-3.5 w-3.5" />
@@ -663,14 +662,14 @@ function CameraTile({
                 <button
                     onClick={onRemove}
                     title="Remove camera"
-                    className="hover:bg-destructive/90 flex h-7 w-7 items-center justify-center rounded-lg bg-black/70 text-white backdrop-blur-sm transition-colors"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-black/70 text-white backdrop-blur-sm transition-colors hover:bg-destructive/90"
                 >
                     <Trash2 className="h-3.5 w-3.5" />
                 </button>
             </div>
 
             {isPinned && (
-                <div className="bg-primary/80 absolute bottom-2 left-2 z-30 flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+                <div className="absolute bottom-2 left-2 z-30 flex items-center gap-1 rounded-md bg-primary/80 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
                     <Pin className="h-2.5 w-2.5" /> Pinned
                 </div>
             )}
@@ -697,9 +696,9 @@ function SnapshotImage({
     if (!src || err) {
         return (
             <div
-                className={`bg-primary/10 flex items-center justify-center ${className}`}
+                className={`flex items-center justify-center bg-primary/10 ${className}`}
             >
-                <span className="text-primary select-none text-xl font-bold">
+                <span className="text-xl font-bold text-primary select-none">
                     {initials(name)}
                 </span>
             </div>
@@ -732,37 +731,37 @@ function AttendanceCard({
     return (
         <button
             onClick={onClick}
-            className={`bg-card focus-visible:ring-ring hover:border-primary/40 group relative flex w-full flex-col overflow-hidden rounded-xl border text-left transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 active:scale-[0.98] ${isNew ? 'border-primary/60 shadow-primary/10 shadow-sm' : 'border-border'}`}
+            className={`group relative flex w-full flex-col overflow-hidden rounded-xl border bg-card text-left transition-all duration-200 hover:border-primary/40 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.98] ${isNew ? 'border-primary/60 shadow-sm shadow-primary/10' : 'border-border'}`}
         >
-            <div className="bg-primary h-0.5 w-full shrink-0 opacity-50 transition-opacity group-hover:opacity-100" />
-            <div className="bg-muted relative aspect-square w-full overflow-hidden">
+            <div className="h-0.5 w-full shrink-0 bg-primary opacity-50 transition-opacity group-hover:opacity-100" />
+            <div className="relative aspect-square w-full overflow-hidden bg-muted">
                 <SnapshotImage
                     path={record.snapshot_path}
                     avatarUrl={record.employee?.avatar_url}
                     name={name}
                     className="h-full w-full transition-transform duration-300 group-hover:scale-105"
                 />
-                <div className="bg-linear-to-t pointer-events-none absolute inset-0 from-black/60 via-transparent to-transparent" />
+                <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
                 {isNew && (
-                    <div className="bg-primary text-primary-foreground absolute right-2 top-2 rounded-full px-1.5 py-0.5 text-[9px] font-bold">
+                    <div className="absolute top-2 right-2 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">
                         NEW
                     </div>
                 )}
             </div>
             <div className="font-poppins flex min-w-0 flex-col gap-0.5 px-2.5 py-2.5">
-                <p className="text-card-foreground truncate text-xs font-semibold leading-tight">
+                <p className="truncate text-xs leading-tight font-semibold text-card-foreground">
                     {name}
                 </p>
-                <p className="text-muted-foreground truncate text-[10px]">
+                <p className="truncate text-[10px] text-muted-foreground">
                     {workId}
                 </p>
                 <div className="mt-1 flex items-center gap-1.5">
-                    <Clock className="text-primary/50 h-3 w-3 shrink-0" />
-                    <span className="text-card-foreground text-[10px] font-semibold tabular-nums">
+                    <Clock className="h-3 w-3 shrink-0 text-primary/50" />
+                    <span className="text-[10px] font-semibold text-card-foreground tabular-nums">
                         {fmtTime(record.captured_at)}
                     </span>
                 </div>
-                <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-widest text-green-500">
+                <p className="mt-0.5 text-[9px] font-semibold tracking-widest text-green-500 uppercase">
                     Detected
                 </p>
             </div>
@@ -822,16 +821,16 @@ function EmployeeDetailDialog({
                             name={name}
                             className="h-full w-full scale-110"
                         />
-                        <div className="bg-primary/85 absolute inset-0 backdrop-blur-2xl" />
+                        <div className="absolute inset-0 bg-primary/85 backdrop-blur-2xl" />
                     </div>
                     <button
                         onClick={onClose}
-                        className="bg-primary-foreground/10 hover:bg-primary-foreground/25 text-primary-foreground absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full transition-colors"
+                        className="absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-primary-foreground/10 text-primary-foreground transition-colors hover:bg-primary-foreground/25"
                     >
                         <X className="h-3.5 w-3.5" />
                     </button>
-                    <div className="relative z-10 flex items-end gap-4 px-5 pb-5 pt-8">
-                        <div className="border-primary-foreground/20 h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 shadow-xl">
+                    <div className="relative z-10 flex items-end gap-4 px-5 pt-8 pb-5">
+                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-primary-foreground/20 shadow-xl">
                             <SnapshotImage
                                 path={record.snapshot_path}
                                 avatarUrl={record.employee?.avatar_url}
@@ -840,18 +839,18 @@ function EmployeeDetailDialog({
                             />
                         </div>
                         <div className="min-w-0 pb-1">
-                            <h2 className="text-primary-foreground truncate text-lg font-bold leading-tight">
+                            <h2 className="truncate text-lg leading-tight font-bold text-primary-foreground">
                                 {name}
                             </h2>
-                            <p className="text-primary-foreground/60 mt-0.5 font-mono text-xs">
+                            <p className="mt-0.5 font-mono text-xs text-primary-foreground/60">
                                 {workId}
                             </p>
                             <div className="mt-2.5 flex items-center gap-1.5">
-                                <Clock className="text-primary-foreground/60 h-3.5 w-3.5" />
-                                <span className="text-primary-foreground font-mono text-sm font-semibold tabular-nums">
+                                <Clock className="h-3.5 w-3.5 text-primary-foreground/60" />
+                                <span className="font-mono text-sm font-semibold text-primary-foreground tabular-nums">
                                     {fmtTime(record.captured_at)}
                                 </span>
-                                <span className="text-primary-foreground/50 ml-1 text-[9px] font-semibold uppercase tracking-widest">
+                                <span className="ml-1 text-[9px] font-semibold tracking-widest text-primary-foreground/50 uppercase">
                                     Detected
                                 </span>
                             </div>
@@ -859,7 +858,7 @@ function EmployeeDetailDialog({
                     </div>
                 </div>
 
-                <div className="divide-border border-border bg-muted/30 grid shrink-0 grid-cols-4 divide-x border-b">
+                <div className="grid shrink-0 grid-cols-4 divide-x divide-border border-b border-border bg-muted/30">
                     {(
                         [
                             'time_in',
@@ -879,7 +878,7 @@ function EmployeeDetailDialog({
                                 <Icon
                                     className={`h-3.5 w-3.5 ${cfg.iconCls}`}
                                 />
-                                <span className="text-muted-foreground text-center text-[9px] font-semibold uppercase leading-tight tracking-widest">
+                                <span className="text-center text-[9px] leading-tight font-semibold tracking-widest text-muted-foreground uppercase">
                                     {cfg.label}
                                 </span>
                                 <span
@@ -892,9 +891,9 @@ function EmployeeDetailDialog({
                     })}
                 </div>
 
-                <DialogHeader className="shrink-0 px-5 pb-2 pt-4">
+                <DialogHeader className="shrink-0 px-5 pt-4 pb-2">
                     <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-                        <Activity className="text-muted-foreground h-3.5 w-3.5" />
+                        <Activity className="h-3.5 w-3.5 text-muted-foreground" />
                         All Detections Today
                         <Badge
                             variant="secondary"
@@ -908,7 +907,7 @@ function EmployeeDetailDialog({
                 <ScrollArea className="h-[280px]">
                     <div className="px-5 pb-5">
                         {empRecords.length === 0 ? (
-                            <p className="text-muted-foreground py-8 text-center text-sm italic">
+                            <p className="py-8 text-center text-sm text-muted-foreground italic">
                                 No records found.
                             </p>
                         ) : (
@@ -920,7 +919,7 @@ function EmployeeDetailDialog({
                                     return (
                                         <div
                                             key={r.id}
-                                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active ? 'bg-primary/10 border-primary/20 border' : 'hover:bg-muted/50'}`}
+                                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${active ? 'border border-primary/20 bg-primary/10' : 'hover:bg-muted/50'}`}
                                         >
                                             <div
                                                 className={`h-9 w-9 rounded-full ${cfg.bgCls} flex shrink-0 items-center justify-center border ${cfg.borderCls}`}
@@ -931,21 +930,21 @@ function EmployeeDetailDialog({
                                             </div>
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                                    <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                                                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                                                         Detected
                                                     </span>
-                                                    <span className="text-foreground font-mono text-sm font-semibold tabular-nums">
+                                                    <span className="font-mono text-sm font-semibold text-foreground tabular-nums">
                                                         {fmtTime(r.captured_at)}
                                                     </span>
                                                 </div>
                                                 {r.device_id && (
-                                                    <p className="text-muted-foreground mt-0.5 truncate text-[9px]">
+                                                    <p className="mt-0.5 truncate text-[9px] text-muted-foreground">
                                                         Device: {r.device_id}
                                                     </p>
                                                 )}
                                             </div>
                                             {r.snapshot_path && (
-                                                <div className="border-border h-9 w-9 shrink-0 overflow-hidden rounded-lg border">
+                                                <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-border">
                                                     <img
                                                         src={`/storage/${r.snapshot_path}`}
                                                         alt=""
@@ -1004,7 +1003,6 @@ export default function RecognitionLogIndex({
     const [records, setRecords] = useState<AttendanceLog[]>(() =>
         toArray(initialAttendances),
     );
-    const [refreshing, setRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [newIds, setNewIds] = useState<Set<number>>(new Set());
 
@@ -1080,22 +1078,6 @@ export default function RecognitionLogIndex({
         },
     );
 
-    const fetchRecords = useCallback(async (targetDate: string) => {
-        setRefreshing(true);
-        try {
-            const res = await axios.get<{ attendances: AttendanceLog[] }>(
-                route('recognition-logs.index'),
-                { params: { date: targetDate, json: 1 } },
-            );
-            setRecords(toArray(res.data.attendances ?? []));
-            setLastUpdated(new Date());
-        } catch {
-            /* silently fail */
-        } finally {
-            setRefreshing(false);
-        }
-    }, []);
-
     const [search, setSearch] = useState('');
     const filtered = useMemo(
         () => records.filter((r) => matchesSearch(r, search)),
@@ -1148,26 +1130,26 @@ export default function RecognitionLogIndex({
 
             {/* Full-screen flex column — fills viewport below app chrome */}
             <div
-                className="flex flex-col px-4 pb-4 pt-4 sm:px-5"
+                className="flex flex-col px-4 pt-4 pb-4 sm:px-5"
                 style={{ height: 'calc(100dvh - 56px)' }}
             >
                 {/* ── Header ── */}
                 <div className="mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
                     <div>
                         <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-                            <Radio className="text-primary h-4 w-4" />
+                            <Radio className="h-4 w-4 text-primary" />
                             Attendance Monitor
                         </h1>
-                        <p className="text-muted-foreground mt-0.5 text-sm">
+                        <p className="mt-0.5 text-sm text-muted-foreground">
                             {isToday ? 'Today — ' : ''}
                             {fmtDate(date)}
                             {' · '}
-                            <span className="text-foreground font-semibold">
+                            <span className="font-semibold text-foreground">
                                 {records.length}
                             </span>{' '}
                             detection{records.length !== 1 ? 's' : ''}
                             {lastUpdated && (
-                                <span className="text-muted-foreground/60 ml-2 text-[11px]">
+                                <span className="ml-2 text-[11px] text-muted-foreground/60">
                                     · updated{' '}
                                     {lastUpdated.toLocaleTimeString('en-PH', {
                                         hour: '2-digit',
@@ -1185,7 +1167,7 @@ export default function RecognitionLogIndex({
                             type="date"
                             value={date}
                             onChange={handleDateChange}
-                            className="w-38 h-9"
+                            className="h-9 w-38"
                         />
                         {!isToday && (
                             <Button
@@ -1198,18 +1180,6 @@ export default function RecognitionLogIndex({
                                 <span className="hidden sm:inline">Today</span>
                             </Button>
                         )}
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-9 w-9 p-0"
-                            onClick={() => fetchRecords(date)}
-                            disabled={refreshing}
-                            title="Refresh now"
-                        >
-                            <RefreshCw
-                                className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`}
-                            />
-                        </Button>
                     </div>
                 </div>
 
@@ -1219,7 +1189,7 @@ export default function RecognitionLogIndex({
                     <div className="flex min-h-0 shrink-0 flex-col gap-2 xl:w-[69%]">
                         {/* Camera toolbar */}
                         <div className="flex shrink-0 items-center justify-between gap-2">
-                            <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold">
+                            <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                                 <Camera className="h-3.5 w-3.5" />
                                 {cameras.length} camera
                                 {cameras.length !== 1 ? 's' : ''}
@@ -1254,19 +1224,16 @@ export default function RecognitionLogIndex({
                     </div>
 
                     {/* ══ RIGHT: Detection log — fills full height, scrollable inside ══ */}
-                    <div className="bg-card border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
                         {/* Panel header */}
-                        <div className="border-border bg-muted/20 flex shrink-0 flex-col gap-2 border-b px-4 py-3">
+                        <div className="flex shrink-0 flex-col gap-2 border-b border-border bg-muted/20 px-4 py-3">
                             <div className="flex items-center justify-between gap-2">
-                                <p className="text-foreground flex items-center gap-1.5 text-sm font-semibold">
-                                    <Fingerprint className="text-primary h-3.5 w-3.5" />
+                                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                                    <Fingerprint className="h-3.5 w-3.5 text-primary" />
                                     Detection Log
                                 </p>
                                 <div className="flex items-center gap-1.5">
-                                    {refreshing && (
-                                        <Loader2 className="text-primary h-3 w-3 animate-spin" />
-                                    )}
-                                    <span className="text-muted-foreground text-xs tabular-nums">
+                                    <span className="text-xs text-muted-foreground tabular-nums">
                                         {filtered.length}
                                         {search
                                             ? ` / ${records.length}`
@@ -1277,17 +1244,17 @@ export default function RecognitionLogIndex({
                                 </div>
                             </div>
                             <div className="relative">
-                                <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" />
+                                <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     placeholder="Search by name or work ID…"
-                                    className="bg-background h-8 pl-8 pr-8 text-sm"
+                                    className="h-8 bg-background pr-8 pl-8 text-sm"
                                 />
                                 {search && (
                                     <button
                                         onClick={() => setSearch('')}
-                                        className="text-muted-foreground hover:text-foreground absolute right-2 top-1/2 -translate-y-1/2 transition-colors"
+                                        className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                                     >
                                         <X className="h-3.5 w-3.5" />
                                     </button>
@@ -1298,7 +1265,7 @@ export default function RecognitionLogIndex({
                         {/* Scrollable grid */}
                         <div className="min-h-0 flex-1 overflow-y-auto p-3">
                             {filtered.length === 0 ? (
-                                <div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-16">
+                                <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
                                     <Fingerprint className="h-10 w-10 opacity-20" />
                                     <p className="text-sm">
                                         {search

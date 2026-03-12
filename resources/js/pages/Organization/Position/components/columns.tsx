@@ -72,22 +72,22 @@ function DeleteConfirmDialog({ position, onClose }: DeleteConfirmDialogProps) {
                 className="gap-0 overflow-hidden p-0 sm:max-w-sm"
                 onClick={(e) => e.stopPropagation()}
             >
-                <DialogHeader className="border-border border-b px-5 py-4">
-                    <DialogTitle className="text-foreground text-sm font-semibold">
+                <DialogHeader className="border-b border-border px-5 py-4">
+                    <DialogTitle className="text-sm font-semibold text-foreground">
                         Delete Position
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="text-muted-foreground px-5 py-4 text-sm">
+                <div className="px-5 py-4 text-sm text-muted-foreground">
                     Are you sure you want to delete{' '}
-                    <span className="text-foreground font-medium">
+                    <span className="font-medium text-foreground">
                         {position?.position_name}
                     </span>
                     ? This will also affect any items assigned to this position.
                     This action cannot be undone.
                 </div>
 
-                <DialogFooter className="border-border xs:flex xs:flex-row xs:justify-end bg-muted/30 border-t px-5 py-4">
+                <DialogFooter className="xs:flex xs:flex-row xs:justify-end border-t border-border bg-muted/30 px-5 py-4">
                     <Button
                         type="button"
                         variant="outline"
@@ -137,20 +137,20 @@ function MobilePositionCard({ row, onEdit }: MobilePositionCardProps) {
     return (
         <>
             <div
-                className="bg-background flex flex-col overflow-hidden"
+                className="flex flex-col overflow-hidden bg-background"
                 onClick={(e) => {
                     if (suppressNextClick.current) e.stopPropagation();
                 }}
             >
                 {/* ── Card Body ── */}
-                <div className="space-y-2 px-4 pb-5 pt-4">
+                <div className="space-y-2 px-4 pt-4 pb-5">
                     <div className="flex items-center justify-between gap-2">
-                        <span className="text-foreground text-base font-semibold">
+                        <span className="text-base font-semibold text-foreground">
                             {row.position_name}
                         </span>
                         <Badge
                             variant={typeBadgeVariant[row.position_type]}
-                            className="shrink-0 whitespace-nowrap text-xs"
+                            className="shrink-0 text-xs whitespace-nowrap"
                         >
                             {row.position_type}
                         </Badge>
@@ -158,7 +158,7 @@ function MobilePositionCard({ row, onEdit }: MobilePositionCardProps) {
 
                     <div className="flex flex-col gap-0.5">
                         {row.department?.department_name && (
-                            <span className="text-muted-foreground text-xs">
+                            <span className="text-xs text-muted-foreground">
                                 {row.department.department_name}
                                 {row.division?.division_name && (
                                     <> · {row.division.division_name}</>
@@ -172,8 +172,8 @@ function MobilePositionCard({ row, onEdit }: MobilePositionCardProps) {
                 </div>
 
                 {/* ── Card Footer ── */}
-                <div className="border-border bg-muted/30 flex items-center justify-between border-t px-4 py-2.5">
-                    <span className="text-muted-foreground text-xs">
+                <div className="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-2.5">
+                    <span className="text-xs text-muted-foreground">
                         {row.occupied_slots} / {row.total_slots} slot
                         {row.total_slots !== 1 ? 's' : ''} filled
                     </span>
@@ -181,7 +181,7 @@ function MobilePositionCard({ row, onEdit }: MobilePositionCardProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground hover:text-foreground h-12 w-12 p-0 text-xs"
+                            className="h-12 w-12 p-0 text-xs text-muted-foreground hover:text-foreground"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onEdit(row);
@@ -192,7 +192,7 @@ function MobilePositionCard({ row, onEdit }: MobilePositionCardProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground hover:text-destructive h-12 w-12 p-0 text-xs"
+                            className="h-12 w-12 p-0 text-xs text-muted-foreground hover:text-destructive"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setConfirmPosition(row);
@@ -271,7 +271,7 @@ export function getColumns({
                 return (
                     <Badge
                         variant={typeBadgeVariant[type]}
-                        className="whitespace-nowrap text-xs"
+                        className="text-xs whitespace-nowrap"
                     >
                         {type}
                     </Badge>
@@ -284,14 +284,12 @@ export function getColumns({
         },
         {
             id: 'department',
-            accessorFn: (row) => row.department?.department_name ?? '',
+            accessorFn: (row) => String(row.department?.department_id ?? ''),
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Department" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-[140px]">
-                    {row.original.department?.department_name ?? '—'}
-                </div>
+                <div>{row.original.department?.department_name ?? '—'}</div>
             ),
             filterFn: (row, _id, value: string[]) =>
                 value.includes(String(row.original.department_id)),
@@ -300,7 +298,7 @@ export function getColumns({
         },
         {
             id: 'division',
-            accessorFn: (row) => row.division?.division_name ?? '',
+            accessorFn: (row) => String(row.division?.division_id ?? ''),
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Division" />
             ),
@@ -316,7 +314,7 @@ export function getColumns({
         },
         {
             id: 'unit',
-            accessorFn: (row) => row.unit?.unit_name ?? '',
+            accessorFn: (row) => String(row.unit?.unit_id ?? ''),
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Unit" />
             ),
@@ -377,7 +375,7 @@ export function getColumns({
                                 description: (p) => (
                                     <>
                                         Are you sure you want to delete{' '}
-                                        <span className="text-foreground font-medium">
+                                        <span className="font-medium text-foreground">
                                             {p.position_name}
                                         </span>
                                         ? This will also affect any items

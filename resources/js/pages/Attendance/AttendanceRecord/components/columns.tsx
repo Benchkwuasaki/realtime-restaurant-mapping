@@ -1,5 +1,6 @@
 import { format, parseISO } from "date-fns"
 import { AlertTriangle, Clock, Coffee, Timer, LogIn, ClipboardList } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
@@ -10,14 +11,20 @@ import {
 } from "../data/data"
 import { type AttendanceRecord } from "../data/schema"
 
+// ─── Badge helpers ─────────────────────────────────────────────────────────────
+
+function PurposeBadge({ type }: { type: "personal" | "official" }) {
+    return type === "personal"
+        ? <Badge variant="secondary" >Personal</Badge>
+        : <Badge variant="default">Official</Badge>
+}
+
 // ─── Time cell ────────────────────────────────────────────────────────────────
 
 function TimeCell({ actual, isLate = false }: { actual: string | null; isLate?: boolean }) {
-    if (!actual) return (
-        <span className="text-muted-foreground/40 tabular-nums font-mono text-sm">—</span>
-    )
+    if (!actual) return <span className="text-muted-foreground/40 tabular-nums font-mono text-sm">—</span>
     return (
-        <span className={`font-mono tabular-nums text-sm ${isLate ? "text-destructive" : ""}`}>
+        <span className={cn("font-mono tabular-nums text-sm", isLate && "text-rose-600 dark:text-rose-400")}>
             {fmtTime(actual)}
         </span>
     )
@@ -30,7 +37,7 @@ function TimeInCell({ record }: { record: AttendanceRecord }) {
 
     if (record.time_in) {
         return (
-            <span className={`font-mono tabular-nums text-sm ${isLate ? "text-destructive" : ""}`}>
+            <span className={cn("font-mono tabular-nums text-sm", isLate && "text-rose-600 dark:text-rose-400")}>
                 {fmtTime(record.time_in)}
             </span>
         )
@@ -39,8 +46,7 @@ function TimeInCell({ record }: { record: AttendanceRecord }) {
     if (record.break_out) {
         return (
             <span className="inline-flex items-center gap-1 text-xs text-accent-foreground font-medium">
-                <LogIn className="w-3 h-3" />
-                No scan
+                <LogIn className="w-3 h-3" />No scan
             </span>
         )
     }
@@ -48,14 +54,11 @@ function TimeInCell({ record }: { record: AttendanceRecord }) {
     return <span className="text-muted-foreground/40 tabular-nums font-mono text-sm">—</span>
 }
 
-// ─── Whereabout slip badge ────────────────────────────────────────────────────
+// ─── Whereabout slip cell ─────────────────────────────────────────────────────
 
 function WhereaboutSlipCell({ record }: { record: AttendanceRecord }) {
     const slips = record.whereabout_slips ?? []
-
-    if (slips.length === 0) {
-        return <span className="text-muted-foreground/40 text-sm">—</span>
-    }
+    if (slips.length === 0) return <span className="text-muted-foreground/40 text-sm">—</span>
 
     const hasPersonal = slips.some(s => s.purpose_type === "personal")
     const hasOfficial = slips.some(s => s.purpose_type === "official")
@@ -63,29 +66,17 @@ function WhereaboutSlipCell({ record }: { record: AttendanceRecord }) {
 
     return (
         <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Count badge */}
-            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            <Badge variant="blue" className="text-[10px] gap-1">
                 <ClipboardList className="w-3 h-3" />
                 {slips.length}
-            </span>
+            </Badge>
 
-            {/* Purpose type badges */}
-            {hasPersonal && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                    Personal
-                </Badge>
-            )}
-            {hasOfficial && (
-                <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4">
-                    Official
-                </Badge>
-            )}
+            {hasPersonal && <PurposeBadge type="personal" />}
+            {hasOfficial && <PurposeBadge type="official" />}
 
-            {/* Pending return warning */}
             {hasPending && (
                 <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                    <AlertTriangle className="w-3 h-3" />
-                    Pending
+                    <AlertTriangle className="w-3 h-3" />Pending
                 </span>
             )}
         </div>
@@ -104,19 +95,18 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
     return (
         <div className="flex flex-col bg-background overflow-hidden">
             <div className="px-4 pt-4 pb-3 space-y-2">
-                {/* Name + status */}
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[status] ?? "bg-muted-foreground"}`} />
+                        <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[status] ?? "bg-muted-foreground")} />
                         <span className="font-semibold text-sm text-foreground truncate">{name}</span>
                     </div>
-                    <span className={`inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_PILL[status] ?? "bg-muted text-muted-foreground"}`}>
+                    {/* STATUS_PILL contains custom colour classes not reducible to a single variant */}
+                    <Badge variant="outline" className={cn("text-[10px] gap-1 shrink-0", STATUS_PILL[status])}>
                         <Icon className="w-2.5 h-2.5" />
                         {STATUS_LABEL[status]}
-                    </span>
+                    </Badge>
                 </div>
 
-                {/* Work ID + latest date */}
                 <div className="flex items-center justify-between pl-3.5">
                     <p className="text-[11px] font-mono text-muted-foreground">{row.employee?.work_id ?? "—"}</p>
                     <p className="text-[11px] text-muted-foreground">
@@ -124,14 +114,11 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
                     </p>
                 </div>
 
-                {/* Time summary */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 pl-3.5 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 shrink-0" />
                         {row.time_in ? (
-                            <span className={`font-mono ${isLate ? "text-destructive" : ""}`}>
-                                {fmtTime(row.time_in)}
-                            </span>
+                            <span className={cn("font-mono", isLate && "text-rose-600 dark:text-rose-400")}>{fmtTime(row.time_in)}</span>
                         ) : row.break_out ? (
                             <span className="text-accent-foreground font-medium">No scan</span>
                         ) : (
@@ -145,14 +132,13 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
                         <span className="text-muted-foreground/40">out</span>
                     </div>
                     {isLate && (
-                        <div className="flex items-center gap-1 text-destructive col-span-2">
+                        <div className="flex items-center gap-1 text-rose-600 dark:text-rose-400 col-span-2">
                             <AlertTriangle className="w-3 h-3 shrink-0" />
                             <span className="font-semibold">{fmtMinutes(row.late_minutes)} late</span>
                         </div>
                     )}
                 </div>
 
-                {/* Whereabout slips */}
                 {slips.length > 0 && (
                     <div className="pl-3.5 flex items-center gap-1.5 flex-wrap">
                         <ClipboardList className="w-3 h-3 text-blue-500" />
@@ -160,13 +146,12 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
                             {slips.length} whereabout slip{slips.length > 1 ? "s" : ""}
                         </span>
                         {slips.some(s => s.return_status === "not_returned") && (
-                            <span className="text-[10px] text-amber-600 font-semibold">· Pending return</span>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">· Pending return</span>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Timer className="w-3 h-3" />
@@ -185,15 +170,11 @@ function MobileAttendanceCard({ row }: { row: AttendanceRecord }) {
 
 export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
     return [
-        // Select
         {
             id: "select",
             header: ({ table }) => (
                 <Checkbox
-                    checked={
-                        table.getIsAllPageRowsSelected() ||
-                        (table.getIsSomePageRowsSelected() && "indeterminate")
-                    }
+                    checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
                     onCheckedChange={v => table.toggleAllPageRowsSelected(!!v)}
                     aria-label="Select all"
                     className="translate-y-0.5"
@@ -211,8 +192,6 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
             enableSorting: false,
             enableHiding: false,
         },
-
-        // Employee
         {
             id: "employee_name",
             accessorFn: row => getEmployeeName(row),
@@ -226,9 +205,7 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
                             {record.employee?.avatar_url ? (
                                 <img src={record.employee.avatar_url} alt={name} className="w-full h-full object-cover" />
                             ) : (
-                                <span className="text-xs font-bold text-primary">
-                                    {name.slice(0, 2).toUpperCase()}
-                                </span>
+                                <span className="text-xs font-bold text-primary">{name.slice(0, 2).toUpperCase()}</span>
                             )}
                         </div>
                         <div className="min-w-0">
@@ -243,10 +220,8 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
                 const wid  = (row.original.employee?.work_id ?? "").toLowerCase()
                 return name.includes(value.toLowerCase()) || wid.includes(value.toLowerCase())
             },
-            mobileCard: (row) => <MobileAttendanceCard row={row} />,
+            mobileCard: row => <MobileAttendanceCard row={row} />,
         },
-
-        // Date
         {
             accessorKey: "date",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
@@ -256,72 +231,53 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
                 </span>
             ),
         },
-
-        // Time In
         {
             accessorKey: "time_in",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Time In" />,
             cell: ({ row }) => <TimeInCell record={row.original} />,
         },
-
-        // Break Out
         {
             accessorKey: "break_out",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Break (Out)" />,
             cell: ({ row }) => <TimeCell actual={row.original.break_out} />,
         },
-
-        // Break In
         {
             accessorKey: "break_in",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Break (In)" />,
             cell: ({ row }) => <TimeCell actual={row.original.break_in} />,
         },
-
-        // Time Out
         {
             accessorKey: "time_out",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Time Out" />,
             cell: ({ row }) => <TimeCell actual={row.original.time_out} />,
         },
-
-        // Late
         {
             accessorKey: "late_minutes",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Late" />,
             cell: ({ row }) => {
                 const late = row.original.late_minutes
-                if (!late || late === 0)
-                    return <span className="text-muted-foreground/40 text-sm">—</span>
+                if (!late || late === 0) return <span className="text-muted-foreground/40 text-sm">—</span>
                 return (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
                         <AlertTriangle className="w-3 h-3" />
                         {fmtMinutes(late)}
                     </span>
                 )
             },
         },
-
-        // Work Hours
         {
             accessorKey: "work_minutes",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Work Hours" />,
             cell: ({ row }) => (
-                <span className="text-sm font-mono tabular-nums">
-                    {fmtMinutes(row.original.work_minutes)}
-                </span>
+                <span className="text-sm font-mono tabular-nums">{fmtMinutes(row.original.work_minutes)}</span>
             ),
         },
-
-        // Whereabout Slips
         {
             id: "whereabout_slips",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Slips" />,
             cell: ({ row }) => <WhereaboutSlipCell record={row.original} />,
             enableSorting: false,
         },
-
-        // Status
         {
             accessorKey: "status",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
@@ -329,10 +285,10 @@ export function getColumns(): DataTableColumnDef<AttendanceRecord>[] {
                 const s    = row.original.status
                 const Icon = STATUS_ICON[s] ?? STATUS_ICON.ABSENT
                 return (
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border-0 ${STATUS_PILL[s] ?? "bg-muted text-muted-foreground"}`}>
+                    <Badge variant="outline" className={cn("text-[10px] gap-1.5", STATUS_PILL[s])}>
                         <Icon className="w-3 h-3" />
                         {STATUS_LABEL[s]}
-                    </span>
+                    </Badge>
                 )
             },
             filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),

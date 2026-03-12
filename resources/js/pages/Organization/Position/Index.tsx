@@ -56,7 +56,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 function FieldError({ message }: { message?: string }) {
     if (!message) return null;
-    return <p className="text-destructive mt-1 text-xs">{message}</p>;
+    return <p className="mt-1 text-xs text-destructive">{message}</p>;
 }
 
 // ─── Employees Dialog ─────────────────────────────────────────────────────────
@@ -78,9 +78,9 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
             }}
         >
             <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
-                <DialogHeader className="border-border border-b px-5 py-4">
-                    <DialogTitle className="text-foreground flex items-center gap-2 text-sm font-semibold">
-                        <Users className="text-primary h-4 w-4" />
+                <DialogHeader className="border-b border-border px-5 py-4">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Users className="h-4 w-4 text-primary" />
                         <span>{position?.position_name}</span>
                         <Badge
                             variant="secondary"
@@ -94,25 +94,25 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
 
                 <div className="max-h-[400px] min-h-[180px] overflow-y-auto px-5 py-4">
                     {employees.length === 0 ? (
-                        <div className="text-muted-foreground flex h-32 flex-col items-center justify-center gap-1 text-sm">
+                        <div className="flex h-32 flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
                             <Users className="h-8 w-8 opacity-30" />
                             <span>No employees assigned to this position.</span>
                         </div>
                     ) : (
-                        <ul className="divide-border divide-y">
+                        <ul className="divide-y divide-border">
                             {employees.map((emp) => (
                                 <li
                                     key={emp.id}
                                     className="flex items-center justify-between gap-3 py-2.5"
                                 >
                                     <div className="flex flex-col">
-                                        <span className="text-foreground text-sm font-medium">
+                                        <span className="text-sm font-medium text-foreground">
                                             {emp.first_name} {emp.last_name}
                                         </span>
-                                        <span className="text-muted-foreground text-xs">
+                                        <span className="text-xs text-muted-foreground">
                                             {emp.email ?? 'No email set'}
                                         </span>
-                                        <span className="text-muted-foreground/60 text-xs">
+                                        <span className="text-xs text-muted-foreground/60">
                                             {emp.item_name}
                                         </span>
                                     </div>
@@ -120,7 +120,7 @@ function EmployeesDialog({ open, position, onClose }: EmployeesDialogProps) {
                                         variant={
                                             emp.is_active
                                                 ? 'default'
-                                                : 'secondary'
+                                                : 'destructive'
                                         }
                                         className="shrink-0 text-xs"
                                     >
@@ -211,9 +211,9 @@ function PositionModal({
             }}
         >
             <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
-                <DialogHeader className="border-border border-b px-5 py-4">
-                    <DialogTitle className="text-foreground flex items-center gap-2 text-sm font-semibold">
-                        <Briefcase className="text-primary h-4 w-4" />
+                <DialogHeader className="border-b border-border px-5 py-4">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Briefcase className="h-4 w-4 text-primary" />
                         {isEdit ? 'Edit Position' : 'Create Position'}
                     </DialogTitle>
                 </DialogHeader>
@@ -224,7 +224,7 @@ function PositionModal({
                         <div>
                             <label
                                 htmlFor="position_name"
-                                className="text-foreground mb-1.5 block text-xs font-medium"
+                                className="mb-1.5 block text-xs font-medium text-foreground"
                             >
                                 Position Name{' '}
                                 <span className="text-destructive">*</span>
@@ -245,7 +245,7 @@ function PositionModal({
                         <div>
                             <label
                                 htmlFor="department_id"
-                                className="text-foreground mb-1.5 block text-xs font-medium"
+                                className="mb-1.5 block text-xs font-medium text-foreground"
                             >
                                 Department
                             </label>
@@ -281,7 +281,7 @@ function PositionModal({
                         <div>
                             <label
                                 htmlFor="division_id"
-                                className="text-foreground mb-1.5 block text-xs font-medium"
+                                className="mb-1.5 block text-xs font-medium text-foreground"
                             >
                                 Division{' '}
                                 <span className="text-muted-foreground italic">
@@ -326,12 +326,12 @@ function PositionModal({
                                 </SelectContent>
                             </Select>
                             {noDivisions && (
-                                <p className="text-muted-foreground mt-1.5 text-xs">
+                                <p className="mt-1.5 text-xs text-muted-foreground">
                                     This department has no divisions yet.{' '}
                                     <a
                                         href="/organization/divisions"
                                         target="_blank"
-                                        className="hover:text-foreground underline underline-offset-2"
+                                        className="underline underline-offset-2 hover:text-foreground"
                                     >
                                         Add one here.
                                     </a>
@@ -343,7 +343,7 @@ function PositionModal({
                         <div>
                             <label
                                 htmlFor="unit_id"
-                                className="text-foreground mb-1.5 block text-xs font-medium"
+                                className="mb-1.5 block text-xs font-medium text-foreground"
                             >
                                 Unit{' '}
                                 <span className="text-muted-foreground italic">
@@ -381,12 +381,12 @@ function PositionModal({
                                 </SelectContent>
                             </Select>
                             {noUnits && (
-                                <p className="text-destructive mt-1.5 text-xs">
+                                <p className="mt-1.5 text-xs text-destructive">
                                     This division has no units yet.{' '}
                                     <a
                                         href="/organization/units"
                                         target="_blank"
-                                        className="hover:text-foreground underline underline-offset-2"
+                                        className="underline underline-offset-2 hover:text-foreground"
                                     >
                                         Add one here.
                                     </a>
@@ -399,7 +399,7 @@ function PositionModal({
                         <div>
                             <label
                                 htmlFor="item_slots"
-                                className="text-foreground mb-1.5 block text-xs font-medium"
+                                className="mb-1.5 block text-xs font-medium text-foreground"
                             >
                                 Item Slots{' '}
                                 <span className="text-destructive">*</span>
@@ -416,13 +416,13 @@ function PositionModal({
                                 className="text-sm"
                             />
                             {isEdit && occupiedSlots > 0 && (
-                                <p className="text-muted-foreground mt-1 text-xs">
+                                <p className="mt-1 text-xs text-muted-foreground">
                                     Minimum {occupiedSlots} slot
                                     {occupiedSlots !== 1 ? 's' : ''} required (
                                     {occupiedSlots} currently occupied).
                                 </p>
                             )}
-                            <p className="text-muted-foreground/70 mt-1 text-xs">
+                            <p className="mt-1 text-xs text-muted-foreground/70">
                                 Items will be auto-named:{' '}
                                 <span className="font-mono">
                                     {data.position_name || 'Position'} Item 1
@@ -433,16 +433,10 @@ function PositionModal({
                         </div>
                     </div>
 
-                    <DialogFooter className="border-border xs:flex xs:flex-row xs:justify-between bg-muted/30 border-t px-5 py-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleClose}
-                            className="text-xs"
-                        >
-                            Cancel
-                        </Button>
+                    <DialogFooter
+                        className="xs:flex xs:flex-row xs:justify-between border-t border-border bg-muted/30 px-5 py-4"
+                        showCloseButton
+                    >
                         <Button
                             type="submit"
                             size="sm"
@@ -517,7 +511,7 @@ export default function PositionIndex({
 
             <div className="flex h-full flex-1 flex-col gap-6 px-6 py-4">
                 {/* ── Stat Cards ── */}
-                <div className="max-w-300 w-full">
+                <div className="w-full max-w-300">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         <StatCard
                             title="Total Positions"

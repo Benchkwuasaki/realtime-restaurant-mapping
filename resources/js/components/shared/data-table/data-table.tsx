@@ -50,10 +50,10 @@ import { type DataTableColumnDef } from './types/data-table-types';
  * set `rowSpan={2}`.
  */
 export interface DataTableHeaderGroupCell {
-    label: React.ReactNode
-    colSpan?: number
-    rowSpan?: number
-    className?: string
+    label: React.ReactNode;
+    colSpan?: number;
+    rowSpan?: number;
+    className?: string;
 }
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ interface DataTableProps<TData, TValue> {
      * How to derive the stable row id from each record.
      * Defaults to `(row) => String((row as any).id)`.
      */
-    getRowId?: (row: TData) => string
+    getRowId?: (row: TData) => string;
 
     /**
      * Optional click handler for an entire row (e.g. navigate to detail page).
@@ -75,7 +75,7 @@ interface DataTableProps<TData, TValue> {
     onRowClick?: (row: Row<TData>) => void;
 
     /** Default page size (defaults to 10) */
-    defaultPageSize?: number
+    defaultPageSize?: number;
 
     // ── Toolbar config ──────────────────────────────────────────────────────────
     searchColumnId: string
@@ -85,6 +85,35 @@ interface DataTableProps<TData, TValue> {
     bulkDelete?: ToolbarBulkDeleteConfig
 
     // ── Visual extensions ───────────────────────────────────────────────────────
+
+    // ── Visual extensions ───────────────────────────────────────────────────────
+
+    /**
+     * When provided, renders an extra <tr> above the normal TanStack column
+     * headers. Use this for grouped / colour-banded headers (e.g. the payroll
+     * Earnings | Deductions | Net Pay bands).
+     *
+     * Each item maps to one <th>. Use `colSpan`, `rowSpan`, and `className` to
+     * position cells exactly as you would in plain HTML.
+     *
+     * Tables that do NOT pass this prop are completely unaffected.
+     */
+    headerGroups?: DataTableHeaderGroupCell[];
+
+    /**
+     * When provided, renders a <tfoot> row after the last body row.
+     * The callback receives the current *page* rows so totals are page-aware.
+     *
+     * Return an array of <td> / <th> elements — one per visible column.
+     * Tables that do NOT pass this prop get no <tfoot> at all.
+     *
+     * @example
+     * footerRow={(rows) => [
+     *   <td colSpan={2}>Page Totals ({rows.length})</td>,
+     *   <td className="text-right">{peso(rows.reduce((s,r) => s + r.original.grossPay, 0))}</td>,
+     * ]}
+     */
+    footerRow?: (rows: Row<TData>[]) => React.ReactNode[];
 
     /**
      * When provided, renders an extra <tr> above the normal TanStack column
@@ -172,11 +201,6 @@ export function DataTable<TData, TValue>({
         onColumnFiltersChange: (updater) => {
             setColumnFilters(updater);
             setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-            const next =
-                typeof updater === 'function'
-                    ? updater(columnFilters)
-                    : updater;
-            onColumnFiltersChangeProp?.(next);
         },
         onColumnVisibilityChange: setColumnVisibility,
         onPaginationChange: setPagination,
@@ -187,10 +211,13 @@ export function DataTable<TData, TValue>({
         getFacetedUniqueValues: getFacetedUniqueValues(),
     });
 
-    const totalFiltered = table.getFilteredRowModel().rows.length
-    const pageCount = Math.max(1, Math.ceil(totalFiltered / pagination.pageSize))
-    const isMobile = useIsMobile()
-    const pageRows = table.getRowModel().rows
+    const totalFiltered = table.getFilteredRowModel().rows.length;
+    const pageCount = Math.max(
+        1,
+        Math.ceil(totalFiltered / pagination.pageSize),
+    );
+    const isMobile = useIsMobile();
+    const pageRows = table.getRowModel().rows;
 
     return (
         <div className="flex flex-col gap-4">
@@ -208,7 +235,7 @@ export function DataTable<TData, TValue>({
                 {isMobile ? (
                     <div className="divide-y divide-gray-200">
                         {/* ── Select-all header ── */}
-                        <div className="bg-muted/50 flex items-center gap-3 px-4 py-2">
+                        <div className="flex items-center gap-3 bg-muted/50 px-4 py-2">
                             <Checkbox
                                 checked={
                                     table.getIsAllPageRowsSelected() ||
@@ -220,7 +247,7 @@ export function DataTable<TData, TValue>({
                                 }
                                 aria-label="Select all"
                             />
-                            <span className="text-muted-foreground text-xs font-medium">
+                            <span className="text-xs font-medium text-muted-foreground">
                                 {table.getIsSomePageRowsSelected() ||
                                 table.getIsAllPageRowsSelected()
                                     ? `${Object.keys(rowSelection).length} selected`
@@ -231,9 +258,9 @@ export function DataTable<TData, TValue>({
                         {/* ── Cards ── */}
                         {pageRows?.length ? (
                             pageRows.map((row) => {
-                                const cardColumns = (columns as DataTableColumnDef<TData>[]).filter(
-                                    (col) => col.mobileCard
-                                )
+                                const cardColumns = (
+                                    columns as DataTableColumnDef<TData>[]
+                                ).filter((col) => col.mobileCard);
                                 return (
                                     <div
                                         key={row.id}
@@ -251,7 +278,7 @@ export function DataTable<TData, TValue>({
                                                 ? 'bg-muted'
                                                 : 'bg-background',
                                             onRowClick
-                                                ? 'active:bg-muted cursor-pointer'
+                                                ? 'cursor-pointer active:bg-muted'
                                                 : '',
                                         ].join(' ')}
                                     >
@@ -292,7 +319,7 @@ export function DataTable<TData, TValue>({
                                 );
                             })
                         ) : (
-                            <div className="text-muted-foreground flex h-24 items-center justify-center text-sm">
+                            <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                                 No results.
                             </div>
                         )}
@@ -318,16 +345,25 @@ export function DataTable<TData, TValue>({
                                             <th
                                                 key={i}
                                                 colSpan={cell.colSpan ?? 1}
-                                                rowSpan={(cell.rowSpan ?? 1) >= 2 ? 2 : 1}
+                                                rowSpan={
+                                                    (cell.rowSpan ?? 1) >= 2
+                                                        ? 2
+                                                        : 1
+                                                }
                                                 className={[
-                                                    "px-4 py-0 font-medium text-muted-foreground text-sm align-bottom",
-                                                    (cell.rowSpan ?? 1) >= 2 ? "text-left align-middle border-b border-border" : "text-center align-bottom",
+                                                    'px-4 py-0 align-bottom text-sm font-medium text-muted-foreground',
+                                                    (cell.rowSpan ?? 1) >= 2
+                                                        ? 'border-b border-border text-left align-middle'
+                                                        : 'text-center align-bottom',
                                                     // Add border + bottom padding for labelled group cells
-                                                    (cell.rowSpan ?? 1) < 2 && cell.label
-                                                        ? "border-b border-r border-l border-border rounded-t pb-1"
-                                                        : "",
+                                                    (cell.rowSpan ?? 1) < 2 &&
+                                                    cell.label
+                                                        ? 'rounded-t border-r border-b border-l border-border pb-1'
+                                                        : '',
                                                     cell.className,
-                                                ].filter(Boolean).join(" ")}
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' ')}
                                             >
                                                 {cell.label}
                                             </th>
@@ -336,71 +372,141 @@ export function DataTable<TData, TValue>({
                                     {/* Sub-column header row — skip columns already spanned by rowSpan=2 cells */}
                                     {(() => {
                                         // Build a set of column offsets that are already occupied by rowSpan=2 group cells
-                                        const skipped = new Set<number>()
-                                        let offset = 0
+                                        const skipped = new Set<number>();
+                                        let offset = 0;
                                         for (const cell of headerGroups) {
                                             if ((cell.rowSpan ?? 1) >= 2) {
-                                                for (let c = 0; c < (cell.colSpan ?? 1); c++) skipped.add(offset + c)
+                                                for (
+                                                    let c = 0;
+                                                    c < (cell.colSpan ?? 1);
+                                                    c++
+                                                )
+                                                    skipped.add(offset + c);
                                             }
-                                            offset += cell.colSpan ?? 1
+                                            offset += cell.colSpan ?? 1;
                                         }
 
-                                        return table.getHeaderGroups().map((headerGroup) => {
-                                            let colIndex = 0
-                                            return (
-                                                <tr key={headerGroup.id}>
-                                                    {headerGroup.headers.map((header) => {
-                                                        const myIndex = colIndex
-                                                        colIndex += header.colSpan ?? 1
-                                                        if (skipped.has(myIndex)) return null
-                                                        // Determine if this sub-header belongs to a bordered group
-                                                        const isGrouped = !skipped.has(myIndex)
-                                                        // Find the group cell this column belongs to
-                                                        let gOffset = 0
-                                                        let inBorderedGroup = false
-                                                        for (const gc of headerGroups) {
-                                                            const span = gc.colSpan ?? 1
-                                                            if (myIndex >= gOffset && myIndex < gOffset + span) {
-                                                                inBorderedGroup = (gc.rowSpan ?? 1) < 2 && !!gc.label
-                                                                break
-                                                            }
-                                                            gOffset += span
-                                                        }
-                                                        return (
-                                                            <th
-                                                                key={header.id}
-                                                                colSpan={header.colSpan}
-                                                                className={[
-                                                                    "h-10 px-4 align-middle font-medium text-muted-foreground text-sm text-left",
-                                                                    inBorderedGroup ? "border-x border-b border-border" : "",
-                                                                    header.column.columnDef.meta?.headerClassName,
-                                                                ].filter(Boolean).join(" ")}
-                                                            >
-                                                                {header.isPlaceholder
-                                                                    ? null
-                                                                    : flexRender(header.column.columnDef.header, header.getContext())}
-                                                            </th>
-                                                        )
-                                                    })}
-                                                </tr>
-                                            )
-                                        })
+                                        return table
+                                            .getHeaderGroups()
+                                            .map((headerGroup) => {
+                                                let colIndex = 0;
+                                                return (
+                                                    <tr key={headerGroup.id}>
+                                                        {headerGroup.headers.map(
+                                                            (header) => {
+                                                                const myIndex =
+                                                                    colIndex;
+                                                                colIndex +=
+                                                                    header.colSpan ??
+                                                                    1;
+                                                                if (
+                                                                    skipped.has(
+                                                                        myIndex,
+                                                                    )
+                                                                )
+                                                                    return null;
+                                                                // Determine if this sub-header belongs to a bordered group
+                                                                const isGrouped =
+                                                                    !skipped.has(
+                                                                        myIndex,
+                                                                    );
+                                                                // Find the group cell this column belongs to
+                                                                let gOffset = 0;
+                                                                let inBorderedGroup = false;
+                                                                for (const gc of headerGroups) {
+                                                                    const span =
+                                                                        gc.colSpan ??
+                                                                        1;
+                                                                    if (
+                                                                        myIndex >=
+                                                                            gOffset &&
+                                                                        myIndex <
+                                                                            gOffset +
+                                                                                span
+                                                                    ) {
+                                                                        inBorderedGroup =
+                                                                            (gc.rowSpan ??
+                                                                                1) <
+                                                                                2 &&
+                                                                            !!gc.label;
+                                                                        break;
+                                                                    }
+                                                                    gOffset +=
+                                                                        span;
+                                                                }
+                                                                return (
+                                                                    <th
+                                                                        key={
+                                                                            header.id
+                                                                        }
+                                                                        colSpan={
+                                                                            header.colSpan
+                                                                        }
+                                                                        className={[
+                                                                            'h-10 px-4 text-left align-middle text-sm font-medium text-muted-foreground',
+                                                                            inBorderedGroup
+                                                                                ? 'border-x border-b border-border'
+                                                                                : '',
+                                                                            header
+                                                                                .column
+                                                                                .columnDef
+                                                                                .meta
+                                                                                ?.headerClassName,
+                                                                        ]
+                                                                            .filter(
+                                                                                Boolean,
+                                                                            )
+                                                                            .join(
+                                                                                ' ',
+                                                                            )}
+                                                                    >
+                                                                        {header.isPlaceholder
+                                                                            ? null
+                                                                            : flexRender(
+                                                                                  header
+                                                                                      .column
+                                                                                      .columnDef
+                                                                                      .header,
+                                                                                  header.getContext(),
+                                                                              )}
+                                                                    </th>
+                                                                );
+                                                            },
+                                                        )}
+                                                    </tr>
+                                                );
+                                            });
                                     })()}
                                 </thead>
                             ) : (
                                 /* Standard single-row header — all existing tables unaffected */
                                 <TableHeader>
-                                    {table.getHeaderGroups().map((headerGroup) => (
-                                        <TableRow key={headerGroup.id}>
-                                            {headerGroup.headers.map((header) => (
-                                                <TableHead key={header.id} colSpan={header.colSpan}>
-                                                    {header.isPlaceholder
-                                                        ? null
-                                                        : flexRender(header.column.columnDef.header, header.getContext())}
-                                                </TableHead>
-                                            ))}
-                                        </TableRow>
-                                    ))}
+                                    {table
+                                        .getHeaderGroups()
+                                        .map((headerGroup) => (
+                                            <TableRow key={headerGroup.id}>
+                                                {headerGroup.headers.map(
+                                                    (header) => (
+                                                        <TableHead
+                                                            key={header.id}
+                                                            colSpan={
+                                                                header.colSpan
+                                                            }
+                                                        >
+                                                            {header.isPlaceholder
+                                                                ? null
+                                                                : flexRender(
+                                                                      header
+                                                                          .column
+                                                                          .columnDef
+                                                                          .header,
+                                                                      header.getContext(),
+                                                                  )}
+                                                        </TableHead>
+                                                    ),
+                                                )}
+                                            </TableRow>
+                                        ))}
                                 </TableHeader>
                             )}
 
@@ -409,25 +515,46 @@ export function DataTable<TData, TValue>({
                                     pageRows.map((row, index) => (
                                         <TableRow
                                             key={row.id}
-                                            data-state={row.getIsSelected() && "selected"}
+                                            data-state={
+                                                row.getIsSelected() &&
+                                                'selected'
+                                            }
                                             className={[
-                                                onRowClick ? "cursor-pointer" : "",
+                                                onRowClick
+                                                    ? 'cursor-pointer'
+                                                    : '',
                                                 striped
                                                     ? index % 2 === 0
-                                                        ? "bg-white hover:bg-blue-50/30"
-                                                        : "bg-slate-50/50 hover:bg-blue-50/30"
-                                                    : "",
-                                            ].filter(Boolean).join(" ")}
-                                            onClick={onRowClick ? () => onRowClick(row) : undefined}
+                                                        ? 'bg-white hover:bg-blue-50/30'
+                                                        : 'bg-slate-50/50 hover:bg-blue-50/30'
+                                                    : '',
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' ')}
+                                            onClick={
+                                                onRowClick
+                                                    ? () => onRowClick(row)
+                                                    : undefined
+                                            }
                                         >
-                                            {row.getVisibleCells().map((cell) => (
-                                                <TableCell
-                                                    key={cell.id}
-                                                    className={cell.column.columnDef.meta?.className}
-                                                >
-                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                </TableCell>
-                                            ))}
+                                            {row
+                                                .getVisibleCells()
+                                                .map((cell) => (
+                                                    <TableCell
+                                                        key={cell.id}
+                                                        className={
+                                                            cell.column
+                                                                .columnDef.meta
+                                                                ?.className
+                                                        }
+                                                    >
+                                                        {flexRender(
+                                                            cell.column
+                                                                .columnDef.cell,
+                                                            cell.getContext(),
+                                                        )}
+                                                    </TableCell>
+                                                ))}
                                         </TableRow>
                                     ))
                                 ) : (

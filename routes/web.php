@@ -1,20 +1,19 @@
 <?php
 
-// Merged: Payroll branch (base) + newer Attendance implementation from main
-
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AllowanceManagementController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\AttendanceLogController;       // from main (newer recognition logs)
-use App\Http\Controllers\AttendanceRecordController;    // from main (NEW)
-use App\Http\Controllers\AttendanceReportController;    // from main (NEW)
-use App\Http\Controllers\AttendanceSettingController;   // from main (NEW)
+use App\Http\Controllers\AttendanceLogController;
+use App\Http\Controllers\AttendanceRecordController;
+use App\Http\Controllers\AttendanceReportController;
+use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeeReportController;
 use App\Http\Controllers\EmploymentClassificationController;
 use App\Http\Controllers\GovernmentRemittanceReportController;
 use App\Http\Controllers\HolidayController;
@@ -25,6 +24,7 @@ use App\Http\Controllers\LeaveAccrualController;
 use App\Http\Controllers\LeaveApplicationController;
 use App\Http\Controllers\LeaveCalendarController;
 use App\Http\Controllers\LeaveEntitlementController;
+use App\Http\Controllers\LeaveReportController;
 use App\Http\Controllers\LeaveSettingsController;
 use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\LoanEntryController;
@@ -32,17 +32,18 @@ use App\Http\Controllers\OtherDeductionEntryController;
 use App\Http\Controllers\PayrollDeductionSettingsController;
 use App\Http\Controllers\PayrollProcessingController;
 use App\Http\Controllers\PayrollRegisterController;
+use App\Http\Controllers\PayrollReportController;
 use App\Http\Controllers\PaySlipGenerationController;
 use App\Http\Controllers\PositionController;
-// ⚠️ TODO: Confirm if RecognitionLogController was renamed to AttendanceLogController.
-//          If yes, remove this import and swap the route below to use AttendanceLogController.
 use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\SalaryGradeTableController;
 use App\Http\Controllers\UnitController;
+// Leave
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WhereaboutSlipController;
 use Illuminate\Support\Facades\Route;
+// reports and analytics
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
@@ -173,6 +174,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::patch('/{internalOrganization}/toggle-status', [InternalOrganizationController::class, 'toggleStatus'])->name('toggle-status');
         Route::delete('/{internalOrganization}', [InternalOrganizationController::class, 'destroy'])->name('destroy');
         Route::post('/{internalOrganization}/members', [InternalOrganizationController::class, 'storeMembers'])->name('members.store');
+        Route::post('/org-types', [InternalOrganizationController::class, 'storeOrgType'])->name('org-type.store');
     });
 
     /*
@@ -442,7 +444,19 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
     // Attendance Report (from main - NEW)
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
-        Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
+
+        Route::get('/attendance-report', [AttendanceReportController::class, 'index'])
+            ->name('attendance-report.index');
+
+        Route::get('/employee-report', [EmployeeReportController::class, 'index'])
+            ->name('employee-report.index');
+
+        Route::get('/leave-report', [LeaveReportController::class, 'index'])
+            ->name('leave-report.index');
+
+        Route::get('/payroll-report', [PayrollReportController::class, 'index'])
+            ->name('payroll-report.index');
+
     });
 
     Route::prefix('announcement')->name('announcement.')->group(function () {

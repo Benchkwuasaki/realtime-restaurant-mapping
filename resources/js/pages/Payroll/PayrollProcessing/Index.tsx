@@ -93,53 +93,36 @@ interface ComputedRecord {
     pera: number;
     rice_allowance: number;
     uniform_allowance: number;
-    /** Overtime pay added to gross (computed from total_overtime_hours × hourly rate × 1.25) */
     overtime_pay: number;
-    /** Half-day count (separate from absent_days — deducted at 0.5 × daily rate) */
     half_days: number;
-    /** Half-day deduction = half_days × daily_rate × 0.5 */
     half_day_deduction: number;
-    /** Personal slip minutes (chargeable — deducted at per-minute rate) */
     personal_slip_minutes: number;
-    /** Personal slip deduction = personal_slip_minutes × per-minute rate */
     personal_slip_deduction: number;
-    /** Official slip minutes (display only — no deduction) */
     official_slip_minutes: number;
     gross_pay: number;
     gsis_premium: number;
     philhealth: number;
     pag_ibig: number;
     withholding_tax: number;
-    /** Full-day absents only (HALF_DAY is tracked separately in half_days) */
     absent_days: number;
     absent_deduction: number;
     late_minutes: number;
     late_deduction: number;
-    /** Undertime minutes from updated attendance system */
     undertime_minutes: number;
-    /** Undertime deduction = undertime_minutes × per-minute rate */
     undertime_deduction: number;
-    /** Total days actually worked within the payroll period */
     total_work_days: number;
-    /** Total hours worked (sum of daily total_hours_worked from attendance records) */
     total_hours_worked: number;
-    /** Total overtime hours (sum of overtime_minutes ÷ 60) */
     total_overtime_hours: number;
 
     gsis_mpl: number;
     gsis_emergency: number;
     pag_ibig_mpl: number;
-    ama_y2k_union: number; // org dues + org loans (2nd cut-off) + NS&ND/Misc
+    ama_y2k_union: number;
     water_bill: number;
-    // Savings + Share_Capital — deducted on BOTH cut-offs
     internal_org_savings: number;
-    // Dues only — 2nd cut-off only (from InternalOrgDeduction)
     internal_org_second: number;
-    // Loans only — 2nd cut-off only (from loans table)
-    internal_org_loans: number;
-    internal_org_deductions: number; // total of savings + dues + loans
+    internal_org_deductions: number;
     other_deductions: number;
-    // Per-item breakdown for org dues (no loans here anymore)
     internal_org_items: Array<{
         id: number;
         org_name: string;
@@ -500,7 +483,8 @@ export default function Index({
                     internalOrgSecond: r.internal_org_second ?? 0,
                     internalOrgLoans: r.internal_org_loans ?? 0,
                     internalOrgDeductions: r.internal_org_deductions ?? 0,
-                    otherDeductionsMisc: r.other_deductions ?? 0,
+                    otherDeductionsMisc:
+                        (r.other_deductions ?? 0) + (r.water_bill ?? 0),
                     attendanceDeduction:
                         (r.absent_deduction ?? 0) +
                         (r.half_day_deduction ?? 0) +
@@ -2041,77 +2025,713 @@ export default function Index({
                                 </div>
                             ) : (
                                 <>
-                                    <DataTable
-                                        columns={computedColumns}
-                                        data={employeesWithStatus}
-                                        getRowId={(row) => String(row.id)}
-                                        searchColumnId="name"
-                                        searchPlaceholder="Search employee..."
-                                        filters={[
-                                            {
-                                                columnId: 'status',
-                                                title: 'Status',
-                                                options: [
-                                                    { label: 'OK', value: 'ok' },
-                                                    { label: 'Low', value: 'low' },
-                                                ],
-                                            },
-                                        ]}
-                                        defaultPageSize={10}
-                                        striped
-                                        headerGroups={computedHeaderGroups}
-                                        footerRow={(rows) => [
-                                            <td key="label" colSpan={2} className="border-r px-3 py-2.5 text-left text-xs tracking-wide text-slate-500 uppercase">
-                                                Page Totals ({rows.length} employees)
-                                            </td>,
-                                            <td key="basicPay" className="border-r px-3 py-2.5 text-right tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.basicPay, 0))}
-                                            </td>,
-                                            <td key="allowances" className="border-r px-3 py-2.5 text-right tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.allowances, 0))}
-                                            </td>,
-                                            <td key="grossPay" className="border-r px-3 py-2.5 text-right text-blue-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.grossPay, 0))}
-                                            </td>,
-                                            <td key="absent" className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.absentDeduction, 0))}
-                                            </td>,
-                                            <td key="tardy" className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.lateDeduction, 0))}
-                                            </td>,
-                                            <td key="gsis" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.gsis, 0))}
-                                            </td>,
-                                            <td key="philhealth" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.philhealth, 0))}
-                                            </td>,
-                                            <td key="pagibig" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.pagibig, 0))}
-                                            </td>,
-                                            <td key="tax" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.tax, 0))}
-                                            </td>,
-                                            <td key="orgSavings" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.internalOrgSavings, 0))}
-                                            </td>,
-                                            <td key="orgDues" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.internalOrgSecond, 0))}
-                                            </td>,
-                                            <td key="orgLoans" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.internalOrgLoans, 0))}
-                                            </td>,
-                                            <td key="otherDed" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.otherDeductionsMisc, 0))}
-                                            </td>,
-                                            <td key="totalDed" className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.totalDeductions, 0))}
-                                            </td>,
-                                            <td key="netPay" className="border-r px-3 py-2.5 text-right text-green-700 tabular-nums">
-                                                {peso(rows.reduce((s, r) => s + r.original.netPay, 0))}
-                                            </td>,
-                                            <td key="remarks" className="px-3 py-2.5" />,
-                                        ]}
-                                    />
+                                    <div className="overflow-x-auto rounded-lg border">
+                                        <table className="w-full border-collapse text-sm">
+                                            <thead className="items-center">
+                                                {/* Group header row */}
+                                                <tr className="text-xs font-semibold tracking-wide uppercase">
+                                                    <th
+                                                        rowSpan={2}
+                                                        className="w-8 border-r border-b bg-slate-100 px-2 py-2 text-center text-slate-500"
+                                                    >
+                                                        #
+                                                    </th>
+                                                    <th
+                                                        rowSpan={2}
+                                                        className="border-r border-b bg-slate-100 px-3 py-2 text-center text-slate-600"
+                                                    >
+                                                        Employee Name
+                                                    </th>
+                                                    {/* Earnings group */}
+                                                    <th
+                                                        colSpan={3}
+                                                        className="border-r border-b bg-blue-50 px-3 py-1.5 text-center text-blue-700"
+                                                    >
+                                                        Earnings
+                                                    </th>
+                                                    {/* Deductions group — half-day, undertime, personal slip cols */}
+                                                    <th
+                                                        colSpan={12}
+                                                        className="border-r border-b bg-red-50 px-3 py-1.5 text-center text-red-700"
+                                                    >
+                                                        Deductions{' '}
+                                                    </th>
+                                                    {/* Net Pay */}
+                                                    <th
+                                                        rowSpan={2}
+                                                        className="border-r border-b bg-green-50 px-3 py-2 text-center text-green-700"
+                                                    >
+                                                        Net Pay
+                                                    </th>
+                                                    <th
+                                                        rowSpan={2}
+                                                        className="border-b bg-slate-100 px-3 py-2 text-center text-slate-500"
+                                                    >
+                                                        Remarks
+                                                    </th>
+                                                </tr>
+                                                {/* Sub-header row */}
+                                                <tr className="text-[11px] font-medium text-slate-600">
+                                                    {/* Earnings sub-cols */}
+                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center">
+                                                        <div>Basic Pay</div>
+                                                        <div className="text-[10px] font-normal text-blue-400">
+                                                            semi-monthly
+                                                        </div>
+                                                    </th>
+                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center">
+                                                        Allowances
+                                                    </th>
+                                                    {/* NEW: Overtime Pay sub-col
+                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center">
+                                                        <div>OT Pay</div>
+                                                        <div className="text-[10px] font-normal text-blue-400">
+                                                            hrs × 1.25
+                                                        </div>
+                                                    </th> */}
+                                                    <th className="border-r border-b bg-blue-50/60 px-3 py-1.5 text-center font-semibold">
+                                                        Gross Pay
+                                                    </th>
+                                                    {/* Deductions sub-cols */}
+                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
+                                                        <div>Absent</div>
+                                                        <div className="text-[10px] font-normal text-orange-400">
+                                                            days / amt
+                                                        </div>
+                                                    </th>
+                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
+                                                        <div>Late</div>
+                                                        <div className="text-[10px] font-normal text-orange-400">
+                                                            mins / amt
+                                                        </div>
+                                                    </th>
+                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
+                                                        <div>Undertime</div>
+                                                        <div className="text-[10px] font-normal text-orange-400">
+                                                            mins / amt
+                                                        </div>
+                                                    </th>
+                                                    {/* Personal Slip sub-col */}
+                                                    <th className="border-r border-b bg-orange-50/80 px-3 py-1.5 text-center">
+                                                        <div>Personal Slip</div>
+                                                        <div className="text-[10px] font-normal text-orange-400">
+                                                            mins / amt
+                                                        </div>
+                                                    </th>
+                                                    {/* Official Slip sub-col — display only, no deduction */}
+                                                    {/* <th className="border-r border-b bg-slate-50 px-3 py-1.5 text-center">
+                                                        <div>Official Slip</div>
+                                                        <div className="text-[10px] font-normal text-slate-400">
+                                                            mins · exempt
+                                                        </div>
+                                                    </th> */}
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
+                                                        GSIS
+                                                    </th>
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
+                                                        PhilHealth
+                                                    </th>
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
+                                                        Pag-IBIG
+                                                    </th>
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
+                                                        Tax
+                                                    </th>
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
+                                                        <div>Org Savings</div>
+                                                        <div className="text-[10px] font-normal text-red-400">
+                                                            both cut-offs
+                                                        </div>
+                                                    </th>
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
+                                                        <div>
+                                                            Org Dues &amp; Loans
+                                                        </div>
+                                                        <div className="text-[10px] font-normal text-red-400">
+                                                            2nd cut-off
+                                                        </div>
+                                                    </th>
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center">
+                                                        <div>Other Ded.</div>
+                                                        <div className="text-[10px] font-normal text-red-400">
+                                                            water, misc
+                                                        </div>
+                                                    </th>
+                                                    <th className="border-r border-b bg-red-50/60 px-3 py-1.5 text-center font-semibold">
+                                                        Total Ded.
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {currentEmployees.map(
+                                                    (employee, index) => (
+                                                        <tr
+                                                            key={employee.id}
+                                                            className={`border-b transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-blue-50/30`}
+                                                        >
+                                                            <td className="border-r px-2 py-2.5 text-center text-xs text-slate-400">
+                                                                {startIndex +
+                                                                    index +
+                                                                    1}
+                                                            </td>
+                                                            <td className="border-r px-3 py-2.5 font-medium text-slate-800">
+                                                                {employee.name}
+                                                            </td>
+                                                            {/* Earnings */}
+                                                            <td className="border-r px-3 py-2.5 text-right text-slate-700 tabular-nums">
+                                                                {peso(
+                                                                    employee.basicPay,
+                                                                )}
+                                                            </td>
+                                                            <td className="border-r px-3 py-2.5 text-right text-slate-700 tabular-nums">
+                                                                {peso(
+                                                                    employee.allowances,
+                                                                )}
+                                                            </td>
+                                                            {/* NEW: Overtime Pay */}
+                                                            {/* <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                {(employee.overtimePay ??
+                                                                    0) > 0 ? (
+                                                                    <div>
+                                                                        <div className="text-[11px] text-blue-500">
+                                                                            {(
+                                                                                employee.totalOvertimeHours ??
+                                                                                0
+                                                                            ).toFixed(
+                                                                                2,
+                                                                            )}{' '}
+                                                                            hr
+                                                                            {(employee.totalOvertimeHours ??
+                                                                                0) !==
+                                                                            1
+                                                                                ? 's'
+                                                                                : ''}
+                                                                        </div>
+                                                                        <div className="font-medium text-blue-600">
+                                                                            +
+                                                                            {peso(
+                                                                                employee.overtimePay ??
+                                                                                    0,
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td> */}
+                                                            <td className="border-r px-3 py-2.5 text-right font-semibold text-blue-700 tabular-nums">
+                                                                {peso(
+                                                                    employee.grossPay,
+                                                                )}
+                                                            </td>
+                                                            {/* Deductions */}
+                                                            {/* Absent — shows full absents + half-days breakdown */}
+                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                {employee.absentDays >
+                                                                0 ? (
+                                                                    <div>
+                                                                        <div className="text-[11px] text-orange-500">
+                                                                            {(() => {
+                                                                                const fullAbsent =
+                                                                                    employee.absentDays -
+                                                                                    (employee.halfDays ??
+                                                                                        0) *
+                                                                                        0.5;
+                                                                                const halfDays =
+                                                                                    employee.halfDays ??
+                                                                                    0;
+                                                                                const parts: string[] =
+                                                                                    [];
+                                                                                if (
+                                                                                    fullAbsent >
+                                                                                    0
+                                                                                )
+                                                                                    parts.push(
+                                                                                        `${fullAbsent} absent`,
+                                                                                    );
+                                                                                if (
+                                                                                    halfDays >
+                                                                                    0
+                                                                                )
+                                                                                    parts.push(
+                                                                                        `${halfDays} half-day${halfDays !== 1 ? 's' : ''}`,
+                                                                                    );
+                                                                                return parts.join(
+                                                                                    ' + ',
+                                                                                );
+                                                                            })()}
+                                                                        </div>
+                                                                        <div className="font-medium text-orange-600">
+                                                                            {peso(
+                                                                                employee.absentDeduction,
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            {/* Late */}
+                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                <div>
+                                                                    <div
+                                                                        className={`text-[11px] ${employee.lateMinutes > 0 ? 'text-orange-500' : 'text-slate-400'}`}
+                                                                    >
+                                                                        {
+                                                                            employee.lateMinutes
+                                                                        }{' '}
+                                                                        min
+                                                                    </div>
+                                                                    <div
+                                                                        className={`font-medium ${employee.lateMinutes > 0 ? 'text-orange-600' : 'text-slate-400'}`}
+                                                                    >
+                                                                        {peso(
+                                                                            employee.lateDeduction,
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            {/* Undertime */}
+                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                <div>
+                                                                    <div
+                                                                        className={`text-[11px] ${(employee.undertimeMinutes ?? 0) > 0 ? 'text-orange-500' : 'text-slate-400'}`}
+                                                                    >
+                                                                        {employee.undertimeMinutes ??
+                                                                            0}{' '}
+                                                                        min
+                                                                    </div>
+                                                                    <div
+                                                                        className={`font-medium ${(employee.undertimeMinutes ?? 0) > 0 ? 'text-orange-600' : 'text-slate-400'}`}
+                                                                    >
+                                                                        {peso(
+                                                                            employee.undertimeDeduction ??
+                                                                                0,
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            {/* Personal Slip */}
+                                                            <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                {(employee.personalSlipMinutes ??
+                                                                    0) > 0 ? (
+                                                                    <div>
+                                                                        <div className="text-[11px] text-orange-500">
+                                                                            {employee.personalSlipMinutes ??
+                                                                                0}{' '}
+                                                                            min
+                                                                        </div>
+                                                                        <div className="font-medium text-orange-600">
+                                                                            {peso(
+                                                                                employee.personalSlipDeduction ??
+                                                                                    0,
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            {/* Official Slip — read-only, no deduction applied */}
+                                                            {/* <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                                {(employee.officialSlipMinutes ??
+                                                                    0) > 0 ? (
+                                                                    <div>
+                                                                        <div className="text-[11px] text-slate-500">
+                                                                            {employee.officialSlipMinutes ??
+                                                                                0}{' '}
+                                                                            min
+                                                                        </div>
+                                                                        <div className="text-[11px] font-medium text-slate-400 italic">
+                                                                            exempt
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td> */}
+                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
+                                                                {peso(
+                                                                    employee.gsis,
+                                                                )}
+                                                            </td>
+                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
+                                                                {peso(
+                                                                    employee.philhealth,
+                                                                )}
+                                                            </td>
+                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
+                                                                {peso(
+                                                                    employee.pagibig,
+                                                                )}
+                                                            </td>
+                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
+                                                                {peso(
+                                                                    employee.tax,
+                                                                )}
+                                                            </td>
+                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
+                                                                {peso(
+                                                                    employee.internalOrgSavings,
+                                                                )}
+                                                            </td>
+                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
+                                                                {peso(
+                                                                    employee.internalOrgDeductions -
+                                                                        employee.internalOrgSavings,
+                                                                )}
+                                                            </td>
+                                                            <td className="border-r px-3 py-2.5 text-right text-red-600 tabular-nums">
+                                                                {peso(
+                                                                    employee.otherDeductionsMisc,
+                                                                )}
+                                                            </td>
+                                                            <td className="border-r px-3 py-2.5 text-right font-semibold text-red-700 tabular-nums">
+                                                                {peso(
+                                                                    employee.totalDeductions,
+                                                                )}
+                                                            </td>
+                                                            {/* Net Pay */}
+                                                            <td
+                                                                className={`border-r px-3 py-2.5 text-right font-bold tabular-nums ${employee.status === 'low' ? 'text-red-600' : 'text-green-700'}`}
+                                                            >
+                                                                {peso(
+                                                                    employee.netPay,
+                                                                )}
+                                                            </td>
+                                                            <td className="px-3 py-2.5 text-center">
+                                                                <div className="flex flex-col items-center gap-1">
+                                                                    <Badge
+                                                                        variant={
+                                                                            employee.status ===
+                                                                            'ok'
+                                                                                ? 'secondary'
+                                                                                : 'destructive'
+                                                                        }
+                                                                        className={
+                                                                            employee.status ===
+                                                                            'ok'
+                                                                                ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300'
+                                                                                : ''
+                                                                        }
+                                                                    >
+                                                                        {employee.status ===
+                                                                        'ok'
+                                                                            ? 'OK'
+                                                                            : 'Low'}
+                                                                    </Badge>
+                                                                    {employee.floorCutAmount >
+                                                                        0 && (
+                                                                        <TooltipProvider>
+                                                                            <Tooltip>
+                                                                                <TooltipTrigger
+                                                                                    asChild
+                                                                                >
+                                                                                    <span className="inline-flex cursor-help items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                                                                                        <AlertTriangle className="h-2.5 w-2.5" />
+                                                                                        Cut
+                                                                                    </span>
+                                                                                </TooltipTrigger>
+                                                                                <TooltipContent
+                                                                                    side="left"
+                                                                                    className="max-w-xs"
+                                                                                >
+                                                                                    <p className="text-xs">
+                                                                                        <span className="font-semibold">
+                                                                                            ₱
+                                                                                            {employee.floorCutAmount.toLocaleString(
+                                                                                                'en-PH',
+                                                                                                {
+                                                                                                    minimumFractionDigits: 2,
+                                                                                                },
+                                                                                            )}
+                                                                                        </span>{' '}
+                                                                                        in
+                                                                                        deductions
+                                                                                        were
+                                                                                        cut
+                                                                                        because
+                                                                                        applying
+                                                                                        them
+                                                                                        would
+                                                                                        bring
+                                                                                        net
+                                                                                        pay
+                                                                                        below
+                                                                                        the
+                                                                                        minimum
+                                                                                        take-home
+                                                                                        threshold.
+                                                                                    </p>
+                                                                                </TooltipContent>
+                                                                            </Tooltip>
+                                                                        </TooltipProvider>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ),
+                                                )}
+                                            </tbody>
+                                            {/* Totals row */}
+                                            <tfoot>
+                                                <tr className="border-t-2 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-700">
+                                                    <td
+                                                        colSpan={2}
+                                                        className="border-r px-3 py-2.5 text-left text-xs tracking-wide text-slate-500 uppercase"
+                                                    >
+                                                        Page Totals (
+                                                        {
+                                                            currentEmployees.length
+                                                        }{' '}
+                                                        employees)
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.basicPay,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.allowances,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-blue-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.grossPay,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.absentDeduction,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.lateDeduction,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    (e.undertimeDeduction ??
+                                                                        0),
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-orange-600 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    (e.personalSlipDeduction ??
+                                                                        0),
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    {/* Official Slip total — shows total exempt minutes */}
+                                                    {/* <td className="border-r px-3 py-2.5 text-right text-slate-400 tabular-nums">
+                                                        <div className="text-[11px]">
+                                                            {currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    (e.officialSlipMinutes ??
+                                                                        0),
+                                                                0,
+                                                            )}{' '}
+                                                            min
+                                                        </div>
+                                                        <div className="text-[11px] italic">
+                                                            exempt
+                                                        </div>
+                                                    </td> */}
+                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s + e.gsis,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.philhealth,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.pagibig,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s + e.tax,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.internalOrgSavings,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    (e.internalOrgDeductions -
+                                                                        e.internalOrgSavings),
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.otherDeductionsMisc,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-red-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.totalDeductions,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r px-3 py-2.5 text-right text-green-700 tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.netPay,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2.5" />
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+
+                                    <div className="mt-4 flex items-center justify-between">
+                                        <div className="text-sm text-muted-foreground">
+                                            Showing {startIndex + 1} to{' '}
+                                            {Math.min(
+                                                endIndex,
+                                                employeesWithStatus.length,
+                                            )}{' '}
+                                            of {employeesWithStatus.length}{' '}
+                                            entries
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    goToPage(currentPage - 1)
+                                                }
+                                                disabled={currentPage === 1}
+                                            >
+                                                <ChevronLeft className="h-4 w-4" />
+                                            </Button>
+                                            {Array.from(
+                                                { length: totalPages },
+                                                (_, i) => i + 1,
+                                            ).map((page) => (
+                                                <Button
+                                                    key={page}
+                                                    variant={
+                                                        currentPage === page
+                                                            ? 'default'
+                                                            : 'outline'
+                                                    }
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        goToPage(page)
+                                                    }
+                                                    className="w-8"
+                                                >
+                                                    {page}
+                                                </Button>
+                                            ))}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    goToPage(currentPage + 1)
+                                                }
+                                                disabled={
+                                                    currentPage === totalPages
+                                                }
+                                            >
+                                                <ChevronRight className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
 
                                     {flaggedEmployees.length > 0 && (
                                         <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -3607,13 +4227,13 @@ export default function Index({
                                                     }
                                                 />
                                             )}
-                                            {(raw.official_slip_minutes ?? 0) >
+                                            {/* {(raw.official_slip_minutes ?? 0) >
                                                 0 && (
                                                 <RowLine
                                                     label={`Official Slip (${raw.official_slip_minutes ?? 0} min — authorized, no deduction)`}
                                                     amount={0}
                                                 />
-                                            )}
+                                            )} */}
                                         </>
                                     )}
 

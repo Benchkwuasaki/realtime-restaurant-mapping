@@ -195,10 +195,6 @@ function StatCard({
 }
 
 // ── Grouped TH helpers ────────────────────────────────────────────────────────
-// These render inside <thead> via dangerouslySetInnerHTML-free JSX.
-// We render raw <th> / <td> inside the shadcn Table shell because shadcn's
-// TableHead doesn't support rowSpan/colSpan natively and the bond-paper
-// register specifically needs grouped column headers.
 
 function GrpTh({
     children,
@@ -785,13 +781,19 @@ export default function Show({ period, records, summary }: Props) {
                                                     right
                                                     className="text-red-800 dark:text-red-400"
                                                 >
-                                                    {n(rec.internal_org_savings ?? 0)}
+                                                    {n(
+                                                        rec.internal_org_savings ??
+                                                            0,
+                                                    )}
                                                 </Td>
                                                 <Td
                                                     right
                                                     className="text-red-800 dark:text-red-400"
                                                 >
-                                                    {n(rec.internal_org_second ?? 0)}
+                                                    {n(
+                                                        rec.internal_org_second ??
+                                                            0,
+                                                    )}
                                                 </Td>
                                                 <Td
                                                     right
@@ -904,10 +906,16 @@ export default function Show({ period, records, summary }: Props) {
                                                 {nf(summary.total_pag_ibig_mpl)}
                                             </TotTd>
                                             <TotTd className="text-red-800 dark:text-red-400">
-                                                {nf(summary.total_internal_org_savings ?? 0)}
+                                                {nf(
+                                                    summary.total_internal_org_savings ??
+                                                        0,
+                                                )}
                                             </TotTd>
                                             <TotTd className="text-red-800 dark:text-red-400">
-                                                {nf(summary.total_internal_org_second ?? 0)}
+                                                {nf(
+                                                    summary.total_internal_org_second ??
+                                                        0,
+                                                )}
                                             </TotTd>
                                             <TotTd className="text-red-800 dark:text-red-400">
                                                 {nf(
