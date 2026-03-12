@@ -748,39 +748,110 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
         onError: () => toast.error("Failed to update employee status. Please try again."),
     })
 
+    const fields = [
+        {
+            label: "Position",
+            value: position?.position_name,
+            onEdit: () => setEditField("position"),
+        },
+        {
+            label: "Department",
+            value: position?.department?.department_name,
+            onEdit: () => setEditField("unit_division_department"),
+        },
+        {
+            label: "Division",
+            value: position?.division?.division_name,
+            onEdit: () => setEditField("unit_division_department"),
+        },
+        {
+            label: "Unit",
+            value: position?.unit?.unit_name,
+            onEdit: () => setEditField("unit_division_department"),
+        },
+        {
+            label: "Employment Classification",
+            value: employee.employment_classification,
+            onEdit: () => setEditField("employment_classification"),
+        },
+        {
+            label: "Date Applied",
+            value: fmt(employee.date_applied),
+            onEdit: () => setEditField("date_applied"),
+        },
+        {
+            label: "Date Hired",
+            value: fmt(employee.date_hired),
+            onEdit: () => setEditField("date_hired"),
+        },
+        {
+            label: "Work Schedule",
+            value: employee.work_schedule_start && employee.work_schedule_end
+                ? `${employee.work_schedule_start} – ${employee.work_schedule_end}`
+                : undefined,
+            onEdit: () => setEditField("work_schedule"),
+        },
+        {
+            label: "Break Time",
+            value: employee.break_start && employee.break_end
+                ? `${employee.break_start} – ${employee.break_end}`
+                : undefined,
+            onEdit: () => setEditField("break_time"),
+        },
+    ]
+
     return (
         <div className="p-3 sm:p-5 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <DetailCard title="Position" value={position?.position_name} onEdit={() => setEditField("position")} />
-                <DetailCard title="Date Hired" value={fmt(employee.date_hired)} onEdit={() => setEditField("date_hired")} />
-                <DetailCard title="Status" isStatus statusValue={employee.status} onToggleStatus={toggleStatus} />
-                <DetailCard title="Unit" value={position?.unit?.unit_name} onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Division" value={position?.division?.division_name} onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Department" value={position?.department?.department_name} onEdit={() => setEditField("unit_division_department")} />
-                <DetailCard title="Employment Classification" value={employee.employment_classification} onEdit={() => setEditField("employment_classification")} />
-                <DetailCard title="Date Applied" value={fmt(employee.date_applied)} onEdit={() => setEditField("date_applied")} />
-                <DetailCard
-                    title="Work Schedule"
-                    value={employee.work_schedule_start && employee.work_schedule_end ? `${employee.work_schedule_start} – ${employee.work_schedule_end}` : undefined}
-                    onEdit={() => setEditField("work_schedule")}
-                />
-                <DetailCard
-                    title="Break Time"
-                    value={employee.break_start && employee.break_end ? `${employee.break_start} – ${employee.break_end}` : undefined}
-                    onEdit={() => setEditField("break_time")}
-                />
+            {/* Employment Fields */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                {/* Status row — special case with toggle */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+                    <span className="text-xs text-muted-foreground w-44 shrink-0">Status</span>
+                    <div className="flex flex-1 items-center justify-between gap-2">
+                        <ActiveBadge active={employee.status} />
+                        <Switch checked={employee.status} onCheckedChange={toggleStatus} className="scale-90" />
+                    </div>
+                </div>
+
+                {fields.map(({ label, value, onEdit }, i) => (
+                    <div
+                        key={label}
+                        className={cn(
+                            "flex items-center justify-between px-5 py-3 group",
+                            i < fields.length - 1 && "border-b border-border"
+                        )}
+                    >
+                        <span className="text-xs text-muted-foreground w-44 shrink-0">{label}</span>
+                        <div className="flex flex-1 items-center justify-between gap-2 min-w-0">
+                            <span className="text-sm font-medium text-foreground truncate">
+                                {value ?? <span className="text-muted-foreground/40 italic font-normal text-xs">Not set</span>}
+                            </span>
+                            <Button
+                                size="icon-xs"
+                                variant="ghost"
+                                onClick={onEdit}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                            >
+                                <Pencil className="w-3 h-3" />
+                            </Button>
+                        </div>
+                    </div>
+                ))}
             </div>
 
+            {/* Internal Organizations */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="px-4 sm:px-5 py-3.5 border-b border-border">
+                <div className="px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Internal Organizations</span>
                 </div>
                 {orgs.length === 0 ? (
-                    <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">Not a member of any internal organization.</div>
+                    <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">
+                        Not a member of any internal organization.
+                    </div>
                 ) : (
                     <div className="divide-y divide-border">
                         {orgs.map(org => (
-                            <div key={org.internal_organization_id} className="flex items-center gap-4 px-4 sm:px-5 py-3">
+                            <div key={org.internal_organization_id} className="flex items-center gap-4 px-5 py-3">
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-foreground">{org.name}</p>
                                     <p className="text-xs text-muted-foreground">{org.code}</p>
@@ -804,52 +875,108 @@ function CompensationTab({ employee }: { employee: Employee }) {
     const allowances = employee.allowances ?? []
     const [salaryEditOpen, setSalaryEditOpen] = useState(false)
 
+    const totalAllowances = allowances.reduce((sum, a) => sum + Number(a.amount), 0)
+    const baseSalary = sgs ? Number(sgs.salary_amount) : 0
+    const grossPay = baseSalary + totalAllowances
+
+    const fmt = (n: number) => n.toLocaleString("en-PH", { minimumFractionDigits: 2 })
+
     return (
         <div className="p-3 sm:p-5 space-y-4">
+
+            {/* ── Gross Pay Summary Banner ── */}
+            <div className="bg-card border border-border rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">Estimated Gross Monthly Pay</p>
+                    <p className="text-3xl font-bold text-foreground tracking-tight">₱{fmt(grossPay)}</p>
+                </div>
+                <div className="flex items-center gap-6 sm:gap-8">
+                    <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">Base Salary</p>
+                        <p className="text-sm font-semibold text-foreground">₱{fmt(baseSalary)}</p>
+                    </div>
+                    <div className="w-px h-8 bg-border" />
+                    <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">Allowances</p>
+                        <p className="text-sm font-semibold text-foreground">₱{fmt(totalAllowances)}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Salary Classification + Allowances ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Salary Grade */}
                 <div className="bg-card border border-border rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                         <span className="text-sm font-bold text-foreground">Salary Classification</span>
-                        <Button onClick={() => setSalaryEditOpen(true)} variant="ghost" size="icon-xs"><Pen className="w-3 h-3" /></Button>
                     </div>
                     {sgs ? (
-                        <div className="divide-y divide-border">
-                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Salary Grade</span><span className="text-sm font-bold">SG-{sgs.salary_grade}</span></div>
-                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Step Number</span><span className="text-sm font-bold">Step {sgs.step}</span></div>
-                            <div className="flex items-center justify-between px-4 sm:px-5 py-3"><span className="text-sm text-muted-foreground">Amount</span><span className="text-sm font-bold">₱{Number(sgs.salary_amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span></div>
+                        <div className="p-5 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 rounded-lg bg-muted/50 border border-border px-4 py-3 text-center">
+                                    <p className="text-xs text-muted-foreground mb-1">Salary Grade</p>
+                                    <p className="text-2xl font-bold text-foreground">{sgs.salary_grade}</p>
+                                </div>
+                                <div className="flex-1 rounded-lg bg-muted/50 border border-border px-4 py-3 text-center">
+                                    <p className="text-xs text-muted-foreground mb-1">Step</p>
+                                    <p className="text-2xl font-bold text-foreground">{sgs.step}</p>
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-border px-4 py-3 flex items-center justify-between">
+                                <span className="text-sm text-muted-foreground">Monthly Basic Salary</span>
+                                <span className="text-base font-bold text-foreground">₱{fmt(baseSalary)}</span>
+                            </div>
                         </div>
                     ) : (
-                        <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No salary data.</div>
+                        <div className="px-5 py-10 text-center">
+                            <p className="text-sm text-muted-foreground italic mb-3">No salary data on file.</p>
+                        </div>
                     )}
                 </div>
 
+                {/* Allowances */}
                 <div className="bg-card border border-border rounded-xl overflow-hidden">
-                    <div className="px-4 sm:px-5 py-3.5 border-b border-border">
+                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                         <span className="text-sm font-bold text-foreground">Allowances</span>
+                        {allowances.length > 0 && (
+                            <Badge variant="outline" className="text-xs tabular-nums">
+                                {allowances.length} item{allowances.length !== 1 ? "s" : ""}
+                            </Badge>
+                        )}
                     </div>
                     {allowances.length > 0 ? (
                         <div className="divide-y divide-border">
                             {allowances.map((a, i) => (
-                                <div key={i} className="flex items-center justify-between px-4 sm:px-5 py-3">
-                                    <span className="text-sm text-muted-foreground">{a.allowance_type}</span>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold">₱{Number(a.amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
-                                        <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">Present</Badge>
-                                    </div>
+                                <div key={i} className="flex items-center justify-between px-5 py-3 hover:bg-muted/20 transition-colors">
+                                    <span className="text-sm text-foreground">{a.allowance_type}</span>
+                                    <span className="text-sm font-semibold text-foreground tabular-nums">
+                                        ₱{fmt(Number(a.amount))}
+                                    </span>
                                 </div>
                             ))}
+                            <div className="flex items-center justify-between px-5 py-3 bg-muted/30">
+                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</span>
+                                <span className="text-sm font-bold text-foreground tabular-nums">₱{fmt(totalAllowances)}</span>
+                            </div>
                         </div>
                     ) : (
-                        <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No allowances on file.</div>
+                        <div className="px-5 py-10 text-center text-sm text-muted-foreground italic">
+                            No allowances on file.
+                        </div>
                     )}
                 </div>
             </div>
 
+            {/* ── Payroll Data ── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="px-4 sm:px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Payroll Data</span>
+                    <Badge variant="outline" className="text-xs text-muted-foreground">Coming soon</Badge>
                 </div>
-                <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No payroll data available.</div>
+                <div className="px-5 py-10 text-center">
+                    <p className="text-sm text-muted-foreground italic">No payroll data available.</p>
+                </div>
             </div>
 
             <SalaryEditDialog employee={employee} open={salaryEditOpen} onClose={() => setSalaryEditOpen(false)} />
@@ -1159,11 +1286,36 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
 
 // ─── Government & Eligibility Tab ─────────────────────────────────────────────
 
-const STANDARD_GOV_ID_TYPES = ["GSIS", "PhilHealth", "Pag-IBIG", "TIN"]
+const STANDARD_GOV_ID_TYPES = ["GSIS", "PhilHealth", "Pag-IBIG"]
+
+const getPlaceholder = (type: string) => {
+    switch (type.toLowerCase()) {
+        case 'philhealth': return '00-000000000-0'
+        case 'pag-ibig': return '0000-0000-0000'
+        case 'gsis': return '10–12 digit number'
+        case 'sss': return '00-0000000-0'
+        case 'tin': return '000-000-000-000'
+        case "driver's license": return 'A00-00-000000'
+        case 'passport': return 'A0000000'
+        default: return `Enter ${type} number`
+    }
+}
 
 function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
     const govAccounts = employee.government_accounts ?? []
     const eligibilities = employee.eligibility_information ?? []
+    const [deleteEligId, setDeleteEligId] = useState<number | null>(null)
+    const confirmDeleteEligibility = () => {
+        if (!deleteEligId) return
+        router.delete(
+            route("employee.eligibility.destroy", { employee: employee.employee_id, eligibility: deleteEligId }),
+            {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Eligibility deleted."); setDeleteEligId(null) },
+                onError: () => toast.error("Failed to delete eligibility. Please try again."),
+            }
+        )
+    }
 
     const [visibleIds, setVisibleIds] = useState<Record<string, boolean>>({})
     const toggleVisibility = (key: string) => setVisibleIds(prev => ({ ...prev, [key]: !prev[key] }))
@@ -1177,7 +1329,9 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
 
     const saveGovAccount = () => {
         if (!govDialog.value.trim()) return
-        const accountType = govDialog.mode === "custom" ? govDialog.customTypeName : govDialog.type
+        const accountType = govDialog.mode === "custom"
+            ? (govDialog.customTypeName === "Others" ? govDialog.type : govDialog.customTypeName)
+            : govDialog.type
         if (!accountType.trim()) return
         if (govDialog.id) {
             router.put(
@@ -1262,7 +1416,20 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                             <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </>
                                     ) : (
-                                        <Button onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })} variant="ghost" size="icon-xs"><Plus className="w-3.5 h-3.5" /></Button>
+                                        <Button
+                                            onClick={() => setGovDialog({
+                                                open: true,
+                                                mode: "standard",
+                                                type,          // ← "GSIS", "PhilHealth", or "Pag-IBIG"
+                                                id: undefined,
+                                                value: "",
+                                                customTypeName: ""
+                                            })}
+                                            variant="ghost"
+                                            size="icon-xs"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" />
+                                        </Button>
                                     )}
                                 </div>
                             </div>
@@ -1305,11 +1472,17 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     <div className="overflow-x-auto">
                         <div className="min-w-[480px] divide-y divide-border">
                             {eligibilities.map(e => (
-                                <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3">
+                                <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3 hover:bg-muted/20 transition-colors group">
                                     <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
                                     <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
-                                    <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60 shrink-0">✓ Active</Badge>
-                                    <Button onClick={() => openEligDialog(e)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button onClick={() => openEligDialog(e)} variant="ghost" size="icon-xs">
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button onClick={() => setDeleteEligId(e.eligibility_information_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -1327,27 +1500,62 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="py-2 space-y-3">
                         {govDialog.mode === "custom" && !govDialog.id && (
-                            <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">ID Type / Name</Label>
-                                <Input value={govDialog.customTypeName} onChange={e => setGovDialog(p => ({ ...p, customTypeName: e.target.value }))} placeholder="e.g. GSIS, Voter's ID…" autoFocus />
-                            </div>
+                            <>
+                                <div>
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">ID Type</Label>
+                                    <Select
+                                        value={govDialog.customTypeName}
+                                        onValueChange={v => setGovDialog(p => ({ ...p, customTypeName: v, value: "" }))}
+                                    >
+                                        <SelectTrigger><SelectValue placeholder="Select ID type…" /></SelectTrigger>
+                                        <SelectContent>
+                                            {[
+                                                "SSS", "TIN", "Voter's ID", "Driver's License", "Passport",
+                                                "PhilSys / National ID", "Postal ID", "Senior Citizen ID",
+                                                "PWD ID", "OFW ID", "Others",
+                                            ].map(t => (
+                                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {govDialog.customTypeName === "Others" && (
+                                    <div>
+                                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Specify ID Name</Label>
+                                        <Input
+                                            value={govDialog.type}
+                                            onChange={e => setGovDialog(p => ({ ...p, type: e.target.value }))}
+                                            placeholder="e.g. Company ID, Barangay ID…"
+                                            autoFocus
+                                        />
+                                    </div>
+                                )}
+                            </>
                         )}
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Account / ID Number</Label>
                             <Input
                                 value={govDialog.value}
                                 onChange={e => setGovDialog(p => ({ ...p, value: e.target.value }))}
-                                placeholder={`Enter ${govDialog.mode === "custom" ? govDialog.customTypeName || "ID" : govDialog.type} number`}
+                                placeholder={getPlaceholder(
+                                    govDialog.mode === "standard"
+                                        ? govDialog.type
+                                        : govDialog.customTypeName === "Others"
+                                            ? govDialog.type
+                                            : govDialog.customTypeName
+                                )}
                                 className="font-mono"
-                                autoFocus={govDialog.mode !== "custom"}
-                                onKeyDown={e => e.key === "Enter" && saveGovAccount()}
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setGovDialog(p => ({ ...p, open: false }))}>Cancel</Button>
-                        <Button onClick={saveGovAccount} disabled={!govDialog.value.trim() || (govDialog.mode === "custom" && !govDialog.id && !govDialog.customTypeName.trim())}>
-                            <Save className="w-3.5 h-3.5 mr-1.5" />Save
+                        <Button onClick={saveGovAccount} disabled={
+                            !govDialog.value.trim() ||
+                            (govDialog.mode === "custom" && !govDialog.id && !govDialog.customTypeName.trim()) ||
+                            (govDialog.mode === "custom" && !govDialog.id && govDialog.customTypeName === "Others" && !govDialog.type.trim())
+                        }>                            <Save className="w-3.5 h-3.5 mr-1.5" />Save
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1387,6 +1595,18 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <AlertDialog open={!!deleteEligId} onOpenChange={o => !o && setDeleteEligId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Eligibility?</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently remove the eligibility record. This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteEligibility} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }
@@ -1400,6 +1620,8 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const seminars = employee.seminarsAndTrainings ?? []
     const serviceRecs = employee.serviceRecords ?? []
 
+    // ── Family ────────────────────────────────────────────────────────────────
+
     const [familyDialog, setFamilyDialog] = useState<{
         open: boolean; index?: number; full_name: string; relationship: string
         contact_number: string; sex: string; date_of_birth: string; place_of_birth: string
@@ -1408,47 +1630,106 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
     const openFamilyDialog = (member?: FamilyMember, index?: number) =>
         setFamilyDialog({
-            open: true, index, full_name: member?.full_name ?? "", relationship: member?.relationship ?? "",
-            contact_number: member?.contact_number ?? "", sex: member?.sex !== undefined ? String(Number(member.sex)) : "",
-            date_of_birth: toInputDate(member?.date_of_birth), place_of_birth: member?.place_of_birth ?? "",
+            open: true, index,
+            full_name: member?.full_name ?? "",
+            relationship: member?.relationship ?? "",
+            contact_number: member?.contact_number ?? "",
+            sex: member?.sex !== undefined ? String(Number(member.sex)) : "",
+            date_of_birth: toInputDate(member?.date_of_birth),
+            place_of_birth: member?.place_of_birth ?? "",
         })
 
     const saveFamilyMember = () => {
-        const data = { full_name: familyDialog.full_name, relationship: familyDialog.relationship, contact_number: familyDialog.contact_number, sex: familyDialog.sex, date_of_birth: familyDialog.date_of_birth || null, place_of_birth: familyDialog.place_of_birth }
+        const data = {
+            full_name: familyDialog.full_name,
+            relationship: familyDialog.relationship,
+            contact_number: familyDialog.contact_number,
+            sex: familyDialog.sex,
+            date_of_birth: familyDialog.date_of_birth || null,
+            place_of_birth: familyDialog.place_of_birth,
+        }
         if (familyDialog.index !== undefined) {
-            router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, { preserveScroll: true, onSuccess: () => { toast.success("Family member updated successfully."); setFamilyDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update family member. Please try again.") })
+            router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Family member updated successfully."); setFamilyDialog(p => ({ ...p, open: false })) },
+                onError: () => toast.error("Failed to update family member. Please try again."),
+            })
         } else {
-            router.post(route("employee.family.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Family member added successfully."); setFamilyDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add family member. Please try again.") })
+            router.post(route("employee.family.store", employee.employee_id), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Family member added successfully."); setFamilyDialog(p => ({ ...p, open: false })) },
+                onError: () => toast.error("Failed to add family member. Please try again."),
+            })
         }
     }
+
     const confirmDeleteFamily = () => {
         if (deleteFamilyIndex === null) return
-        router.delete(route("employee.family.destroy", { employee: employee.employee_id, index: deleteFamilyIndex }), { preserveScroll: true, onSuccess: () => { toast.success("Family member removed."); setDeleteFamilyIndex(null) }, onError: () => toast.error("Failed to remove family member. Please try again.") })
+        router.delete(route("employee.family.destroy", { employee: employee.employee_id, index: deleteFamilyIndex }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success("Family member removed."); setDeleteFamilyIndex(null) },
+            onError: () => toast.error("Failed to remove family member. Please try again."),
+        })
     }
 
+    // ── Education ─────────────────────────────────────────────────────────────
+
     const [educDialog, setEducDialog] = useState<{
-        open: boolean; index?: number; level: string; school_name: string; school_address: string; degree: string; graduation_date: string
+        open: boolean; index?: number; level: string; school_name: string
+        school_address: string; degree: string; graduation_date: string
     }>({ open: false, level: "", school_name: "", school_address: "", degree: "", graduation_date: "" })
     const [deleteEducIndex, setDeleteEducIndex] = useState<number | null>(null)
 
     const openEducDialog = (edu?: Education, index?: number) =>
-        setEducDialog({ open: true, index, level: edu?.level ?? "", school_name: edu?.school_name ?? "", school_address: edu?.school_address ?? "", degree: edu?.degree ?? "", graduation_date: toInputDate(edu?.graduation_date) })
+        setEducDialog({
+            open: true, index,
+            level: edu?.level ?? "",
+            school_name: edu?.school_name ?? "",
+            school_address: edu?.school_address ?? "",
+            degree: edu?.degree ?? "",
+            graduation_date: toInputDate(edu?.graduation_date),
+        })
 
     const saveEducation = () => {
-        const data = { level: educDialog.level, school_name: educDialog.school_name, school_address: educDialog.school_address, degree: educDialog.degree, graduation_date: educDialog.graduation_date || null }
+        const data = {
+            level: educDialog.level,
+            school_name: educDialog.school_name,
+            school_address: educDialog.school_address,
+            degree: educDialog.degree,
+            graduation_date: educDialog.graduation_date || null,
+        }
         if (educDialog.index !== undefined) {
-            router.put(route("employee.education.update", { employee: employee.employee_id, index: educDialog.index }), data, { preserveScroll: true, onSuccess: () => { toast.success("Education record updated successfully."); setEducDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update education record. Please try again.") })
+            router.put(route("employee.education.update", { employee: employee.employee_id, index: educDialog.index }), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Education record updated successfully."); setEducDialog(p => ({ ...p, open: false })) },
+                onError: () => toast.error("Failed to update education record. Please try again."),
+            })
         } else {
-            router.post(route("employee.education.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Education record added successfully."); setEducDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add education record. Please try again.") })
+            router.post(route("employee.education.store", employee.employee_id), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Education record added successfully."); setEducDialog(p => ({ ...p, open: false })) },
+                onError: () => toast.error("Failed to add education record. Please try again."),
+            })
         }
     }
+
     const confirmDeleteEduc = () => {
         if (deleteEducIndex === null) return
-        router.delete(route("employee.education.destroy", { employee: employee.employee_id, index: deleteEducIndex }), { preserveScroll: true, onSuccess: () => { toast.success("Education record deleted."); setDeleteEducIndex(null) }, onError: () => toast.error("Failed to delete education record. Please try again.") })
+        router.delete(route("employee.education.destroy", { employee: employee.employee_id, index: deleteEducIndex }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success("Education record deleted."); setDeleteEducIndex(null) },
+            onError: () => toast.error("Failed to delete education record. Please try again."),
+        })
     }
+
     const educByLevel = educations.reduce<Record<string, Education[]>>((acc, edu) => {
-        const key = edu.level ?? "Other"; if (!acc[key]) acc[key] = []; acc[key].push(edu); return acc
+        const key = edu.level ?? "Other"
+        if (!acc[key]) acc[key] = []
+        acc[key].push(edu)
+        return acc
     }, {})
+
+    // ── Seminars ──────────────────────────────────────────────────────────────
 
     const [seminarDialog, setSeminarDialog] = useState<{
         open: boolean; id?: number; seminar_name: string; venue: string; date_attended: string
@@ -1456,74 +1737,136 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     const [deleteSeminarId, setDeleteSeminarId] = useState<number | null>(null)
 
     const openSeminarDialog = (s?: SeminarTraining) =>
-        setSeminarDialog({ open: true, id: s?.id, seminar_name: s?.seminar_name ?? "", venue: s?.venue ?? "", date_attended: toInputDate(s?.date_attended) })
+        setSeminarDialog({
+            open: true,
+            id: s?.id,
+            seminar_name: s?.seminar_name ?? "",
+            venue: s?.venue ?? "",
+            date_attended: toInputDate(s?.date_attended),
+        })
+
     const saveSeminar = () => {
-        const data = { seminar_name: seminarDialog.seminar_name, venue: seminarDialog.venue, date_attended: seminarDialog.date_attended || null }
+        const data = {
+            seminar_name: seminarDialog.seminar_name,
+            venue: seminarDialog.venue,
+            date_attended: seminarDialog.date_attended || null,
+        }
         if (seminarDialog.id) {
-            router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, { preserveScroll: true, onSuccess: () => { toast.success("Seminar / training updated successfully."); setSeminarDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update seminar. Please try again.") })
+            router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Seminar / training updated successfully."); setSeminarDialog(p => ({ ...p, open: false })) },
+                onError: () => toast.error("Failed to update seminar. Please try again."),
+            })
         } else {
-            router.post(route("employee.seminar.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Seminar / training added successfully."); setSeminarDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add seminar. Please try again.") })
+            router.post(route("employee.seminar.store", employee.employee_id), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Seminar / training added successfully."); setSeminarDialog(p => ({ ...p, open: false })) },
+                onError: () => toast.error("Failed to add seminar. Please try again."),
+            })
         }
     }
+
     const confirmDeleteSeminar = () => {
         if (!deleteSeminarId) return
-        router.delete(route("employee.seminar.destroy", { employee: employee.employee_id, seminar: deleteSeminarId }), { preserveScroll: true, onSuccess: () => { toast.success("Seminar / training deleted."); setDeleteSeminarId(null) }, onError: () => toast.error("Failed to delete seminar. Please try again.") })
+        router.delete(route("employee.seminar.destroy", { employee: employee.employee_id, seminar: deleteSeminarId }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success("Seminar / training deleted."); setDeleteSeminarId(null) },
+            onError: () => toast.error("Failed to delete seminar. Please try again."),
+        })
     }
 
+    // ── Service Records ───────────────────────────────────────────────────────
+
     const [serviceDialog, setServiceDialog] = useState<{
-        open: boolean; id?: number; position_name: string; department_name: string; year_start: string; year_end: string
+        open: boolean; id?: number; position_name: string; department_name: string
+        year_start: string; year_end: string
     }>({ open: false, position_name: "", department_name: "", year_start: "", year_end: "" })
     const [deleteServiceId, setDeleteServiceId] = useState<number | null>(null)
 
     const openServiceDialog = (s?: ServiceRecord) =>
-        setServiceDialog({ open: true, id: s?.id, position_name: s?.position_name ?? "", department_name: s?.department_name ?? "", year_start: s?.year_start ?? "", year_end: s?.year_end ?? "" })
+        setServiceDialog({
+            open: true,
+            id: s?.id,
+            position_name: s?.position_name ?? "",
+            department_name: s?.department_name ?? "",
+            year_start: s?.year_start ?? "",
+            year_end: s?.year_end ?? "",
+        })
+
     const saveServiceRecord = () => {
-        const data = { position_name: serviceDialog.position_name, department_name: serviceDialog.department_name, year_start: serviceDialog.year_start, year_end: serviceDialog.year_end }
+        const data = {
+            position_name: serviceDialog.position_name,
+            department_name: serviceDialog.department_name,
+            year_start: serviceDialog.year_start,
+            year_end: serviceDialog.year_end,
+        }
         if (serviceDialog.id) {
-            router.put(route("employee.service-record.update", { employee: employee.employee_id, record: serviceDialog.id }), data, { preserveScroll: true, onSuccess: () => { toast.success("Service record updated successfully."); setServiceDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update service record. Please try again.") })
+            router.put(route("employee.service-record.update", { employee: employee.employee_id, record: serviceDialog.id }), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Service record updated successfully."); setServiceDialog(p => ({ ...p, open: false })) },
+                onError: () => toast.error("Failed to update service record. Please try again."),
+            })
         } else {
-            router.post(route("employee.service-record.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Service record added successfully."); setServiceDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add service record. Please try again.") })
+            router.post(route("employee.service-record.store", employee.employee_id), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Service record added successfully."); setServiceDialog(p => ({ ...p, open: false })) },
+                onError: () => toast.error("Failed to add service record. Please try again."),
+            })
         }
     }
+
     const confirmDeleteService = () => {
         if (!deleteServiceId) return
-        router.delete(route("employee.service-record.destroy", { employee: employee.employee_id, record: deleteServiceId }), { preserveScroll: true, onSuccess: () => { toast.success("Service record deleted."); setDeleteServiceId(null) }, onError: () => toast.error("Failed to delete service record. Please try again.") })
+        router.delete(route("employee.service-record.destroy", { employee: employee.employee_id, record: deleteServiceId }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success("Service record deleted."); setDeleteServiceId(null) },
+            onError: () => toast.error("Failed to delete service record. Please try again."),
+        })
     }
+
+    // ── Render ────────────────────────────────────────────────────────────────
 
     return (
         <div className="p-3 sm:p-5 space-y-5">
-            {/* Family Information */}
+
+            {/* ── Family Information ── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Family Information</span>
                     <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {familyMembers.length === 0 ? (
                     <div className="px-5 py-8 text-center">
                         <p className="text-sm text-muted-foreground italic mb-3">No family information on file.</p>
-                        <Button variant="outline" size="sm" onClick={() => openFamilyDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Family Member</Button>
+                        <Button variant="outline" size="sm" onClick={() => openFamilyDialog()} className="gap-1.5">
+                            <Plus className="w-3.5 h-3.5" /> Add Family Member
+                        </Button>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[640px]">
-                            <div className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
-                                <div className="w-4" />
+                            {/* Header */}
+                            <div className="grid grid-cols-[1fr_120px_80px_120px_1fr_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
                                 {["Full Name", "Relationship", "Sex", "Date of Birth", "Place of Birth", ""].map(h => (
                                     <span key={h} className="text-xs font-semibold text-muted-foreground">{h}</span>
                                 ))}
                             </div>
+                            {/* Rows */}
                             <div className="divide-y divide-border">
                                 {familyMembers.map((member, i) => (
-                                    <div key={i} className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                        <Checkbox className="w-4 h-4" />
+                                    <div key={i} className="grid grid-cols-[1fr_120px_80px_120px_1fr_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
                                         <span className="text-sm text-foreground font-medium truncate">{member.full_name}</span>
                                         <span className="text-sm text-muted-foreground">{member.relationship ?? "—"}</span>
                                         <span className="text-sm text-muted-foreground">{member.sex !== undefined ? (member.sex ? "Male" : "Female") : "—"}</span>
                                         <span className="text-sm text-muted-foreground">{member.date_of_birth ? fmtShort(member.date_of_birth) : "—"}</span>
                                         <span className="text-sm text-muted-foreground truncate">{member.place_of_birth ?? "—"}</span>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteFamilyIndex(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}>
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteFamilyIndex(i)}>
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
@@ -1533,36 +1876,51 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* Educational Background */}
+            {/* ── Educational Background ── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Educational Background</span>
                     <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {educations.length === 0 ? (
                     <div className="px-5 py-8 text-center">
                         <p className="text-sm text-muted-foreground italic mb-3">No educational records on file.</p>
-                        <Button variant="outline" size="sm" onClick={() => openEducDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Education</Button>
+                        <Button variant="outline" size="sm" onClick={() => openEducDialog()} className="gap-1.5">
+                            <Plus className="w-3.5 h-3.5" /> Add Education
+                        </Button>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[580px]">
                             {Object.entries(educByLevel).map(([level, edus]) => (
                                 <div key={level}>
-                                    <div className="px-5 py-2 bg-muted/30 border-y border-border"><span className="text-xs font-semibold text-muted-foreground">{level}</span></div>
+                                    {/* Level group header */}
+                                    <div className="px-5 py-2 bg-muted/30 border-y border-border">
+                                        <span className="text-xs font-semibold text-muted-foreground">{level}</span>
+                                    </div>
+                                    {/* Column header */}
+                                    <div className="grid grid-cols-[1fr_1fr_1fr_60px_72px] items-center gap-3 px-5 py-2 border-b border-border/50 bg-muted/10">
+                                        {["School Name", "Address", "Degree / Course", "Year", ""].map(h => (
+                                            <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Year" && "text-right")}>{h}</span>
+                                        ))}
+                                    </div>
+                                    {/* Rows */}
                                     <div className="divide-y divide-border">
                                         {edus.map((edu, i) => {
                                             const globalIndex = educations.indexOf(edu)
                                             return (
-                                                <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr_80px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                                    <Checkbox className="w-4 h-4" />
-                                                    <span className="text-sm text-foreground font-medium">{edu.school_name}</span>
-                                                    <span className="text-sm text-muted-foreground">{edu.school_address ?? "—"}</span>
-                                                    <span className="text-sm text-muted-foreground">{edu.degree ?? "—"}</span>
+                                                <div key={i} className="grid grid-cols-[1fr_1fr_1fr_60px_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                                    <span className="text-sm text-foreground font-medium truncate">{edu.school_name}</span>
+                                                    <span className="text-sm text-muted-foreground truncate">{edu.school_address ?? "—"}</span>
+                                                    <span className="text-sm text-muted-foreground truncate">{edu.degree ?? "—"}</span>
                                                     <span className="text-sm text-muted-foreground text-right">{edu.graduation_date ? new Date(edu.graduation_date).getFullYear() : "—"}</span>
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteEducIndex(globalIndex)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}>
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteEducIndex(globalIndex)}>
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             )
@@ -1575,36 +1933,42 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* Seminars and Trainings */}
+            {/* ── Seminars and Trainings ── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Seminars and Trainings</span>
                     <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {seminars.length === 0 ? (
                     <div className="px-5 py-8 text-center">
                         <p className="text-sm text-muted-foreground italic mb-3">No seminars or trainings on file.</p>
-                        <Button variant="outline" size="sm" onClick={() => openSeminarDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Seminar</Button>
+                        <Button variant="outline" size="sm" onClick={() => openSeminarDialog()} className="gap-1.5">
+                            <Plus className="w-3.5 h-3.5" /> Add Seminar
+                        </Button>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <div className="min-w-[520px]">
-                            <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
-                                <div className="w-4" />
-                                {["Seminar / Training", "Organizer", "Date Attended", ""].map(h => (
+                        <div className="min-w-[480px]">
+                            {/* Header */}
+                            <div className="grid grid-cols-[1fr_1fr_140px_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                                {["Seminar / Training", "Venue", "Date Attended", ""].map(h => (
                                     <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Date Attended" && "text-right")}>{h}</span>
                                 ))}
                             </div>
+                            {/* Rows */}
                             <div className="divide-y divide-border">
                                 {seminars.map(s => (
-                                    <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                        <Checkbox className="w-4 h-4" />
-                                        <span className="text-sm text-foreground font-medium">{s.seminar_name}</span>
-                                        <span className="text-sm text-muted-foreground">{s.venue ?? "—"}</span>
+                                    <div key={s.id} className="grid grid-cols-[1fr_1fr_140px_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                        <span className="text-sm text-foreground font-medium truncate">{s.seminar_name}</span>
+                                        <span className="text-sm text-muted-foreground truncate">{s.venue ?? "—"}</span>
                                         <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}>
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteSeminarId(s.id)}>
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
@@ -1614,36 +1978,42 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* Service Records */}
+            {/* ── Service Records ── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                     <span className="text-sm font-bold text-foreground">Service Records</span>
                     <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {serviceRecs.length === 0 ? (
                     <div className="px-5 py-8 text-center">
                         <p className="text-sm text-muted-foreground italic mb-3">No service records on file.</p>
-                        <Button variant="outline" size="sm" onClick={() => openServiceDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Service Record</Button>
+                        <Button variant="outline" size="sm" onClick={() => openServiceDialog()} className="gap-1.5">
+                            <Plus className="w-3.5 h-3.5" /> Add Service Record
+                        </Button>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <div className="min-w-[480px]">
-                            <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
-                                <div className="w-4" />
+                        <div className="min-w-[440px]">
+                            {/* Header */}
+                            <div className="grid grid-cols-[1fr_1fr_140px_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
                                 {["Position", "Department", "Duration", ""].map(h => (
                                     <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Duration" && "text-right")}>{h}</span>
                                 ))}
                             </div>
+                            {/* Rows */}
                             <div className="divide-y divide-border">
                                 {serviceRecs.map(s => (
-                                    <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-                                        <Checkbox className="w-4 h-4" />
-                                        <span className="text-sm text-foreground font-medium">{s.position_name}</span>
-                                        <span className="text-sm text-muted-foreground">{s.department_name ?? "—"}</span>
+                                    <div key={s.id} className="grid grid-cols-[1fr_1fr_140px_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                        <span className="text-sm text-foreground font-medium truncate">{s.position_name}</span>
+                                        <span className="text-sm text-muted-foreground truncate">{s.department_name ?? "—"}</span>
                                         <span className="text-sm text-muted-foreground text-right">{s.year_start && s.year_end ? `${s.year_start}–${s.year_end}` : s.year_start ?? "—"}</span>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}>
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteServiceId(s.id)}>
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
@@ -1653,33 +2023,48 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* ── All dialogs ── */}
+            {/* ── Family Dialog ── */}
             <Dialog open={familyDialog.open} onOpenChange={o => setFamilyDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>{familyDialog.index !== undefined ? "Edit" : "Add"} Family Member</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Full Name *</Label><Input value={familyDialog.full_name} onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))} autoFocus /></div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Full Name *</Label>
+                            <Input value={familyDialog.full_name} onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))} autoFocus />
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Relationship</Label>
                                 <Select value={familyDialog.relationship} onValueChange={v => setFamilyDialog(p => ({ ...p, relationship: v }))}>
                                     <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                                    <SelectContent>{["Spouse", "Child", "Parent", "Sibling", "Guardian", "Other"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                                    <SelectContent>{["Spouse", "Child", "Parent", "Sibling", "Guardian"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
                             <div>
                                 <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Sex</Label>
                                 <Select value={familyDialog.sex} onValueChange={v => setFamilyDialog(p => ({ ...p, sex: v }))}>
                                     <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                                    <SelectContent><SelectItem value="1">Male</SelectItem><SelectItem value="0">Female</SelectItem></SelectContent>
+                                    <SelectContent>
+                                        <SelectItem value="1">Male</SelectItem>
+                                        <SelectItem value="0">Female</SelectItem>
+                                    </SelectContent>
                                 </Select>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date of Birth</Label><Input type="date" value={familyDialog.date_of_birth} onChange={e => setFamilyDialog(p => ({ ...p, date_of_birth: e.target.value }))} /></div>
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Contact Number</Label><Input value={familyDialog.contact_number} onChange={e => setFamilyDialog(p => ({ ...p, contact_number: e.target.value }))} placeholder="09XXXXXXXXXX" /></div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date of Birth</Label>
+                                <Input type="date" value={familyDialog.date_of_birth} onChange={e => setFamilyDialog(p => ({ ...p, date_of_birth: e.target.value }))} />
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Contact Number</Label>
+                                <Input value={familyDialog.contact_number} onChange={e => setFamilyDialog(p => ({ ...p, contact_number: e.target.value }))} placeholder="09XXXXXXXXXX" />
+                            </div>
                         </div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Place of Birth</Label><Input value={familyDialog.place_of_birth} onChange={e => setFamilyDialog(p => ({ ...p, place_of_birth: e.target.value }))} placeholder="e.g. Manila, Philippines" /></div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Place of Birth</Label>
+                            <Input value={familyDialog.place_of_birth} onChange={e => setFamilyDialog(p => ({ ...p, place_of_birth: e.target.value }))} placeholder="e.g. Manila, Philippines" />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setFamilyDialog(p => ({ ...p, open: false }))}>Cancel</Button>
@@ -1688,6 +2073,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
+            {/* ── Education Dialog ── */}
             <Dialog open={educDialog.open} onOpenChange={o => setEducDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>{educDialog.index !== undefined ? "Edit" : "Add"} Education</DialogTitle></DialogHeader>
@@ -1696,14 +2082,30 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Education Level</Label>
                             <Select value={educDialog.level} onValueChange={v => setEducDialog(p => ({ ...p, level: v }))}>
                                 <SelectTrigger><SelectValue placeholder="Select level…" /></SelectTrigger>
-                                <SelectContent>{["Elementary Education", "Secondary Education", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Other"].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+                                <SelectContent>
+                                    {["Elementary Education", "Secondary Education", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate"].map(l => (
+                                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                                    ))}
+                                </SelectContent>
                             </Select>
                         </div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widests mb-1.5 block">School Name *</Label><Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label><Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} /></div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Name *</Label>
+                            <Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label>
+                            <Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} />
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label><Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} /></div>
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Graduation Date</Label><Input type="date" value={educDialog.graduation_date} onChange={e => setEducDialog(p => ({ ...p, graduation_date: e.target.value }))} /></div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label>
+                                <Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} />
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Graduation Date</Label>
+                                <Input type="date" value={educDialog.graduation_date} onChange={e => setEducDialog(p => ({ ...p, graduation_date: e.target.value }))} />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
@@ -1713,13 +2115,23 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
+            {/* ── Seminar Dialog ── */}
             <Dialog open={seminarDialog.open} onOpenChange={o => setSeminarDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, venue: e.target.value }))} /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label><Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label>
+                            <Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Venue</Label>
+                            <Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, venue: e.target.value }))} />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label>
+                            <Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setSeminarDialog(p => ({ ...p, open: false }))}>Cancel</Button>
@@ -1728,15 +2140,28 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
+            {/* ── Service Record Dialog ── */}
             <Dialog open={serviceDialog.open} onOpenChange={o => setServiceDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader><DialogTitle>{serviceDialog.id ? "Edit" : "Add"} Service Record</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position Name *</Label><Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus /></div>
-                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Department</Label><Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} /></div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position Name *</Label>
+                            <Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Department</Label>
+                            <Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} />
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Start</Label><Input type="number" min="1900" max="2100" placeholder="e.g. 2020" value={serviceDialog.year_start} onChange={e => setServiceDialog(p => ({ ...p, year_start: e.target.value }))} /></div>
-                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year End</Label><Input type="number" min="1900" max="2100" placeholder="e.g. 2026" value={serviceDialog.year_end} onChange={e => setServiceDialog(p => ({ ...p, year_end: e.target.value }))} /></div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Start</Label>
+                                <Input type="number" min="1900" max="2100" placeholder="e.g. 2020" value={serviceDialog.year_start} onChange={e => setServiceDialog(p => ({ ...p, year_start: e.target.value }))} />
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year End</Label>
+                                <Input type="number" min="1900" max="2100" placeholder="e.g. 2026" value={serviceDialog.year_end} onChange={e => setServiceDialog(p => ({ ...p, year_end: e.target.value }))} />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
@@ -1746,7 +2171,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Confirm delete dialogs — unified pattern */}
+            {/* ── Confirm Delete Dialogs ── */}
             {[
                 { open: deleteFamilyIndex !== null, onClose: () => setDeleteFamilyIndex(null), onConfirm: confirmDeleteFamily, label: "family member" },
                 { open: deleteEducIndex !== null, onClose: () => setDeleteEducIndex(null), onConfirm: confirmDeleteEduc, label: "education record" },
