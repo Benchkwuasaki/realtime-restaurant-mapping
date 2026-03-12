@@ -61,6 +61,23 @@ class PaySlipGenerationController extends Controller
         // We join payroll_records → employees, then group by the canonical
         // period key (start_date_end_date) so the deduplication above is
         // respected on the frontend as well.
+
+        // ── Build period → employee IDs map ──────────────────────────────────
+        // Used by the frontend to filter the employee dropdown to only those
+        // who have an actual payroll record in the selected period.
+        $periodEmployees = DB::table('payroll_records')
+            ->join('payroll_periods as pp', 'payroll_records.payroll_period_id', '=', 'pp.payroll_period_id')
+            ->whereIn('pp.status', ['Processed', 'Closed'])
+            ->select(
+                'pp.start_date',
+                'pp.end_date',
+                'payroll_records.employee_id'
+            )
+            ->distinct()
+            ->get()
+            ->groupBy(fn ($row) => Carbon::parse($row->start_date)->format('Y-m-d').'_'.Carbon::parse($row->end_date)->format('Y-m-d'))
+            ->map(fn ($rows) => $rows->pluck('employee_id')->unique()->values()->toArray());
+
         $periodClassifications = DB::table('payroll_records')
             ->join('payroll_periods', 'payroll_records.payroll_period_id', '=', 'payroll_periods.payroll_period_id')
             ->join('employees', 'payroll_records.employee_id', '=', 'employees.employee_id')
@@ -81,8 +98,8 @@ class PaySlipGenerationController extends Controller
                 ->values()
             );
 
-        // Attach the classifications list to each period
-        $payroll_periods = $payroll_periods->map(function ($p) use ($periodClassifications) {
+        // Attach the classifications list and employee IDs to each period
+        $payroll_periods = $payroll_periods->map(function ($p) use ($periodClassifications, $periodEmployees) {
             $key = Carbon::parse($p['start_date'])->format('Y-m-d').'_'.Carbon::parse($p['end_date'])->format('Y-m-d');
             $p['available_classifications'] = $periodClassifications->get($key, collect())->values()->toArray();
 
@@ -113,7 +130,7 @@ class PaySlipGenerationController extends Controller
             $bulkPayslips = $query
                 ->get()
                 ->map(fn (Employee $e) => $this->buildPayslip($e->employee_id, $selectedPeriodId))
-                ->filter()
+                ->filter()      // remove nulls (no record for this period)
                 ->sortBy('employee_name')
                 ->values()
                 ->toArray();

@@ -1,62 +1,7 @@
 // Payroll Processing Index.tsx
-
-import React, { useState, useEffect, useMemo } from 'react';
-import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { route } from 'ziggy-js';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { DataTable } from '@/components/shared/data-table/data-table';
-import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
-import { type DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Stepper } from '@/components/ui/stepper';
-import Heading from '@/components/heading';
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
-import {
-    InputGroup,
-    InputGroupAddon,
-    InputGroupInput,
-    InputGroupText,
-} from '@/components/ui/input-group';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { format } from 'date-fns';
 import {
     Download,
     PlayCircle,
@@ -73,7 +18,9 @@ import {
     Loader2,
     X,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import React, { useState, useEffect, useMemo } from 'react';
+import { route } from 'ziggy-js';
+import Heading from '@/components/heading';
 import {
     createLoadEmployeeColumns,
     finalizedColumns,
@@ -83,6 +30,56 @@ import {
     type FinalizedEmployee,
 } from '@/components/Payroll/PayrollProcessing/data/types';
 import { peso } from '@/components/Payroll/PayrollProcessing/data/utils';
+import { DataTable } from '@/components/shared/data-table/data-table';
+import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
+import { type DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+    InputGroup,
+    InputGroupInput,
+} from '@/components/ui/input-group';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Stepper } from '@/components/ui/stepper';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import AppLayout from '@/layouts/app-layout';
 
 // Where is the attendance data??
 // Check for PayrollProcessingController if it was extracted from there
@@ -200,7 +197,7 @@ export default function Index({
     const [monthPickerYear, setMonthPickerYear] = useState(
         new Date().getFullYear(),
     );
-    const [employeeClassification, setemployeeClassification] = useState('');
+    const [employeeClassification, setEmployeeClassification] = useState('');
     const [workingDays, setWorkingDays] = useState('');
     const [isTypingCustom, setIsTypingCustom] = useState(false);
     const [customDaysInput, setCustomDaysInput] = useState('');
@@ -236,6 +233,7 @@ export default function Index({
             };
         }
     }, [payrollMonth, cutoffType]);
+    
     const defaultHrName =
         auth.user.name ??
         (auth.user.first_name || auth.user.last_name
@@ -303,10 +301,6 @@ export default function Index({
     );
     const [processingErrors, setProcessingErrors] = useState<string[]>([]);
 
-    // ── Step 3 pagination ──────────────────────────────────────────────────────
-    const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 10;
-
     // ── Step 4 state ───────────────────────────────────────────────────────────
     const [reviewedIds, setReviewedIds] = useState<number[]>([]);
     const [floorWaivers, setFloorWaivers] = useState<Record<number, string[]>>(
@@ -332,9 +326,8 @@ export default function Index({
             setProcessedPeriodId(incomingProcessedPeriodId);
             setProcessingErrors(incomingProcessingErrors);
             setHasComputed(true);
-            setCurrentPage(1);
         }
-    }, [incomingProcessedPeriodId]);
+    }, [incomingProcessedPeriodId, incomingComputedRecords, incomingProcessingErrors]);
 
     const filteredEmployees = useMemo(
         () =>
@@ -488,6 +481,7 @@ export default function Index({
                         (r.internal_org_savings ?? 0),
                     internalOrgSavings: r.internal_org_savings ?? 0,
                     internalOrgSecond: r.internal_org_second ?? 0,
+                    internalOrgLoans: r.internal_org_loans ?? 0,
                     internalOrgDeductions: r.internal_org_deductions ?? 0,
                     otherDeductionsMisc:
                         (r.other_deductions ?? 0) + (r.water_bill ?? 0),
@@ -535,6 +529,7 @@ export default function Index({
                 otherDeductions: 0,
                 internalOrgSavings: 0,
                 internalOrgSecond: 0,
+                internalOrgLoans: 0,
                 internalOrgDeductions: 0,
                 otherDeductionsMisc: 0,
                 attendanceDeduction: 0,
@@ -549,7 +544,7 @@ export default function Index({
                 status: e.basic_pay >= NET_PAY_THRESHOLD ? 'ok' : 'low',
             }))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [hasComputed, computedRecords, includedEmployees, includedEmployeeIds]);
+    }, [hasComputed, computedRecords, includedEmployees, includedEmployeeIds, NET_PAY_THRESHOLD]);
 
     const flaggedEmployees = employeesWithStatus.filter(
         (e) => e.status === 'low',
@@ -564,7 +559,8 @@ export default function Index({
                 .map((r) => r.employee_id),
         );
         return employeesWithStatus.filter((e) => flaggedIds.has(e.id));
-    }, [computedRecords, employeesWithStatus]);
+    }, [computedRecords, employeesWithStatus, NET_PAY_THRESHOLD]);
+    
     const originallyPassedCount =
         employeesWithStatus.length - originallyFlaggedEmployees.length;
     const totalGross = employeesWithStatus.reduce((s, e) => s + e.grossPay, 0);
@@ -627,7 +623,8 @@ export default function Index({
                 status: adjustedNet >= NET_PAY_THRESHOLD ? 'ok' : 'low',
             };
         });
-    }, [employeesWithStatus, floorWaivers, itemWaivers, computedRecords]);
+    }, [employeesWithStatus, floorWaivers, itemWaivers, computedRecords, NET_PAY_THRESHOLD]);
+    
     const finalizedTotalDeductions = finalizedEmployeesWithStatus.reduce(
         (s, e) => s + e.totalDeductions,
         0,
@@ -636,11 +633,6 @@ export default function Index({
         (s, e) => s + e.netPay,
         0,
     );
-
-    const totalPages = Math.ceil(employeesWithStatus.length / rowsPerPage);
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = startIndex + rowsPerPage;
-    const currentEmployees = employeesWithStatus.slice(startIndex, endIndex);
 
     const computedDays =
         startDate && endDate
@@ -966,7 +958,6 @@ export default function Index({
         }
         setValidationError('');
         setHasComputed(false);
-        setCurrentPage(1);
         setCurrentStep(3);
     };
 
@@ -1019,7 +1010,6 @@ export default function Index({
             if (data.computedRecords?.length > 0) {
                 setComputedRecords(data.computedRecords);
                 setHasComputed(true);
-                setCurrentPage(1);
                 setProcessingErrors(data.processingErrors ?? []);
                 setFloorWaivers({});
                 setItemWaivers({});
@@ -1226,6 +1216,7 @@ export default function Index({
                 water_bill: r.water_bill,
                 internal_org_savings: r.internal_org_savings ?? 0,
                 internal_org_second: r.internal_org_second ?? 0,
+                internal_org_loans: r.internal_org_loans ?? 0,
                 waived: floorWaivers[r.employee_id] ?? [],
                 waived_item_ids: (itemWaivers[r.employee_id] ?? []).map((k) =>
                     parseInt(k.split(':')[1]),
@@ -1258,7 +1249,6 @@ export default function Index({
         setValidationError('');
         setCurrentStep((s) => Math.max(1, s - 1));
     };
-    const goToPage = (page: number) => setCurrentPage(page);
 
     const steps = [
         { title: 'Selected Period', description: 'Step 1', icon: CalendarIcon },
@@ -1329,9 +1319,7 @@ export default function Index({
                     onStepChange={() => {}}
                 />
 
-                {/* ════════════════════════════════════════════════════════════ */}
-                {/* STEP 1 — Period Setup                                       */}
-                {/* ════════════════════════════════════════════════════════════ */}
+                {/* STEP 1 — Period Setup */}
                 {currentStep === 1 && (
                     <Card>
                         <CardContent className="pt-6">
@@ -1341,7 +1329,7 @@ export default function Index({
                             />
 
                             <div className="grid grid-cols-1 items-end gap-x-6 gap-y-8 md:grid-cols-4">
-                                {/* ── Payroll Month ─────────────────────────── */}
+                                {/* Payroll Month */}
                                 <Field>
                                     <FieldLabel>Payroll Month</FieldLabel>
                                     <Popover
@@ -1442,7 +1430,7 @@ export default function Index({
                                     </Popover>
                                 </Field>
 
-                                {/* ── Cut-off Type ──────────────────────────── */}
+                                {/* Cut-off Type */}
                                 <Field>
                                     <FieldLabel>Cut-off</FieldLabel>
                                     <Select
@@ -1477,7 +1465,7 @@ export default function Index({
                                     </Select>
                                 </Field>
 
-                                {/* ── Computed Payroll Period (read-only) ───── */}
+                                {/* Computed Payroll Period (read-only) */}
                                 <Field>
                                     <FieldLabel>Payroll Period</FieldLabel>
                                     <FieldDescription>
@@ -1491,7 +1479,7 @@ export default function Index({
                                     />
                                 </Field>
 
-                                {/* ── Employee Classification ─────────────────────────── */}
+                                {/* Employee Classification */}
                                 <Field>
                                     <FieldLabel>
                                         Employee Classification
@@ -1499,7 +1487,7 @@ export default function Index({
                                     <Select
                                         value={employeeClassification}
                                         onValueChange={(v) => {
-                                            setemployeeClassification(v);
+                                            setEmployeeClassification(v);
                                             setValidationError('');
                                         }}
                                     >
@@ -1523,7 +1511,7 @@ export default function Index({
                                     </Select>
                                 </Field>
 
-                                {/* ── Working Days ──────────────────────────── */}
+                                {/* Working Days */}
                                 <Field>
                                     <FieldLabel>
                                         Working days this period
@@ -1715,7 +1703,7 @@ export default function Index({
                                 </div>
                             )}
 
-                            {/* ── Duplicate payroll alert ───────────────────── */}
+                            {/* Duplicate payroll alert */}
                             {isDuplicateChecking && (
                                 <div className="mt-6">
                                     <Alert>
@@ -1829,9 +1817,7 @@ export default function Index({
                     </Card>
                 )}
 
-                {/* ════════════════════════════════════════════════════════════ */}
-                {/* STEP 2 — Load Employees + Attendance                        */}
-                {/* ════════════════════════════════════════════════════════════ */}
+                {/* STEP 2 — Load Employees + Attendance */}
                 {currentStep === 2 && (
                     <Card>
                         <CardContent className="pt-6">
@@ -2772,7 +2758,7 @@ export default function Index({
                                         rate). GSIS, PhilHealth, Pag-IBIG, and
                                         withholding tax are computed based on
                                         the full monthly salary and are deducted
-                                        on the 2nd cut-off only.
+                                        on both cut-offs.
                                     </p>
                                 </>
                             )}
@@ -2794,9 +2780,7 @@ export default function Index({
                     </Card>
                 )}
 
-                {/* ════════════════════════════════════════════════════════════ */}
-                {/* STEP 4 — Floor Check                                        */}
-                {/* ════════════════════════════════════════════════════════════ */}
+                {/* STEP 4 — Floor Check */}
                 {currentStep === 4 && (
                     <Card>
                         <CardContent className="pt-6">
@@ -3793,9 +3777,7 @@ export default function Index({
                     </Card>
                 )}
 
-                {/* ════════════════════════════════════════════════════════════ */}
-                {/* STEP 5 — Post and Finalize                                  */}
-                {/* ════════════════════════════════════════════════════════════ */}
+                {/* STEP 5 — Post and Finalize */}
                 {currentStep === 5 && (
                     <Card>
                         <CardContent className="pt-6">
@@ -3949,7 +3931,6 @@ export default function Index({
                                             <ChevronLeft className="mr-2 h-4 w-4" />{' '}
                                             Back
                                         </Button>
-                                        {/* FIXED BUTTON - removed !processedPeriodId condition */}
                                         <Button
                                             onClick={handleFinalize}
                                             disabled={isFinalizing}
@@ -3979,12 +3960,6 @@ export default function Index({
                                         >
                                             View in Payroll Register
                                         </Button>
-
-                                        {/* CHANGE THIS TO Create Another Payroll Process Transaction?? Purpose is that to make payroll for other Employment Classification */}
-                                        {/* <Button variant="outline">
-                                            <Download className="mr-2 h-4 w-4" />
-                                            Export Payroll
-                                        </Button> */}
                                         <Button
                                             variant="outline"
                                             onClick={() =>
@@ -4002,7 +3977,7 @@ export default function Index({
                     </Card>
                 )}
             </div>
-            {/* ── Step 5: Employee Breakdown Modal ───────────────────────── */}
+            {/* Step 5: Employee Breakdown Modal */}
             {(() => {
                 const raw =
                     selectedBreakdownId !== null
@@ -4101,7 +4076,7 @@ export default function Index({
                         }
                     >
                         <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
-                            {/* ── Header ───────────────────────────────────── */}
+                            {/* Header */}
                             <div className="flex items-start justify-between border-b px-6 pt-5 pb-4">
                                 <div>
                                     <DialogTitle className="text-base font-semibold">
@@ -4318,11 +4293,11 @@ export default function Index({
                                         </>
                                     )}
 
-                                    {/* Org Dues & Loans */}
+                                    {/* Org Savings & Dues */}
                                     {orgItemsWithStatus.length > 0 && (
                                         <>
                                             <p className="mt-3 mb-1 text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
-                                                Org Dues &amp; Loans
+                                                Org Savings &amp; Dues
                                             </p>
                                             {orgItemsWithStatus.map((item) => (
                                                 <div

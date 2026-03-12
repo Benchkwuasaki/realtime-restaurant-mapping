@@ -57,6 +57,7 @@
 
     type PayrollPeriodWithClassifications = PayrollPeriod & {
     available_classifications: string[];
+    employee_ids: number[];
 };
 
     interface Props {
@@ -112,28 +113,28 @@
 
         const totalDeductions = totalMandatory + totalAttendance + totalLoans;
 
-    // print style only — Times New Roman, no color
-    const serif: React.CSSProperties = {
-        fontFamily: "'Times New Roman', Times, serif",
-        color: '#000',
-        backgroundColor: '#fff',
-    };
-    const sectionLabel: React.CSSProperties = {
-        fontSize: 9,
-        fontWeight: 'bold',
-        letterSpacing: '0.14em',
-        textTransform: 'uppercase',
-        borderBottom: '1px solid #000',
-        paddingBottom: 3,
-        margin: '0 0 6px',
-    };
-    const subtotalRow: React.CSSProperties = {
-        display: 'flex',
-        justifyContent: 'space-between',
-        borderTop: '1px solid #000',
-        marginTop: 6,
-        paddingTop: 4,
-    };
+        // B&W financial document style — Times New Roman, no color
+        const serif: React.CSSProperties = {
+            fontFamily: "'Times New Roman', Times, serif",
+            color: '#000',
+            backgroundColor: '#fff',
+        };
+        const sectionLabel: React.CSSProperties = {
+            fontSize: 9,
+            fontWeight: 'bold',
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            borderBottom: '1px solid #000',
+            paddingBottom: 3,
+            margin: '0 0 6px',
+        };
+        const subtotalRow: React.CSSProperties = {
+            display: 'flex',
+            justifyContent: 'space-between',
+            borderTop: '1px solid #000',
+            marginTop: 6,
+            paddingTop: 4,
+        };
 
         return (
             <div
@@ -203,42 +204,44 @@
                     </div>
                 </div>
 
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    borderBottom: '1px solid #000',
-                    fontFamily: "'Times New Roman', Times, serif",
-                }}
-            >
+                {/* ── Body ── */}
                 <div
                     style={{
-                        padding: '16px 28px',
-                        borderRight: '1px solid #ccc',
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        borderBottom: '1px solid #000',
+                        fontFamily: "'Times New Roman', Times, serif",
                     }}
                 >
-                    <p style={sectionLabel}>Earnings</p>
-                    <Row label="Basic Pay" value={data.basic_pay} />
-                    <Row label="PERA" value={data.pera} />
-                    <Row label="Rice Allowance" value={data.rice_allowance} />
-                    <Row
-                        label="Uniform Allowance"
-                        value={data.uniform_allowance}
-                    />
-                    <div style={subtotalRow}>
-                        <span style={{ fontSize: 10, fontWeight: 'bold' }}>
-                            Gross Pay
-                        </span>
-                        <span
-                            style={{
-                                fontSize: 10,
-                                fontWeight: 'bold',
-                                fontVariantNumeric: 'tabular-nums',
-                            }}
-                        >
-                            &#8369;{peso(grossPay)}
-                        </span>
-                    </div>
+                    {/* LEFT — Earnings + Attendance */}
+                    <div
+                        style={{
+                            padding: '16px 28px',
+                            borderRight: '1px solid #ccc',
+                        }}
+                    >
+                        <p style={sectionLabel}>Earnings</p>
+                        <Row label="Basic Pay" value={data.basic_pay} />
+                        <Row label="PERA" value={data.pera} />
+                        <Row label="Rice Allowance" value={data.rice_allowance} />
+                        <Row
+                            label="Uniform Allowance"
+                            value={data.uniform_allowance}
+                        />
+                        <div style={subtotalRow}>
+                            <span style={{ fontSize: 10, fontWeight: 'bold' }}>
+                                Gross Pay
+                            </span>
+                            <span
+                                style={{
+                                    fontSize: 10,
+                                    fontWeight: 'bold',
+                                    fontVariantNumeric: 'tabular-nums',
+                                }}
+                            >
+                                &#8369;{peso(grossPay)}
+                            </span>
+                        </div>
 
                         <p style={{ ...sectionLabel, margin: '16px 0 6px' }}>
                             Attendance Deductions
@@ -447,6 +450,13 @@
                         fontFamily: "'Times New Roman', Times, serif",
                     }}
                 >
+                    <div className="mb-3 flex items-center justify-center gap-1.5 rounded border border-dashed border-gray-400 px-3 py-1 text-[9px] text-gray-600 print:hidden">
+                        Print on{' '}
+                        <strong className="mx-0.5">
+                            Short Bond Paper (8.5&Prime; &times; 11&Prime;)
+                        </strong>{' '}
+                        &mdash; Portrait orientation
+                    </div>
 
                     <div style={{ display: 'flex', gap: 40, marginTop: 8 }}>
                         <div style={{ flex: 1, textAlign: 'center' }}>
@@ -606,6 +616,17 @@
                 e.employment_classification.toLowerCase() ===
                 classification.toLowerCase(),
         );
+
+        // Employees filtered by BOTH classification AND selected period.
+        // When a period is chosen, only employees who actually have a payroll
+        // record in that period are shown in the dropdown.
+        const selectedPeriod = payroll_periods.find(
+            (p) => String(p.payroll_period_id) === periodId,
+        );
+        const filteredEmployeesForPeriod = filteredEmployees.filter((e) =>
+            !selectedPeriod || selectedPeriod.employee_ids.includes(e.employee_id),
+        );
+
         const filteredPeriods = payroll_periods.filter((p) =>
     p.available_classifications.some(
         (c) => c.toLowerCase() === classification.toLowerCase(),
@@ -619,26 +640,39 @@ const bulkFilteredPeriods = payroll_periods.filter((p) => {
     );
 });
 
-        const bulkEmployees = employees.filter(
-            (e) =>
+        const bulkEmployees = employees.filter((e) => {
+            // Must match classification filter
+            const matchesClass =
                 bulkClassification === 'All' ||
                 e.employment_classification.toLowerCase() ===
-                    bulkClassification.toLowerCase(),
-        );
+                    bulkClassification.toLowerCase();
+            if (!matchesClass) return false;
+
+            // If a period is selected, only include employees who have a record in it
+            if (bulkPeriodId) {
+                const bulkSelectedPeriod = payroll_periods.find(
+                    (p) => String(p.payroll_period_id) === bulkPeriodId,
+                );
+                if (bulkSelectedPeriod) {
+                    return bulkSelectedPeriod.employee_ids.includes(e.employee_id);
+                }
+            }
+
+            return true;
+        });
 
 function handleClassificationChange(value: string) {
     setClassification(value);
     setEmployeeId('');
+    setPeriodId('');
     setEmployeeOpen(false);
-    const stillValid = payroll_periods.some(
-        (p) =>
-            String(p.payroll_period_id) === periodId &&
-            p.available_classifications.some(
-                (c) => c.toLowerCase() === value.toLowerCase(),
-            ),
-    );
-    if (!stillValid) setPeriodId('');
 }
+
+        function handlePeriodChange(value: string) {
+            setPeriodId(value);
+            setEmployeeId('');
+            setEmployeeOpen(false);
+        }
 
         // CHANGE 5 — new handler that also resets bulk period when no longer valid
         function handleBulkClassificationChange(value: string) {
@@ -794,6 +828,47 @@ function handleClassificationChange(value: string) {
                                             </Select>
                                         </div>
 
+                                        {/* CHANGE 6 — use filteredPeriods instead of payroll_periods */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                                Payroll Period
+                                            </label>
+                                            <Select
+                                                value={periodId}
+                                                onValueChange={handlePeriodChange}
+                                                disabled={filteredPeriods.length === 0}
+                                            >
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue
+                                                        placeholder={
+                                                            filteredPeriods.length === 0
+                                                                ? 'No periods available'
+                                                                : 'Select period'
+                                                        }
+                                                    />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {filteredPeriods.map((p) => (
+                                                        <SelectItem
+                                                            key={p.payroll_period_id}
+                                                            value={String(p.payroll_period_id)}
+                                                        >
+                                                            {p.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            {filteredPeriods.length === 0 && (
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    No processed periods found for{' '}
+                                                    <span className="font-medium text-foreground">
+                                                        {classification}
+                                                    </span>{' '}
+                                                    employees.
+                                                </p>
+                                            )}
+                                        </div>
+
                                         <div className="space-y-1.5">
                                             <label className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                                                 Employee
@@ -808,14 +883,14 @@ function handleClassificationChange(value: string) {
                                                         role="combobox"
                                                         aria-expanded={employeeOpen}
                                                         disabled={
-                                                            filteredEmployees.length ===
-                                                            0
+                                                            !periodId ||
+                                                            filteredEmployeesForPeriod.length === 0
                                                         }
                                                         className="w-full justify-between font-normal"
                                                     >
                                                         <span className="truncate">
                                                             {employeeId
-                                                                ? (filteredEmployees.find(
+                                                                ? (filteredEmployeesForPeriod.find(
                                                                     (e) =>
                                                                         String(
                                                                             e.employee_id,
@@ -830,8 +905,9 @@ function handleClassificationChange(value: string) {
                                                                         employeeId,
                                                                 )?.full_name ??
                                                                 'Select employee')
-                                                                : filteredEmployees.length ===
-                                                                    0
+                                                                : !periodId
+                                                                ? 'Select period first'
+                                                                : filteredEmployeesForPeriod.length === 0
                                                                 ? 'No employees found'
                                                                 : 'Select employee'}
                                                         </span>
@@ -849,7 +925,7 @@ function handleClassificationChange(value: string) {
                                                                 No employee found.
                                                             </CommandEmpty>
                                                             <CommandGroup>
-                                                                {filteredEmployees.map(
+                                                                {filteredEmployeesForPeriod.map(
                                                                     (e) => (
                                                                         <CommandItem
                                                                             key={
@@ -890,47 +966,6 @@ function handleClassificationChange(value: string) {
                                                     </Command>
                                                 </PopoverContent>
                                             </Popover>
-                                        </div>
-
-                                        {/* CHANGE 6 — use filteredPeriods instead of payroll_periods */}
-                                        <div className="space-y-1.5">
-                                            <label className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                                                Payroll Period
-                                            </label>
-                                            <Select
-                                                value={periodId}
-                                                onValueChange={setPeriodId}
-                                                disabled={filteredPeriods.length === 0}
-                                            >
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue
-                                                        placeholder={
-                                                            filteredPeriods.length === 0
-                                                                ? 'No periods available'
-                                                                : 'Select period'
-                                                        }
-                                                    />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {filteredPeriods.map((p) => (
-                                                        <SelectItem
-                                                            key={p.payroll_period_id}
-                                                            value={String(p.payroll_period_id)}
-                                                        >
-                                                            {p.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            {filteredPeriods.length === 0 && (
-                                                <p className="text-[11px] text-muted-foreground">
-                                                    No processed periods found for{' '}
-                                                    <span className="font-medium text-foreground">
-                                                        {classification}
-                                                    </span>{' '}
-                                                    employees.
-                                                </p>
-                                            )}
                                         </div>
 
                                         <Separator />
@@ -1080,6 +1115,7 @@ function handleClassificationChange(value: string) {
 
                                         <Separator />
 
+                                        {bulkPeriodId && (
                                         <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                                             <p className="font-medium text-foreground">
                                                 {bulkEmployees.length} employee
@@ -1092,6 +1128,7 @@ function handleClassificationChange(value: string) {
                                                 its own page.
                                             </p>
                                         </div>
+                                        )}
 
                                         <Button
                                             className="w-full gap-2"

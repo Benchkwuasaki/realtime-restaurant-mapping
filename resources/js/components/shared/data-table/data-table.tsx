@@ -78,11 +78,13 @@ interface DataTableProps<TData, TValue> {
     defaultPageSize?: number;
 
     // ── Toolbar config ──────────────────────────────────────────────────────────
-    searchColumnId: string;
-    searchPlaceholder?: string;
-    filters?: ToolbarFilterConfig[];
-    addButton?: ToolbarAddButtonConfig;
-    bulkDelete?: ToolbarBulkDeleteConfig;
+    searchColumnId: string
+    searchPlaceholder?: string
+    filters?: ToolbarFilterConfig[]
+    addButton?: ToolbarAddButtonConfig
+    bulkDelete?: ToolbarBulkDeleteConfig
+
+    // ── Visual extensions ───────────────────────────────────────────────────────
 
     // ── Visual extensions ───────────────────────────────────────────────────────
 
@@ -114,10 +116,37 @@ interface DataTableProps<TData, TValue> {
     footerRow?: (rows: Row<TData>[]) => React.ReactNode[];
 
     /**
+     * When provided, renders an extra <tr> above the normal TanStack column
+     * headers. Use this for grouped / colour-banded headers (e.g. the payroll
+     * Earnings | Deductions | Net Pay bands).
+     *
+     * Each item maps to one <th>. Use `colSpan`, `rowSpan`, and `className` to
+     * position cells exactly as you would in plain HTML.
+     *
+     * Tables that do NOT pass this prop are completely unaffected.
+     */
+    headerGroups?: DataTableHeaderGroupCell[]
+
+    /**
+     * When provided, renders a <tfoot> row after the last body row.
+     * The callback receives the current *page* rows so totals are page-aware.
+     *
+     * Return an array of <td> / <th> elements — one per visible column.
+     * Tables that do NOT pass this prop get no <tfoot> at all.
+     *
+     * @example
+     * footerRow={(rows) => [
+     *   <td colSpan={2}>Page Totals ({rows.length})</td>,
+     *   <td className="text-right">{peso(rows.reduce((s,r) => s + r.original.grossPay, 0))}</td>,
+     * ]}
+     */
+    footerRow?: (rows: Row<TData>[]) => React.ReactNode[]
+
+    /**
      * Zebra-stripe body rows (index % 2 === 0 → white, odd → slate-50/50).
      * Defaults to `false` to preserve existing table appearance.
      */
-    striped?: boolean;
+    striped?: boolean
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
