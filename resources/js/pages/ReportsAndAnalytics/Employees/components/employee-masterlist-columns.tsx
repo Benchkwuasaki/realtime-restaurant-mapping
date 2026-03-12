@@ -27,7 +27,7 @@ const TYPE_VARIANT: Record<string, 'outline' | 'default' | 'secondary'> = {
 };
 
 function StatusBadge({ status }: { status: string }) {
-    return <Badge variant={STATUS_VARIANT[status] ?? 'gray'}>{status}</Badge>;
+    return <Badge variant={STATUS_VARIANT[status] ?? 'secondary'}>{status}</Badge>;
 }
 
 function TypeBadge({ type }: { type: string }) {

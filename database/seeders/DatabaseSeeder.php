@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Employee;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +15,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
         ]);
+        // TODO: refactor to separate seeder files
 
         // ── 0. Government Account Types ───────────────────────────────────
         $gsisTypeId = DB::table('government_acc_types')->insertGetId([
@@ -204,21 +207,26 @@ class DatabaseSeeder extends Seeder
             'department_name' => 'Office of Business Excellence',
             'department_acronym' => 'OBE',
             'department_description' => 'Handles overall business operations and excellence.',
-            'created_at' => now(), 'updated_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
+        // Department #2 (NEW)
         $deptOpsId = DB::table('departments')->insertGetId([
             'department_name' => 'Operations and Services Department',
             'department_acronym' => 'OSD',
             'department_description' => 'Oversees daily operations, facilities, and customer-facing services.',
-            'created_at' => now(), 'updated_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
+        // Department #3 (NEW)
         $deptGovId = DB::table('departments')->insertGetId([
             'department_name' => 'Governance and Public Affairs Department',
             'department_acronym' => 'GPAD',
             'department_description' => 'Manages governance initiatives, public information, and stakeholder relations.',
-            'created_at' => now(), 'updated_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         // ── 3. Divisions ───────────────────────────────────────────────────
@@ -535,8 +543,9 @@ class DatabaseSeeder extends Seeder
             ['dept' => $deptId, 'div' => $divLegalId, 'unit' => null,           'name' => 'Legal Division Chief',    'sg_idx' => 10],
         ];
 
+        $positionIds = [];
         foreach ($positions as $pos) {
-            DB::table('positions')->insertGetId([
+            $positionIds[] = DB::table('positions')->insertGetId([
                 'department_id' => $pos['dept'],
                 'division_id' => $pos['div'],
                 'unit_id' => $pos['unit'],
@@ -548,9 +557,7 @@ class DatabaseSeeder extends Seeder
 
         // ── 6. Items — 4 slots per position; selected positions get a vacant 5th slot ──
         $positionsWithVacantSlot = [1, 4, 7, 10, 13, 16, 19, 21, 23, 24];
-
-        $positionIds = DB::table('positions')->orderBy('position_id')->pluck('position_id')->toArray();
-
+        $itemIds = [];
         foreach ($positionIds as $idx => $posId) {
             $posName = $positions[$idx]['name'];
             $hasVacantSlot = in_array($idx, $positionsWithVacantSlot, true);
@@ -1039,9 +1046,12 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call([
-            EmployeeSeeder::class,
             UserSeeder::class,
             InternalOrganizationSeeder::class,
+            HolidaySeeder::class,
+            FaceEmbeddingSeeder::class,
+            RecognitionLogSeeder::class,
+            AttendanceRecordSeeder::class,
             LeaveTypeSeeder::class,
             LeaveBalanceSeeder::class,
             LeaveApplicationSeeder::class,

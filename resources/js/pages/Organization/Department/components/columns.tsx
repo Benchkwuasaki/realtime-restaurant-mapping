@@ -4,6 +4,7 @@ import { router } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import { useState, useRef } from "react"
 import { Pen, Trash } from "lucide-react"
+import { toast } from "sonner"
 
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import {
@@ -43,7 +44,17 @@ function DeleteConfirmDialog({ department, onClose }: DeleteConfirmDialogProps) 
         if (!department) return
         setProcessing(true)
         router.delete(route("department.destroy", department.department_id), {
-            onFinish: () => {
+            onSuccess: () => {
+                toast.success("Department deleted", {
+                    description: `"${department.department_name}" has been permanently removed.`,
+                })
+                setProcessing(false)
+                onClose()
+            },
+            onError: () => {
+                toast.error("Failed to delete department", {
+                    description: "Something went wrong. Please try again.",
+                })
                 setProcessing(false)
                 onClose()
             },
@@ -252,7 +263,19 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Depart
                         deleteAction(
                             (department) =>
                                 router.delete(
-                                    route("department.destroy", department.department_id)
+                                    route("department.destroy", department.department_id),
+                                    {
+                                        onSuccess: () => {
+                                            toast.success("Department deleted", {
+                                                description: `"${department.department_name}" has been permanently removed.`,
+                                            })
+                                        },
+                                        onError: () => {
+                                            toast.error("Failed to delete department", {
+                                                description: "Something went wrong. Please try again.",
+                                            })
+                                        },
+                                    }
                                 ),
                             {
                                 getName: (d) => d.department_name,

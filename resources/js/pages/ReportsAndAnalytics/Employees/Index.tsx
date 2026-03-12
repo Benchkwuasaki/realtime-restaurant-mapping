@@ -37,7 +37,7 @@ function deptColor(name: string): string {
 
 /* ── Shared card wrapper ─────────────────────────────────────────────────── */
 const Card = ({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-    <div style={{ background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,.06)', padding: 20, ...style }}>
+    <div style={{ background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', padding: 20, ...style }}>
         {children}
     </div>
 );
@@ -50,17 +50,17 @@ const SH = ({ title, sub }: { title: string; sub?: string }) => (
 );
 
 /* ── Badge helpers ───────────────────────────────────────────────────────── */
-const STATUS_VARIANT: Record<string, 'green' | 'gray'> = {
+const STATUS_VARIANT: Record<string, 'green' | 'secondary'> = {
     Active: 'green',
-    Inactive: 'gray',
+    Inactive: 'secondary',
 };
-const TYPE_VARIANT: Record<string, 'blue' | 'default' | 'secondary'> = {
-    Regular: 'blue',
-    Casual: 'default',
-    'Job Order': 'secondary',
+const TYPE_VARIANT: Record<string, 'outline' | 'default' | 'secondary'> = {
+    Regular: 'default',
+    Casual: 'secondary',
+    'Job Order': 'outline',
 };
 function StatusBadge({ status }: { status: string }) {
-    return <Badge variant={STATUS_VARIANT[status] ?? 'gray'}>{status}</Badge>;
+    return <Badge variant={STATUS_VARIANT[status] ?? 'secondary'}>{status}</Badge>;
 }
 function TypeBadge({ type }: { type: string }) {
     return <Badge variant={TYPE_VARIANT[type] ?? 'secondary'}>{type}</Badge>;
@@ -179,9 +179,9 @@ function KpiStrip({
     filters: EmployeeFilters; setFilters: (f: EmployeeFilters) => void;
 }) {
     const kpis = [
-        { label: 'Total Employees', value: totalEmployees, accent: blue, bg: '#eff6ff', icon: '👥', statusFilter: '' },
-        { label: 'Active', value: activeEmployees, accent: emerald, bg: '#f0fdf4', icon: '✅', statusFilter: 'Active' },
-        { label: 'Inactive', value: inactiveEmployees, accent: slate, bg: '#f1f5f9', icon: '⏸', statusFilter: 'Inactive' },
+        { label: 'Total Employees', value: totalEmployees, accent: blue, bg: 'color-mix(in oklch, var(--primary) 12%, transparent)', icon: '👥', statusFilter: '' },
+        { label: 'Active', value: activeEmployees, accent: emerald, bg: 'color-mix(in oklch, var(--accent) 20%, transparent)', icon: '✅', statusFilter: 'Active' },
+        { label: 'Inactive', value: inactiveEmployees, accent: slate, bg: 'color-mix(in oklch, var(--muted) 60%, transparent)', icon: '⏸', statusFilter: 'Inactive' },
     ];
 
     return (
@@ -196,7 +196,7 @@ function KpiStrip({
                             background: 'var(--card)', borderRadius: 16,
                             border: `1px solid ${isActive ? k.accent : 'var(--border)'}`,
                             borderLeft: `4px solid ${k.accent}`, padding: 16,
-                            boxShadow: isActive ? `0 0 0 3px ${k.accent}22, 0 1px 4px rgba(0,0,0,.06)` : '0 1px 4px rgba(0,0,0,.06)',
+                            boxShadow: isActive ? `0 0 0 3px ${k.accent}22, var(--shadow-sm)` : 'var(--shadow-sm)',
                             cursor: clickable ? 'pointer' : 'default',
                             transition: 'all .15s',
                             transform: isActive ? 'translateY(-1px)' : 'none',
@@ -253,7 +253,7 @@ function Demographics({ employees }: { employees: Employee[] }) {
                                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--foreground)' }}>{b.label}</span>
                                 <span style={{ fontSize: 11, fontWeight: 700, color: [blue, indigo, violet, rose][i] }}>{b.count}</span>
                             </div>
-                            <div style={{ height: 18, background: '#e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                            <div style={{ height: 18, background: 'var(--muted)', borderRadius: 6, overflow: 'hidden' }}>
                                 <div style={{ width: `${(b.count / maxAge) * 100}%`, height: '100%', background: [blue, indigo, violet, rose][i], borderRadius: 6, transition: 'width .4s ease' }} />
                             </div>
                         </div>
@@ -271,7 +271,7 @@ function Demographics({ employees }: { employees: Employee[] }) {
                                     {g.count} ({total ? ((g.count / total) * 100).toFixed(1) : 0}%)
                                 </span>
                             </div>
-                            <div style={{ height: 10, background: '#e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                            <div style={{ height: 10, background: 'var(--muted)', borderRadius: 6, overflow: 'hidden' }}>
                                 <div style={{ width: `${total ? (g.count / total) * 100 : 0}%`, height: '100%', background: GENDER_COLORS[g.label], borderRadius: 6, transition: 'width .4s ease' }} />
                             </div>
                         </div>
@@ -401,7 +401,7 @@ function DeptDistribution({ employees, filters, setFilters }: { employees: Emplo
                                         onMouseLeave={() => setHov(null)}
                                         style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', opacity: filters.dept && !isActive ? 0.4 : 1, transition: 'opacity .15s' }}>
                                         <div style={{ width: 110, fontSize: 11, fontWeight: isActive ? 800 : 600, color: isActive ? d.color : 'var(--foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color .15s' }}>{d.label}</div>
-                                        <div style={{ flex: 1, height: 22, background: '#f1f5f9', borderRadius: 6, overflow: 'hidden' }}>
+                                        <div style={{ flex: 1, height: 22, background: 'var(--muted)', borderRadius: 6, overflow: 'hidden' }}>
                                             <div style={{
                                                 width: `${(d.count / max) * 100}%`, height: '100%',
                                                 background: d.color, borderRadius: 6,
@@ -411,7 +411,7 @@ function DeptDistribution({ employees, filters, setFilters }: { employees: Emplo
                                                 outline: isActive ? `2px solid ${d.color}` : 'none',
                                                 outlineOffset: 1,
                                             }}>
-                                                <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{d.count}</span>
+                                                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary-foreground)', whiteSpace: 'nowrap' }}>{d.count}</span>
                                             </div>
                                         </div>
                                         <div style={{ width: 30, fontSize: 11, fontWeight: 700, color: d.color, textAlign: 'right' }}>{d.count}</div>
@@ -495,7 +495,6 @@ function MasterlistTable({ employees, departments, onSelect }: { employees: Empl
                 searchPlaceholder="Search name, work ID, department…"
                 filters={tableFilters}
                 defaultPageSize={15}
-                striped
             />
         </Card>
     );

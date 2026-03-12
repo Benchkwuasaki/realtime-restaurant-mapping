@@ -3,49 +3,73 @@
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AllowanceManagementController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AttendanceLogController;
+use App\Http\Controllers\AttendanceLogController;
+use App\Http\Controllers\AttendanceRecordController;
 use App\Http\Controllers\AttendanceRecordController;
 use App\Http\Controllers\AttendanceReportController;
+use App\Http\Controllers\AttendanceReportController;
+use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeReportController;
+use App\Http\Controllers\EmployeeReportController;
+use App\Http\Controllers\EmploymentClassificationController;
 use App\Http\Controllers\EmploymentClassificationController;
 use App\Http\Controllers\GovernmentRemittanceReportController;
+use App\Http\Controllers\GovernmentReportController;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\InternalOrganizationController;
 use App\Http\Controllers\InternalOrganizationController;
 use App\Http\Controllers\InternalOrgDeductionController;
 use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\LeaveAccrualController;
+use App\Http\Controllers\LeaveAccrualController;
 use App\Http\Controllers\LeaveApplicationController;
 use App\Http\Controllers\LeaveCalendarController;
+use App\Http\Controllers\LeaveCalendarController;
 use App\Http\Controllers\LeaveEntitlementController;
+use App\Http\Controllers\LeaveReportController;
 use App\Http\Controllers\LeaveReportController;
 use App\Http\Controllers\LeaveSettingsController;
 use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\LoanEntryController;
+// Leave
 use App\Http\Controllers\OtherDeductionEntryController;
 use App\Http\Controllers\PayrollDeductionSettingsController;
 use App\Http\Controllers\PayrollProcessingController;
 use App\Http\Controllers\PayrollRegisterController;
-// Leave
+use App\Http\Controllers\PayrollReportController;
 use App\Http\Controllers\PayrollReportController;
 use App\Http\Controllers\PaySlipGenerationController;
+// Leave
+use App\Http\Controllers\PositionController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\SalaryGradeTableController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WhereaboutSlipController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\WhereaboutSlipController;
 // Leave
-use Inertia\Inertia;
+use Illuminate\Support\Facades\Route;
 // reports and analytics
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Inertia\Inertia;
+use Laravel\Fortify\Features;
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
@@ -326,7 +350,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
             Route::delete('/', [LeaveEntitlementController::class, 'bulkDestroy'])->name('bulk-destroy');
         });
 
-        // Leave Accrual
+        // leave accrual
         Route::prefix('accrual')->name('accrual.')->group(function () {
             Route::get('/', [LeaveAccrualController::class, 'index'])->name('index');
             Route::get('/preview', [LeaveAccrualController::class, 'preview'])->name('preview');
@@ -337,8 +361,13 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
             Route::get('/balances', [LeaveAccrualController::class, 'balances'])->name('balances'); // from main (NEW)
         });
 
-        // Leave Application
-        Route::get('/leave-application', [LeaveApplicationController::class, 'index'])->name('leave-application.index');
+        // leave application
+        Route::prefix('leave-application')->name('leave-application.')->group(function () {
+            Route::get('/', [LeaveApplicationController::class, 'index'])->name('index');
+            Route::post('/', [LeaveApplicationController::class, 'store'])->name('store');
+            Route::put('/{application}', [LeaveApplicationController::class, 'update'])->name('update');
+        });
+
     });
 
     /*
@@ -447,6 +476,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
     // Attendance Report (from main - NEW)
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
+        Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
         Route::inertia('/leave', 'ReportsAndAnalytics\Leave\LeaveIndexa')->name('leave');
 
         Route::get('/attendance-report', [AttendanceReportController::class, 'index'])
@@ -460,6 +490,9 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
         Route::get('/payroll-report', [PayrollReportController::class, 'index'])
             ->name('payroll-report.index');
+
+        Route::get('/government-report', [GovernmentReportController::class, 'index'])
+            ->name('government-report.index');
 
     });
 
