@@ -498,7 +498,7 @@ function MasterlistTable({ employees, departments, onSelect }: { employees: Empl
                 searchColumnId="name"
                 searchPlaceholder="Search name, work ID, department…"
                 filters={tableFilters}
-                defaultPageSize={15}
+                defaultPageSize={10}
             />
         </Card>
     );
