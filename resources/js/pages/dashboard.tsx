@@ -9,7 +9,7 @@ import {
     AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import AppLayout from "@/layouts/app-layout";
-import { Head } from "@inertiajs/react";
+import { Head, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 
 /* ── CLOCK ───────────────────────────────────────────────────────────────── */
@@ -23,13 +23,7 @@ function useClock() {
 const TOTAL = 400;
 const PRESENT = 200, LATE = 100, ABSENT = 100;
 
-const leaveTypeData = [
-    { label: "Vacation", value: 24, fill: "#818cf8" },
-    { label: "Sick",     value: 18, fill: "#fb7185" },
-    { label: "Special",  value: 9,  fill: "#22d3ee" },
-    { label: "Mat/Pat",  value: 6,  fill: "#f472b6" },
-    { label: "Other",    value: 12, fill: "#fb923c" },
-];
+
 
 const leaveTrend = [
     { m: "J",  v: 12 }, { m: "F",  v: 19 }, { m: "M",  v: 21 },
@@ -46,19 +40,10 @@ const topLate = [
     { name: "M. Buligan",     dept: "Admin",      min: 19 },
 ];
 
-const topLeave = [
-    { name: "Glizzy Go",    days: 14, type: "Maternity", color: "#f472b6" },
-    { name: "Earl F. Amoy", days: 12, type: "Vacation",  color: "#818cf8" },
-    { name: "Liam Papasin", days: 8,  type: "Sick",      color: "#fb7185" },
-    { name: "Lucia Torres", days: 7,  type: "Sick",      color: "#fb7185" },
-    { name: "M. Buligan",   days: 5,  type: "Special",   color: "#22d3ee" },
-];
 
-const pendingKPI = [
-    { label: "Urgent",   value: 12,   sub: ">3 days",      color: "#fb7185", icon: AlertTriangle },
-    { label: "Approved", value: 8,    sub: "today",        color: "#34d399", icon: CheckCircle2 },
-    { label: "Avg Wait", value: "2d", sub: "to approval",  color: "#fbbf24", icon: Clock },
-];
+
+
+
 
 const TT = {
     borderRadius: "10px",
@@ -69,6 +54,18 @@ const TT = {
     padding: "6px 12px",
     boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
 };
+
+// Colour palette for workforce bars.
+// Falls back gracefully for any classification not explicitly mapped.
+const CLASSIFICATION_COLORS: Record<string, string> = {
+    "Regular":   "#818cf8",
+    "Casual":    "#22d3ee",
+    "Job Order": "#fb923c",
+};
+const FALLBACK_COLORS = ["#34d399", "#f472b6", "#fbbf24", "#fb7185"];
+
+/* ── TYPES ───────────────────────────────────────────────────────────────── */
+type ClassificationCount = { classification: string; total: number };
 
 /* ── DONUT (attendance) ──────────────────────────────────────────────────── */
 function AttendanceDonut() {
@@ -146,13 +143,17 @@ function LateList() {
 }
 
 /* ── KPI ROW ─────────────────────────────────────────────────────────────── */
-function KpiRow() {
+function KpiRow({ totalEmployees, onLeaveCount, pendingLeaveCount }: {
+    totalEmployees: number;
+    onLeaveCount: number;
+    pendingLeaveCount: number;
+}) {
     const kpis = [
-        { label: "Total",    value: "400",    icon: Users,        color: "#818cf8", bg: "rgba(129,140,248,0.1)"  },
-        { label: "Present",  value: "200",    icon: UserCheck,    color: "#34d399", bg: "rgba(52,211,153,0.1)"   },
-        { label: "On Leave", value: "20",     icon: CalendarClock,color: "#fbbf24", bg: "rgba(251,191,36,0.1)"   },
-        { label: "Pending Leave",  value: "36",     icon: Clock,        color: "#fb7185", bg: "rgba(251,113,133,0.1)"  },
-        { label: "Payroll",  value: "Mar 15", icon: Banknote,     color: "#34d399", bg: "rgba(52,211,153,0.1)"   },
+        { label: "Total",         value: totalEmployees,   icon: Users,         color: "#818cf8", bg: "rgba(129,140,248,0.1)" },
+        { label: "Present",       value: "200",            icon: UserCheck,     color: "#34d399", bg: "rgba(52,211,153,0.1)"  },
+        { label: "On Leave",      value: onLeaveCount,     icon: CalendarClock, color: "#fbbf24", bg: "rgba(251,191,36,0.1)"  },
+        { label: "Pending Leave", value: pendingLeaveCount, icon: Clock,        color: "#fb7185", bg: "rgba(251,113,133,0.1)" },
+        { label: "Payroll",       value: "Mar 15",         icon: Banknote,      color: "#34d399", bg: "rgba(52,211,153,0.1)"  },
     ];
     return (
         <div className="grid grid-cols-5 gap-3">
@@ -160,7 +161,6 @@ function KpiRow() {
                 const Icon = k.icon;
                 return (
                     <div key={k.label} className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 flex flex-col gap-3 shadow-sm">
-                        {/* tinted corner accent */}
                         <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full opacity-20"
                             style={{ background: k.color }} />
                         <div className="p-2 rounded-xl w-fit" style={{ background: k.bg }}>
@@ -178,51 +178,51 @@ function KpiRow() {
 }
 
 /* ── WORKFORCE BARS ──────────────────────────────────────────────────────── */
-function WorkforceBars() {
-    const cats = [
-        { label: "Regular",   value: 180, color: "#818cf8" },
-        { label: "Casual",    value: 95,  color: "#22d3ee" },
-        { label: "Job Order", value: 125, color: "#fb923c" },
-    ];
+function WorkforceBars({ counts }: { counts: ClassificationCount[] }) {
+    const grandTotal = counts.reduce((sum, c) => sum + c.total, 0);
+
     return (
         <div className="flex flex-col gap-5">
-            {cats.map(c => {
-                const pct = Math.round((c.value / TOTAL) * 100);
+            {counts.map((c, i) => {
+                const color = CLASSIFICATION_COLORS[c.classification] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+                const pct = grandTotal > 0 ? Math.round((c.total / grandTotal) * 100) : 0;
                 return (
-                    <div key={c.label}>
+                    <div key={c.classification}>
                         <div className="flex justify-between items-baseline mb-2">
-                            <span className="text-xs font-semibold text-foreground">{c.label}</span>
+                            <span className="text-xs font-semibold text-foreground">{c.classification}</span>
                             <div className="flex items-baseline gap-1">
-                                <span className="text-lg font-black text-foreground leading-none">{c.value}</span>
+                                <span className="text-lg font-black text-foreground leading-none">{c.total}</span>
                                 <span className="text-[10px] text-muted-foreground">{pct}%</span>
                             </div>
                         </div>
                         <div className="h-2.5 rounded-full overflow-hidden bg-muted">
-                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c.color }} />
+                            <div className="h-full rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%`, background: color }} />
                         </div>
                     </div>
                 );
             })}
             <div className="flex justify-between items-center pt-2 border-t border-border">
                 <span className="text-[11px] text-muted-foreground font-medium">Total headcount</span>
-                <span className="text-base font-black text-foreground">{TOTAL}</span>
+                <span className="text-base font-black text-foreground">{grandTotal}</span>
             </div>
         </div>
     );
 }
 
 /* ── LEAVE TYPE CHART ────────────────────────────────────────────────────── */
-function LeaveTypeChart() {
+function LeaveTypeChart({ data }: { data: LeaveTypeCount[] }) {
+    if (!data.length) return <p className="text-xs text-muted-foreground text-center py-8">No data available</p>;
     return (
         <div className="w-full h-40">
             <ResponsiveContainer width="100%" height="120%">
-                <BarChart data={leaveTypeData} margin={{ top: 2, right: 0, left: -30, bottom: 0 }} barSize={24}>
+                <BarChart data={data} margin={{ top: 2, right: 0, left: -30, bottom: 0 }} barSize={24}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis dataKey="label" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(v) => [`${v} employees`]} contentStyle={TT} cursor={{ fill: "var(--muted)", opacity: 0.5 }} />
+                    <Tooltip formatter={(v) => [`${v} applications`]} contentStyle={TT} cursor={{ fill: "var(--muted)", opacity: 0.5 }} />
                     <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                        {leaveTypeData.map(e => <Cell key={e.label} fill={e.fill} />)}
+                        {data.map(e => <Cell key={e.label} fill={e.fill} />)}
                     </Bar>
                 </BarChart>
             </ResponsiveContainer>
@@ -231,11 +231,12 @@ function LeaveTypeChart() {
 }
 
 /* ── TOP LEAVE TAKERS ────────────────────────────────────────────────────── */
-function TopLeaveTakers() {
-    const max = topLeave[0].days;
+function TopLeaveTakers({ takers }: { takers: TopLeaveTaker[] }) {
+    if (!takers.length) return <p className="text-xs text-muted-foreground text-center py-8">No data available</p>;
+    const max = takers[0].days;
     return (
         <div className="flex flex-col gap-3">
-            {topLeave.map((e, i) => (
+            {takers.map((e, i) => (
                 <div key={e.name} className="flex items-center gap-3">
                     <span className="text-[10px] font-black text-muted-foreground w-3 shrink-0">{i + 1}</span>
                     <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white"
@@ -315,6 +316,34 @@ export default function Page() {
     const timeStr = time.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     const dateStr = time.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
+    const {
+        employeeClassificationCounts,
+        onLeaveCount,
+        pendingLeaveCount,
+        leaveTypeCounts,
+        topLeaveTakers,
+        urgentLeaveApplicationCount,
+        approvedAsOfTodayApplications,
+        avgWaitDays,
+    } = usePage<{
+        employeeClassificationCounts: ClassificationCount[];
+        onLeaveCount: number;
+        pendingLeaveCount: number;
+        leaveTypeCounts: LeaveTypeCount[];
+        topLeaveTakers: TopLeaveTaker[];
+        urgentLeaveApplicationCount: number;
+        approvedAsOfTodayApplications: number;
+        avgWaitDays: number;
+    }>().props;
+
+    const pendingKPI = [
+        { label: "Urgent",   value: urgentLeaveApplicationCount ?? 0, sub: ">3 days",     color: "#fb7185", icon: AlertTriangle },
+        { label: "Approved", value: approvedAsOfTodayApplications ?? 0,          sub: "today",       color: "#34d399", icon: CheckCircle2  },
+        { label: "Avg Wait", value: `${avgWaitDays ?? 0}d`,           sub: "to approval", color: "#fbbf24", icon: Clock         },
+    ];
+
+    const totalEmployees = (employeeClassificationCounts ?? []).reduce((sum, c) => sum + c.total, 0);
+
     return (
         <AppLayout>
             <Head title="Dashboard" />
@@ -337,27 +366,25 @@ export default function Page() {
                 </div>
 
                 {/* ── KPI ROW ─────────────────────────────────────────── */}
-                <KpiRow />
+                <KpiRow totalEmployees={totalEmployees} onLeaveCount={onLeaveCount ?? 0} pendingLeaveCount={pendingLeaveCount ?? 0} />
 
                 {/* ── ROW 2 ───────────────────────────────────────────── */}
                 <div className="grid grid-cols-3 gap-4">
 
-                    {/* Attendance donut */}
                     <Card>
                         <SH icon={UserCheck} color="#34d399" title="Attendance Today" sub="Live headcount" />
                         <AttendanceDonut />
                     </Card>
 
-                    {/* Top 5 late */}
                     <Card>
                         <SH icon={Clock} color="#fbbf24" title="Top 5 Late" sub="By minutes late today" />
                         <LateList />
                     </Card>
 
-                    {/* Workforce */}
+                    {/* Workforce — live data from controller */}
                     <Card>
                         <SH icon={Users} color="#818cf8" title="Workforce" sub="By employment type" />
-                        <WorkforceBars />
+                        <WorkforceBars counts={employeeClassificationCounts ?? []} />
                     </Card>
                 </div>
 
@@ -367,11 +394,11 @@ export default function Page() {
                     <div className="grid grid-cols-2 gap-8">
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">By type</p>
-                            <LeaveTypeChart />
+                            <LeaveTypeChart data={leaveTypeCounts ?? []} />
                         </div>
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">Top takers</p>
-                            <TopLeaveTakers />
+                            <TopLeaveTakers takers={topLeaveTakers ?? []} />
                         </div>
                     </div>
                 </Card>
@@ -379,13 +406,12 @@ export default function Page() {
                 {/* ── ROW 4: PENDING + TREND ──────────────────────────── */}
                 <div className="grid grid-cols-2 gap-4">
 
-                    {/* Pending */}
                     <Card>
                         <SH icon={Clock} color="#fb7185" title="Pending Requests" />
                         <div className="flex items-stretch gap-4 mb-5">
                             <div className="flex flex-col items-center justify-center p-5 rounded-2xl flex-1"
                                 style={{ background: "rgba(251,113,133,0.07)", border: "1.5px solid rgba(251,113,133,0.18)" }}>
-                                <p className="text-6xl font-black leading-none" style={{ color: "#fb7185" }}>36</p>
+                                <p className="text-6xl font-black leading-none" style={{ color: "#fb7185" }}>{pendingLeaveCount}</p>
                                 <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-widest font-semibold">total pending</p>
                             </div>
                             <div className="grid grid-cols-1 gap-2 flex-1">
@@ -406,7 +432,6 @@ export default function Page() {
                         </div>
                     </Card>
 
-                    {/* Trend */}
                     <Card>
                         <SH icon={TrendingUp} color="#818cf8" title="Monthly Leave Trend" sub="Employees on leave per month" />
                         <LeaveTrend />

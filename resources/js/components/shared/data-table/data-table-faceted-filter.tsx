@@ -1,6 +1,6 @@
 "use client"
 
-import { type Column } from "@tanstack/react-table"
+import { type Column, type Table } from "@tanstack/react-table"
 import { Check, PlusCircle } from "lucide-react"
 import * as React from "react"
 
@@ -26,14 +26,74 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>
   title?: string
   options: FacetedFilterOption[]
+  /**
+   * Pass the full table instance so counts can be computed against rows that
+   * have already been filtered by every *other* active column filter.
+   * Without this, counts reflect the unfiltered dataset.
+   */
+  table?: Table<TData>
+}
+
+/**
+ * Build a count map for each option value against the rows that pass all
+ * column filters *except* the one belonging to `columnId`.
+ *
+ * This gives "how many rows match this option given what the user has already
+ * filtered on elsewhere" — i.e. cross-filter-aware counts.
+ */
+function useCrossFilteredCounts<TData>(
+  table: Table<TData> | undefined,
+  columnId: string | undefined,
+  options: FacetedFilterOption[],
+): Map<string | boolean, number> {
+  return React.useMemo(() => {
+    const counts = new Map<string | boolean, number>()
+    if (!table || !columnId) return counts
+
+    // All column filter definitions except our own
+    const otherFilters = table
+      .getState()
+      .columnFilters.filter((f) => f.id !== columnId)
+
+    // Walk every unfiltered source row and apply the other filters manually
+    const sourceRows = table.getCoreRowModel().rows
+
+    for (const row of sourceRows) {
+      // Check this row passes all other active filters
+      const passesOthers = otherFilters.every((filter) => {
+        const col = table.getColumn(filter.id)
+        if (!col) return true
+        const filterFn = col.columnDef.filterFn
+        if (typeof filterFn === "function") {
+          return filterFn(row, filter.id, filter.value, () => {})
+        }
+        // Built-in "includesString" fallback (used for text search columns)
+        const cellValue = String(row.getValue(filter.id) ?? "").toLowerCase()
+        return cellValue.includes(String(filter.value).toLowerCase())
+      })
+
+      if (!passesOthers) continue
+
+      // Tally the value in *this* column
+      const cellValue = row.getValue(columnId) as string | boolean
+      counts.set(cellValue, (counts.get(cellValue) ?? 0) + 1)
+    }
+
+    return counts
+  // Re-run whenever column filters change (any column)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table, columnId, table?.getState().columnFilters])
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
   column,
   title,
   options,
+  table,
 }: DataTableFacetedFilterProps<TData, TValue>) {
-  const facets = column?.getFacetedUniqueValues()
+  // Cross-filter-aware counts — reacts to changes in any other filter
+  const crossCounts = useCrossFilteredCounts(table, column?.id, options)
+
   const [selectedKeys, setSelectedKeys] = React.useState<Set<string>>(new Set())
 
   const handleSelect = (option: FacetedFilterOption) => {
@@ -105,7 +165,7 @@ export function DataTableFacetedFilter<TData, TValue>({
         {options.map((option) => {
           const key = String(option.value)
           const isSelected = selectedKeys.has(key)
-          const count = facets?.get(option.value)
+          const count = crossCounts.get(option.value)
           return (
             <DropdownMenuItem
               key={key}
