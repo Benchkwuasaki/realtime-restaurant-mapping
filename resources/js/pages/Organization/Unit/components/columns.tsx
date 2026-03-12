@@ -4,6 +4,7 @@ import { router } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import { useState, useRef } from "react"
 import { Pen, Trash } from "lucide-react"
+import { toast } from "sonner"
 
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import {
@@ -43,7 +44,17 @@ function DeleteConfirmDialog({ unit, onClose }: DeleteConfirmDialogProps) {
         if (!unit) return
         setProcessing(true)
         router.delete(route("unit.destroy", unit.unit_id), {
-            onFinish: () => {
+            onSuccess: () => {
+                toast.success("Unit deleted", {
+                    description: `"${unit.unit_name}" has been permanently removed.`,
+                })
+                setProcessing(false)
+                onClose()
+            },
+            onError: () => {
+                toast.error("Failed to delete unit", {
+                    description: "Something went wrong. Please try again.",
+                })
                 setProcessing(false)
                 onClose()
             },
@@ -100,7 +111,6 @@ function MobileUnitCard({ row, onEdit }: MobileUnitCardProps) {
     function handleDialogClose() {
         suppressNextClick.current = true
         setConfirmUnit(null)
-        // reset after the click event has had time to propagate
         setTimeout(() => { suppressNextClick.current = false }, 200)
     }
 
@@ -265,7 +275,19 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Unit>[
                     actions={[
                         editAction(onEdit),
                         deleteAction(
-                            (unit) => router.delete(route("unit.destroy", unit.unit_id)),
+                            (unit) =>
+                                router.delete(route("unit.destroy", unit.unit_id), {
+                                    onSuccess: () => {
+                                        toast.success("Unit deleted", {
+                                            description: `"${unit.unit_name}" has been permanently removed.`,
+                                        })
+                                    },
+                                    onError: () => {
+                                        toast.error("Failed to delete unit", {
+                                            description: "Something went wrong. Please try again.",
+                                        })
+                                    },
+                                }),
                             {
                                 getName: (u) => u.unit_name,
                                 description: (u) => (

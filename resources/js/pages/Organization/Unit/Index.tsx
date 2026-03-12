@@ -1,6 +1,7 @@
-import { Head, useForm, usePage } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import { Building2, Puzzle, LayoutGrid } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 import { route } from "ziggy-js"
 import { DataTable } from "@/components/shared/data-table/data-table"
 
@@ -46,10 +47,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: "Organization", href: "#" },
     { title: "Units", href: "/organization/units" },
 ]
-
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-
-
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -136,9 +133,33 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (isEdit) {
-            put(route("unit.update", editingUnit!.unit_id), { onSuccess: handleClose })
+            put(route("unit.update", editingUnit!.unit_id), {
+                onSuccess: () => {
+                    toast.success("Unit updated", {
+                        description: `"${data.unit_name}" has been updated successfully.`,
+                    })
+                    handleClose()
+                },
+                onError: () => {
+                    toast.error("Failed to update unit", {
+                        description: "Please check the form for errors and try again.",
+                    })
+                },
+            })
         } else {
-            post(route("unit.store"), { onSuccess: handleClose })
+            post(route("unit.store"), {
+                onSuccess: () => {
+                    toast.success("Unit created", {
+                        description: `"${data.unit_name}" has been created successfully.`,
+                    })
+                    handleClose()
+                },
+                onError: () => {
+                    toast.error("Failed to create unit", {
+                        description: "Please check the form for errors and try again.",
+                    })
+                },
+            })
         }
     }
 
@@ -239,8 +260,6 @@ function UnitModal({ open, editingUnit, divisions, onClose }: UnitModalProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UnitIndex({ units, divisions, totalUnits, totalDivisions, totalPositions }: Props) {
-    const { props } = usePage<{ flash?: { success?: string } }>()
-
     // ── Unit modal state ──
     const [modalOpen, setModalOpen] = useState(false)
     const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
@@ -287,12 +306,6 @@ export default function UnitIndex({ units, divisions, totalUnits, totalDivisions
                         <StatCard title="Total Positions" value={totalPositions} description="Positions across all units" icon={<Puzzle className="size-4" />} />
                     </div>
                 </div>
-
-                {props.flash?.success && (
-                    <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
-                        {props.flash.success}
-                    </div>
-                )}
 
                 <DataTable
                     columns={getColumns({ onEdit: openEdit })}
