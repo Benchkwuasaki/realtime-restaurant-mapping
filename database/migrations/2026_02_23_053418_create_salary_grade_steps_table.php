@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id('salary_grade_step_id');
             $table->integer('salary_grade');
             $table->integer('step');
-            $table->decimal('salary_amount', 15, 2);
+            $table->decimal('monthly_salary', 15, 2);
             $table->timestamps();
         });
     }

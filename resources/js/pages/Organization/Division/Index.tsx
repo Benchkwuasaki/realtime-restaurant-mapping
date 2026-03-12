@@ -1,6 +1,7 @@
-import { Head, useForm, usePage } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import { BrickWall, Building2, Layers, LayoutGrid } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 import { route } from "ziggy-js"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { StatCard } from "@/components/shared/stat-card"
@@ -52,8 +53,6 @@ function FieldError({ message }: { message?: string }) {
     if (!message) return null
     return <p className="text-xs text-destructive mt-1">{message}</p>
 }
-
-
 
 // ─── Units Dialog ─────────────────────────────────────────────────────────────
 
@@ -135,9 +134,33 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (isEdit) {
-            put(route("division.update", editingDivision!.division_id), { onSuccess: handleClose })
+            put(route("division.update", editingDivision!.division_id), {
+                onSuccess: () => {
+                    toast.success("Division updated", {
+                        description: `"${data.division_name}" has been updated successfully.`,
+                    })
+                    handleClose()
+                },
+                onError: () => {
+                    toast.error("Failed to update division", {
+                        description: "Please check the form for errors and try again.",
+                    })
+                },
+            })
         } else {
-            post(route("division.store"), { onSuccess: handleClose })
+            post(route("division.store"), {
+                onSuccess: () => {
+                    toast.success("Division created", {
+                        description: `"${data.division_name}" has been created successfully.`,
+                    })
+                    handleClose()
+                },
+                onError: () => {
+                    toast.error("Failed to create division", {
+                        description: "Please check the form for errors and try again.",
+                    })
+                },
+            })
         }
     }
 
@@ -238,8 +261,6 @@ function DivisionModal({ open, editingDivision, departments, onClose }: Division
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DivisionIndex({ divisions, departments, totalDivisions, totalUnits, totalDepartments }: Props) {
-    const { props } = usePage<{ flash?: { success?: string } }>()
-
     // ── Division modal state ──
     const [modalOpen, setModalOpen] = useState(false)
     const [editingDivision, setEditingDivision] = useState<Division | null>(null)
@@ -273,7 +294,7 @@ export default function DivisionIndex({ divisions, departments, totalDivisions, 
         setSelectedDivision(null)
     }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: () => { } })
+    const columns = getColumns({ onEdit: openEdit })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -303,12 +324,6 @@ export default function DivisionIndex({ divisions, departments, totalDivisions, 
                         />
                     </div>
                 </div>
-
-                {props.flash?.success && (
-                    <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
-                        {props.flash.success}
-                    </div>
-                )}
 
                 <DataTable
                     columns={columns}

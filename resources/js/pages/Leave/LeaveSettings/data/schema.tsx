@@ -31,6 +31,7 @@ export const leaveTypeSchema = z.object({
     eligible_sex: z.enum(["All", "Male", "Female"]),
     is_paid: z.boolean(),
     is_convertible: z.boolean(),
+    is_accrual: z.boolean(),
     status: z.boolean(),
     requirements: z.array(leaveTypeRequirementSchema), // list of documents/requirements needed for this leave type
 })

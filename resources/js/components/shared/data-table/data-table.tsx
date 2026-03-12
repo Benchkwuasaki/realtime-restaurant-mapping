@@ -16,8 +16,8 @@ import {
     type VisibilityState,
 } from "@tanstack/react-table"
 import * as React from "react"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 
 import {
     Table,
@@ -299,7 +299,7 @@ export function DataTable<TData, TValue>({
                                         </div>
 
                                         {isNewest && (
-                                            <Badge className="self-start shrink-0 text-[10px] px-1.5 py-0 h-5 rounded-full shadow-sm pointer-events-none select-none">
+                                            <Badge className="self-start shrink-0 text-[10px] font-semibold px-1.5 py-0 h-5 rounded-full shadow-sm pointer-events-none select-none">
                                                 New
                                             </Badge>
                                         )}
@@ -407,13 +407,19 @@ export function DataTable<TData, TValue>({
                                 <TableHeader>
                                     {table.getHeaderGroups().map((headerGroup) => (
                                         <TableRow key={headerGroup.id}>
-                                            {headerGroup.headers.map((header) => (
-                                                <TableHead key={header.id} colSpan={header.colSpan}>
-                                                    {header.isPlaceholder
-                                                        ? null
-                                                        : flexRender(header.column.columnDef.header, header.getContext())}
-                                                </TableHead>
-                                            ))}
+                                            {headerGroup.headers.map((header) => {
+                                                const colWidth = (header.column.columnDef as DataTableColumnDef<TData>).width
+                                                const widthStyle = colWidth !== undefined
+                                                    ? { width: typeof colWidth === "number" ? `${colWidth}px` : colWidth, minWidth: typeof colWidth === "number" ? `${colWidth}px` : colWidth, maxWidth: typeof colWidth === "number" ? `${colWidth}px` : colWidth }
+                                                    : undefined
+                                                return (
+                                                    <TableHead key={header.id} colSpan={header.colSpan} style={widthStyle}>
+                                                        {header.isPlaceholder
+                                                            ? null
+                                                            : flexRender(header.column.columnDef.header, header.getContext())}
+                                                    </TableHead>
+                                                )
+                                            })}
                                         </TableRow>
                                     ))}
                                 </TableHeader>
@@ -439,25 +445,36 @@ export function DataTable<TData, TValue>({
                                             onClick={onRowClick ? () => onRowClick(row) : undefined}
                                         >
                                             {row.getVisibleCells().map((cell, cellIndex) => {
+                                                const colDef = cell.column.columnDef as DataTableColumnDef<TData>
                                                 const colId = cell.column.id
                                                 const isBadgeCol = newBadgeColumnId
                                                     ? colId === newBadgeColumnId
                                                     : cellIndex === 1
                                                 const showBadge = isNewest && isBadgeCol
+                                                const colWidth = colDef.width
+                                                const widthStyle = colWidth !== undefined
+                                                    ? { width: typeof colWidth === "number" ? `${colWidth}px` : colWidth, minWidth: typeof colWidth === "number" ? `${colWidth}px` : colWidth, maxWidth: typeof colWidth === "number" ? `${colWidth}px` : colWidth }
+                                                    : undefined
+                                                const renderedCell = flexRender(cell.column.columnDef.cell, cell.getContext())
                                                 return (
                                                     <TableCell
                                                         key={cell.id}
                                                         className={cell.column.columnDef.meta?.className}
+                                                        style={widthStyle}
                                                     >
                                                         {showBadge ? (
-                                                            <div className="flex items-center gap-2">
-                                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                {colWidth !== undefined
+                                                                    ? <span className="truncate">{renderedCell}</span>
+                                                                    : renderedCell}
                                                                 <Badge className="shrink-0 text-[10px] font-semibold px-1.5 py-0 h-5 rounded-full shadow-sm pointer-events-none select-none">
                                                                     New
                                                                 </Badge>
                                                             </div>
+                                                        ) : colWidth !== undefined ? (
+                                                            <div className="truncate">{renderedCell}</div>
                                                         ) : (
-                                                            flexRender(cell.column.columnDef.cell, cell.getContext())
+                                                            renderedCell
                                                         )}
                                                     </TableCell>
                                                 )

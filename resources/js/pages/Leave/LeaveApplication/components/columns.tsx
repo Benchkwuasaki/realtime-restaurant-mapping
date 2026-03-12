@@ -4,47 +4,50 @@ import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { route } from 'ziggy-js';
 import { toast } from 'sonner';
-import { EllipsisVertical, Pen, Send, Ban, CheckCircle, XCircle } from 'lucide-react';
+import {
+    MoreHorizontal,
+    Pencil,
+    Send,
+    Ban,
+    CheckCircle,
+    XCircle,
+} from 'lucide-react';
 
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
 import { type DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuGroup,
     DropdownMenuItem,
+    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 
 import type { LeaveFiling } from '../data/schema';
 
+
+// ─── Action Mode ─────────────────────────────────────────────────────────────
+
+export type ActionMode =
+    | 'view'
+    | 'recommend-approval'
+    | 'recommend-disapproval'
+    | 'approve'
+    | 'disapprove';
+
+// ─── Column Options ───────────────────────────────────────────────────────────
+
 interface ColumnOptions {
     onEdit: (app: LeaveFiling) => void;
+    onAction: (app: LeaveFiling, mode: ActionMode) => void;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string | null | undefined): string {
     if (!dateStr) return '—';
@@ -57,372 +60,177 @@ function formatDate(dateStr: string | null | undefined): string {
 
 function calcDaysApplied(start?: string | null, end?: string | null): number | null {
     if (!start || !end) return null;
-    const diff = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86400000) + 1;
-    return diff > 0 ? diff : null;
+    const [sy, sm, sd] = start.split('-').map(Number);
+    const [ey, em, ed] = end.split('-').map(Number);
+    const s = new Date(sy, sm - 1, sd); // local midnight, avoids UTC shift
+    const e = new Date(ey, em - 1, ed);
+    if (e < s) return null;
+    let n = 0;
+    const cur = new Date(s);
+    while (cur <= e) {
+        const d = cur.getDay();
+        if (d !== 0 && d !== 6) n++;
+        cur.setDate(cur.getDate() + 1);
+    }
+    return n;
 }
 
 function employeeName(row: LeaveFiling): string {
-    return (row as any).employee?.employee_name ?? `Employee #${row.employee_id}`;
+    return (
+        (row as any).employee?.employee_name ?? `Employee #${row.employee_id}`
+    );
 }
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
-const STATUS_CLASS: Record<string, string> = {
-    'Pending':          'bg-yellow-500 text-white border-yellow-500',
-    'For Approval':     'bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90',
-    'For Disapproval':  'bg-red-500 text-white border-red-500',
-    'Approved':         'bg-emerald-500 text-white border-emerald-500',
-    'Disapproved':      'bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+const STATUS_BADGE: Record<string, React.ComponentProps<typeof Badge>['variant']> = {
+    'Pending':          'gray',
+    'For Approval':     'blue',
+    'For Disapproval':  'yellow',
+    'Approved':         'green',
+    'Disapproved':      'red',
 };
 
 function StatusBadge({ status }: { status: string }) {
     return (
-        <Badge className={`text-xs font-medium ${STATUS_CLASS[status] ?? ''}`}>
+
+        <Badge variant={STATUS_BADGE[status] ?? 'default'}>
             {status}
         </Badge>
     );
 }
 
-// ─── Reason Dialog ────────────────────────────────────────────────────────────
-
-interface ReasonDialogProps {
-    open: boolean;
-    title: string;
-    description: string;
-    confirmLabel: string;
-    confirmClassName?: string;
-    onConfirm: (reason: string) => void;
-    onClose: () => void;
-}
-
-function ReasonDialog({
-    open, title, description, confirmLabel, confirmClassName, onConfirm, onClose,
-}: ReasonDialogProps) {
-    const [reason, setReason] = useState('');
-
-    function handleClose() {
-        setReason('');
-        onClose();
-    }
-
-    return (
-        <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-sm">
-                <DialogHeader className="px-5 py-4 border-b border-border">
-                    <DialogTitle className="text-sm font-semibold">{title}</DialogTitle>
-                </DialogHeader>
-                <div className="px-5 py-4 space-y-3">
-                    <p className="text-sm text-muted-foreground">{description}</p>
-                    <Textarea
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        placeholder="State the reason..."
-                        rows={3}
-                        className="text-sm resize-none"
-                    />
-                </div>
-                <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30">
-                    <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
-                        Cancel
-                    </Button>
-                    <Button
-                        type="button"
-                        size="sm"
-                        disabled={!reason.trim()}
-                        onClick={() => onConfirm(reason)}
-                        className={`text-xs ${confirmClassName ?? ''}`}
-                    >
-                        {confirmLabel}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-// ─── Approve Dialog ───────────────────────────────────────────────────────────
-
-interface ApproveDialogProps {
-    open: boolean;
-    app: LeaveFiling | null;
-    onClose: () => void;
-}
-
-function ApproveDialog({ open, app, onClose }: ApproveDialogProps) {
-    const [specifics, setSpecifics] = useState('');
-    const [processing, setProcessing] = useState(false);
-    const days = calcDaysApplied(app?.start_date, app?.end_date);
-
-    function handleClose() {
-        setSpecifics('');
-        setProcessing(false);
-        onClose();
-    }
-
-    function handleConfirm() {
-        if (!app) return;
-        setProcessing(true);
-        router.patch(
-            route('leave.leave-application.update-status', app.leave_application_id),
-            { status: 'Approved', approved_for_specifics: specifics },
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Leave application approved.'); handleClose(); },
-                onError:   () => { toast.error('Failed to approve.'); setProcessing(false); },
-            },
-        );
-    }
-
-    return (
-        <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-sm">
-                <DialogHeader className="px-5 py-4 border-b border-border">
-                    <DialogTitle className="text-sm font-semibold">Approve Leave Application</DialogTitle>
-                </DialogHeader>
-                <div className="px-5 py-4 space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                        Approve leave for{' '}
-                        <span className="font-medium text-foreground">{app ? employeeName(app) : ''}</span>
-                        {days ? ` (${days} day${days !== 1 ? 's' : ''})` : ''}?
-                    </p>
-                    <div>
-                        <label className="text-xs font-medium block mb-1.5">
-                            Approved For{' '}
-                            <span className="text-muted-foreground font-normal">(Specifics — optional)</span>
-                        </label>
-                        <Input
-                            value={specifics}
-                            onChange={(e) => setSpecifics(e.target.value)}
-                            placeholder="e.g. 5 days with pay"
-                            className="text-sm"
-                        />
-                    </div>
-                </div>
-                <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30">
-                    <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
-                        Cancel
-                    </Button>
-                    <Button
-                        type="button"
-                        size="sm"
-                        disabled={processing}
-                        onClick={handleConfirm}
-                        className="text-xs bg-green-700 hover:bg-green-800 text-white"
-                    >
-                        {processing ? 'Saving…' : 'Confirm Approval'}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-// ─── Kebab Row Actions ────────────────────────────────────────────────────────
-//
-// Permission rules per status:
-//   Pending          → Recommend, For Disapproval, Edit  (no Delete)
-//   For Approval     → Approve, Disapprove               (no Edit, no Delete)
-//   For Disapproval  → Approve, Disapprove               (no Edit, no Delete)
-//   Approved         → (no actions)
-//   Disapproved      → (no actions)
+// ─── Row Actions (kebab) ──────────────────────────────────────────────────────
 
 interface RowActionsProps {
     row: LeaveFiling;
     onEdit: (app: LeaveFiling) => void;
+    onAction: (app: LeaveFiling, mode: ActionMode) => void;
 }
 
-function RowActions({ row, onEdit }: RowActionsProps) {
-    const [recommendOpen,  setRecommendOpen]  = useState(false);
-    const [forDisapprOpen, setForDisapprOpen] = useState(false);
-    const [approveOpen,    setApproveOpen]    = useState(false);
-    const [disapproveOpen, setDisapproveOpen] = useState(false);
-
+function RowActions({ row, onEdit, onAction }: RowActionsProps) {
     const status = row.status;
+    const isPending = status === 'Pending';
+    const isForDecision = status === 'For Approval' || status === 'For Disapproval';
 
-    // Terminal statuses — no actions available
-    if (status === 'Approved' || status === 'Disapproved') {
-        return null;
-    }
-
-    function handleRecommend() {
-        router.patch(
-            route('leave.leave-application.update-status', row.leave_application_id),
-            { status: 'For Approval' },
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Recommended for approval.'); setRecommendOpen(false); },
-                onError:   () => toast.error('Failed to update status.'),
-            },
-        );
-    }
-
-    function handleForDisapproval(reason: string) {
-        router.patch(
-            route('leave.leave-application.update-status', row.leave_application_id),
-            { status: 'For Disapproval', for_disapproval_reason: reason },
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Marked for disapproval.'); setForDisapprOpen(false); },
-                onError:   () => toast.error('Failed to update status.'),
-            },
-        );
-    }
-
-    function handleDisapprove(reason: string) {
-        router.patch(
-            route('leave.leave-application.update-status', row.leave_application_id),
-            { status: 'Disapproved', disapproved_reason: reason },
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Leave application disapproved.'); setDisapproveOpen(false); },
-                onError:   () => toast.error('Failed to update status.'),
-            },
-        );
-    }
+    // No actions for terminal statuses
+    if (status === 'Approved' || status === 'Disapproved') return null;
 
     return (
-        <>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-muted-foreground"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <span className="sr-only">Open menu</span>
-                        <EllipsisVertical className="w-4 h-4" />
-                    </Button>
-                </DropdownMenuTrigger>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Open actions menu</span>
+                </Button>
+            </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
-
-                    {/* ── Pending: Recommending Officer acts + Edit ── */}
-                    {status === 'Pending' && (
-                        <>
+            <DropdownMenuContent
+                align="end"
+                sideOffset={4}
+                className="w-48 rounded-lg p-1 shadow-md border border-border/60"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* ── Pending: recommendation + edit ── */}
+                {isPending && (
+                    <>
+                        <DropdownMenuLabel className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 select-none">
+                            Recommendation
+                        </DropdownMenuLabel>
+                        <DropdownMenuGroup>
                             <DropdownMenuItem
-                                className="text-xs gap-2 text-green-700 focus:text-green-700 focus:bg-green-50"
-                                onClick={() => setRecommendOpen(true)}
+                                className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs cursor-pointer text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700"
+                                onClick={() => onAction(row, 'recommend-approval')}
                             >
-                                <Send className="w-3.5 h-3.5" />
-                                Recommend for Approval
+                                <Send className="h-3.5 w-3.5 shrink-0" />
+                                For Approval
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                                className="text-xs gap-2 text-orange-700 focus:text-orange-700 focus:bg-orange-50"
-                                onClick={() => setForDisapprOpen(true)}
+                                className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs cursor-pointer text-orange-700 focus:bg-orange-50 focus:text-orange-700"
+                                onClick={() => onAction(row, 'recommend-disapproval')}
                             >
-                                <Ban className="w-3.5 h-3.5" />
+                                <Ban className="h-3.5 w-3.5 shrink-0" />
                                 For Disapproval
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
+                        </DropdownMenuGroup>
+
+                        <DropdownMenuSeparator className="my-1 -mx-1" />
+
+                        <DropdownMenuGroup>
                             <DropdownMenuItem
-                                className="text-xs gap-2"
+                                className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs cursor-pointer text-foreground"
                                 onClick={() => onEdit(row)}
                             >
-                                <Pen className="w-3.5 h-3.5" />
-                                Edit
+                                <Pencil className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                Edit application
                             </DropdownMenuItem>
-                        </>
-                    )}
+                        </DropdownMenuGroup>
+                    </>
+                )}
 
-                    {/* ── For Approval / For Disapproval: Approving Officer acts only ── */}
-                    {(status === 'For Approval' || status === 'For Disapproval') && (
-                        <>
-                            <DropdownMenuItem
-                                className="text-xs gap-2 text-green-700 focus:text-green-700 focus:bg-green-50"
-                                onClick={() => setApproveOpen(true)}
-                            >
-                                <CheckCircle className="w-3.5 h-3.5" />
-                                Approve
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                className="text-xs gap-2 text-red-700 focus:text-red-700 focus:bg-red-50"
-                                onClick={() => setDisapproveOpen(true)}
-                            >
-                                <XCircle className="w-3.5 h-3.5" />
-                                Disapprove
-                            </DropdownMenuItem>
-                        </>
-                    )}
-
-                </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* ── Recommend confirmation ── */}
-            <AlertDialog open={recommendOpen} onOpenChange={setRecommendOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Recommend this application?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will forward the leave application of{' '}
-                            <span className="font-medium text-foreground">{employeeName(row)}</span>{' '}
-                            for approval.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-green-700 hover:bg-green-800 text-white"
-                            onClick={handleRecommend}
+                {/* ── For Approval / For Disapproval: approve or disapprove ── */}
+                {isForDecision && (
+                    <DropdownMenuGroup>
+                        <DropdownMenuItem
+                            className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs cursor-pointer text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700"
+                            onClick={() => onAction(row, 'approve')}
                         >
-                            Recommend
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* ── For Disapproval reason ── */}
-            <ReasonDialog
-                open={forDisapprOpen}
-                title="Recommend for Disapproval"
-                description="Please provide the reason for recommending this application for disapproval."
-                confirmLabel="Mark for Disapproval"
-                confirmClassName="bg-orange-600 hover:bg-orange-700 text-white"
-                onConfirm={handleForDisapproval}
-                onClose={() => setForDisapprOpen(false)}
-            />
-
-            {/* ── Approve dialog ── */}
-            <ApproveDialog
-                open={approveOpen}
-                app={row}
-                onClose={() => setApproveOpen(false)}
-            />
-
-            {/* ── Disapprove reason ── */}
-            <ReasonDialog
-                open={disapproveOpen}
-                title="Disapprove Application"
-                description="Please provide the reason for disapproving this leave application."
-                confirmLabel="Disapprove"
-                confirmClassName="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                onConfirm={handleDisapprove}
-                onClose={() => setDisapproveOpen(false)}
-            />
-        </>
+                            <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                            Approve
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs cursor-pointer text-red-700 focus:bg-red-50 focus:text-red-700"
+                            onClick={() => onAction(row, 'disapprove')}
+                        >
+                            <XCircle className="h-3.5 w-3.5 shrink-0" />
+                            Disapprove
+                        </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 
 // ─── Mobile Card ──────────────────────────────────────────────────────────────
 
-function MobileLeaveCard({ row, onEdit }: { row: LeaveFiling; onEdit: (app: LeaveFiling) => void }) {
+function MobileLeaveCard({
+    row,
+    onEdit,
+    onAction,
+}: {
+    row: LeaveFiling;
+    onEdit: (app: LeaveFiling) => void;
+    onAction: (app: LeaveFiling, mode: ActionMode) => void;
+}) {
     const days = calcDaysApplied(row.start_date, row.end_date);
     return (
-        <div className="flex flex-col -mx-3 -my-1.5">
-            <div className="px-3 py-3 space-y-2">
+        <div className="-mx-3 -my-1.5 flex flex-col">
+            <div className="space-y-2 px-3 py-3">
                 <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-sm leading-snug">{employeeName(row)}</p>
+                    <p className="text-sm leading-snug font-semibold">
+                        {employeeName(row)}
+                    </p>
                     <StatusBadge status={row.status} />
                 </div>
-                <p className="text-sm text-muted-foreground">{row.leave_type_availed ?? '—'}</p>
+                <p className="text-sm text-muted-foreground">
+                    {row.leave_type_availed ?? '—'}
+                </p>
                 <p className="text-sm text-muted-foreground">
                     {formatDate(row.start_date)} — {formatDate(row.end_date)}
                     {days ? ` · ${days} day${days !== 1 ? 's' : ''}` : ''}
                 </p>
-                <p className="text-xs text-muted-foreground">Filed: {formatDate(row.date_of_filing)}</p>
+                <p className="text-xs text-muted-foreground">
+                    Filed: {formatDate(row.date_of_filing)}
+                </p>
             </div>
-            <div className="border-t border-secondary px-3 py-2.5 flex items-center justify-end">
-                <RowActions row={row} onEdit={onEdit} />
+            <div className="flex items-center justify-end border-t border-secondary px-3 py-2.5">
+                <RowActions row={row} onEdit={onEdit} onAction={onAction} />
             </div>
         </div>
     );
@@ -430,9 +238,12 @@ function MobileLeaveCard({ row, onEdit }: { row: LeaveFiling; onEdit: (app: Leav
 
 // ─── Columns ──────────────────────────────────────────────────────────────────
 
-export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveFiling>[] {
+export function getColumns({
+    onEdit,
+    onAction,
+}: ColumnOptions): DataTableColumnDef<LeaveFiling>[] {
     return [
-        // ── Checkbox ──
+        // Checkbox
         {
             id: 'select',
             header: ({ table }) => (
@@ -441,7 +252,9 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveF
                         table.getIsAllPageRowsSelected() ||
                         (table.getIsSomePageRowsSelected() && 'indeterminate')
                     }
-                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    onCheckedChange={(value) =>
+                        table.toggleAllPageRowsSelected(!!value)
+                    }
                     aria-label="Select all"
                     className="translate-y-0.5"
                 />
@@ -459,7 +272,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveF
             enableHiding: false,
         },
 
-        // ── Employee ──
+        // Employee
         {
             id: 'employee_name',
             accessorFn: (row) => employeeName(row),
@@ -467,21 +280,31 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveF
                 <DataTableColumnHeader column={column} title="Employee" />
             ),
             cell: ({ getValue }) => (
-                <div className="min-w-40 font-medium">{getValue() as string}</div>
+                <div className="min-w-40 font-medium">
+                    {getValue() as string}
+                </div>
             ),
             enableSorting: true,
             enableHiding: true,
-            mobileCard: (row) => <MobileLeaveCard row={row} onEdit={onEdit} />,
+            mobileCard: (row) => (
+                <MobileLeaveCard
+                    row={row}
+                    onEdit={onEdit}
+                    onAction={onAction}
+                />
+            ),
         },
 
-        // ── Leave Type ──
+        // Leave Type
         {
             accessorKey: 'leave_type_availed',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Leave Type" />
             ),
             cell: ({ row }) => (
-                <div className="min-w-40 text-sm">{row.getValue('leave_type_availed') ?? '—'}</div>
+                <div className="min-w-40 text-sm">
+                    {row.getValue('leave_type_availed') ?? 'N/A'}
+                </div>
             ),
             enableSorting: true,
             enableHiding: true,
@@ -490,14 +313,14 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveF
                 filterValues.includes(row.getValue(columnId)),
         },
 
-        // ── Date Filed ──
+        // Date Filed
         {
             accessorKey: 'date_of_filing',
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Date Filed" />
             ),
             cell: ({ row }) => (
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                <span className="text-sm whitespace-nowrap text-muted-foreground">
                     {formatDate(row.getValue('date_of_filing'))}
                 </span>
             ),
@@ -505,41 +328,53 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveF
             enableHiding: true,
         },
 
-        // ── Inclusive Dates ──
+        // Inclusive Dates
         {
             id: 'inclusive_dates',
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Inclusive Dates" />
-            ),
-            cell: ({ row }) => (
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {formatDate(row.original.start_date)} — {formatDate(row.original.end_date)}
-                </span>
-            ),
-            enableSorting: false,
-            enableHiding: true,
-        },
-
-        // ── Days Applied ──
-        {
-            id: 'days_applied',
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title="Days Applied" />
+                <DataTableColumnHeader
+                    column={column}
+                    title="Inclusive Dates"
+                />
             ),
             cell: ({ row }) => {
-                const days = calcDaysApplied(row.original.start_date, row.original.end_date);
-                return days != null ? (
-                    <p className="text-muted-foreground text-sm">{days} days</p>
+                const start = row.original.start_date;
+                const end = row.original.end_date;
+
+                return start && end ? (
+                    <p className="text-sm whitespace-nowrap text-muted-foreground">
+                        {formatDate(start)} — {formatDate(end)}
+                    </p>
                 ) : (
-                    <span className="text-muted-foreground text-sm">N/A</span>
+                    <span className="text-sm text-muted-foreground">N/A</span>
                 );
             },
             enableSorting: false,
             enableHiding: true,
         },
 
-        // ── Status ──
-        // is_with_pay is kept as a hidden filter-only column (no visible cell)
+        // Days Applied
+        {
+            id: 'days_applied',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Days Applied" />
+            ),
+            cell: ({ row }) => {
+                const days = calcDaysApplied(
+                    row.original.start_date,
+                    row.original.end_date,
+                );
+                return days != null ? (
+                    <p className="text-sm text-muted-foreground">{days} days</p>
+                ) : (
+                    <span className="text-sm text-muted-foreground">N/A</span>
+                );
+            },
+            enableSorting: false,
+            enableHiding: true,
+        },
+
+        // is_with_pay (hidden filter-only)
         {
             accessorKey: 'is_with_pay',
             filterFn: (row, columnId, filterValues: boolean[]) =>
@@ -549,6 +384,8 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveF
             header: () => null,
             cell: () => null,
         },
+
+        // Status
         {
             accessorKey: 'status',
             filterFn: (row, columnId, filterValues: string[]) =>
@@ -561,11 +398,17 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveF
             enableHiding: true,
         },
 
-        // ── Actions (kebab) ──
+        // Actions
         {
             id: 'actions',
             header: 'Actions',
-            cell: ({ row }) => <RowActions row={row.original} onEdit={onEdit} />,
+            cell: ({ row }) => (
+                <RowActions
+                    row={row.original}
+                    onEdit={onEdit}
+                    onAction={onAction}
+                />
+            ),
             enableHiding: false,
         },
     ];
