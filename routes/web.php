@@ -1,16 +1,13 @@
 <?php
 
-use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DocumentTrackingController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeReportController;
 use App\Http\Controllers\PayrollController;
-use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\ActivityLogsController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AttendanceLogController;
-use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\AttendanceRecordController;
 use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
@@ -21,14 +18,12 @@ use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\InternalOrganizationController;
-use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\WhereaboutSlipController;
 use App\Http\Controllers\EmploymentClassificationController;
-use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\PayrollReportController;
 // Leave
 use App\Http\Controllers\LeaveSettingsController;
@@ -339,8 +334,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Attendance Records
     Route::get('attendance/records', [AttendanceRecordController::class, 'index'])
         ->name('attendance-record.index');
-    Route::post('attendance/records/recompute', [AttendanceRecordController::class, 'recompute'])
-        ->name('attendance-record.recompute');
     Route::post('attendance/records/sync-absent', [AttendanceRecordController::class, 'syncAbsent'])
         ->name('attendance-record.sync-absent');
 

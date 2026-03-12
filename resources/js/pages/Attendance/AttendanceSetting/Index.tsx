@@ -108,10 +108,10 @@ function SettingDialog({
     const isEdit = !!setting
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        name:                  setting?.name                  ?? "",
+        name: setting?.name ?? "",
         early_time_in_minutes: setting?.early_time_in_minutes ?? 60,
         late_time_out_minutes: setting?.late_time_out_minutes ?? 60,
-        is_default:            setting?.is_default             ?? false,
+        is_default: setting?.is_default === true,
     })
 
     function handleClose() {
@@ -173,9 +173,8 @@ function SettingDialog({
                     </div>
 
                     {/* Default toggle — disabled for the existing default to prevent accidental un-defaulting */}
-                    <div className={`flex items-center justify-between rounded-lg border border-border px-4 py-3 ${
-                        isEdit && setting?.is_default ? "opacity-60 pointer-events-none" : ""
-                    }`}>
+                    <div className={`flex items-center justify-between rounded-lg border border-border px-4 py-3 ${isEdit && setting?.is_default ? "opacity-60 pointer-events-none" : ""
+                        }`}>
                         <div>
                             <p className="text-sm font-medium">Set as default</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
@@ -222,11 +221,10 @@ function SettingCard({
     ]
 
     return (
-        <div className={`rounded-xl border bg-background overflow-hidden transition-colors ${
-            setting.is_default
+        <div className={`rounded-xl border bg-background overflow-hidden transition-colors ${setting.is_default
                 ? "border-primary/40 ring-1 ring-primary/20"
                 : "border-border"
-        }`}>
+            }`}>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
                 <div className="flex items-center gap-2 min-w-0">
@@ -291,7 +289,7 @@ function SettingCard({
 
 export default function AttendanceSettingsIndex({ settings }: Props) {
     const [createOpen, setCreateOpen] = useState(false)
-    const [editing, setEditing]       = useState<AttendanceSetting | null>(null)
+    const [editing, setEditing] = useState<AttendanceSetting | null>(null)
     const [deletingId, setDeletingId] = useState<number | null>(null)
 
     const deletingRecord = settings.find(s => s.id === deletingId)
