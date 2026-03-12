@@ -12,9 +12,9 @@ import {
     TrendingUp
 } from "lucide-react";
 import AppLayout from "@/layouts/app-layout";
-import { Head } from "@inertiajs/react";
+import { Head, usePage } from "@inertiajs/react";
 import { useAuth } from "@/hooks/use-auth";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 const today = new Date();
 const fullDate = today.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -27,11 +27,16 @@ const attendanceData = [
     { label: "Absent", value: 100, icon: UserX, bg: "bg-red-100", color: "text-red-500", fill: "#ef4444" },
 ];
 
-const employeeData = [
-    { label: "Regular", value: 180, icon: Users, bg: "bg-blue-100", color: "text-blue-500", fill: "#3b82f6" },
-    { label: "Casual", value: 95, icon: Briefcase, bg: "bg-violet-100", color: "text-violet-500", fill: "#8b5cf6" },
-    { label: "Job Order", value: 125, icon: ClipboardList, bg: "bg-orange-100", color: "text-orange-500", fill: "#f97316" },
-];
+// ── Employee classification visual config ──────────────────────────────────────
+// Maps a classification name to its icon/colour. Unknown classifications fall
+// back to a sensible default so the chart never breaks when a new type is added.
+const CLASSIFICATION_CONFIG: Record<string, { icon: React.ElementType; bg: string; color: string; fill: string }> = {
+    "Regular":   { icon: Users,         bg: "bg-blue-100",   color: "text-blue-500",   fill: "#3b82f6" },
+    "Casual":    { icon: Briefcase,     bg: "bg-violet-100", color: "text-violet-500", fill: "#8b5cf6" },
+    "Job Order": { icon: ClipboardList, bg: "bg-orange-100", color: "text-orange-500", fill: "#f97316" },
+};
+
+const CLASSIFICATION_DEFAULT = { icon: Users, bg: "bg-muted", color: "text-muted-foreground", fill: "#6b7280" };
 
 const weeklyTrend = [
     { day: "Mon", present: 185, late: 90, absent: 125 },
@@ -168,7 +173,7 @@ function AttendancePieChart({ data }) {
                         </Pie>
                         <Tooltip
                             formatter={(value, name) => [`${value} (${((value / total) * 100).toFixed(1)}%)`, name]}
-                            contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", padding: "6px 12px" }}
+                            contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12px", padding: "6px 12px", background: "var(--popover)", color: "var(--popover-foreground)" }}
                         />
                     </PieChart>
                 </ResponsiveContainer>
@@ -180,15 +185,15 @@ function AttendancePieChart({ data }) {
                     return (
                         <div key={item.label}
                             className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-all duration-150 cursor-pointer
-                                ${isActive ? "border-gray-300 shadow-sm scale-[1.03]" : "border-gray-100"}`}
+                                ${isActive ? "border-border shadow-sm scale-[1.03]" : "border-border"}`}
                             onMouseEnter={() => setActiveIndex(index)}
                             onMouseLeave={() => setActiveIndex(null)}
                         >
                             <div className={`${item.bg} p-1.5 rounded-md`}>
                                 <Icon className={`size-3.5 ${item.color}`} />
                             </div>
-                            <p className="text-xs text-gray-400">{item.label}</p>
-                            <p className="text-lg font-bold text-gray-800">{item.value}</p>
+                            <p className="text-xs text-muted-foreground/70">{item.label}</p>
+                            <p className="text-lg font-bold text-foreground">{item.value}</p>
                         </div>
                     );
                 })}
@@ -204,12 +209,12 @@ function EmployeeBarChart({ data }) {
         <div className="w-full h-44">
             <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barSize={32}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
                     <Tooltip
-                        contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", padding: "6px 12px" }}
-                        cursor={{ fill: "#f9fafb" }}
+                        contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12px", padding: "6px 12px", background: "var(--popover)", color: "var(--popover-foreground)" }}
+                        cursor={{ fill: "var(--muted)" }}
                     />
                     <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                         {data.map((entry) => (
@@ -241,10 +246,10 @@ function WeeklyTrendChart({ data }) {
                             <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", padding: "6px 12px" }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12px", padding: "6px 12px", background: "var(--popover)", color: "var(--popover-foreground)" }} />
                     <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
                     <Area type="monotone" dataKey="present" stroke="#22c55e" strokeWidth={2} fill="url(#presentGrad)" dot={{ r: 3 }} activeDot={{ r: 5 }} />
                     <Area type="monotone" dataKey="late" stroke="#f59e0b" strokeWidth={2} fill="url(#lateGrad)" dot={{ r: 3 }} activeDot={{ r: 5 }} />
@@ -260,13 +265,13 @@ function LeaveTypeChart({ data }) {
         <div className="w-full h-56">
             <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barSize={36}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
                     <Tooltip
                         formatter={(value) => [`${value} employees`]}
-                        contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", padding: "6px 12px" }}
-                        cursor={{ fill: "#f9fafb" }}
+                        contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12px", padding: "6px 12px", background: "var(--popover)", color: "var(--popover-foreground)" }}
+                        cursor={{ fill: "var(--muted)" }}
                     />
                     <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                         {data.map((entry) => (
@@ -290,13 +295,13 @@ function LeaveTrendChart({ data }) {
                             <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false}
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false}
                         tickFormatter={(v) => v.slice(0, 3)} />
-                    <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
                     <Tooltip
                         formatter={(value) => [`${value} employees`]}
-                        contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", padding: "6px 12px" }}
+                        contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12px", padding: "6px 12px", background: "var(--popover)", color: "var(--popover-foreground)" }}
                     />
                     <Area type="monotone" dataKey="leave" stroke="#3b82f6" strokeWidth={2}
                         fill="url(#leaveGrad)" dot={{ r: 3 }} activeDot={{ r: 5 }} />
@@ -317,15 +322,15 @@ function EmployeeLeaveHeatmap({ data }) {
         return `rgba(249, 115, 22, ${0.15 + intensity * 0.85})`;
     };
 
-    const getTextColor = (days, maxDays) => days / maxDays > 0.5 ? "text-white" : "text-gray-700";
+    const getTextColor = (days, maxDays) => days / maxDays > 0.5 ? "text-white" : "text-foreground/80";
 
     return (
         <div className="flex flex-col gap-1.5">
             {/* Header */}
             <div className="grid grid-cols-3 gap-1.5 mb-1">
-                <p className="text-xs font-medium text-gray-400 col-span-1">Employee</p>
-                <p className="text-xs font-medium text-gray-400 text-center">Type</p>
-                <p className="text-xs font-medium text-gray-400 text-right">Days</p>
+                <p className="text-xs font-medium text-muted-foreground/70 col-span-1">Employee</p>
+                <p className="text-xs font-medium text-muted-foreground/70 text-center">Type</p>
+                <p className="text-xs font-medium text-muted-foreground/70 text-right">Days</p>
             </div>
 
             {/* Rows */}
@@ -370,7 +375,7 @@ function RemittanceDonut({ data }) {
                         </Pie>
                         <Tooltip
                             formatter={(value, name) => [`₱${value.toLocaleString()} (${((value / total) * 100).toFixed(1)}%)`, name]}
-                            contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", padding: "6px 12px" }}
+                            contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12px", padding: "6px 12px", background: "var(--popover)", color: "var(--popover-foreground)" }}
                         />
                     </PieChart>
                 </ResponsiveContainer>
@@ -385,13 +390,13 @@ function RemittanceTrendChart({ data }) {
         <div className="w-full h-52">
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: "#9ca3af" }} axisLine={false} tickLine={false}
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false}
                         tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`} />
                     <Tooltip
                         formatter={(value, name) => [`₱${value.toLocaleString()}`, name.toUpperCase()]}
-                        contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", padding: "6px 12px" }}
+                        contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12px", padding: "6px 12px", background: "var(--popover)", color: "var(--popover-foreground)" }}
                     />
                     <Line type="monotone" dataKey="sss" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                     <Line type="monotone" dataKey="philhealth" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
@@ -408,12 +413,12 @@ function PayrollStackedBar({ data }) {
         <div className="w-full h-64">
             <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barSize={28}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
                     <Tooltip
-                        contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px", padding: "6px 12px" }}
-                        cursor={{ fill: "#f9fafb" }}
+                        contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12px", padding: "6px 12px", background: "var(--popover)", color: "var(--popover-foreground)" }}
+                        cursor={{ fill: "var(--muted)" }}
                     />
                     <Bar dataKey="Regular" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
                     <Bar dataKey="Casual" stackId="a" fill="#8b5cf6" radius={[0, 0, 0, 0]} />
@@ -566,16 +571,16 @@ function EmployeeMapCard({ employees }) {
     };
 
     return (
-        <Card className="p-4 border border-gray-200">
+        <Card className="p-4 border border-border">
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                     <div className="bg-teal-100 p-1.5 rounded-md">
                         <Users className="size-4 text-teal-500" />
                     </div>
-                    <span className="text-sm font-semibold text-gray-700">Employee Whereabouts Map</span>
+                    <span className="text-sm font-semibold text-foreground/80">Employee Whereabouts Map</span>
                 </div>
-                <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+                <span className="text-xs text-muted-foreground/70 cursor-pointer hover:underline">view</span>
             </div>
 
             {/* Filter Tabs */}
@@ -584,8 +589,8 @@ function EmployeeMapCard({ employees }) {
                     <button key={f} onClick={() => setFilter(f)}
                         className={`px-3 py-1 rounded-full text-xs font-medium transition-all border
                             ${filter === f
-                                ? "bg-gray-800 text-white border-gray-800"
-                                : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"}`}
+                                ? "bg-foreground text-primary-foreground border-foreground"
+                                : "bg-background text-muted-foreground border-border hover:border-input"}`}
                     >
                         {f} <span className="opacity-60 ml-0.5">({counts[f]})</span>
                     </button>
@@ -594,7 +599,7 @@ function EmployeeMapCard({ employees }) {
                     {Object.entries(statusColors).map(([s, c]) => (
                         <div key={s} className="flex items-center gap-1">
                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c }} />
-                            <span className="text-xs text-gray-400">{s}</span>
+                            <span className="text-xs text-muted-foreground/70">{s}</span>
                         </div>
                     ))}
                 </div>
@@ -604,30 +609,30 @@ function EmployeeMapCard({ employees }) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                 {/* Map */}
-                <div className="md:col-span-2 rounded-xl overflow-hidden border border-gray-100" style={{ height: 420 }}>
+                <div className="md:col-span-2 rounded-xl overflow-hidden border border-border" style={{ height: 420 }}>
                     <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
                 </div>
 
                 {/* Employee List / Slip Panel */}
                 <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 420 }}>
                     {selected ? (
-                        <div className="border border-gray-200 rounded-xl p-4 flex flex-col gap-3">
+                        <div className="border border-border rounded-xl p-4 flex flex-col gap-3">
                             {/* Slip Header */}
                             <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Whereabouts Slip</span>
-                                <button onClick={() => setSelected(null)} className="text-gray-300 hover:text-gray-500">
+                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Whereabouts Slip</span>
+                                <button onClick={() => setSelected(null)} className="text-muted-foreground/50 hover:text-muted-foreground">
                                     <X className="size-4" />
                                 </button>
                             </div>
-                            <div className="border-t border-dashed border-gray-200 pt-3 flex flex-col gap-2">
+                            <div className="border-t border-dashed border-border pt-3 flex flex-col gap-2">
                                 <div className="flex items-center gap-2">
                                     <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
                                         style={{ backgroundColor: statusColors[selected.status] }}>
                                         {selected.name.charAt(0)}
                                     </div>
                                     <div>
-                                        <p className="text-sm font-bold text-gray-800 leading-tight">{selected.name}</p>
-                                        <p className="text-xs text-gray-400">{selected.type}</p>
+                                        <p className="text-sm font-bold text-foreground leading-tight">{selected.name}</p>
+                                        <p className="text-xs text-muted-foreground/70">{selected.type}</p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 mt-1">
@@ -638,28 +643,28 @@ function EmployeeMapCard({ employees }) {
                                         { label: "Municipality",  value: selected.municipality },
                                         { label: "Coordinates",   value: `${selected.lat.toFixed(4)}, ${selected.lng.toFixed(4)}` },
                                     ].map(row => (
-                                        <div key={row.label} className={`flex flex-col gap-0.5 p-2 rounded-lg bg-gray-50 ${row.label === "Coordinates" ? "col-span-2" : ""}`}>
-                                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">{row.label}</p>
-                                            <p className="text-xs font-semibold text-gray-700">{row.value}</p>
+                                        <div key={row.label} className={`flex flex-col gap-0.5 p-2 rounded-lg bg-muted/50 ${row.label === "Coordinates" ? "col-span-2" : ""}`}>
+                                            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">{row.label}</p>
+                                            <p className="text-xs font-semibold text-foreground/80">{row.value}</p>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="border-t border-dashed border-gray-200 pt-2 mt-1">
-                                    <p className="text-[10px] text-gray-300 text-center">MKWD — Employee Whereabouts Slip</p>
+                                <div className="border-t border-dashed border-border pt-2 mt-1">
+                                    <p className="text-[10px] text-muted-foreground/50 text-center">MKWD — Employee Whereabouts Slip</p>
                                 </div>
                             </div>
                         </div>
                     ) : (
                         filtered.map(emp => (
                             <div key={emp.id} onClick={() => setSelected(emp)}
-                                className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-300 hover:bg-gray-50 cursor-pointer transition-all">
+                                className="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-border hover:bg-muted/50 cursor-pointer transition-all">
                                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                                     style={{ backgroundColor: statusColors[emp.status] }}>
                                     {emp.name.charAt(0)}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-gray-700 truncate">{emp.name}</p>
-                                    <p className="text-[10px] text-gray-400 truncate">{emp.barangay}, {emp.municipality}</p>
+                                    <p className="text-xs font-semibold text-foreground/80 truncate">{emp.name}</p>
+                                    <p className="text-[10px] text-muted-foreground/70 truncate">{emp.barangay}, {emp.municipality}</p>
                                 </div>
                                 <span className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0"
                                     style={{ backgroundColor: `${statusColors[emp.status]}20`, color: statusColors[emp.status] }}>
@@ -673,7 +678,7 @@ function EmployeeMapCard({ employees }) {
             </div>
 
             {/* Municipality Legend */}
-            <div className="flex items-center gap-6 mt-3 pt-3 border-t border-gray-100 flex-wrap">
+            <div className="flex items-center gap-6 mt-3 pt-3 border-t border-border flex-wrap">
                 {[
                     { label: "Kidapawan", color: "#3b82f6" },
                     { label: "Makilala",  color: "#22c55e" },
@@ -682,7 +687,7 @@ function EmployeeMapCard({ employees }) {
                 ].map(m => (
                     <div key={m.label} className="flex items-center gap-1.5">
                         <div className="w-3 h-3 rounded-sm opacity-60" style={{ backgroundColor: m.color }} />
-                        <span className="text-xs text-gray-500">{m.label}</span>
+                        <span className="text-xs text-muted-foreground">{m.label}</span>
                     </div>
                 ))}
             </div>
@@ -691,8 +696,17 @@ function EmployeeMapCard({ employees }) {
 }
 
 
+type ClassificationCount = { classification: string; total: number };
+
 export default function Page() {
     const { user } = useAuth();
+    const { employeeClassificationCounts } = usePage<{ employeeClassificationCounts: ClassificationCount[] }>().props;
+
+    // Merge live data with visual config so charts and legend stay in sync
+    const employeeData = (employeeClassificationCounts ?? []).map(({ classification, total }) => {
+        const config = CLASSIFICATION_CONFIG[classification] ?? CLASSIFICATION_DEFAULT;
+        return { label: classification, value: total, ...config };
+    });
 
     return (
         <AppLayout>
@@ -701,54 +715,54 @@ export default function Page() {
 
                 {/* Welcome + Date */}
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-normal text-gray-800">
+                    <h1 className="text-2xl font-normal text-foreground">
                         Welcome back, <span className="font-bold">{user?.name}</span>
                     </h1>
-                    <span className="text-lg font-normal text-gray-700">{fullDate}</span>
+                    <span className="text-lg font-normal text-foreground/80">{fullDate}</span>
                 </div>
 
                 {/* Row 1: Today + Attendance Pie + Employee Bar */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="p-5 border border-gray-200 flex flex-col gap-3">
-                        <p className="text-3xl font-black tracking-widest text-gray-900">TODAY</p>
-                        <div className="flex items-center gap-2 text-gray-700">
+                    <Card className="p-5 border border-border flex flex-col gap-3">
+                        <p className="text-3xl font-black tracking-widest text-foreground">TODAY</p>
+                        <div className="flex items-center gap-2 text-foreground/80">
                             <Sun className="size-5" />
                             <span className="text-xl font-semibold">8:00 AM</span>
                         </div>
-                        <div className="flex items-center gap-2 text-gray-700">
+                        <div className="flex items-center gap-2 text-foreground/80">
                             <Calendar className="size-5" />
                             <div className="flex flex-col">
                                 <span className="text-lg font-semibold">{dayName}</span>
-                                <span className="text-sm text-gray-400">{shortDate}</span>
+                                <span className="text-sm text-muted-foreground/70">{shortDate}</span>
                             </div>
                         </div>
 
                     </Card>
 
-                    <Card className="p-4 border border-gray-200">
+                    <Card className="p-4 border border-border">
                         <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-semibold text-gray-700">Attendance Today</span>
-                            <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+                            <span className="text-sm font-semibold text-foreground/80">Attendance Today</span>
+                            <span className="text-xs text-muted-foreground/70 cursor-pointer hover:underline">view</span>
                         </div>
                         <AttendancePieChart data={attendanceData} />
                     </Card>
 
-                    <Card className="p-4 border border-gray-200">
+                    <Card className="p-4 border border-border">
                         <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-semibold text-gray-700">Total Employees</span>
-                            <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+                            <span className="text-sm font-semibold text-foreground/80">Total Employees</span>
+                            <span className="text-xs text-muted-foreground/70 cursor-pointer hover:underline">view</span>
                         </div>
                         <EmployeeBarChart data={employeeData} />
                         <div className="grid grid-cols-3 gap-2 mt-2">
                             {employeeData.map(item => {
                                 const Icon = item.icon;
                                 return (
-                                    <div key={item.label} className="flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-100">
+                                    <div key={item.label} className="flex flex-col items-center gap-1 p-2 rounded-lg border border-border">
                                         <div className={`${item.bg} p-1.5 rounded-md`}>
                                             <Icon className={`size-3.5 ${item.color}`} />
                                         </div>
-                                        <p className="text-xs text-gray-400">{item.label}</p>
-                                        <p className="text-base font-bold text-gray-800">{item.value}</p>
+                                        <p className="text-xs text-muted-foreground/70">{item.label}</p>
+                                        <p className="text-base font-bold text-foreground">{item.value}</p>
                                     </div>
                                 );
                             })}
@@ -757,15 +771,15 @@ export default function Page() {
                 </div>
 
                 {/* Weekly Trend */}
-                <Card className="p-4 border border-gray-200">
+                <Card className="p-4 border border-border">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <div className="bg-blue-100 p-1.5 rounded-md">
                                 <TrendingUp className="size-4 text-blue-500" />
                             </div>
-                            <span className="text-sm font-semibold text-gray-700">Weekly Attendance Trend</span>
+                            <span className="text-sm font-semibold text-foreground/80">Weekly Attendance Trend</span>
                         </div>
-                        <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+                        <span className="text-xs text-muted-foreground/70 cursor-pointer hover:underline">view</span>
                     </div>
                     <WeeklyTrendChart data={weeklyTrend} />
                 </Card>
@@ -773,25 +787,25 @@ export default function Page() {
                 <EmployeeMapCard employees={employeeWhereabouts} /> 
 
                 {/* Employees on Leave */}
-                <Card className="p-4 border border-gray-200">
+                <Card className="p-4 border border-border">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <div className="bg-blue-100 p-1.5 rounded-md">
                                 <CalendarClock className="size-4 text-blue-500" />
                             </div>
-                            <span className="text-sm font-semibold text-gray-700">Employees on Leave</span>
+                            <span className="text-sm font-semibold text-foreground/80">Employees on Leave</span>
                         </div>
-                        <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+                        <span className="text-xs text-muted-foreground/70 cursor-pointer hover:underline">view</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <p className="text-xs font-medium text-gray-500 mb-2">By Leave Type</p>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">By Leave Type</p>
                             <LeaveTypeChart data={leaveTypeData} />
                         </div>
                         {/* Per Employee */}
 
                         <div>
-                            <p className="text-xs font-medium text-gray-500 mb-2">Top 5 — Leave Days per Employee</p>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Top 5 — Leave Days per Employee</p>
                             <EmployeeLeaveHeatmap data={[...employeeLeaveData].sort((a, b) => b.days - a.days).slice(0, 5)} />
                         </div>
                     </div>
@@ -800,41 +814,41 @@ export default function Page() {
                 {/* Pending Leave + Monthly Trend */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                    <Card className="p-4 border border-gray-200">
+                    <Card className="p-4 border border-border">
                         <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
                                 <div className="bg-blue-100 p-1.5 rounded-md">
                                     <CalendarClock className="size-4 text-blue-500" />
                                 </div>
-                                <span className="text-sm font-semibold text-gray-700">Pending Leave Request</span>
+                                <span className="text-sm font-semibold text-foreground/80">Pending Leave Request</span>
                             </div>
-                            <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+                            <span className="text-xs text-muted-foreground/70 cursor-pointer hover:underline">view</span>
                         </div>
 
                         <div className="flex flex-col gap-2 mb-4">
-                            <div className="flex flex-col gap-1 p-3 rounded-lg border border-gray-100 bg-gray-50">
+                            <div className="flex flex-col gap-1 p-3 rounded-lg border border-border bg-muted/50">
                                 <div className="flex items-center justify-between">
-                                    <p className="text-xs text-gray-400">Total Pending</p>
+                                    <p className="text-xs text-muted-foreground/70">Total Pending</p>
                                     <div className="bg-blue-100 p-1 rounded-md">
                                         <CalendarClock className="size-3 text-blue-500" />
                                     </div>
                                 </div>
-                                <p className="text-2xl font-black text-gray-800">36</p>
-                                <p className="text-xs text-gray-400">across all types</p>
+                                <p className="text-2xl font-black text-foreground">36</p>
+                                <p className="text-xs text-muted-foreground/70">across all types</p>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                                 {leavePendingKPI.slice(1).map((kpi) => {
                                     const Icon = kpi.icon;
                                     return (
-                                        <div key={kpi.label} className="flex flex-col gap-1 p-3 rounded-lg border border-gray-100 bg-gray-50">
+                                        <div key={kpi.label} className="flex flex-col gap-1 p-3 rounded-lg border border-border bg-muted/50">
                                             <div className="flex items-center justify-between">
-                                                <p className="text-xs text-gray-400">{kpi.label}</p>
+                                                <p className="text-xs text-muted-foreground/70">{kpi.label}</p>
                                                 <div className={`${kpi.bg} p-1 rounded-md`}>
                                                     <Icon className={`size-3 ${kpi.color}`} />
                                                 </div>
                                             </div>
-                                            <p className="text-2xl font-black text-gray-800">{kpi.value}</p>
-                                            <p className="text-xs text-gray-400">{kpi.sub}</p>
+                                            <p className="text-2xl font-black text-foreground">{kpi.value}</p>
+                                            <p className="text-xs text-muted-foreground/70">{kpi.sub}</p>
                                         </div>
                                     );
                                 })}
@@ -842,15 +856,15 @@ export default function Page() {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border border-gray-200">
+                    <Card className="p-4 border border-border">
                         <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
                                 <div className="bg-blue-100 p-1.5 rounded-md">
                                     <TrendingUp className="size-4 text-blue-500" />
                                 </div>
-                                <span className="text-sm font-semibold text-gray-700">Monthly Leave Trend</span>
+                                <span className="text-sm font-semibold text-foreground/80">Monthly Leave Trend</span>
                             </div>
-                            <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+                            <span className="text-xs text-muted-foreground/70 cursor-pointer hover:underline">view</span>
                         </div>
                         <LeaveTrendChart data={leaveTrend} />
                     </Card>
@@ -861,15 +875,15 @@ export default function Page() {
 
 
                     {/* Upcoming Payroll */}
-                    <Card className="p-4 border border-gray-200">
+                    <Card className="p-4 border border-border">
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
                                 <div className="bg-green-100 p-1.5 rounded-md">
                                     <Banknote className="size-4 text-green-500" />
                                 </div>
-                                <span className="text-sm font-semibold text-gray-700">Upcoming Payroll Processing</span>
+                                <span className="text-sm font-semibold text-foreground/80">Upcoming Payroll Processing</span>
                             </div>
-                            <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+                            <span className="text-xs text-muted-foreground/70 cursor-pointer hover:underline">view</span>
                         </div>
 
 
@@ -881,15 +895,15 @@ export default function Page() {
                                 {payrollKPI.map((kpi) => {
                                     const Icon = kpi.icon;
                                     return (
-                                        <div key={kpi.label} className="flex flex-col gap-1 p-3 rounded-lg border border-gray-100 bg-gray-50">
+                                        <div key={kpi.label} className="flex flex-col gap-1 p-3 rounded-lg border border-border bg-muted/50">
                                             <div className="flex items-center justify-between">
-                                                <p className="text-xs text-gray-400">{kpi.label}</p>
+                                                <p className="text-xs text-muted-foreground/70">{kpi.label}</p>
                                                 <div className={`${kpi.bg} p-1 rounded-md`}>
                                                     <Icon className={`size-3 ${kpi.color}`} />
                                                 </div>
                                             </div>
-                                            <p className="text-2xl font-black text-gray-800">{kpi.value}</p>
-                                            <p className="text-xs text-gray-400">{kpi.sub}</p>
+                                            <p className="text-2xl font-black text-foreground">{kpi.value}</p>
+                                            <p className="text-xs text-muted-foreground/70">{kpi.sub}</p>
                                         </div>
                                     );
                                 })}
@@ -910,10 +924,10 @@ export default function Page() {
 
                                 return (
                                     <div>
-                                        <p className="text-xs font-medium text-gray-500 mb-3">{monthName}</p>
+                                        <p className="text-xs font-medium text-muted-foreground mb-3">{monthName}</p>
                                         <div className="grid grid-cols-7 mb-1">
                                             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
-                                                <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</div>
+                                                <div key={d} className="text-center text-xs font-medium text-muted-foreground/70 py-1">{d}</div>
                                             ))}
                                         </div>
                                         <div className="grid grid-cols-7 gap-1">
@@ -926,7 +940,7 @@ export default function Page() {
                                                         className={`relative flex flex-col items-center justify-center rounded-lg py-1.5 text-xs transition-all
                                                         ${isPayroll ? "bg-green-500 text-white font-bold" : ""}
                                                         ${isToday && !isPayroll ? "bg-blue-100 text-blue-600 font-bold" : ""}
-                                                        ${!isPayroll && !isToday ? "text-gray-600 hover:bg-gray-100" : ""}
+                                                        ${!isPayroll && !isToday ? "text-muted-foreground hover:bg-muted" : ""}
                                                     `}
                                                     >
                                                         {day}
@@ -937,14 +951,14 @@ export default function Page() {
                                                 );
                                             })}
                                         </div>
-                                        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+                                        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border">
                                             <div className="flex items-center gap-1.5">
                                                 <div className="w-3 h-3 rounded-sm bg-green-500" />
-                                                <span className="text-xs text-gray-500">Salary Release</span>
+                                                <span className="text-xs text-muted-foreground">Salary Release</span>
                                             </div>
                                             <div className="flex items-center gap-1.5">
                                                 <div className="w-3 h-3 rounded-sm bg-blue-100" />
-                                                <span className="text-xs text-gray-500">Today</span>
+                                                <span className="text-xs text-muted-foreground">Today</span>
                                             </div>
                                         </div>
                                     </div>
@@ -954,7 +968,7 @@ export default function Page() {
                         </div>
                     </Card>
 
-                    <Card className="p-4 border border-gray-200">
+                    <Card className="p-4 border border-border">
                         {/* Stacked Bar — takes 1 col */}
                         <div>
                             <section className="p-4  h-full">
@@ -963,11 +977,11 @@ export default function Page() {
                                         <div className="bg-blue-100 p-1.5 rounded-md">
                                             <Users className="size-4 text-blue-500" />
                                         </div>
-                                        <span className="text-sm font-semibold text-gray-700">Number of Employees per Category</span>
+                                        <span className="text-sm font-semibold text-foreground/80">Number of Employees per Category</span>
                                     </div>
-                                    <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+                                    <span className="text-xs text-muted-foreground/70 cursor-pointer hover:underline">view</span>
                                 </div>
-                                <p className="text-xs text-gray-400 mb-4 ml-8">6-month breakdown</p>
+                                <p className="text-xs text-muted-foreground/70 mb-4 ml-8">6-month breakdown</p>
                                 <PayrollStackedBar data={payrollStackedData} />
                                 <div className="flex items-center justify-center gap-4 mt-3 pt-3 ">
                                     {[
@@ -977,7 +991,7 @@ export default function Page() {
                                     ].map(item => (
                                         <div key={item.label} className="flex items-center gap-1.5">
                                             <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: item.fill }} />
-                                            <span className="text-xs text-gray-500">{item.label}</span>
+                                            <span className="text-xs text-muted-foreground">{item.label}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -988,30 +1002,30 @@ export default function Page() {
                 </section>
 
                 {/* Government Remittance */}
-                <Card className="p-4 border border-gray-200">
+                <Card className="p-4 border border-border">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <div className="bg-purple-100 p-1.5 rounded-md">
                                 <Landmark className="size-4 text-purple-500" />
                             </div>
-                            <span className="text-sm font-semibold text-gray-700">Government Remittance Summary</span>
+                            <span className="text-sm font-semibold text-foreground/80">Government Remittance Summary</span>
                         </div>
-                        <span className="text-xs text-gray-400 cursor-pointer hover:underline">view</span>
+                        <span className="text-xs text-muted-foreground/70 cursor-pointer hover:underline">view</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <p className="text-xs font-medium text-gray-500 mb-2">Distribution this month</p>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Distribution this month</p>
                             <RemittanceDonut data={remittanceData} />
                         </div>
                         <div>
-                            <p className="text-xs font-medium text-gray-500 mb-2">6-month trend</p>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">6-month trend</p>
                             <RemittanceTrendChart data={remittanceTrend} />
                         </div>
-                        <div className="md:col-span-2 flex items-center justify-center gap-6 pt-2 border-t border-gray-100">
+                        <div className="md:col-span-2 flex items-center justify-center gap-6 pt-2 border-t border-border">
                             {remittanceData.map(item => (
                                 <div key={item.label} className="flex items-center gap-1.5">
                                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.fill }} />
-                                    <span className="text-xs text-gray-500">{item.label}</span>
+                                    <span className="text-xs text-muted-foreground">{item.label}</span>
                                 </div>
                             ))}
                         </div>
