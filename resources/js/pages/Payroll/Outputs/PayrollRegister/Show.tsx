@@ -1,5 +1,3 @@
-// resources/js/Pages/Payroll/Outputs/PayrollRegister/Show.tsx
-
 import React from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
@@ -153,7 +151,7 @@ function peso(val: number): string {
     return '₱' + nf(val);
 }
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
+// ── Stat Card Component ───────────────────────────────────────────────────────
 
 function StatCard({
     icon: Icon,
@@ -194,7 +192,7 @@ function StatCard({
     );
 }
 
-// ── Grouped TH helpers ────────────────────────────────────────────────────────
+// ── Table Header Helpers ──────────────────────────────────────────────────────
 
 function GrpTh({
     children,
@@ -279,6 +277,8 @@ function TotTd({
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Show({ period, records, summary }: Props) {
+    // ── Computed values ───────────────────────────────────────────────────────
+
     const periodLabel = formatPeriod(period.start_date, period.end_date);
     const hrOfficer =
         records.find((r) => r.hr_officer_name && r.hr_officer_name !== '—')
@@ -297,120 +297,128 @@ export default function Show({ period, records, summary }: Props) {
         },
     ];
 
+    // ── Render ────────────────────────────────────────────────────────────────
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Payroll Register – ${periodLabel}`} />
 
-            {/* ── Screen toolbar (hidden on print) ────────────────────────── */}
-            <div className="flex items-center justify-between border-b px-6 py-3 print:hidden">
-                <div className="flex items-center gap-3">
-                    <Link href={route('payroll-register.index')}>
-                        <Button variant="outline" size="sm" className="gap-1.5">
-                            <ArrowLeft className="h-4 w-4" />
-                            Back
-                        </Button>
-                    </Link>
+{/* ── Screen toolbar (hidden on print) ────────────────────────── */}
+<div className="flex items-center justify-between border-b px-6 py-3 print:hidden">
+    <div className="flex items-center gap-3">
+        <Link href={route('payroll-register.index')}>
+            <Button variant="outline" size="sm" className="gap-1.5">
+                <ArrowLeft className="h-4 w-4" />
+                Back
+            </Button>
+        </Link>
 
-                    <Separator orientation="vertical" className="h-5" />
+        <Separator orientation="vertical" className="h-5" />
 
-                    <div>
-                        <h1 className="text-lg leading-none font-semibold">
-                            Payroll Register
-                        </h1>
-                        <p className="mt-0.5 text-sm text-muted-foreground">
-                            {periodLabel} · Cut-off {period.cut_off ?? '—'}
-                        </p>
-                    </div>
+        <div>
+            <h1 className="text-lg leading-none font-semibold">
+                Payroll Register
+            </h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+                {periodLabel} · Cut-off {period.cut_off ?? '—'}
+            </p>
+        </div>
 
-                    <Badge
-                        variant="outline"
-                        className={
-                            period.status === 'Closed'
-                                ? 'border-green-500 text-green-600'
-                                : 'border-blue-500 text-blue-600'
-                        }
-                    >
-                        {period.status}
-                    </Badge>
+        <div className="flex gap-2">
+            <Badge
+                variant="outline"
+                className={
+                    period.status === 'Closed'
+                        ? 'border-green-500 text-green-600'
+                        : 'border-blue-500 text-blue-600'
+                }
+            >
+                {period.status}
+            </Badge>
 
-                    {summary.floor_issues > 0 && (
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Badge
-                                        variant="outline"
-                                        className="gap-1 border-amber-500 text-amber-600"
-                                    >
-                                        <AlertTriangle className="h-3 w-3" />
-                                        {summary.floor_issues} floor issue
-                                        {summary.floor_issues > 1 ? 's' : ''}
-                                    </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>
-                                        {summary.floor_issues} employee
-                                        {summary.floor_issues > 1
-                                            ? 's have'
-                                            : ' has'}{' '}
-                                        a net pay below the minimum take-home
-                                        threshold.
-                                    </p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    )}
-                </div>
+            {summary.floor_issues > 0 && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Badge
+                                variant="outline"
+                                className="gap-1 border-amber-500 text-amber-600"
+                            >
+                                <AlertTriangle className="h-3 w-3" />
+                                {summary.floor_issues} issue{summary.floor_issues > 1 ? 's' : ''}
+                            </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>
+                                {summary.floor_issues} employee
+                                {summary.floor_issues > 1
+                                    ? 's have'
+                                    : ' has'}{' '}
+                                a net pay below the minimum take-home
+                                threshold.
+                            </p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )}
+        </div>
+    </div>
 
-                <Button
-                    onClick={() => window.print()}
-                    className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
-                >
-                    <Printer className="h-4 w-4" />
-                    Print Register
-                </Button>
-            </div>
+    <Button
+        onClick={() => window.print()}
+        className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
+    >
+        <Printer className="h-4 w-4" />
+        Print Register
+    </Button>
+</div>
 
-            {/* ── Summary stat cards (screen only) ────────────────────────── */}
-            <div className="grid grid-cols-2 gap-4 px-6 pt-5 sm:grid-cols-4 print:hidden">
-                <StatCard
-                    icon={Users}
-                    label="Total Employees"
-                    value={String(summary.total_employees)}
-                    sub={`Period #${period.payroll_period_id}`}
-                />
-                <StatCard
-                    icon={TrendingUp}
-                    label="Total Gross Pay"
-                    value={peso(summary.total_gross)}
-                    sub="Earnings before deductions"
-                    accent="text-blue-600"
-                />
-                <StatCard
-                    icon={Landmark}
-                    label="Total Deductions"
-                    value={peso(summary.total_deductions)}
-                    sub="All deduction types"
-                    accent="text-orange-600"
-                />
-                <StatCard
-                    icon={Receipt}
-                    label="Total Net Pay"
-                    value={peso(summary.total_net_pay)}
-                    sub={
-                        summary.floor_issues > 0
-                            ? `⚠ ${summary.floor_issues} floor issue${summary.floor_issues > 1 ? 's' : ''}`
-                            : 'All employees passed floor check'
-                    }
-                    accent="text-green-600"
-                />
-            </div>
+{/* ── Summary stat cards (screen only) ────────────────────────── */}
+<div className="flex flex-1 flex-col items-center bg-slate-50/50 px-6 py-6 print:hidden">
+    <div className="w-full max-w-[1500px]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+                icon={Users}
+                label="Total Employees"
+                value={String(summary.total_employees)}
+                sub={`Period #${period.payroll_period_id}`}
+            />
+            <StatCard
+                icon={TrendingUp}
+                label="Total Gross Pay"
+                value={peso(summary.total_gross)}
+                sub="Earnings before deductions"
+                accent="text-black-600"
+            />
+            <StatCard
+                icon={Landmark}
+                label="Total Deductions"
+                value={peso(summary.total_deductions)}
+                sub="All deduction types"
+                accent="text-black-600"
+            />
+            <StatCard
+                icon={Receipt}
+                label="Total Net Pay"
+                value={peso(summary.total_net_pay)}
+                sub={
+                    summary.floor_issues > 0
+                        ? `⚠ ${summary.floor_issues} floor issue${summary.floor_issues > 1 ? 's' : ''}`
+                        : 'All employees passed floor check'
+                }
+                accent="text-black-600"
+            />
+        </div>
+    </div>
+</div>
 
-            {/* ── Paper wrapper ─────────────────────────────────────────────── */}
-            <div className="flex flex-1 flex-col items-center bg-muted/30 px-6 py-8 print:block print:overflow-visible print:bg-white print:p-0">
-                <div
-                    id="payroll-register-document"
-                    className="w-full max-w-[1500px] bg-white px-10 py-8 shadow-xl ring-1 ring-border/20 print:max-w-none print:px-6 print:py-4 print:shadow-none print:ring-0"
-                >
+{/* ── Paper wrapper ─────────────────────────────────────────────── */}
+<div className="flex flex-1 flex-col items-center bg-slate-50 px-6 py-6 print:block print:overflow-visible print:bg-white print:p-0">
+    <div
+        id="payroll-register-document"
+        className="w-full max-w-[1500px] bg-white px-10 py-8 shadow-sm ring-1 ring-slate-200 print:max-w-none print:px-6 print:py-4 print:shadow-none print:ring-0"
+    >
+        {/* Rest of your document content */}
                     {/* ── Document header ──────────────────────────────────── */}
                     <div className="mb-5 flex flex-col items-center text-center">
                         <div className="flex items-center gap-4">
@@ -952,7 +960,7 @@ export default function Show({ period, records, summary }: Props) {
                             auditing rules and regulations.
                         </p>
 
-                        {/* Signature blocks */}
+                        {/* ── Signature blocks ──────────────────────────────── */}
                         <div className="flex justify-between gap-8">
                             {[
                                 {
@@ -1076,4 +1084,4 @@ export default function Show({ period, records, summary }: Props) {
             `}</style>
         </AppLayout>
     );
-}
+}   
