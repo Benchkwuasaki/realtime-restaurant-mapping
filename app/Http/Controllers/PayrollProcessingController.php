@@ -910,9 +910,9 @@ class PayrollProcessingController extends Controller
             }
 
             if ($isBothCutOff) {
-                $internalOrgSavings += $amt;
+                $internalOrgSavings += $fullAmt;
             } else {
-                $internalOrgSecond += $amt;
+                $internalOrgSecond += $fullAmt;
             }
 
             $internalOrgItems[] = [
@@ -921,7 +921,7 @@ class PayrollProcessingController extends Controller
                 'service' => $deduction->service?->internal_organization_service_name ?? '—',
                 'category' => $category ?? 'unknown',
                 'description' => $deduction->description,
-                'amount' => $amt,
+                'amount' => $fullAmt,
             ];
         }
 
