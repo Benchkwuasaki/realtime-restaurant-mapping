@@ -102,6 +102,7 @@ class PaySlipGenerationController extends Controller
         $payroll_periods = $payroll_periods->map(function ($p) use ($periodClassifications, $periodEmployees) {
             $key = Carbon::parse($p['start_date'])->format('Y-m-d').'_'.Carbon::parse($p['end_date'])->format('Y-m-d');
             $p['available_classifications'] = $periodClassifications->get($key, collect())->values()->toArray();
+            $p['employee_ids'] = $periodEmployees->get($key, []);  // ← this line was missing
 
             return $p;
         })->values();
