@@ -277,6 +277,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/', [LeaveEntitlementController::class, 'bulkDestroy'])->name('bulk-destroy');
         });
 
+
+        // leave accrual
         Route::prefix('accrual')->name('accrual.')->group(function () {
             Route::get('/', [LeaveAccrualController::class, 'index'])->name('index');
             Route::get('/preview', [LeaveAccrualController::class, 'preview'])->name('preview');
@@ -288,7 +290,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
 
-        Route::get('/leave-application', [LeaveApplicationController::class, 'index'])->name('leave-application.index');
+        // leave application
+        Route::prefix('leave-application')->name('leave-application.')->group(function () {
+            Route::get('/', [LeaveApplicationController::class, 'index'])->name('index');
+            Route::post('/', [LeaveApplicationController::class, 'store'])->name('store');
+            Route::put('/{application}', [LeaveApplicationController::class, 'update'])->name('update');
+        });
+
 
     });
 

@@ -18,24 +18,30 @@ class LeaveApplication extends Model
         'leave_type_id',
         'recommendation_officer',
         'approval_officer',
+        'office_department',
+        'position',
+        'salary',
         'leave_type_availed',
         'date_of_filing',
         'start_date',
         'end_date',
         'is_requested',
         'is_with_pay',
-        'approved_for_specifics',
+        'approved_with_pay',
+        'approved_without_pay',
+        'approved_others',
         'status',
         'for_disapproval_reason',
         'disapproved_reason',
+        
     ];
 
     protected $casts = [
         'date_of_filing' => 'datetime',
-        'start_date'     => 'date',
-        'end_date'       => 'date',
-        'is_requested'   => 'boolean',
-        'is_with_pay'    => 'boolean',
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'is_requested' => 'boolean',
+        'is_with_pay' => 'boolean',
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────────
@@ -84,7 +90,7 @@ class LeaveApplication extends Model
 
     public function scopeApproved($query)
     {
-        return $query->where('status', 'Approval');
+        return $query->where('status', 'Approved');
     }
 
     public function scopeDisapproved($query)
