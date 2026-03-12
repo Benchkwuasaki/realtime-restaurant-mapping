@@ -59,17 +59,40 @@ class DashboardController extends Controller
             ->count();
 
         // Leave applications approved today
-        $approvedAsOfTodayApplications = LeaveApplication::query()
+        $approvedTodayCount = LeaveApplication::query()
             ->where('status', 'Approved')
+            ->whereDate('updated_at', $today)
             ->whereNull('deleted_at')
             ->count();
 
-        // Average days from filing to resolution
-        $avgWaitDays = LeaveApplication::query()
-            ->whereIn('status', ['Approved', 'Disapproved'])
+        // Average days from filing to approval — sum of (updated_at - date_of_filing) divided by approved count
+        $approvedApplications = LeaveApplication::query()
+            ->where('status', 'Approved')
             ->whereNull('deleted_at')
-            ->selectRaw('ROUND(AVG(DATEDIFF(updated_at, date_of_filing)), 1) as avg_wait')
-            ->value('avg_wait') ?? 0;
+            ->selectRaw('SUM(DATEDIFF(updated_at, date_of_filing)) as total_days, COUNT(*) as total_count')
+            ->first();
+
+        $avgWaitDays = ($approvedApplications->total_count > 0)
+            ? round($approvedApplications->total_days / $approvedApplications->total_count, 1)
+            : 0;
+
+        // Monthly leave trend — count of approved applications per month for the current year
+        $currentYear = now()->year;
+        $monthLabels = ['J', 'F', 'M', 'A', 'My', 'Jn', 'Jl', 'Au', 'S', 'O', 'N', 'D'];
+
+        $monthlyCounts = LeaveApplication::query()
+            ->where('status', 'Approved')
+            ->whereNull('deleted_at')
+            ->whereYear('start_date', $currentYear)
+            ->selectRaw('MONTH(start_date) as month, COUNT(*) as total')
+            ->groupBy('month')
+            ->orderBy('month')
+            ->pluck('total', 'month');
+
+        $leaveTrend = array_values(collect(range(1, 12))->map(fn ($m) => [
+            'm' => $monthLabels[$m - 1],
+            'v' => (int) $monthlyCounts->get($m, 0),
+        ])->toArray());
 
         $chartColors = ['#818cf8', '#fb7185', '#22d3ee', '#f472b6', '#fb923c', '#34d399', '#fbbf24', '#a78bfa'];
 
@@ -133,10 +156,11 @@ class DashboardController extends Controller
             'onLeaveCount'                 => $onLeaveCount,
             'pendingLeaveCount'            => $pendingLeaveCount,
             'urgentLeaveApplicationCount'  => $urgentLeaveApplicationCount,
-            'approvedAsOfTodayApplications'=> $approvedAsOfTodayApplications,
+            'approvedTodayCount'           => $approvedTodayCount,
             'avgWaitDays'                  => $avgWaitDays,
             'leaveTypeCounts'              => $leaveTypeCounts,
             'topLeaveTakers'               => $topLeaveTakers,
+            'leaveTrend'                   => $leaveTrend,
         ]);
     }
 }

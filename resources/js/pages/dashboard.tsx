@@ -25,12 +25,8 @@ const PRESENT = 200, LATE = 100, ABSENT = 100;
 
 
 
-const leaveTrend = [
-    { m: "J",  v: 12 }, { m: "F",  v: 19 }, { m: "M",  v: 21 },
-    { m: "A",  v: 19 }, { m: "My", v: 20 }, { m: "Jn", v: 20 },
-    { m: "Jl", v: 20 }, { m: "Au", v: 10 }, { m: "S",  v: 20 },
-    { m: "O",  v: 20 }, { m: "N",  v: 20 }, { m: "D",  v: 20 },
-];
+
+
 
 const topLate = [
     { name: "Earl F. Amoy",   dept: "Operations", min: 47 },
@@ -66,6 +62,9 @@ const FALLBACK_COLORS = ["#34d399", "#f472b6", "#fbbf24", "#fb7185"];
 
 /* ── TYPES ───────────────────────────────────────────────────────────────── */
 type ClassificationCount = { classification: string; total: number };
+type LeaveTypeCount = { label: string; value: number; fill: string };
+type TopLeaveTaker = { name: string; days: number; type: string; color: string };
+type LeaveTrendPoint = { m: string; v: number };
 
 /* ── DONUT (attendance) ──────────────────────────────────────────────────── */
 function AttendanceDonut() {
@@ -263,11 +262,11 @@ function TopLeaveTakers({ takers }: { takers: TopLeaveTaker[] }) {
 }
 
 /* ── TREND AREA ──────────────────────────────────────────────────────────── */
-function LeaveTrend() {
+function LeaveTrend({ data }: { data: LeaveTrendPoint[] }) {
     return (
         <div className="w-full h-32">
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={leaveTrend} margin={{ top: 4, right: 0, left: -30, bottom: 0 }}>
+                <AreaChart data={data} margin={{ top: 4, right: 0, left: -30, bottom: 0 }}>
                     <defs>
                         <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#818cf8" stopOpacity={0.25} />
@@ -323,8 +322,9 @@ export default function Page() {
         leaveTypeCounts,
         topLeaveTakers,
         urgentLeaveApplicationCount,
-        approvedAsOfTodayApplications,
+        approvedTodayCount,
         avgWaitDays,
+        leaveTrend,
     } = usePage<{
         employeeClassificationCounts: ClassificationCount[];
         onLeaveCount: number;
@@ -332,15 +332,22 @@ export default function Page() {
         leaveTypeCounts: LeaveTypeCount[];
         topLeaveTakers: TopLeaveTaker[];
         urgentLeaveApplicationCount: number;
-        approvedAsOfTodayApplications: number;
+        approvedTodayCount: number;
         avgWaitDays: number;
+        leaveTrend: LeaveTrendPoint[];
     }>().props;
 
     const pendingKPI = [
         { label: "Urgent",   value: urgentLeaveApplicationCount ?? 0, sub: ">3 days",     color: "#fb7185", icon: AlertTriangle },
-        { label: "Approved", value: approvedAsOfTodayApplications ?? 0,          sub: "today",       color: "#34d399", icon: CheckCircle2  },
+        { label: "Approved", value: approvedTodayCount ?? 0,          sub: "today",       color: "#34d399", icon: CheckCircle2  },
         { label: "Avg Wait", value: `${avgWaitDays ?? 0}d`,           sub: "to approval", color: "#fbbf24", icon: Clock         },
     ];
+
+    const trend = leaveTrend ?? [];
+    const peakMonth   = trend.reduce((a, b) => (b.v > a.v ? b : a), { m: '—', v: 0 });
+    const lowestMonth = trend.reduce((a, b) => (b.v < a.v ? b : a), { m: '—', v: Infinity });
+    const totalTrend  = trend.reduce((sum, b) => sum + b.v, 0);
+    const avgMonthly  = trend.length ? Math.round(totalTrend / trend.length) : 0;
 
     const totalEmployees = (employeeClassificationCounts ?? []).reduce((sum, c) => sum + c.total, 0);
 
@@ -358,10 +365,10 @@ export default function Page() {
                         </div>
                         <p className="text-xs text-muted-foreground pl-3.5">{dateStr}</p>
                     </div>
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-card border border-border shadow-sm">
+                    <div className="flex items-center h-full gap-2 px-4 py-2 rounded-2xl bg-card border border-border shadow-sm">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[11px] text-muted-foreground font-medium">Live</span>
-                        <span className="text-xs font-mono font-black text-foreground tabular-nums">{timeStr}</span>
+                        <span className="text-sm text-muted-foreground font-medium">Live</span>
+                        <span className="text-sm font-mono font-black text-foreground tabular-nums">{timeStr}</span>
                     </div>
                 </div>
 
@@ -411,7 +418,7 @@ export default function Page() {
                         <div className="flex items-stretch gap-4 mb-5">
                             <div className="flex flex-col items-center justify-center p-5 rounded-2xl flex-1"
                                 style={{ background: "rgba(251,113,133,0.07)", border: "1.5px solid rgba(251,113,133,0.18)" }}>
-                                <p className="text-6xl font-black leading-none" style={{ color: "#fb7185" }}>{pendingLeaveCount}</p>
+                                <p className="text-6xl font-black leading-none" style={{ color: "#fb7185" }}>36</p>
                                 <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-widest font-semibold">total pending</p>
                             </div>
                             <div className="grid grid-cols-1 gap-2 flex-1">
@@ -434,12 +441,12 @@ export default function Page() {
 
                     <Card>
                         <SH icon={TrendingUp} color="#818cf8" title="Monthly Leave Trend" sub="Employees on leave per month" />
-                        <LeaveTrend />
+                        <LeaveTrend data={trend} />
                         <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-border">
                             {[
-                                { label: "Peak",    value: "Mar", note: "21 staff" },
-                                { label: "Lowest",  value: "Aug", note: "10 staff" },
-                                { label: "Average", value: "18",  note: "/ month" },
+                                { label: "Peak",    value: peakMonth.m,   note: `${peakMonth.v} staff`   },
+                                { label: "Lowest",  value: lowestMonth.m === '—' ? '—' : lowestMonth.m, note: lowestMonth.v === Infinity ? '—' : `${lowestMonth.v} staff` },
+                                { label: "Average", value: avgMonthly,    note: "/ month"                },
                             ].map(s => (
                                 <div key={s.label} className="text-center p-2 rounded-xl bg-muted/30">
                                     <p className="text-base font-black text-foreground">{s.value}</p>
