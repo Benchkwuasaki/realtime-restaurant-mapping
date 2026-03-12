@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { z } from 'zod';
 
 /* Leave Filing Detail Schema */
 
@@ -12,10 +12,9 @@ export const leaveFilingDetailSchema = z.object({
 
     created_at: z.string().nullable(),
     updated_at: z.string().nullable(),
-})
+});
 
-export type LeaveFilingDetail = z.infer<typeof leaveFilingDetailSchema>
-
+export type LeaveFilingDetail = z.infer<typeof leaveFilingDetailSchema>;
 
 /* Leave Filing Schema */
 
@@ -40,11 +39,11 @@ export const leaveFilingSchema = z.object({
     approved_for_specifics: z.string().nullable(),
 
     status: z.enum([
-        "Pending",
-        "For Approval",
-        "For Disapproval",
-        "Approved",
-        "Disapproved",
+        'Pending',
+        'For Approval',
+        'For Disapproval',
+        'Approved',
+        'Disapproved',
     ]),
 
     for_disapproval_reason: z.string().nullable(),
@@ -53,15 +52,14 @@ export const leaveFilingSchema = z.object({
     created_at: z.string().nullable(),
     updated_at: z.string().nullable(),
     deleted_at: z.string().nullable(),
-})
+});
 
-export type LeaveFiling = z.infer<typeof leaveFilingSchema>
-
-
-/* Extended Schema When Using with('details') in Laravel */
+export type LeaveFiling = z.infer<typeof leaveFilingSchema>;
 
 export const leaveFilingWithDetailsSchema = leaveFilingSchema.extend({
     details: leaveFilingDetailSchema.optional(),
-})
+});
 
-export type LeaveFilingWithDetails = z.infer<typeof leaveFilingWithDetailsSchema>
+export type LeaveFilingWithDetails = z.infer<
+    typeof leaveFilingWithDetailsSchema
+>;

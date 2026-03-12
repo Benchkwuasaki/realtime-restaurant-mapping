@@ -2,185 +2,81 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AttendanceRecord;
-use App\Services\FaceRecognitionService;
-use Illuminate\Http\JsonResponse;
+use App\Models\Attendance;
+use App\Models\Employee;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class AttendanceController extends Controller
 {
-    public function __construct(private FaceRecognitionService $faceService) {}
-
-    private function isInertia(Request $request): bool
+    public function index(Request $request)
     {
-        return (bool) $request->header('X-Inertia');
-    }
+        $search = $request->get('search', '');
+        $date = $request->get('date', Carbon::today()->toDateString());
 
-    private function inertiaBack(string $flashKey, array $payload)
-    {
-        return back()->with($flashKey, $payload);
-    }
+        $start = Carbon::parse($date, 'Asia/Manila')->startOfDay()->utc();
+        $end = Carbon::parse($date, 'Asia/Manila')->endOfDay()->utc();
 
-    /** POST /attendance/detect */
-    public function detect(Request $request)
-    {
-        $request->validate([
-            'image' => ['required', 'image', 'max:10240'],
+        $query = Attendance::with(['employee.basicInfo'])
+            ->whereNotNull('employee_id')
+            ->whereBetween('captured_at', [$start, $end])
+            ->orderByDesc('captured_at');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('work_id', 'like', "%{$search}%")
+                    ->orWhereHas('employee.basicInfo', function ($q2) use ($search) {
+                        $q2->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $attendances = $query->paginate(20)->withQueryString();
+
+        return Inertia::render('Attendance/RecognitionLog/Index', [
+            'attendances' => $attendances,
+            'filters' => ['search' => $search, 'date' => $date],
         ]);
-
-        try {
-            $result = $this->faceService->detect($request->file('image'), returnLandmarks: false);
-
-            $payload = [
-                'success' => true,
-                'data' => $result,
-            ];
-
-            return $this->isInertia($request)
-                ? $this->inertiaBack('kiosk_detect', $payload)
-                : response()->json($payload);
-        } catch (\RuntimeException $e) {
-            $payload = [
-                'success' => false,
-                'message' => 'Detection failed: '.$e->getMessage(),
-            ];
-
-            return $this->isInertia($request)
-                ? $this->inertiaBack('kiosk_detect', $payload)
-                : response()->json($payload, 422);
-        }
     }
 
-    /** POST /attendance/clock-in (multipart: image) */
-    public function clockIn(Request $request)
+    public function store(Request $request)
     {
-        $request->validate([
-            'image' => ['required', 'image', 'max:10240'],
-        ]);
+        $data = $request->all();
 
-        // Save captured image
-        $path = $request->file('image')->store('attendance_captures', 'local');
-
-        try {
-            $result = $this->faceService->identify(
-                image: $request->file('image'),
-                topN: (int) config('services.face_api.top_n', 5),
-            );
-        } catch (\RuntimeException $e) {
-            $payload = [
-                'success' => false,
-                'message' => 'Face recognition failed: '.$e->getMessage(),
-            ];
-
-            return $this->isInertia($request)
-                ? $this->inertiaBack('kiosk_identify', $payload)
-                : response()->json($payload, 422);
+        if (($data['operator'] ?? '') !== 'VerifyPush') {
+            return response()->json(['error' => 'invalid'], 400);
         }
 
-        if (! ($result['matched'] ?? false)) {
-            $payload = [
-                'success' => false,
-                'message' => 'Face not recognized. Please try again.',
-                'candidates' => $result['candidates'] ?? [],
-            ];
+        $info = $data['info'];
+        $employee = Employee::where('work_id', $info['IdCard'])->first();
 
-            return $this->isInertia($request)
-                ? $this->inertiaBack('kiosk_identify', $payload)
-                : response()->json($payload, 404);
+        // ── Reject unmatched scans — no employee, no record ───────────────────
+        // If the face/card doesn't match any active employee in the system,
+        // we discard the scan entirely. Nothing is saved, nothing is broadcast.
+        if (! $employee) {
+            return response()->json(['status' => 'unmatched']);
         }
 
-        $best = $result['best_match'] ?? null;
-        if (! $best) {
-            $payload = [
-                'success' => false,
-                'message' => 'Recognition response missing best_match.',
-            ];
-
-            return $this->isInertia($request)
-                ? $this->inertiaBack('kiosk_identify', $payload)
-                : response()->json($payload, 422);
-        }
-
-        $employeeId = (string) ($best['employee_id'] ?? '');
-        $embeddingsId = (string) ($best['embeddings_id'] ?? '');
-        $similarity = (float) ($best['similarity'] ?? 0);
-
-        $min = (float) config('services.face_api.min_similarity', 0.45);
-        if ($employeeId === '' || $similarity < $min) {
-            $payload = [
-                'success' => false,
-                'message' => 'Low confidence match. Please try again.',
-                'similarity' => $similarity,
-                'threshold' => $min,
-            ];
-
-            return $this->isInertia($request)
-                ? $this->inertiaBack('kiosk_identify', $payload)
-                : response()->json($payload, 422);
-        }
-
-        // Optional: prevent duplicate spam within 2 minutes
-        $already = AttendanceRecord::where('employee_id', $employeeId)
-            ->whereDate('date', now()->toDateString())
-            ->where('created_at', '>=', now()->subMinutes(2))
+        // ── Duplicate prevention (5-minute window) ────────────────────────────
+        $exists = Attendance::where('employee_id', $employee->employee_id)
+            ->whereBetween('captured_at', [now()->subMinutes(5), now()])
             ->exists();
 
-        $recordId = null;
-        if (! $already) {
-            $record = AttendanceRecord::create([
-                'employee_id' => $employeeId,
-                'embeddings_id' => $embeddingsId,
-                'status' => 'present',
-                'img_path' => $path,
-                'date' => now()->toDateString(),
-            ]);
-            $recordId = $record->id;
+        if ($exists) {
+            return response()->json(['status' => 'duplicate']);
         }
 
-        $payload = [
-            'success' => true,
-            'employee_id' => $employeeId,
-            'confidence' => $similarity,
-            'attendance_id' => $recordId,
-            'recognition_log_id' => $result['recognition_log_id'] ?? null,
-            'message' => $already ? 'Already recorded recently.' : 'Clock-in recorded successfully.',
-        ];
-
-        return $this->isInertia($request)
-            ? $this->inertiaBack('kiosk_identify', $payload)
-            : response()->json($payload);
-    }
-
-    /** POST /attendance/enroll (multipart: image + employee_id) */
-    public function enroll(Request $request): JsonResponse
-    {
-        // enroll can stay JSON if you want, or make it hybrid too.
-        $request->validate([
-            'image' => ['required', 'image', 'max:10240'],
-            'employee_id' => ['required', 'string'],
+        Attendance::create([
+            'employee_id' => $employee->employee_id,
+            'work_id' => $info['IdCard'],
+            'verification_status' => ($info['VerifyStatus'] ?? 0) == 1 ? 'verified' : 'unknown',
+            'similarity' => $info['Similarity1'] ?? null,
+            'device_id' => $info['DeviceID'] ?? null,
+            'captured_at' => $info['CreateTime'],
         ]);
 
-        $path = $request->file('image')->store('enrollment_captures', 'local');
-
-        try {
-            $result = $this->faceService->enroll(
-                employeeId: (string) $request->employee_id,
-                image: $request->file('image'),
-            );
-        } catch (\RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Enrollment failed: '.$e->getMessage(),
-            ], 422);
-        }
-
-        return response()->json([
-            'success' => true,
-            'employee_id' => $result['employee_id'] ?? $request->employee_id,
-            'embeddings_id' => $result['embeddings_id'] ?? null,
-            'enrollment_session_id' => $result['enrollment_session_id'] ?? null,
-            'message' => 'Employee enrolled successfully.',
-            'saved_image_path' => $path,
-        ], 201);
+        return response()->json(['status' => 'ok']);
     }
 }

@@ -1,102 +1,102 @@
 <?php
 
-namespace Database\Seeders;
+// namespace Database\Seeders;
 
-use Carbon\Carbon;
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+// use Carbon\Carbon;
+// use Illuminate\Database\Seeder;
+// use Illuminate\Support\Facades\DB;
 
-class AttendanceRecordSeeder extends Seeder
-{
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
-    {
-        $employeeIds = DB::table('employees')
-            ->orderBy('employee_id')
-            ->limit(5)
-            ->pluck('employee_id')
-            ->all();
+// class AttendanceRecordSeeder extends Seeder
+// {
+//     /**
+//      * Run the database seeds.
+//      */
+//     public function run(): void
+//     {
+//         $employeeIds = DB::table('employees')
+//             ->orderBy('employee_id')
+//             ->limit(5)
+//             ->pluck('employee_id')
+//             ->all();
 
-        if (count($employeeIds) < 5) {
-            return;
-        }
+//         if (count($employeeIds) < 5) {
+//             return;
+//         }
 
-        // ── Employee #1: full 365-day history ─────────────────────────
-        $fullYearEmployee = $employeeIds[0];
+//         // ── Employee #1: full 365-day history ─────────────────────────
+//         $fullYearEmployee = $employeeIds[0];
 
-        $startDate = Carbon::today()->subDays(364)->startOfDay();
-        $endDate = Carbon::today()->startOfDay();
+//         $startDate = Carbon::today()->subDays(364)->startOfDay();
+//         $endDate = Carbon::today()->startOfDay();
 
-        $current = $startDate->copy();
-        while ($current->lte($endDate)) {
-            $this->seedAttendanceForEmployee($fullYearEmployee, $current->copy());
-            $current->addDay();
-        }
+//         $current = $startDate->copy();
+//         while ($current->lte($endDate)) {
+//             $this->seedAttendanceForEmployee($fullYearEmployee, $current->copy());
+//             $current->addDay();
+//         }
 
-        // ── Employees #2–5: original 2-day behaviour ──────────────────
-        $remainingEmployees = array_slice($employeeIds, 1);
+//         // ── Employees #2–5: original 2-day behaviour ──────────────────
+//         $remainingEmployees = array_slice($employeeIds, 1);
 
-        $days = [
-            Carbon::today()->subDay()->toDateString(),
-            Carbon::today()->toDateString(),
-        ];
+//         $days = [
+//             Carbon::today()->subDay()->toDateString(),
+//             Carbon::today()->toDateString(),
+//         ];
 
-        foreach ($days as $date) {
-            foreach ($remainingEmployees as $employeeId) {
-                $this->seedAttendanceForEmployee($employeeId, Carbon::parse($date));
-            }
-        }
-    }
+//         foreach ($days as $date) {
+//             foreach ($remainingEmployees as $employeeId) {
+//                 $this->seedAttendanceForEmployee($employeeId, Carbon::parse($date));
+//             }
+//         }
+//     }
 
-    /**
-     * Seed a single attendance record for one employee on one day,
-     * based on whatever matched recognition_logs already exist for that day.
-     */
-    private function seedAttendanceForEmployee(int $employeeId, Carbon $day): void
-    {
-        $date = $day->toDateString();
+//     /**
+//      * Seed a single attendance record for one employee on one day,
+//      * based on whatever matched recognition_logs already exist for that day.
+//      */
+//     private function seedAttendanceForEmployee(int $employeeId, Carbon $day): void
+//     {
+//         $date = $day->toDateString();
 
-        $logs = DB::table('recognition_logs')
-            ->where('employee_id', $employeeId)
-            ->whereDate('created_at', $date)
-            ->where('recognition_status', 'matched')
-            ->orderBy('created_at')
-            ->get();
+//         $logs = DB::table('recognition_logs')
+//             ->where('employee_id', $employeeId)
+//             ->whereDate('created_at', $date)
+//             ->where('recognition_status', 'matched')
+//             ->orderBy('created_at')
+//             ->get();
 
-        if ($logs->isEmpty()) {
-            DB::table('attendance_records')->insert([
-                'employee_id' => $employeeId,
-                'embeddings_id' => null,
-                'recognition_morning_in_id' => null,
-                'recognition_morning_out_id' => null,
-                'recognition_afternoon_in_id' => null,
-                'recognition_afternoon_out_id' => null,
-                'created_at' => $day,
-                'updated_at' => now(),
-            ]);
+//         if ($logs->isEmpty()) {
+//             DB::table('attendance_records')->insert([
+//                 'employee_id' => $employeeId,
+//                 'embeddings_id' => null,
+//                 'recognition_morning_in_id' => null,
+//                 'recognition_morning_out_id' => null,
+//                 'recognition_afternoon_in_id' => null,
+//                 'recognition_afternoon_out_id' => null,
+//                 'created_at' => $day,
+//                 'updated_at' => now(),
+//             ]);
 
-            return;
-        }
+//             return;
+//         }
 
-        $morningLogs = $logs->filter(
-            fn ($log) => Carbon::parse($log->created_at)->hour < 12
-        );
+//         $morningLogs = $logs->filter(
+//             fn ($log) => Carbon::parse($log->created_at)->hour < 12
+//         );
 
-        $afternoonLogs = $logs->filter(
-            fn ($log) => Carbon::parse($log->created_at)->hour >= 12
-        );
+//         $afternoonLogs = $logs->filter(
+//             fn ($log) => Carbon::parse($log->created_at)->hour >= 12
+//         );
 
-        DB::table('attendance_records')->insert([
-            'employee_id' => $employeeId,
-            'embeddings_id' => null,
-            'recognition_morning_in_id' => optional($morningLogs->first())->recognition_log_id,
-            'recognition_morning_out_id' => optional($morningLogs->last())->recognition_log_id,
-            'recognition_afternoon_in_id' => optional($afternoonLogs->first())->recognition_log_id,
-            'recognition_afternoon_out_id' => optional($afternoonLogs->last())->recognition_log_id,
-            'created_at' => $day,
-            'updated_at' => now(),
-        ]);
-    }
-}
+//         DB::table('attendance_records')->insert([
+//             'employee_id' => $employeeId,
+//             'embeddings_id' => null,
+//             'recognition_morning_in_id' => optional($morningLogs->first())->recognition_log_id,
+//             'recognition_morning_out_id' => optional($morningLogs->last())->recognition_log_id,
+//             'recognition_afternoon_in_id' => optional($afternoonLogs->first())->recognition_log_id,
+//             'recognition_afternoon_out_id' => optional($afternoonLogs->last())->recognition_log_id,
+//             'created_at' => $day,
+//             'updated_at' => now(),
+//         ]);
+//     }
+// }

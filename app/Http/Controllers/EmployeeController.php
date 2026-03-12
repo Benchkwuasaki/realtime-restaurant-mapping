@@ -12,6 +12,7 @@ use App\Models\FamilyInfo;
 use App\Models\GovernmentAccount;
 use App\Models\Item;
 use App\Models\SalaryGradeStep;
+use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +21,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
+
+use function Symfony\Component\Clock\now;
 
 class EmployeeController extends Controller
 {
@@ -34,7 +38,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => 'Viewed Employee Page',
+            'activity' => 'Viewed Employee Page',
         ]);
 
         $employees = Employee::with([
@@ -85,6 +89,7 @@ class EmployeeController extends Controller
                 ]),
             'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),
             'employmentClassifications' => \App\Models\EmploymentClassification::orderBy('name')->get(['id', 'name', 'description']),
+            'roles' => Role::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -111,6 +116,8 @@ class EmployeeController extends Controller
             'item_id' => ['required', 'exists:items,item_id'],
             'salary_grade_step_id' => ['required', 'exists:salary_grade_steps,salary_grade_step_id'],
             'employment_classification' => ['required', 'string', 'exists:employment_classifications,name'],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['string', 'exists:roles,name'],
             'work_email' => ['required', 'email', 'max:255', Rule::unique('employees', 'work_email')->whereNull('deleted_at')],
             'password' => [
                 'required',
@@ -122,6 +129,8 @@ class EmployeeController extends Controller
             'date_hired' => ['required', 'date', 'after_or_equal:date_applied'],
             'work_schedule_start' => ['required', 'date_format:H:i'],
             'work_schedule_end' => ['required', 'date_format:H:i', 'different:work_schedule_start'],
+            'break_start' => ['nullable', 'date_format:H:i'],
+            'break_end' => ['nullable', 'date_format:H:i', 'different:break_start'],
             'status' => ['required', 'boolean'],
 
             // ── Addresses ─────────────────────────────────────────────────────────
@@ -193,6 +202,8 @@ class EmployeeController extends Controller
                 'date_hired' => $request->date_hired,
                 'work_schedule_start' => $request->work_schedule_start,
                 'work_schedule_end' => $request->work_schedule_end,
+                'break_start' => $request->break_start ?? null,
+                'break_end' => $request->break_end ?? null,
                 'status' => $request->status,
             ]);
 
@@ -244,12 +255,21 @@ class EmployeeController extends Controller
                     'year_passed' => $eligibility['year_passed'],
                 ]);
             }
+
+            $user = User::create([
+                'employee_id' => $employee->employee_id,
+                'email' => $employee->work_email,
+                'email_verified_at' => now(),
+                'password' => $employee->password,
+            ]);
+
+            $user->syncRoles($request->roles);
         });
 
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => 'Created employee: '.$request->first_name.' '.$request->last_name,
+            'activity' => 'Created employee: '.$request->first_name.' '.$request->last_name,
         ]);
 
         return redirect()->route('employee.index')
@@ -284,11 +304,14 @@ class EmployeeController extends Controller
             'employee' => [
                 'employee_id' => $employee->employee_id,
                 'work_email' => $employee->work_email,
+                'work_id' => $employee->work_id,
                 'employment_classification' => $employee->employment_classification,
                 'date_applied' => $employee->date_applied,
                 'date_hired' => $employee->date_hired,
                 'work_schedule_start' => $employee->work_schedule_start,
                 'work_schedule_end' => $employee->work_schedule_end,
+                'break_start' => $employee->break_start,
+                'break_end' => $employee->break_end,
                 'status' => $employee->status,
                 'avatar_url' => $employee->avatar_url,
 
@@ -369,7 +392,6 @@ class EmployeeController extends Controller
             'phone_number' => 'nullable|string|max:255',
             'civil_status' => 'nullable|in:single,married,divorced,widowed',
             'place_of_birth' => 'nullable|string|max:255',
-
             'item_id' => 'sometimes|required|exists:items,item_id',
             'salary_grade_step_id' => 'sometimes|required|exists:salary_grade_steps,salary_grade_step_id',
             'employment_classification' => 'sometimes|required|string|exists:employment_classifications,name',
@@ -379,6 +401,8 @@ class EmployeeController extends Controller
             'date_hired' => 'sometimes|required|date',
             'work_schedule_start' => 'sometimes|required|date_format:H:i',
             'work_schedule_end' => 'sometimes|required|date_format:H:i',
+            'break_start' => 'nullable|date_format:H:i',
+            'break_end' => 'nullable|date_format:H:i',
             'status' => 'sometimes|required|boolean',
         ]);
 
@@ -404,6 +428,8 @@ class EmployeeController extends Controller
             'date_hired',
             'work_schedule_start',
             'work_schedule_end',
+            'break_start',
+            'break_end',
         ]);
 
         if ($request->has('status')) {
@@ -431,7 +457,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => ($employee->status ? 'Activated' : 'Deactivated').' employee: '.$employee->basicInfo?->full_name,
+            'activity' => ($employee->status ? 'Activated' : 'Deactivated').' employee: '.$employee->basicInfo?->full_name,
         ]);
 
         return back()->with('success', 'Employee status updated.');
@@ -444,7 +470,7 @@ class EmployeeController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'employee',
-            'description' => 'Deleted employee: '.$employee->basicInfo?->full_name,
+            'activity' => 'Deleted employee: '.$employee->basicInfo?->full_name,
         ]);
 
         return redirect()->route('employee.index')->with('success', 'Employee deleted successfully.');

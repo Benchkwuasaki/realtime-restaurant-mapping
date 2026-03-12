@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Services\ActivityLogService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -16,7 +15,7 @@ class DashboardController extends Controller
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'general',
-            'description' => 'Viewed dashboard',
+            'activity' => 'Viewed dashboard',
         ]);
 
         return Inertia::render('dashboard');

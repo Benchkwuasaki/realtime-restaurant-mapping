@@ -14,6 +14,7 @@
     "devDependencies": {
         "@eslint/js": "^9.19.0",
         "@faker-js/faker": "^10.3.0",
+        "@laravel/echo-react": "^2.3.1",
         "@types/node": "^22.13.5",
         "babel-plugin-react-compiler": "^1.0.0",
         "eslint": "^9.17.0",
@@ -22,16 +23,16 @@
         "eslint-plugin-import": "^2.32.0",
         "eslint-plugin-react": "^7.37.3",
         "eslint-plugin-react-hooks": "^7.0.0",
+        "laravel-echo": "^2.3.0",
         "prettier": "^3.4.2",
         "prettier-plugin-tailwindcss": "^0.6.11",
+        "pusher-js": "^8.4.0",
         "typescript-eslint": "^8.23.0"
     },
     "dependencies": {
         "@base-ui/react": "^1.2.0",
-        "@dnd-kit/core": "^6.3.1",
-        "@dnd-kit/sortable": "^10.0.0",
-        "@dnd-kit/utilities": "^3.2.2",
         "@headlessui/react": "^2.2.0",
+        "@hookform/resolvers": "^5.2.2",
         "@inertiajs/react": "^2.3.15",
         "@radix-ui/react-alert-dialog": "^1.1.15",
         "@radix-ui/react-avatar": "^1.1.3",
@@ -73,13 +74,16 @@
         "react-hook-form": "^7.71.2",
         "react-resizable-panels": "^4.6.5",
         "react-webcam": "^7.2.0",
+        "rechart": "^0.0.1",
+        "recharts": "^3.8.0",
         "sonner": "^2.0.7",
         "tailwind-merge": "^3.0.1",
         "tailwindcss": "^4.0.0",
         "tw-animate-css": "^1.4.0",
         "typescript": "^5.7.2",
         "vite": "^7.0.4",
-        "ziggy-js": "^2.6.1"
+        "ziggy-js": "^2.6.1",
+        "zod": "^4.3.6"
     },
     "optionalDependencies": {
         "@rollup/rollup-linux-x64-gnu": "4.9.5",

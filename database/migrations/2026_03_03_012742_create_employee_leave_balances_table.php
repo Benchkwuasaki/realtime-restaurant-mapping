@@ -17,9 +17,9 @@ return new class extends Migration
                 ->constrained('leave_types', 'leave_type_id')
                 ->onDelete('cascade');
             $table->smallInteger('cycle_year');
-            $table->decimal('total_days', 6, 1)->default(0);
-            $table->decimal('used_days', 6, 1)->default(0);
-            $table->decimal('balance', 6, 1)->default(0);
+            $table->decimal('total_days', 8, 4)->default(0);
+            $table->decimal('used_days', 8, 4)->default(0);
+            $table->decimal('balance', 8, 4)->default(0);
             $table->unique(['employee_id', 'leave_type_id', 'cycle_year'], 'unique_employee_leave_year');
 
             $table->timestamps();

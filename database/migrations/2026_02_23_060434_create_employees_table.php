@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
@@ -18,12 +19,15 @@ return new class extends Migration {
             $table->enum('employment_classification', ['Regular', 'Job Order', 'Casual']);
             $table->string('work_email');
             $table->string('password');
+            $table->string('work_id')->unique();
             $table->string('avatar_path')->nullable();
             $table->string('avatar_url')->nullable();
             $table->date('date_applied');
-            $table->date('date_hired'); 
+            $table->date('date_hired');
             $table->time('work_schedule_start');
             $table->time('work_schedule_end');
+            $table->time('break_start');
+            $table->time('break_end');
             $table->softDeletes();
             $table->timestamps();
         });

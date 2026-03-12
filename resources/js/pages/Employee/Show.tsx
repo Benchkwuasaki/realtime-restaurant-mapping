@@ -189,11 +189,14 @@ interface InternalOrganization {
 interface Employee {
     employee_id: number;
     work_email: string;
+    work_id?: string;
     employment_classification: string;
     date_applied?: string;
     date_hired?: string;
     work_schedule_start?: string;
     work_schedule_end?: string;
+    break_start?: string;
+    break_end?: string;
     status: boolean;
     avatar_url?: string;
     basic_info?: BasicInfo;
@@ -278,6 +281,11 @@ function toInputDate(date?: string) {
     return date.slice(0, 10);
 }
 
+function toInputTime(t?: string): string {
+    if (!t) return '';
+    return t.slice(0, 5); // "08:30:00" → "08:30"
+}
+
 async function getCroppedImg(
     imageSrc: string,
     croppedAreaPixels: { x: number; y: number; width: number; height: number },
@@ -327,17 +335,17 @@ function InfoRow({
     onEdit?: () => void;
 }) {
     return (
-        <div className="group/row flex items-start gap-3 border-b border-border py-3 last:border-0">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent">
-                <Icon className="h-4 w-4 text-primary" />
+        <div className="border-border group/row flex items-start gap-3 border-b py-3 last:border-0">
+            <div className="bg-accent mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+                <Icon className="text-primary h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="mb-1 text-[10px] leading-none font-semibold tracking-widest text-muted-foreground uppercase">
+                <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase leading-none tracking-widest">
                     {label}
                 </p>
-                <p className="text-sm leading-snug font-medium break-words text-foreground">
+                <p className="text-foreground break-words text-sm font-medium leading-snug">
                     {value || (
-                        <span className="text-xs font-normal text-muted-foreground/40 italic">
+                        <span className="text-muted-foreground/40 text-xs font-normal italic">
                             Not provided
                         </span>
                     )}
@@ -370,9 +378,9 @@ function DetailCard({
     onEdit?: () => void;
 }) {
     return (
-        <div className="group rounded-xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-primary/20 hover:shadow-md">
+        <div className="bg-card border-border hover:border-primary/20 group rounded-xl border p-4 shadow-sm transition-all duration-200 hover:shadow-md">
             <div className="mb-4 flex items-center justify-between">
-                <span className="text-xs font-semibold tracking-wide text-muted-foreground">
+                <span className="text-muted-foreground text-xs font-semibold tracking-wide">
                     {title}
                 </span>
                 {isStatus ? (
@@ -400,29 +408,29 @@ function DetailCard({
                         </>
                     ) : (
                         <>
-                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-destructive/20 bg-destructive/10">
-                                <div className="h-2 w-2 rounded-full bg-destructive" />
+                            <div className="bg-destructive/10 border-destructive/20 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border">
+                                <div className="bg-destructive h-2 w-2 rounded-full" />
                             </div>
-                            <Badge className="rounded-md border-0 bg-destructive/10 px-2.5 py-0.5 text-xs font-semibold text-destructive">
+                            <Badge className="bg-destructive/10 text-destructive rounded-md border-0 px-2.5 py-0.5 text-xs font-semibold">
                                 Inactive
                             </Badge>
                         </>
                     )
                 ) : value ? (
                     <>
-                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
-                            <div className="h-2 w-2 rounded-full bg-primary" />
+                        <div className="bg-primary/10 border-primary/20 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border">
+                            <div className="bg-primary h-2 w-2 rounded-full" />
                         </div>
-                        <Badge className="max-w-full truncate rounded-md border-0 bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                        <Badge className="bg-primary text-primary-foreground max-w-full truncate rounded-md border-0 px-2.5 py-0.5 text-xs font-semibold">
                             {value}
                         </Badge>
                     </>
                 ) : (
                     <>
-                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted">
-                            <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />
+                        <div className="bg-muted flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
+                            <XCircle className="text-muted-foreground/40 h-3.5 w-3.5" />
                         </div>
-                        <span className="text-sm font-normal text-muted-foreground/50 italic">
+                        <span className="text-muted-foreground/50 text-sm font-normal italic">
                             Not set
                         </span>
                     </>
@@ -477,7 +485,7 @@ function BasicInfoEditDialog({
                 </DialogHeader>
                 <div className="grid grid-cols-1 gap-3 py-2 sm:grid-cols-2">
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             First Name *
                         </Label>
                         <Input
@@ -486,7 +494,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             Last Name *
                         </Label>
                         <Input
@@ -495,7 +503,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             Middle Name
                         </Label>
                         <Input
@@ -504,7 +512,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             Extension
                         </Label>
                         <Input
@@ -516,7 +524,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             Date of Birth
                         </Label>
                         <Input
@@ -526,56 +534,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            First Name *
-                        </Label>
-                        <Input
-                            value={form.first_name}
-                            onChange={(e) => set('first_name', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Last Name *
-                        </Label>
-                        <Input
-                            value={form.last_name}
-                            onChange={(e) => set('last_name', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Middle Name
-                        </Label>
-                        <Input
-                            value={form.middle_name}
-                            onChange={(e) => set('middle_name', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Extension
-                        </Label>
-                        <Input
-                            value={form.name_extension}
-                            onChange={(e) =>
-                                set('name_extension', e.target.value)
-                            }
-                            placeholder="Jr., Sr., III…"
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Date of Birth
-                        </Label>
-                        <Input
-                            type="date"
-                            value={form.birth_date}
-                            onChange={(e) => set('birth_date', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             Sex
                         </Label>
                         <Select
@@ -592,7 +551,7 @@ function BasicInfoEditDialog({
                         </Select>
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             Civil Status
                         </Label>
                         <Select
@@ -613,7 +572,7 @@ function BasicInfoEditDialog({
                         </Select>
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             Place of Birth
                         </Label>
                         <Input
@@ -624,7 +583,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             Personal Email
                         </Label>
                         <Input
@@ -636,7 +595,7 @@ function BasicInfoEditDialog({
                         />
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             Phone Number
                         </Label>
                         <Input
@@ -647,13 +606,13 @@ function BasicInfoEditDialog({
                         />
                     </div>
                 </div>
-                <div className="mt-1 border-t border-border pt-3">
-                    <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                <div className="border-border mt-1 border-t pt-3">
+                    <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-widest">
                         Address
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="col-span-full">
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Street Address
                             </Label>
                             <Input
@@ -664,7 +623,7 @@ function BasicInfoEditDialog({
                             />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 City
                             </Label>
                             <Input
@@ -673,7 +632,7 @@ function BasicInfoEditDialog({
                             />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Province / State
                             </Label>
                             <Input
@@ -682,7 +641,7 @@ function BasicInfoEditDialog({
                             />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Zip Code
                             </Label>
                             <Input
@@ -740,7 +699,7 @@ function SalaryEditDialog({
                 </DialogHeader>
                 <div className="space-y-3 py-2">
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                        <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                             Salary Grade Step ID
                         </Label>
                         <Input
@@ -754,7 +713,7 @@ function SalaryEditDialog({
                             placeholder="Enter salary grade step ID"
                         />
                         {sgs && (
-                            <p className="mt-1.5 text-xs text-muted-foreground">
+                            <p className="text-muted-foreground mt-1.5 text-xs">
                                 Current: SG-{sgs.salary_grade}, Step {sgs.step}{' '}
                                 — ₱
                                 {Number(sgs.monthly_salary).toLocaleString(
@@ -791,6 +750,7 @@ type EditField =
     | 'employment_classification'
     | 'date_applied'
     | 'work_schedule'
+    | 'break_time'
     | null;
 
 function EmploymentEditDialog({
@@ -820,8 +780,10 @@ function EmploymentEditDialog({
         date_hired: toInputDate(employee.date_hired),
         date_applied: toInputDate(employee.date_applied),
         employment_classification: employee.employment_classification ?? '',
-        work_schedule_start: employee.work_schedule_start ?? '',
-        work_schedule_end: employee.work_schedule_end ?? '',
+        work_schedule_start: toInputTime(employee.work_schedule_start),
+        work_schedule_end: toInputTime(employee.work_schedule_end),
+        break_start: toInputTime(employee.break_start),
+        break_end: toInputTime(employee.break_end),
     });
 
     const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
@@ -871,6 +833,8 @@ function EmploymentEditDialog({
                 work_schedule_start: form.work_schedule_start,
                 work_schedule_end: form.work_schedule_end,
             };
+        if (field === 'break_time')
+            data = { break_start: form.break_start, break_end: form.break_end };
         router.put(route('employee.update', employee.employee_id), data, {
             preserveScroll: true,
             onSuccess: onClose,
@@ -884,6 +848,7 @@ function EmploymentEditDialog({
         employment_classification: 'Edit Employment Classification',
         date_applied: 'Edit Date Applied',
         work_schedule: 'Edit Work Schedule',
+        break_time: 'Edit Break Time',
     };
 
     return (
@@ -897,7 +862,7 @@ function EmploymentEditDialog({
                     {field === 'position' && (
                         <div className="space-y-3">
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Position
                                 </Label>
                                 <Select
@@ -937,11 +902,11 @@ function EmploymentEditDialog({
                                                         </span>
                                                         {grp.totalSlots > 1 &&
                                                             (isDisabled ? (
-                                                                <Badge className="shrink-0 rounded-md border-0 bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+                                                                <Badge className="bg-destructive/10 text-destructive shrink-0 rounded-md border-0 px-2 py-0.5 text-[10px] font-bold">
                                                                     Full
                                                                 </Badge>
                                                             ) : (
-                                                                <Badge className="shrink-0 rounded-md border-0 bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-foreground">
+                                                                <Badge className="bg-accent text-accent-foreground shrink-0 rounded-md border-0 px-2 py-0.5 text-[10px] font-semibold">
                                                                     {
                                                                         grp.availableSlots
                                                                     }
@@ -954,7 +919,7 @@ function EmploymentEditDialog({
                                                             ))}
                                                         {grp.totalSlots === 1 &&
                                                             isDisabled && (
-                                                                <Badge className="shrink-0 rounded-md border-0 bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+                                                                <Badge className="bg-destructive/10 text-destructive shrink-0 rounded-md border-0 px-2 py-0.5 text-[10px] font-bold">
                                                                     Full
                                                                 </Badge>
                                                             )}
@@ -966,7 +931,7 @@ function EmploymentEditDialog({
                                 </Select>
                                 {selectedGroup &&
                                     selectedGroup.totalSlots > 1 && (
-                                        <p className="mt-1.5 text-xs text-muted-foreground">
+                                        <p className="text-muted-foreground mt-1.5 text-xs">
                                             {selectedGroup.availableSlots === 0
                                                 ? 'All slots are currently occupied.'
                                                 : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slot${selectedGroup.totalSlots > 1 ? 's' : ''} available — a slot will be auto-assigned.`}
@@ -974,13 +939,13 @@ function EmploymentEditDialog({
                                     )}
                             </div>
                             {selectedGroup?.position && (
-                                <div className="divide-y divide-border rounded-lg border border-border bg-muted/20">
+                                <div className="border-border divide-border bg-muted/20 divide-y rounded-lg border">
                                     {selectedGroup.position.department && (
                                         <div className="flex justify-between px-4 py-2">
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-muted-foreground text-xs">
                                                 Department
                                             </span>
-                                            <span className="text-xs font-medium text-foreground">
+                                            <span className="text-foreground text-xs font-medium">
                                                 {
                                                     selectedGroup.position
                                                         .department
@@ -991,10 +956,10 @@ function EmploymentEditDialog({
                                     )}
                                     {selectedGroup.position.division && (
                                         <div className="flex justify-between px-4 py-2">
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-muted-foreground text-xs">
                                                 Division
                                             </span>
-                                            <span className="text-xs font-medium text-foreground">
+                                            <span className="text-foreground text-xs font-medium">
                                                 {
                                                     selectedGroup.position
                                                         .division.division_name
@@ -1004,10 +969,10 @@ function EmploymentEditDialog({
                                     )}
                                     {selectedGroup.position.unit && (
                                         <div className="flex justify-between px-4 py-2">
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-muted-foreground text-xs">
                                                 Unit
                                             </span>
-                                            <span className="text-xs font-medium text-foreground">
+                                            <span className="text-foreground text-xs font-medium">
                                                 {
                                                     selectedGroup.position.unit
                                                         .unit_name
@@ -1022,7 +987,7 @@ function EmploymentEditDialog({
 
                     {field === 'date_hired' && (
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Date Hired
                             </Label>
                             <Input
@@ -1037,35 +1002,35 @@ function EmploymentEditDialog({
                     )}
                     {field === 'unit_division_department' && (
                         <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-muted-foreground text-sm">
                                 Unit, Division, and Department are determined by
                                 the assigned <strong>Position</strong>. To
                                 change them, update the Position.
                             </p>
-                            <div className="divide-y divide-border rounded-lg border border-border">
+                            <div className="border-border divide-border divide-y rounded-lg border">
                                 <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-sm text-muted-foreground">
+                                    <span className="text-muted-foreground text-sm">
                                         Unit
                                     </span>
-                                    <span className="text-sm font-medium text-foreground">
+                                    <span className="text-foreground text-sm font-medium">
                                         {employee.item?.position?.unit
                                             ?.unit_name ?? '—'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-sm text-muted-foreground">
+                                    <span className="text-muted-foreground text-sm">
                                         Division
                                     </span>
-                                    <span className="text-sm font-medium text-foreground">
+                                    <span className="text-foreground text-sm font-medium">
                                         {employee.item?.position?.division
                                             ?.division_name ?? '—'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-sm text-muted-foreground">
+                                    <span className="text-muted-foreground text-sm">
                                         Department
                                     </span>
-                                    <span className="text-sm font-medium text-foreground">
+                                    <span className="text-foreground text-sm font-medium">
                                         {employee.item?.position?.department
                                             ?.department_name ?? '—'}
                                     </span>
@@ -1075,7 +1040,7 @@ function EmploymentEditDialog({
                     )}
                     {field === 'employment_classification' && (
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Employment Classification
                             </Label>
                             <Select
@@ -1103,7 +1068,7 @@ function EmploymentEditDialog({
                     )}
                     {field === 'date_applied' && (
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Date Applied
                             </Label>
                             <Input
@@ -1119,7 +1084,7 @@ function EmploymentEditDialog({
                     {field === 'work_schedule' && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Start Time
                                 </Label>
                                 <Input
@@ -1135,7 +1100,7 @@ function EmploymentEditDialog({
                                 />
                             </div>
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     End Time
                                 </Label>
                                 <Input
@@ -1143,6 +1108,35 @@ function EmploymentEditDialog({
                                     value={form.work_schedule_end}
                                     onChange={(e) =>
                                         set('work_schedule_end', e.target.value)
+                                    }
+                                />
+                            </div>
+                        </div>
+                    )}
+                    {field === 'break_time' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                    Break Start
+                                </Label>
+                                <Input
+                                    type="time"
+                                    value={form.break_start}
+                                    onChange={(e) =>
+                                        set('break_start', e.target.value)
+                                    }
+                                    autoFocus
+                                />
+                            </div>
+                            <div>
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
+                                    Break End
+                                </Label>
+                                <Input
+                                    type="time"
+                                    value={form.break_end}
+                                    onChange={(e) =>
+                                        set('break_end', e.target.value)
                                     }
                                 />
                             </div>
@@ -1243,34 +1237,43 @@ function EmploymentDetailsTab({
                     }
                     onEdit={() => setEditField('work_schedule')}
                 />
+                <DetailCard
+                    title="Break Time"
+                    value={
+                        employee.break_start && employee.break_end
+                            ? `${employee.break_start} – ${employee.break_end}`
+                            : undefined
+                    }
+                    onEdit={() => setEditField('break_time')}
+                />
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
+                <div className="border-border border-b px-4 py-3.5 sm:px-5">
+                    <span className="text-foreground text-sm font-bold">
                         Internal Organizations
                     </span>
                 </div>
                 {orgs.length === 0 ? (
-                    <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">
+                    <div className="text-muted-foreground px-5 py-6 text-center text-sm italic">
                         Not a member of any internal organization.
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
+                    <div className="divide-border divide-y">
                         {orgs.map((org) => (
                             <div
                                 key={org.internal_organization_id}
                                 className="flex items-center gap-4 px-4 py-3 sm:px-5"
                             >
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-medium text-foreground">
+                                    <p className="text-foreground text-sm font-medium">
                                         {org.name}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-muted-foreground text-xs">
                                         {org.code}
                                     </p>
                                 </div>
-                                <Badge className="shrink-0 rounded-md border-0 bg-accent px-2.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
+                                <Badge className="bg-accent text-accent-foreground shrink-0 rounded-md border-0 px-2.5 py-0.5 text-[10px] font-semibold">
                                     {org.type}
                                 </Badge>
                             </div>
@@ -1300,9 +1303,9 @@ function CompensationTab({ employee }: { employee: Employee }) {
         <div className="space-y-4 p-3 sm:p-5">
             {/* Stack on mobile, side-by-side on md+ */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
-                    <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                        <span className="text-sm font-bold text-foreground">
+                <div className="bg-card border-border overflow-hidden rounded-xl border">
+                    <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                        <span className="text-foreground text-sm font-bold">
                             Salary Classification
                         </span>
                         <Button
@@ -1314,28 +1317,28 @@ function CompensationTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                     {sgs ? (
-                        <div className="divide-y divide-border">
+                        <div className="divide-border divide-y">
                             <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-                                <span className="text-sm text-muted-foreground">
+                                <span className="text-muted-foreground text-sm">
                                     Salary Grade
                                 </span>
-                                <span className="text-sm font-bold text-foreground">
+                                <span className="text-foreground text-sm font-bold">
                                     SG-{sgs.salary_grade}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-                                <span className="text-sm text-muted-foreground">
+                                <span className="text-muted-foreground text-sm">
                                     Step Number
                                 </span>
-                                <span className="text-sm font-bold text-foreground">
+                                <span className="text-foreground text-sm font-bold">
                                     Step {sgs.step}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-                                <span className="text-sm text-muted-foreground">
+                                <span className="text-muted-foreground text-sm">
                                     Amount
                                 </span>
-                                <span className="text-sm font-bold text-foreground">
+                                <span className="text-foreground text-sm font-bold">
                                     ₱
                                     {Number(sgs.monthly_salary).toLocaleString(
                                         'en-PH',
@@ -1345,37 +1348,37 @@ function CompensationTab({ employee }: { employee: Employee }) {
                             </div>
                         </div>
                     ) : (
-                        <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
+                        <div className="text-muted-foreground px-5 py-8 text-center text-sm italic">
                             No salary data.
                         </div>
                     )}
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
-                    <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                        <span className="text-sm font-bold text-foreground">
+                <div className="bg-card border-border overflow-hidden rounded-xl border">
+                    <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                        <span className="text-foreground text-sm font-bold">
                             Allowances
                         </span>
                     </div>
                     {allowances.length > 0 ? (
-                        <div className="divide-y divide-border">
+                        <div className="divide-border divide-y">
                             {allowances.map((a, i) => (
                                 <div
                                     key={i}
                                     className="flex items-center justify-between px-4 py-3 sm:px-5"
                                 >
-                                    <span className="text-sm text-muted-foreground">
+                                    <span className="text-muted-foreground text-sm">
                                         {a.allowance_type}
                                     </span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-foreground">
+                                        <span className="text-foreground text-sm font-bold">
                                             ₱
                                             {Number(a.amount).toLocaleString(
                                                 'en-PH',
                                                 { minimumFractionDigits: 2 },
                                             )}
                                         </span>
-                                        <Badge className="rounded-md border-0 bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-foreground">
+                                        <Badge className="bg-accent text-accent-foreground rounded-md border-0 px-2 py-0.5 text-[10px] font-semibold">
                                             Present
                                         </Badge>
                                     </div>
@@ -1383,20 +1386,20 @@ function CompensationTab({ employee }: { employee: Employee }) {
                             ))}
                         </div>
                     ) : (
-                        <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
+                        <div className="text-muted-foreground px-5 py-8 text-center text-sm italic">
                             No allowances on file.
                         </div>
                     )}
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
+                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                    <span className="text-foreground text-sm font-bold">
                         Payroll Data
                     </span>
                 </div>
-                <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
+                <div className="text-muted-foreground px-5 py-8 text-center text-sm italic">
                     No payroll data available.
                 </div>
             </div>
@@ -1480,21 +1483,21 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
     return (
         <div className="space-y-5 p-3 sm:p-5">
             {/* Leave Balances */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
+                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                    <span className="text-foreground text-sm font-bold">
                         Leave Balances
                     </span>
                     <button
                         onClick={() => openBalanceDialog()}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
                     </button>
                 </div>
                 {balances.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
+                        <p className="text-muted-foreground mb-3 text-sm italic">
                             No leave balances on file.
                         </p>
                         <Button
@@ -1510,35 +1513,35 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                     /* Horizontal scroll on small screens */
                     <div className="overflow-x-auto">
                         <div className="min-w-[480px]">
-                            <div className="grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 border-b border-border bg-muted/30 px-5 py-2.5">
+                            <div className="border-border bg-muted/30 grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 border-b px-5 py-2.5">
                                 <div className="w-5" />
-                                <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
                                     Leave Type <ChevronUp className="h-3 w-3" />
                                 </span>
-                                <span className="text-right text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-right text-xs font-semibold">
                                     Remaining
                                 </span>
-                                <span className="text-right text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-right text-xs font-semibold">
                                     Used
                                 </span>
-                                <span className="text-right text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-right text-xs font-semibold">
                                     Actions
                                 </span>
                             </div>
-                            <div className="divide-y divide-border">
+                            <div className="divide-border divide-y">
                                 {balances.map((b) => (
                                     <div
                                         key={b.id}
-                                        className="group/row grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-3 transition-colors hover:bg-muted/20"
+                                        className="hover:bg-muted/20 group/row grid grid-cols-[auto_1fr_120px_120px_80px] items-center gap-2 px-5 py-3 transition-colors"
                                     >
                                         <Checkbox className="h-4 w-4" />
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground text-sm">
                                             {b.leave_type}
                                         </span>
-                                        <span className="text-right text-sm font-medium text-foreground">
+                                        <span className="text-foreground text-right text-sm font-medium">
                                             {b.remaining}
                                         </span>
-                                        <span className="text-right text-sm font-medium text-foreground">
+                                        <span className="text-foreground text-right text-sm font-medium">
                                             {b.used}
                                         </span>
                                         <div className="flex items-center justify-end gap-1">
@@ -1570,49 +1573,49 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Leave Availments */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
+                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                    <span className="text-foreground text-sm font-bold">
                         Leave Availments
                     </span>
-                    <button className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary">
+                    <button className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors">
                         <Plus className="h-4 w-4" />
                     </button>
                 </div>
                 {availments.length === 0 ? (
-                    <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
+                    <div className="text-muted-foreground px-5 py-8 text-center text-sm italic">
                         No leave availments on record.
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[700px]">
-                            <div className="grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 border-b border-border bg-muted/30 px-5 py-2.5">
+                            <div className="border-border bg-muted/30 grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 border-b px-5 py-2.5">
                                 <div className="w-5" />
                                 <div className="w-8" />
-                                <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
                                     Leave Type <ChevronUp className="h-3 w-3" />
                                 </span>
-                                <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
                                     Leave Date <ChevronUp className="h-3 w-3" />
                                 </span>
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-semibold">
                                     Duration
                                 </span>
-                                <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
                                     Date Filed <ChevronUp className="h-3 w-3" />
                                 </span>
-                                <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
                                     Status <ChevronUp className="h-3 w-3" />
                                 </span>
                             </div>
-                            <div className="divide-y divide-border">
+                            <div className="divide-border divide-y">
                                 {availments.map((a) => (
                                     <div
                                         key={a.id}
-                                        className="grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-3 transition-colors hover:bg-muted/20"
+                                        className="hover:bg-muted/20 grid grid-cols-[auto_auto_1fr_1fr_100px_110px_100px] items-center gap-2 px-5 py-3 transition-colors"
                                     >
                                         <Checkbox className="h-4 w-4" />
-                                        <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                                        <div className="bg-muted border-border h-8 w-8 shrink-0 overflow-hidden rounded-full border">
                                             <img
                                                 src={
                                                     a.employee_avatar ??
@@ -1623,21 +1626,21 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                             />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="truncate text-sm font-medium text-foreground">
+                                            <p className="text-foreground truncate text-sm font-medium">
                                                 {a.employee_name}
                                             </p>
-                                            <p className="truncate text-xs text-muted-foreground">
+                                            <p className="text-muted-foreground truncate text-xs">
                                                 {a.leave_type}
                                             </p>
                                         </div>
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground text-sm">
                                             {fmtShort(a.leave_date_start)} —{' '}
                                             {fmtShort(a.leave_date_end)}
                                         </span>
-                                        <span className="text-sm font-medium text-foreground">
+                                        <span className="text-foreground text-sm font-medium">
                                             {a.duration} days
                                         </span>
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground text-sm">
                                             {fmtShort(a.date_filed)}
                                         </span>
                                         <Badge
@@ -1673,7 +1676,7 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Leave Type
                             </Label>
                             <Select
@@ -1706,7 +1709,7 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Remaining
                                 </Label>
                                 <Input
@@ -1722,7 +1725,7 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                                 />
                             </div>
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Used
                                 </Label>
                                 <Input
@@ -1930,19 +1933,19 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
     return (
         <div className="space-y-5 p-3 sm:p-5">
             {/* Government IDs */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
+                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                    <span className="text-foreground text-sm font-bold">
                         Government ID Numbers
                     </span>
                     <button
                         onClick={openAddCustomDialog}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
                     </button>
                 </div>
-                <div className="divide-y divide-border">
+                <div className="divide-border divide-y">
                     {STANDARD_GOV_ID_TYPES.map((type) => {
                         const key = type.toLowerCase();
                         const account = accountMap[key];
@@ -1952,10 +1955,10 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 key={type}
                                 className="flex items-center gap-2 px-4 py-3 sm:gap-4 sm:px-5"
                             >
-                                <span className="w-20 shrink-0 text-sm font-medium text-foreground sm:w-28">
+                                <span className="text-foreground w-20 shrink-0 text-sm font-medium sm:w-28">
                                     {type}
                                 </span>
-                                <span className="min-w-0 flex-1 truncate font-mono text-sm tracking-widest text-muted-foreground">
+                                <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-sm tracking-widest">
                                     {account ? (
                                         isVisible ? (
                                             account.account_number
@@ -1963,7 +1966,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                             '•'.repeat(10)
                                         )
                                     ) : (
-                                        <span className="font-sans text-xs tracking-normal text-muted-foreground/40 italic">
+                                        <span className="text-muted-foreground/40 font-sans text-xs italic tracking-normal">
                                             Not provided
                                         </span>
                                     )}
@@ -1975,7 +1978,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                                 onClick={() =>
                                                     toggleVisibility(key)
                                                 }
-                                                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                                                className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                                             >
                                                 {isVisible ? (
                                                     <EyeOff className="h-3.5 w-3.5" />
@@ -2026,10 +2029,10 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 key={account.government_account_id}
                                 className="flex items-center gap-2 px-4 py-3 sm:gap-4 sm:px-5"
                             >
-                                <span className="w-20 shrink-0 text-sm font-medium text-foreground sm:w-28">
+                                <span className="text-foreground w-20 shrink-0 text-sm font-medium sm:w-28">
                                     {account.account_type}
                                 </span>
-                                <span className="min-w-0 flex-1 truncate font-mono text-sm tracking-widest text-muted-foreground">
+                                <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-sm tracking-widest">
                                     {isVisible
                                         ? account.account_number
                                         : '•'.repeat(10)}
@@ -2037,7 +2040,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                 <div className="flex shrink-0 items-center gap-1">
                                     <button
                                         onClick={() => toggleVisibility(key)}
-                                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                                     >
                                         {isVisible ? (
                                             <EyeOff className="h-3.5 w-3.5" />
@@ -2065,21 +2068,21 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Eligibility */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
+                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                    <span className="text-foreground text-sm font-bold">
                         Eligibility and Credentials
                     </span>
                     <button
                         onClick={() => openEligDialog()}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
                     </button>
                 </div>
                 {eligibilities.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
+                        <p className="text-muted-foreground mb-3 text-sm italic">
                             No eligibility records on file.
                         </p>
                         <Button
@@ -2095,16 +2098,16 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[480px]">
-                            <div className="divide-y divide-border">
+                            <div className="divide-border divide-y">
                                 {eligibilities.map((e) => (
                                     <div
                                         key={e.eligibility_information_id}
                                         className="flex items-center gap-4 px-5 py-3"
                                     >
-                                        <span className="flex-1 text-sm font-medium text-foreground">
+                                        <span className="text-foreground flex-1 text-sm font-medium">
                                             {e.eligibility_name}
                                         </span>
-                                        <span className="w-36 shrink-0 text-right text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground w-36 shrink-0 text-right text-sm">
                                             {e.year_passed
                                                 ? fmt(e.year_passed)
                                                 : '—'}
@@ -2144,7 +2147,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     <div className="space-y-3 py-2">
                         {govDialog.mode === 'custom' && !govDialog.id && (
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     ID Type / Name
                                 </Label>
                                 <Input
@@ -2161,7 +2164,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                             </div>
                         )}
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Account / ID Number
                             </Label>
                             <Input
@@ -2218,7 +2221,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Eligibility Name
                             </Label>
                             <Input
@@ -2234,7 +2237,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                             />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Year Passed
                             </Label>
                             <Input
@@ -2578,22 +2581,21 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     return (
         <div className="space-y-5 p-3 sm:p-5">
             {/* Family Information */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
+                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                    <span className="text-foreground text-sm font-bold">
                         Family Information
                     </span>
                     <button
                         onClick={() => openFamilyDialog()}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
                     </button>
                 </div>
-
                 {familyMembers.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
+                        <p className="text-muted-foreground mb-3 text-sm italic">
                             No family information on file.
                         </p>
                         <Button
@@ -2608,53 +2610,53 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[640px]">
-                            <div className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 border-b border-border bg-muted/30 px-5 py-2.5">
+                            <div className="border-border bg-muted/30 grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 border-b px-5 py-2.5">
                                 <div className="w-4" />
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-semibold">
                                     Full Name
                                 </span>
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-semibold">
                                     Relationship
                                 </span>
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-semibold">
                                     Sex
                                 </span>
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-semibold">
                                     Date of Birth
                                 </span>
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-semibold">
                                     Place of Birth
                                 </span>
-                                <span className="text-right text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-right text-xs font-semibold">
                                     Actions
                                 </span>
                             </div>
-                            <div className="divide-y divide-border">
+                            <div className="divide-border divide-y">
                                 {familyMembers.map((member, i) => (
                                     <div
                                         key={i}
-                                        className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
+                                        className="hover:bg-muted/20 grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-3 transition-colors"
                                     >
                                         <Checkbox className="h-4 w-4" />
-                                        <span className="truncate text-sm font-medium text-foreground">
+                                        <span className="text-foreground truncate text-sm font-medium">
                                             {member.full_name}
                                         </span>
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground text-sm">
                                             {member.relationship ?? '—'}
                                         </span>
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground text-sm">
                                             {member.sex !== undefined
                                                 ? member.sex
                                                     ? 'Male'
                                                     : 'Female'
                                                 : '—'}
                                         </span>
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground text-sm">
                                             {member.date_of_birth
                                                 ? fmtShort(member.date_of_birth)
                                                 : '—'}
                                         </span>
-                                        <span className="truncate text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground truncate text-sm">
                                             {member.place_of_birth ?? '—'}
                                         </span>
                                         <div className="flex items-center justify-end gap-1">
@@ -2670,7 +2672,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button
                                                 variant="ghost"
                                                 size="icon-xs"
-                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 onClick={() =>
                                                     setDeleteFamilyIndex(i)
                                                 }
@@ -2687,21 +2689,21 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Educational Background */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
+                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                    <span className="text-foreground text-sm font-bold">
                         Educational Background
                     </span>
                     <button
                         onClick={() => openEducDialog()}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
                     </button>
                 </div>
                 {educations.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
+                        <p className="text-muted-foreground mb-3 text-sm italic">
                             No educational records on file.
                         </p>
                         <Button
@@ -2719,32 +2721,32 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             {Object.entries(educByLevel).map(
                                 ([level, edus]) => (
                                     <div key={level}>
-                                        <div className="border-y border-border bg-muted/30 px-5 py-2">
-                                            <span className="text-xs font-semibold text-muted-foreground">
+                                        <div className="bg-muted/30 border-border border-y px-5 py-2">
+                                            <span className="text-muted-foreground text-xs font-semibold">
                                                 {level}
                                             </span>
                                         </div>
-                                        <div className="divide-y divide-border">
+                                        <div className="divide-border divide-y">
                                             {edus.map((edu, i) => {
                                                 const globalIndex =
                                                     educations.indexOf(edu);
                                                 return (
                                                     <div
                                                         key={i}
-                                                        className="grid grid-cols-[auto_1fr_1fr_1fr_80px_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
+                                                        className="hover:bg-muted/20 grid grid-cols-[auto_1fr_1fr_1fr_80px_80px] items-center gap-3 px-5 py-3 transition-colors"
                                                     >
                                                         <Checkbox className="h-4 w-4" />
-                                                        <span className="text-sm font-medium text-foreground">
+                                                        <span className="text-foreground text-sm font-medium">
                                                             {edu.school_name}
                                                         </span>
-                                                        <span className="text-sm text-muted-foreground">
+                                                        <span className="text-muted-foreground text-sm">
                                                             {edu.school_address ??
                                                                 '—'}
                                                         </span>
-                                                        <span className="text-sm text-muted-foreground">
+                                                        <span className="text-muted-foreground text-sm">
                                                             {edu.degree ?? '—'}
                                                         </span>
-                                                        <span className="text-right text-sm text-muted-foreground">
+                                                        <span className="text-muted-foreground text-right text-sm">
                                                             {edu.graduation_date
                                                                 ? new Date(
                                                                       edu.graduation_date,
@@ -2767,7 +2769,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon-xs"
-                                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                                 onClick={() =>
                                                                     setDeleteEducIndex(
                                                                         globalIndex,
@@ -2790,21 +2792,21 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Seminars and Trainings */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
+                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                    <span className="text-foreground text-sm font-bold">
                         Seminars and Trainings
                     </span>
                     <button
                         onClick={() => openSeminarDialog()}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
                     </button>
                 </div>
                 {seminars.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
+                        <p className="text-muted-foreground mb-3 text-sm italic">
                             No seminars or trainings on file.
                         </p>
                         <Button
@@ -2819,35 +2821,35 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[520px]">
-                            <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 border-b border-border bg-muted/30 px-5 py-2.5">
+                            <div className="border-border bg-muted/30 grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 border-b px-5 py-2.5">
                                 <div className="w-4" />
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-semibold">
                                     Seminar / Training
                                 </span>
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-semibold">
                                     Organizer
                                 </span>
-                                <span className="text-right text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-right text-xs font-semibold">
                                     Date Attended
                                 </span>
-                                <span className="text-right text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-right text-xs font-semibold">
                                     Actions
                                 </span>
                             </div>
-                            <div className="divide-y divide-border">
+                            <div className="divide-border divide-y">
                                 {seminars.map((s) => (
                                     <div
                                         key={s.id}
-                                        className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
+                                        className="hover:bg-muted/20 grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 transition-colors"
                                     >
                                         <Checkbox className="h-4 w-4" />
-                                        <span className="text-sm font-medium text-foreground">
+                                        <span className="text-foreground text-sm font-medium">
                                             {s.seminar_name}
                                         </span>
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground text-sm">
                                             {s.venue ?? '—'}
                                         </span>
-                                        <span className="text-right text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground text-right text-sm">
                                             {fmtShort(s.date_attended)}
                                         </span>
                                         <div className="flex items-center justify-end gap-1">
@@ -2863,7 +2865,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button
                                                 variant="ghost"
                                                 size="icon-xs"
-                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 onClick={() =>
                                                     setDeleteSeminarId(s.id)
                                                 }
@@ -2880,21 +2882,21 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Service Records */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
+                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+                    <span className="text-foreground text-sm font-bold">
                         Service Records
                     </span>
                     <button
                         onClick={() => openServiceDialog()}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                        className="hover:bg-accent text-muted-foreground hover:text-primary flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
                     >
                         <Plus className="h-4 w-4" />
                     </button>
                 </div>
                 {serviceRecs.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
+                        <p className="text-muted-foreground mb-3 text-sm italic">
                             No service records on file.
                         </p>
                         <Button
@@ -2909,35 +2911,35 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[480px]">
-                            <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 border-b border-border bg-muted/30 px-5 py-2.5">
+                            <div className="border-border bg-muted/30 grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 border-b px-5 py-2.5">
                                 <div className="w-4" />
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-semibold">
                                     Position
                                 </span>
-                                <span className="text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-semibold">
                                     Department
                                 </span>
-                                <span className="text-right text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-right text-xs font-semibold">
                                     Duration
                                 </span>
-                                <span className="text-right text-xs font-semibold text-muted-foreground">
+                                <span className="text-muted-foreground text-right text-xs font-semibold">
                                     Actions
                                 </span>
                             </div>
-                            <div className="divide-y divide-border">
+                            <div className="divide-border divide-y">
                                 {serviceRecs.map((s) => (
                                     <div
                                         key={s.id}
-                                        className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
+                                        className="hover:bg-muted/20 grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 transition-colors"
                                     >
                                         <Checkbox className="h-4 w-4" />
-                                        <span className="text-sm font-medium text-foreground">
+                                        <span className="text-foreground text-sm font-medium">
                                             {s.position_name}
                                         </span>
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground text-sm">
                                             {s.department_name ?? '—'}
                                         </span>
-                                        <span className="text-right text-sm text-muted-foreground">
+                                        <span className="text-muted-foreground text-right text-sm">
                                             {s.year_start && s.year_end
                                                 ? `${s.year_start}–${s.year_end}`
                                                 : (s.year_start ?? '—')}
@@ -2955,7 +2957,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button
                                                 variant="ghost"
                                                 size="icon-xs"
-                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 onClick={() =>
                                                     setDeleteServiceId(s.id)
                                                 }
@@ -2987,7 +2989,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Full Name *
                             </Label>
                             <Input
@@ -3003,7 +3005,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Relationship
                                 </Label>
                                 <Select
@@ -3035,7 +3037,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 </Select>
                             </div>
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Sex
                                 </Label>
                                 <Select
@@ -3061,7 +3063,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Date of Birth
                                 </Label>
                                 <Input
@@ -3076,7 +3078,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 />
                             </div>
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Contact Number
                                 </Label>
                                 <Input
@@ -3092,7 +3094,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             </div>
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Place of Birth
                             </Label>
                             <Input
@@ -3140,7 +3142,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Education Level
                             </Label>
                             <Select
@@ -3170,7 +3172,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             </Select>
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 School Name *
                             </Label>
                             <Input
@@ -3185,7 +3187,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 School Address
                             </Label>
                             <Input
@@ -3200,7 +3202,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Degree / Course
                                 </Label>
                                 <Input
@@ -3214,7 +3216,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 />
                             </div>
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Graduation Date
                                 </Label>
                                 <Input
@@ -3265,7 +3267,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Seminar / Training Name *
                             </Label>
                             <Input
@@ -3280,7 +3282,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Organizer
                             </Label>
                             <Input
@@ -3288,13 +3290,13 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 onChange={(e) =>
                                     setSeminarDialog((p) => ({
                                         ...p,
-                                        organizer: e.target.value,
+                                        venue: e.target.value,
                                     }))
                                 }
                             />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Date Attended
                             </Label>
                             <Input
@@ -3343,7 +3345,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Position Name *
                             </Label>
                             <Input
@@ -3358,7 +3360,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                            <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                 Department
                             </Label>
                             <Input
@@ -3373,7 +3375,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Year Start
                                 </Label>
                                 <Input
@@ -3391,7 +3393,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 />
                             </div>
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
+                                <Label className="text-muted-foreground mb-1.5 block text-xs uppercase tracking-widest">
                                     Year End
                                 </Label>
                                 <Input
@@ -3621,15 +3623,15 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 
     return (
         <div className="space-y-4 p-3 sm:p-5">
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="bg-card border-border overflow-hidden rounded-xl border">
                 {/* ── Header ── */}
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+                <div className="border-border flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-foreground">
+                        <span className="text-foreground text-sm font-bold">
                             Uploaded Files
                         </span>
                         {uploadedFiles.length > 0 && (
-                            <Badge className="rounded-full border-0 bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-foreground">
+                            <Badge className="bg-accent text-accent-foreground rounded-full border-0 px-2 py-0.5 text-[10px] font-semibold">
                                 {uploadedFiles.length}
                             </Badge>
                         )}
@@ -3637,7 +3639,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
-                        className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="text-primary bg-primary/10 hover:bg-primary/20 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                         title="Upload file"
                     >
                         <Upload className="h-3.5 w-3.5" />
@@ -3653,16 +3655,16 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 
                 {/* ── Upload error ── */}
                 {uploadError && (
-                    <div className="mx-4 mt-3 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 sm:mx-5">
-                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <div className="bg-destructive/10 border-destructive/20 mx-4 mt-3 flex items-start gap-2.5 rounded-lg border px-4 py-3 sm:mx-5">
+                        <XCircle className="text-destructive mt-0.5 h-4 w-4 shrink-0" />
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm leading-snug text-destructive">
+                            <p className="text-destructive text-sm leading-snug">
                                 {uploadError}
                             </p>
                         </div>
                         <button
                             onClick={() => setUploadError(null)}
-                            className="shrink-0 text-destructive/60 transition-colors hover:text-destructive"
+                            className="text-destructive/60 hover:text-destructive shrink-0 transition-colors"
                         >
                             <XCircle className="h-3.5 w-3.5" />
                         </button>
@@ -3670,8 +3672,8 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                 )}
 
                 {/* ── Size hint ── */}
-                <div className="border-b border-border bg-muted/20 px-4 py-2 sm:px-5">
-                    <p className="text-[11px] text-muted-foreground">
+                <div className="border-border bg-muted/20 border-b px-4 py-2 sm:px-5">
+                    <p className="text-muted-foreground text-[11px]">
                         Maximum file size:{' '}
                         <span className="font-semibold">25 MB</span>. All file
                         types accepted.
@@ -3681,13 +3683,13 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                 {/* ── Empty state ── */}
                 {uploadedFiles.length === 0 ? (
                     <div className="px-5 py-14 text-center">
-                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-                            <FolderOpen className="h-7 w-7 text-muted-foreground/30" />
+                        <div className="bg-muted mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
+                            <FolderOpen className="text-muted-foreground/30 h-7 w-7" />
                         </div>
-                        <p className="mb-1 text-sm font-medium text-foreground">
+                        <p className="text-foreground mb-1 text-sm font-medium">
                             No files uploaded yet
                         </p>
-                        <p className="mb-4 text-xs text-muted-foreground">
+                        <p className="text-muted-foreground mb-4 text-xs">
                             Upload documents, certificates, or any relevant
                             files.
                         </p>
@@ -3702,7 +3704,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                     </div>
                 ) : (
                     /* ── File list ── */
-                    <div className="divide-y divide-border">
+                    <div className="divide-border divide-y">
                         {uploadedFiles.map((file) => {
                             const { icon, color, bg } = getFileIcon(
                                 file.file_name,
@@ -3711,7 +3713,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                             return (
                                 <div
                                     key={file.id}
-                                    className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/20 sm:px-5"
+                                    className="hover:bg-muted/20 group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors sm:px-5"
                                     onClick={() =>
                                         canView
                                             ? setViewFile(file)
@@ -3734,10 +3736,10 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 
                                     {/* File info — takes all remaining space */}
                                     <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm leading-snug font-medium text-foreground">
+                                        <p className="text-foreground truncate text-sm font-medium leading-snug">
                                             {file.file_name}
                                         </p>
-                                        <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+                                        <p className="text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 text-xs">
                                             <span>
                                                 {formatBytes(file.file_size)}
                                             </span>
@@ -3749,7 +3751,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                             </span>
                                         </p>
                                         {/* Date shown below name on mobile */}
-                                        <p className="mt-0.5 text-xs text-muted-foreground sm:hidden">
+                                        <p className="text-muted-foreground mt-0.5 text-xs sm:hidden">
                                             {fmtShort(file.created_at)}
                                         </p>
                                     </div>
@@ -3770,7 +3772,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                                     variant="ghost"
                                                     size="icon-xs"
                                                     title="Download"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-primary sm:h-7 sm:w-7"
+                                                    className="text-muted-foreground hover:text-primary h-8 w-8 sm:h-7 sm:w-7"
                                                 >
                                                     <Download className="h-3.5 w-3.5" />
                                                 </Button>
@@ -3779,7 +3781,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                         <Button
                                             variant="ghost"
                                             size="icon-xs"
-                                            className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:h-7 sm:w-7"
+                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8 sm:h-7 sm:w-7"
                                             onClick={() =>
                                                 setDeleteFileId(file.id)
                                             }
@@ -3801,7 +3803,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                 onOpenChange={(o) => !o && setViewFile(null)}
             >
                 <DialogContent className="max-h-[90vh] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-3xl">
-                    <DialogHeader className="flex shrink-0 flex-row items-center justify-between border-b border-border px-5 py-4">
+                    <DialogHeader className="border-border flex shrink-0 flex-row items-center justify-between border-b px-5 py-4">
                         <div className="flex min-w-0 items-center gap-3">
                             {viewFile &&
                                 (() => {
@@ -3824,7 +3826,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                 <DialogTitle className="truncate text-sm font-bold">
                                     {viewFile?.file_name}
                                 </DialogTitle>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-muted-foreground text-xs">
                                     {viewFile
                                         ? formatBytes(viewFile.file_size)
                                         : ''}{' '}
@@ -3836,7 +3838,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 
                     {/* Preview body */}
                     <div
-                        className="min-h-0 flex-1 overflow-auto bg-muted/30"
+                        className="bg-muted/30 min-h-0 flex-1 overflow-auto"
                         style={{ maxHeight: 'calc(90vh - 80px)' }}
                     >
                         {viewFile && isImage(viewFile.file_name) && (
@@ -3862,7 +3864,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                 <div className="p-6">
                                     <iframe
                                         src={viewFile.file_url}
-                                        className="min-h-96 w-full rounded-xl border border-border bg-card"
+                                        className="border-border bg-card min-h-96 w-full rounded-xl border"
                                         title={viewFile.file_name}
                                     />
                                 </div>
@@ -3881,7 +3883,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                         <AlertDialogTitle>Delete File?</AlertDialogTitle>
                         <AlertDialogDescription>
                             This will permanently delete{' '}
-                            <span className="font-semibold text-foreground">
+                            <span className="text-foreground font-semibold">
                                 {
                                     uploadedFiles.find(
                                         (f) => f.id === deleteFileId,
@@ -3921,16 +3923,16 @@ function AvatarPreviewDialog({
 }) {
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="gap-0 overflow-hidden rounded-2xl border border-border p-0 shadow-2xl sm:max-w-xs">
-                <div className="relative flex flex-col items-center overflow-hidden rounded-2xl bg-card">
+            <DialogContent className="border-border gap-0 overflow-hidden rounded-2xl border p-0 shadow-2xl sm:max-w-xs">
+                <div className="bg-card relative flex flex-col items-center overflow-hidden rounded-2xl">
                     <img
                         src={src}
                         alt={name}
                         className="aspect-square w-full object-cover"
                     />
                     {name && (
-                        <div className="w-full border-t border-border bg-card px-5 py-3.5">
-                            <p className="text-center text-sm font-semibold text-foreground">
+                        <div className="border-border bg-card w-full border-t px-5 py-3.5">
+                            <p className="text-foreground text-center text-sm font-semibold">
                                 {name}
                             </p>
                         </div>
@@ -4104,7 +4106,7 @@ function AvatarUploadDialog({
     return (
         <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
             <DialogContent className="gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-sm">
-                <DialogHeader className="border-b border-border px-5 pt-5 pb-3">
+                <DialogHeader className="border-border border-b px-5 pb-3 pt-5">
                     <DialogTitle className="text-base font-bold">
                         {mode === 'camera'
                             ? 'Take a Photo'
@@ -4117,38 +4119,38 @@ function AvatarUploadDialog({
                 {/* ── Choose mode ── */}
                 {mode === 'choose' && (
                     <div className="space-y-4 px-5 py-5">
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground text-sm">
                             Choose how you'd like to update your profile photo.
                         </p>
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 onClick={() => fileInputRef.current?.click()}
-                                className="group flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-border p-5 transition-all hover:border-primary/50 hover:bg-accent/40"
+                                className="border-border hover:border-primary/50 hover:bg-accent/40 group flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all"
                             >
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 transition-colors group-hover:bg-primary/20">
-                                    <Upload className="h-5 w-5 text-primary" />
+                                <div className="bg-primary/10 group-hover:bg-primary/20 flex h-12 w-12 items-center justify-center rounded-full transition-colors">
+                                    <Upload className="text-primary h-5 w-5" />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-sm font-semibold text-foreground">
+                                    <p className="text-foreground text-sm font-semibold">
                                         Select Image
                                     </p>
-                                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                                    <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
                                         Choose from device
                                     </p>
                                 </div>
                             </button>
                             <button
                                 onClick={startCamera}
-                                className="group flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-border p-5 transition-all hover:border-primary/50 hover:bg-accent/40"
+                                className="border-border hover:border-primary/50 hover:bg-accent/40 group flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all"
                             >
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 transition-colors group-hover:bg-primary/20">
-                                    <Camera className="h-5 w-5 text-primary" />
+                                <div className="bg-primary/10 group-hover:bg-primary/20 flex h-12 w-12 items-center justify-center rounded-full transition-colors">
+                                    <Camera className="text-primary h-5 w-5" />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-sm font-semibold text-foreground">
+                                    <p className="text-foreground text-sm font-semibold">
                                         Take a Photo
                                     </p>
-                                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                                    <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
                                         Use your camera
                                     </p>
                                 </div>
@@ -4162,9 +4164,9 @@ function AvatarUploadDialog({
                             onChange={handleFileChange}
                         />
                         {fileError && (
-                            <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3">
-                                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                                <p className="text-sm leading-snug text-destructive">
+                            <div className="bg-destructive/10 border-destructive/20 flex items-start gap-2.5 rounded-lg border px-4 py-3">
+                                <XCircle className="text-destructive mt-0.5 h-4 w-4 shrink-0" />
+                                <p className="text-destructive text-sm leading-snug">
                                     {fileError}
                                 </p>
                             </div>
@@ -4176,11 +4178,11 @@ function AvatarUploadDialog({
                 {mode === 'camera' && (
                     <div className="space-y-4 px-5 py-5">
                         {cameraError ? (
-                            <div className="space-y-3 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-center">
-                                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
-                                    <XCircle className="h-5 w-5 text-destructive" />
+                            <div className="bg-destructive/10 border-destructive/20 space-y-3 rounded-xl border p-4 text-center">
+                                <div className="bg-destructive/10 mx-auto flex h-10 w-10 items-center justify-center rounded-full">
+                                    <XCircle className="text-destructive h-5 w-5" />
                                 </div>
-                                <p className="text-sm leading-snug text-destructive">
+                                <p className="text-destructive text-sm leading-snug">
                                     {cameraError}
                                 </p>
                             </div>
@@ -4194,9 +4196,9 @@ function AvatarUploadDialog({
                                     className="h-full w-full scale-x-[-1] object-cover"
                                 />
                                 {!cameraReady && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted">
-                                        <Camera className="h-8 w-8 animate-pulse text-muted-foreground/30" />
-                                        <p className="animate-pulse text-xs text-muted-foreground">
+                                    <div className="bg-muted absolute inset-0 flex flex-col items-center justify-center gap-2">
+                                        <Camera className="text-muted-foreground/30 h-8 w-8 animate-pulse" />
+                                        <p className="text-muted-foreground animate-pulse text-xs">
                                             Starting camera…
                                         </p>
                                     </div>
@@ -4254,10 +4256,10 @@ function AvatarUploadDialog({
                         {/* Zoom slider */}
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                                <span className="text-xs font-medium text-muted-foreground">
+                                <span className="text-muted-foreground text-xs font-medium">
                                     Zoom
                                 </span>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-muted-foreground text-xs">
                                     {zoom.toFixed(1)}×
                                 </span>
                             </div>
@@ -4270,7 +4272,7 @@ function AvatarUploadDialog({
                                 onChange={(e) =>
                                     setZoom(Number(e.target.value))
                                 }
-                                className="w-full cursor-pointer accent-primary"
+                                className="accent-primary w-full cursor-pointer"
                             />
                         </div>
                         <div className="flex gap-2.5">
@@ -4350,11 +4352,11 @@ export default function ShowEmployee({ employee, items }: Props) {
              * Outer wrapper: stacks vertically on mobile, side-by-side on lg+
              * p-3 on mobile, p-5 on sm+
              */}
-            <div className="flex min-h-full flex-col gap-4 bg-background p-3 sm:p-5 lg:flex-row lg:gap-5">
+            <div className="bg-background flex min-h-full flex-col gap-4 p-3 sm:p-5 lg:flex-row lg:gap-5">
                 {/* ── Left Panel ── full-width on mobile, fixed 288px on lg+ */}
-                <div className="flex w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:w-72">
-                    <div className="relative flex flex-col items-center border-b border-border bg-gradient-to-b from-accent/30 to-card px-5 pt-8 pb-5">
-                        <div className="absolute top-3 right-3">
+                <div className="bg-card border-border flex w-full shrink-0 flex-col overflow-hidden rounded-2xl border shadow-sm lg:w-72">
+                    <div className="from-accent/30 to-card border-border relative flex flex-col items-center border-b bg-gradient-to-b px-5 pb-5 pt-8">
+                        <div className="absolute right-3 top-3">
                             <Button
                                 size={'icon-xs'}
                                 onClick={() => setBasicEditOpen(true)}
@@ -4366,7 +4368,7 @@ export default function ShowEmployee({ employee, items }: Props) {
                         <div className="relative">
                             <button
                                 onClick={() => setAvatarPreviewOpen(true)}
-                                className="h-24 w-24 cursor-pointer overflow-hidden rounded-full border-4 border-card bg-muted shadow-lg ring-2 ring-primary/20 transition-all hover:ring-primary/50"
+                                className="bg-muted border-card ring-primary/20 hover:ring-primary/50 h-24 w-24 cursor-pointer overflow-hidden rounded-full border-4 shadow-lg ring-2 transition-all"
                                 title="View photo"
                             >
                                 <img
@@ -4378,16 +4380,16 @@ export default function ShowEmployee({ employee, items }: Props) {
                             <button
                                 onClick={() => setAvatarUploadOpen(true)}
                                 title="Change photo"
-                                className="absolute -right-1 -bottom-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground shadow-md transition-opacity hover:opacity-90"
+                                className="bg-primary text-primary-foreground border-card absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-md transition-opacity hover:opacity-90"
                             >
                                 <Camera className="h-3 w-3" />
                             </button>
                         </div>
                         <div className="mt-4 text-center">
-                            <h1 className="text-base leading-tight font-bold text-foreground">
+                            <h1 className="text-foreground text-base font-bold leading-tight">
                                 {basic?.full_name ?? '—'}
                             </h1>
-                            <p className="mt-0.5 text-xs font-semibold text-primary">
+                            <p className="text-primary mt-0.5 text-xs font-semibold">
                                 {position?.position_name ??
                                     'No Position Assigned'}
                             </p>
@@ -4405,7 +4407,7 @@ export default function ShowEmployee({ employee, items }: Props) {
                      * On lg+ they revert to a single-column stacked list.
                      */}
                     <div className="flex-1 overflow-y-auto px-4 py-3">
-                        <p className="mb-1 text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                        <p className="text-muted-foreground mb-1 text-[10px] font-bold uppercase tracking-widest">
                             Basic Information
                         </p>
                         <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 lg:grid-cols-1">
@@ -4418,6 +4420,11 @@ export default function ShowEmployee({ employee, items }: Props) {
                                 icon={Mail}
                                 label="Personal Email"
                                 value={basic?.personal_email}
+                            />
+                            <InfoRow
+                                icon={Briefcase}
+                                label="Work ID"
+                                value={employee.work_id}
                             />
                             <InfoRow
                                 icon={Phone}
@@ -4460,23 +4467,23 @@ export default function ShowEmployee({ employee, items }: Props) {
                 </div>
 
                 {/* ── Right Panel ── takes remaining width, min-w-0 prevents overflow */}
-                <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                <div className="bg-card border-border flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border shadow-sm">
                     <Tabs
                         defaultValue="employment"
                         className="flex flex-1 flex-col"
                     >
                         {/* Horizontally scrollable tab bar on all screen sizes */}
-                        <div className="shrink-0 overflow-x-auto border-b border-border px-2 pt-1 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
+                        <div className="border-border shrink-0 overflow-x-auto border-b px-2 pt-1 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
                             <TabsList className="flex h-auto w-max min-w-full flex-nowrap gap-0 bg-transparent p-0">
                                 {tabs.map(({ value, label, icon: Icon }) => (
                                     <TabsTrigger
                                         key={value}
                                         value={value}
-                                        className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
+                                        className="text-muted-foreground data-[state=active]:border-b-primary data-[state=active]:text-primary hover:text-foreground relative flex items-center gap-1.5 whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold transition-colors data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-4"
                                     >
                                         <Icon className="h-3.5 w-3.5 shrink-0" />
                                         {/* Hide label text on very small screens, show icon only */}
-                                        <span className="hidden xs:inline sm:inline">
+                                        <span className="xs:inline hidden sm:inline">
                                             {label}
                                         </span>
                                     </TabsTrigger>
@@ -4510,8 +4517,8 @@ export default function ShowEmployee({ employee, items }: Props) {
                             className="mt-0 flex-1 overflow-y-auto"
                         >
                             <div className="flex h-64 flex-col items-center justify-center gap-3">
-                                <Clock className="h-10 w-10 text-muted-foreground/30" />
-                                <p className="text-sm text-muted-foreground italic">
+                                <Clock className="text-muted-foreground/30 h-10 w-10" />
+                                <p className="text-muted-foreground text-sm italic">
                                     Time records coming soon.
                                 </p>
                             </div>

@@ -246,6 +246,27 @@ export function getColumns({
             // no mobileCard — rendered inside is_paid card above
         },
 
+        // is accrual
+        {
+            accessorKey: 'is_accrual',
+            filterFn: (row, columnId, filterValues: boolean[]) =>
+                filterValues.includes(Boolean(row.getValue(columnId))),
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Accrual" />
+            ),
+            cell: ({ row }) => {
+                const isConvertible = row.getValue('is_accrual') as boolean;
+                return (
+                    <Badge variant={isConvertible ? 'default' : 'destructive'}>
+                        {isConvertible ? 'Accrual' : 'Not Accrual'}
+                    </Badge>
+                );
+            },
+            enableSorting: true,
+            enableHiding: true,
+            // no mobileCard — rendered inside is_paid card above
+        },
+
         // status
         {
             accessorKey: 'status',

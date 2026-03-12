@@ -8,6 +8,8 @@ class Holiday extends Model
 {
     protected $primaryKey = 'holiday_id';
 
+    protected $table = 'holidays';
+
     protected $fillable = [
         'name',
         'date',
@@ -17,7 +19,7 @@ class Holiday extends Model
     ];
 
     protected $casts = [
-        'date'         => 'date',
+        'date' => 'date',
         'is_recurring' => 'boolean',
     ];
-}   
+}

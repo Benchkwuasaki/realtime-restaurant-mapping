@@ -88,11 +88,11 @@ class InternalOrganizationSeeder extends Seeder
             foreach ($services as $service) {
                 InternalOrganizationService::updateOrCreate(
                     [
-                        'internal_organization_id'           => $org->internal_organization_id,
+                        'internal_organization_id' => $org->internal_organization_id,
                         'internal_organization_service_name' => $service['name'],
                     ],
                     [
-                        'service_category'        => $service['category'],
+                        'service_category' => $service['category'],
                         'deductable_from_payroll' => $service['deductable_from_payroll'],
                     ]
                 );
