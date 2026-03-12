@@ -330,7 +330,7 @@ function MobileIncomingCard({ row }: { row: IncomingRow }) {
                 </div>
                 <div className="flex items-center justify-between pl-3.5 text-xs text-muted-foreground">
                     <span>From: <span className="font-medium text-foreground">{row.from_office?.acronym ?? "—"}</span></span>
-                    <span>{row.days_stayed}</span>
+                    <span>{row.elapsed_time}</span>
                 </div>
             </div>
 
@@ -427,10 +427,10 @@ export function getColumns(): DataTableColumnDef<IncomingRow>[] {
             filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
         },
         {
-            accessorKey: "days_stayed",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Days Stayed" />,
+            accessorKey: "elapsed_time",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Elapsed Time" />,
             cell: ({ row }) => (
-                <span className="text-sm tabular-nums text-muted-foreground">{row.original.days_stayed}</span>
+                <span className="text-sm tabular-nums text-muted-foreground">{row.original.elapsed_time}</span>
             ),
             enableSorting: false,
         },

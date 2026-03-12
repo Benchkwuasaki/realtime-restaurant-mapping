@@ -26,8 +26,6 @@ class DocumentTracking extends Model
         'current_holder_received_at' => 'datetime',
     ];
 
-    // ── Relationships ─────────────────────────────────────────────────────────
-
     public function originOffice(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'origin_office_id', 'department_id');
@@ -49,18 +47,12 @@ class DocumentTracking extends Model
             ->orderBy('acted_at');
     }
 
-    /**
-     * The most recent forward/return action — used to derive the "from office"
-     * column on the Incoming table (who sent it to us).
-     */
     public function latestForwardAction(): HasOne
     {
         return $this->hasOne(DocumentTrackingAction::class, 'document_tracking_id', 'document_tracking_id')
             ->whereIn('action', ['forwarded', 'returned'])
             ->orderByDesc('acted_at');
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     public function isActive(): bool
     {
@@ -72,33 +64,49 @@ class DocumentTracking extends Model
         return in_array($this->status, ['completed', 'cancelled']);
     }
 
-    /**
-     * Human-readable days stayed string for the current holder.
-     *
-     * Rules:
-     *   pending_receipt              → "Awaiting receipt"
-     *   completed or cancelled       → "—"
-     *   received, has timestamp      → "X days" / "Today"
-     */
-    public function getDaysStayed(): string
+    public function getElapsedTime(): string
     {
         if ($this->office_status === 'pending_receipt') {
             return 'Awaiting receipt';
         }
 
         if ($this->isArchived()) {
-            return '—';
+            return '-';
         }
 
         if (! $this->current_holder_received_at) {
-            return '—';
+            return '-';
         }
 
-        $days = (int) now()->diffInDays($this->current_holder_received_at);
+        $totalMinutes = max(0, (int) $this->current_holder_received_at->diffInMinutes(now()));
+        $days = intdiv($totalMinutes, 1440);
+        $hours = intdiv($totalMinutes % 1440, 60);
+        $minutes = $totalMinutes % 60;
 
-        if ($days === 0) return 'Today';
-        if ($days === 1) return '1 day';
+        if ($totalMinutes < 1) {
+            return 'Just now';
+        }
 
-        return "{$days} days";
+        if ($days > 0) {
+            $label = $days === 1 ? '1 day' : "{$days} days";
+
+            if ($hours > 0) {
+                $label .= $hours === 1 ? ', 1 hour' : ", {$hours} hours";
+            }
+
+            return $label;
+        }
+
+        if ($hours > 0) {
+            $label = $hours === 1 ? '1 hour' : "{$hours} hours";
+
+            if ($minutes > 0) {
+                $label .= $minutes === 1 ? ', 1 min' : ", {$minutes} mins";
+            }
+
+            return $label;
+        }
+
+        return $minutes === 1 ? '1 min' : "{$minutes} mins";
     }
 }

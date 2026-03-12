@@ -45,7 +45,7 @@ class DocumentTrackingOutgoingController extends Controller
                 : null,
             'status'           => $doc->status,
             'office_status'    => $doc->office_status,
-            'days_stayed'      => $doc->getDaysStayed(),
+            'elapsed_time'     => $doc->getElapsedTime(),
             'origin_office_id' => $doc->origin_office_id,
         ];
 

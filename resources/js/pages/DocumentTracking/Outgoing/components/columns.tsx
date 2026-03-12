@@ -160,7 +160,7 @@ function MobileOutgoingCard({ row, departmentId, showOrigin }: { row: OutgoingRo
                         )}
                         <span>Current: <span className="font-medium text-foreground">{row.current_office?.acronym ?? "—"}</span></span>
                     </div>
-                    <span>{row.days_stayed}</span>
+                    <span>{row.elapsed_time}</span>
                 </div>
             </div>
             <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/30">
@@ -252,10 +252,10 @@ export function getColumns(departmentId: number, showOrigin: boolean): DataTable
             filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
         },
         {
-            accessorKey: "days_stayed",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Days Stayed" />,
+            accessorKey: "elapsed_time",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Elapsed Time" />,
             cell: ({ row }) => (
-                <span className="text-sm tabular-nums text-muted-foreground">{row.original.days_stayed}</span>
+                <span className="text-sm tabular-nums text-muted-foreground">{row.original.elapsed_time}</span>
             ),
             enableSorting: false,
         },

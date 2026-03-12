@@ -18,7 +18,7 @@ export const incomingRowSchema = z.object({
     from_office: officeSchema.nullable(),
     office_status: z.enum(["pending_receipt", "received", "done"]),
     status: z.enum(["filed", "in_progress", "completed", "cancelled"]),
-    days_stayed: z.string(),
+    elapsed_time: z.string(),
     origin_office_id: z.number(),
     current_office_id: z.number(),
     // Per-document office lists computed by the controller

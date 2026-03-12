@@ -13,7 +13,7 @@ export const outgoingRowSchema = z.object({
     current_office: officeSchema.nullable(),
     status: z.enum(["filed", "in_progress", "completed", "cancelled"]),
     office_status: z.enum(["pending_receipt", "received", "done"]),
-    days_stayed: z.string(),
+    elapsed_time: z.string(),
     origin_office_id: z.number(),
 })
 

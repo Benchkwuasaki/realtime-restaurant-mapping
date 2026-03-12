@@ -79,7 +79,7 @@ class DocumentTrackingIncomingController extends Controller
                         : null,
                     'office_status'     => $doc->office_status,
                     'status'            => $doc->status,
-                    'days_stayed'       => $doc->getDaysStayed(),
+                    'elapsed_time'      => $doc->getElapsedTime(),
                     'origin_office_id'  => $doc->origin_office_id,
                     'current_office_id' => $doc->current_office_id,
                     // Per-document office lists for the dialogs
