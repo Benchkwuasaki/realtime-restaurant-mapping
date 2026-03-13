@@ -404,13 +404,13 @@ export function PayslipDocument({
                     fontFamily: "'Times New Roman', Times, serif",
                 }}
             >
-                <div className="mb-3 flex items-center justify-center gap-1.5 rounded border border-dashed border-gray-400 px-3 py-1 text-[9px] text-gray-600 print:hidden">
+                {/* <div className="mb-3 flex items-center justify-center gap-1.5 rounded border border-dashed border-gray-400 px-3 py-1 text-[9px] text-gray-600 print:hidden">
                     Print on{' '}
                     <strong className="mx-0.5">
                         Short Bond Paper (8.5&Prime; &times; 11&Prime;)
                     </strong>{' '}
                     &mdash; Portrait orientation
-                </div>
+                </div> */}
                 <div style={{ display: 'flex', gap: 40, marginTop: 8 }}>
                     <div style={{ flex: 1, textAlign: 'center' }}>
                         <div
