@@ -474,7 +474,7 @@ class AttendanceSeeder extends Seeder
 
                 $scenarioIndex = ($dayIndex + $empIndex * 3) % count($scenarios);
 
-                if (! $isToday && in_array($scenarioIndex, [7, 8])) {
+                if (! $isToday && $scenarioIndex === 7) {
                     $scenarioIndex = 0;
                 }
 
