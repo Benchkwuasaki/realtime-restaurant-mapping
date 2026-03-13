@@ -56,6 +56,21 @@ export default function Login({
             email: 'usan.una28@obx.gov.ph',
             department: 'GPAD',
         },
+        {
+            role: 'employee',
+            email: 'orazon.autista7@obx.gov.ph',
+            department: 'OBE',
+        },
+        {
+            role: 'employee',
+            email: 'amon.izal30@obx.gov.ph',
+            department: 'GPAD',
+        },
+        {
+            role: 'employee',
+            email: 'cheryl.ocampo23@gmail.com',
+            department: 'OBE',
+        },
     ];
 
     return (
