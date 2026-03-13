@@ -10,9 +10,9 @@ import {
   Calendar,
   Wallet,
   Logs,
-  UserCog,
   Bell,
   FileBarChart,
+  HelpCircle
 } from "lucide-react"
 import * as React from "react"
 
@@ -30,9 +30,17 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/use-auth"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+
+type Office = { name: string | null; acronym: string | null }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { hasRole } = useAuth()
+  const { user, hasRole } = useAuth()
+  const { department, division, unit } = user?.offices ?? {}
+  const hasLinkedDepartment = Boolean(department?.name)
+  const incomingDocumentsCount = user?.notifications?.incoming_documents_count ?? 0
+  const officeParts = ([department, division, unit] as (Office | undefined | null)[])
+    .filter((office): office is Office => !!office?.name)
 
   const data = {
     navMain: [
@@ -42,7 +50,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: LayoutDashboard,
         show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
       },
-      // TODO: implement user management, admin, super admin
       {
         title: "Employee",
         url: route("employee.index"),
@@ -55,7 +62,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: Building2,
         show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
         items: [
-          // TODO: Update the URLs for the organization sub-menu items
           {
             title: "Organizational Chart",
             url: route("organization.chart"),
@@ -172,9 +178,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       },
       {
         title: "Document Tracking",
-        url: route("document_tracking.index"),
+        url: null,
         icon: File,
-        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin") || hasRole("document_tracking_operator"),
+        badgeCount: incomingDocumentsCount,
+        show: hasLinkedDepartment && (
+          hasRole("ogm") ||
+          hasRole("hr_admin") ||
+          hasRole("super_admin") ||
+          hasRole("document_tracking_operator")
+        ),
+        items: [
+          {
+            title: "Incoming",
+            url: route('document-tracking-incoming.index'),
+            badgeCount: incomingDocumentsCount,
+          },
+          {
+            title: "Outgoing",
+            url: route('document-tracking-outgoing.index'),
+          },
+          {
+            title: "Archive",
+            url: route('document-tracking-archive.index'),
+          },
+        ]
       },
       {
           title: "Reports and Analytics",
@@ -256,7 +283,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="h-auto min-h-0 py-3">
               <Link
-                href="/dashboard"
+                href={route('dashboard')}
                 className="flex items-center gap-3 px-2"
               >
                 <img
@@ -264,7 +291,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   alt="Metro Kidapawan Water District Logo"
                   className="h-12 w-12 object-contain shrink-0"
                 />
-
                 <div
                   className="h-12 flex flex-col justify-between leading-none font-bold"
                   aria-label="MKWD"
@@ -276,7 +302,32 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarHeader>      <SidebarContent>
+
+        {(() => {
+          if (officeParts.length === 0) return null
+
+          return (
+            <div className="flex justify-center gap-1.5 px-3 pb-2">
+              <Building2 className="size-3 shrink-0 text-muted-foreground" />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex flex-row">
+                      <p className="cursor-default text-xs leading-tight text-muted-foreground font-bold">
+                        {officeParts.map((office) => office.acronym ?? office.name).join(" › ")}
+                      </p>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{officeParts.map((office) => office.name).join(" › ")}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )
+        })()}
+      </SidebarHeader>
+      <SidebarContent>
         <NavMain items={data.navMain} />
         {/* <NavProjects projects={data.projects} /> */}
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
