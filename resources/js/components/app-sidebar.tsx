@@ -57,6 +57,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
       },
       {
+        title: "My Profile",
+        url: user?.employee_id ? route("employee.show", user?.employee_id) : "#",
+        icon: User,
+        show: hasRole('employee'),
+      },
+      {
         title: "Organization",
         url: null,
         icon: Building2,

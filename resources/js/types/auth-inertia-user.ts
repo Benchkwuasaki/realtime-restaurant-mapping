@@ -1,5 +1,6 @@
 export type AuthInertiaUser = {
     id: number;
+    employee_id: number;
     name: string;
     email: string;
     position: string;

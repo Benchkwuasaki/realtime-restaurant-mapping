@@ -43,6 +43,8 @@ class HandleInertiaRequests extends Middleware
             'employee.item.position.unit'
         );
 
+        // dd($user);
+
         $position = $user?->employee?->item?->position;
         $department = $position?->department;
         $division = $position?->division;
@@ -61,6 +63,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user ? [
                     'id' => $user->id,
+                    'employee_id' => $user->employee_id,
                     'name' => $user->getFullName(),
                     'email' => $user->email,
                     'position' => $position?->position_name,
