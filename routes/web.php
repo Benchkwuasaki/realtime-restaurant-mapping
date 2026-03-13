@@ -49,6 +49,9 @@ use Illuminate\Support\Facades\Route;
 // reports and analytics
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+use App\Http\Controllers\DocumentTrackingArchiveController;
+use App\Http\Controllers\DocumentTrackingIncomingController;
+use App\Http\Controllers\DocumentTrackingOutgoingController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -448,13 +451,35 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     | System
     |--------------------------------------------------------------------------
     */
-    Route::get('/document_tracking', [DocumentTrackingController::class, 'index'])->name('document_tracking.index');
+
+    // Incoming
+    Route::prefix('document-tracking/incoming')->name('document-tracking-incoming.')->group(function () {
+        Route::get('/', [DocumentTrackingIncomingController::class, 'index'])->name('index');
+        Route::post('/{documentTracking}/receive',  [DocumentTrackingIncomingController::class, 'receive'])->name('receive');
+        Route::post('/{documentTracking}/forward',  [DocumentTrackingIncomingController::class, 'forward'])->name('forward');
+        Route::post('/{documentTracking}/return',   [DocumentTrackingIncomingController::class, 'return'])->name('return');
+        Route::post('/{documentTracking}/complete', [DocumentTrackingIncomingController::class, 'complete'])->name('complete');
+        // Route::post('/{documentTracking}/cancel',   [DocumentTrackingIncomingController::class, 'cancel'])->name('cancel');
+    });
+
+    // Outgoing
+    Route::prefix('document-tracking/outgoing')->name('document-tracking-outgoing.')->group(function () {
+        Route::get('/', [DocumentTrackingOutgoingController::class, 'index'])->name('index');
+        Route::post('/', [DocumentTrackingOutgoingController::class, 'store'])->name('store');
+        Route::post('/{documentTracking}/cancel', [DocumentTrackingOutgoingController::class, 'cancel'])
+            ->name('cancel');
+    });
+
+    // Archive
+    Route::prefix('document-tracking/archive')->name('document-tracking-archive.')->group(function () {
+        Route::get('/', [DocumentTrackingArchiveController::class, 'index'])->name('index');
+    });
+
 
     Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
 
     // Attendance Report (from main - NEW)
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
-        Route::get('/', [AttendanceReportController::class, 'index'])->name('attendance-report.index');
         Route::inertia('/leave', 'ReportsAndAnalytics\Leave\LeaveIndexa')->name('leave');
 
         Route::get('/attendance-report', [AttendanceReportController::class, 'index'])
@@ -481,4 +506,4 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
 });
 
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';

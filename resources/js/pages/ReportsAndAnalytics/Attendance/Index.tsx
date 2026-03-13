@@ -1,332 +1,445 @@
-import { Head } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
-import { route } from 'ziggy-js';
+import { Head, router } from "@inertiajs/react"
+import { useState, useMemo } from "react"
+import { route } from "ziggy-js"
+import {
+    UserCheck, Coffee, UserX, AlertTriangle, Users,
+    TrendingUp, TrendingDown, Minus,
+    RefreshCw, Download, CalendarDays, Building2, Clock,
+    BarChart3, Activity,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-    Area, ComposedChart, ReferenceLine,
-    ResponsiveContainer, Line,
-} from 'recharts';
-import { useState, useMemo } from 'react';
+    Area, ComposedChart, ReferenceLine, ResponsiveContainer, Line,
+} from "recharts"
+
+import AppLayout from "@/layouts/app-layout"
+import { StatCard } from "@/components/shared/stat-card"
+import { DataTable } from "@/components/shared/data-table/data-table"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
+import type { BreadcrumbItem } from "@/types"
+
+import {
+    type DepartmentStat, type DailyStat, type WeeklyStat,
+    type MonthlyTrend, type Summary,
+    computeDeptTotals, ratingOptions,
+} from "./data/data"
+import { getDeptColumns, buildDeptFooterRow } from "./components/columns"
+
+// Breadcrumbs
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Attendance Reports and Analytics',
-        href: route('reports_and_analytics.attendance-report.index'),
-    },
-];
+    { title: "Attendance", href: "#" },
+    { title: "Reports & Analytics", href: route("reports_and_analytics.attendance-report.index") },
+]
 
-/* ── colour tokens ── */
-const emerald = '#10b981', amber = '#f59e0b', red = '#ef4444',
-      indigo = '#6366f1', cyan = '#06b6d4', rose = '#f43f5e';
+// Props
 
-/* ── data ── */
-const DEPTS   = ['All Departments', 'Admin', 'Operations', 'Finance', 'HR', 'IT', 'Security'];
+interface Props {
+    summary: Summary
+    daily_breakdown: DailyStat[]
+    weekly_breakdown: WeeklyStat[]
+    monthly_trend: MonthlyTrend[]
+    department_breakdown: DepartmentStat[]
+    departments: string[]
+    filters: {
+        department: string
+        date_from: string
+        date_to: string
+    }
+}
 
-const weekly = [
-    { day: 'Mon', Present: 185, Late: 22, Absent: 18 },
-    { day: 'Tue', Present: 198, Late: 14, Absent: 13 },
-    { day: 'Wed', Present: 179, Late: 31, Absent: 15 },
-    { day: 'Thu', Present: 202, Late: 17, Absent: 6  },
-    { day: 'Fri', Present: 174, Late: 28, Absent: 23 },
-    { day: 'Sat', Present: 88,  Late: 12, Absent: 5  },
-    { day: 'Sun', Present: 40,  Late: 5,  Absent: 2  },
-];
+// Chart tooltip style
 
-const monthly = [
-    { week: 'Wk 1', Present: 925, Absent: 65,  Late: 38, Rate: 88.0 },
-    { week: 'Wk 2', Present: 960, Absent: 45,  Late: 29, Rate: 91.4 },
-    { week: 'Wk 3', Present: 870, Absent: 100, Late: 45, Rate: 82.9 },
-    { week: 'Wk 4', Present: 980, Absent: 35,  Late: 22, Rate: 93.3 },
-];
+const TOOLTIP_STYLE: React.CSSProperties = {
+    borderRadius: "var(--radius-md)",
+    border: "1px solid var(--color-border)",
+    fontSize: 11,
+    padding: "6px 12px",
+    background: "var(--color-card)",
+    color: "var(--color-foreground)",
+    boxShadow: "var(--shadow-md)",
+}
 
-const yearly = [
-    { m: 'Apr', Rate: 84, Trend: 83   },
-    { m: 'May', Rate: 87, Trend: 85   },
-    { m: 'Jun', Rate: 82, Trend: 86   },
-    { m: 'Jul', Rate: 89, Trend: 87   },
-    { m: 'Aug', Rate: 91, Trend: 88   },
-    { m: 'Sep', Rate: 88, Trend: 89   },
-    { m: 'Oct', Rate: 90, Trend: 89.5 },
-    { m: 'Nov', Rate: 86, Trend: 90   },
-    { m: 'Dec', Rate: 85, Trend: 90.5 },
-    { m: 'Jan', Rate: 92, Trend: 91   },
-    { m: 'Feb', Rate: 93, Trend: 91.5 },
-    { m: 'Mar', Rate: 91, Trend: 92   },
-];
+// Chart colours — all resolved from app.css vars
 
-const depts = [
-    { dept: 'Admin',      total: 55,  present: 51, late: 3, absent: 1, rate: 92.7, payroll: 312000 },
-    { dept: 'Operations', total: 140, present: 126,late: 9, absent: 5, rate: 90.0, payroll: 680000 },
-    { dept: 'Finance',    total: 48,  present: 43, late: 4, absent: 1, rate: 89.6, payroll: 298000 },
-    { dept: 'HR',         total: 32,  present: 30, late: 2, absent: 0, rate: 93.8, payroll: 201000 },
-    { dept: 'IT',         total: 60,  present: 52, late: 6, absent: 2, rate: 86.7, payroll: 395000 },
-    { dept: 'Security',   total: 65,  present: 58, late: 4, absent: 3, rate: 89.2, payroll: 292000 },
-];
+const C = {
+    present: "var(--color-chart-2)",   // teal-green
+    late:    "var(--color-chart-4)",   // amber-orange
+    absent:  "var(--color-destructive)",
+    halfDay: "var(--color-chart-1)",   // blue
+    rate:    "var(--color-primary)",
+    trend:   "var(--color-chart-5)",
+} as const
 
-const kpis = [
-    { label: 'Total Employees', value: '400', accent: '#3b82f6', bg: '#eff6ff' },
-    { label: 'Present Today',   value: '357', accent: '#10b981', bg: '#f0fdf4' },
-    { label: 'Late Today',      value: '28',  accent: '#f59e0b', bg: '#fffbeb' },
-    { label: 'Absent Today',    value: '15',  accent: '#ef4444', bg: '#fef2f2' },
-];
+// Semantic icon / dot colours via inline CSS vars
 
-/* ── shared UI ── */
-const TS = { borderRadius: 8, border: '1px solid var(--border)', fontSize: 11, padding: '6px 12px', background: 'var(--card)' };
+const COLOR = {
+    present: { color: "var(--color-chart-2)" },
+    halfDay: { color: "var(--color-chart-1)" },
+    late:    { color: "var(--color-chart-4)" },
+    absent:  { color: "var(--color-destructive)" },
+} as const
 
-const Card = ({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-    <div style={{ background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', padding: 20, ...style }}>
-        {children}
-    </div>
-);
+const BG_COLOR = {
+    present: { backgroundColor: "var(--color-chart-2)" },
+    halfDay: { backgroundColor: "var(--color-chart-1)" },
+    late:    { backgroundColor: "var(--color-chart-4)" },
+    absent:  { backgroundColor: "var(--color-destructive)" },
+} as const
 
-const SH = ({ title, sub }: { title: string; sub?: string }) => (
-    <div style={{ marginBottom: 14 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--foreground)' }}>{title}</div>
-        {sub && <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2 }}>{sub}</div>}
-    </div>
-);
+// Delta chip
 
-
-/* ── KPI strip ── */
-function KpiStrip() {
+function DeltaChip({ delta, direction }: { delta: number; direction: "up" | "down" | "same" }) {
+    if (direction === "same") return (
+        <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground font-medium">
+            <Minus className="w-3 h-3" /> No change
+        </span>
+    )
+    const isUp = direction === "up"
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-            {kpis.map(k => (
-                <div key={k.label} style={{ background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)', borderLeft: `4px solid ${k.accent}`, padding: 16, boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ background: k.bg, borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                        <span style={{ fontSize: 14 }}>📊</span>
+        <span
+            className="inline-flex items-center gap-0.5 text-[10px] font-semibold"
+            style={{ color: isUp ? "var(--color-chart-2)" : "var(--color-destructive)" }}
+        >
+            {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            {Math.abs(delta).toFixed(1)}% vs yesterday
+        </span>
+    )
+}
+
+// Filter Bar
+
+function FilterBar({ departments, filters, onApply }: {
+    departments: string[]
+    filters: Props["filters"]
+    onApply: (f: Props["filters"]) => void
+}) {
+    const [local, setLocal] = useState(filters)
+    function set<K extends keyof Props["filters"]>(k: K, v: string) {
+        setLocal(f => ({ ...f, [k]: v }))
+    }
+    const isDirty = local.department !== "All Departments" || !!local.date_from || !!local.date_to
+    function reset() {
+        const cleared = { department: "All Departments", date_from: "", date_to: "" }
+        setLocal(cleared); onApply(cleared)
+    }
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <Select value={local.department} onValueChange={v => {
+                set("department", v)
+                onApply({ ...local, department: v })
+            }}>
+                <SelectTrigger className="h-8 w-44 text-xs overflow-hidden">
+                    <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+                        <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate block min-w-0">
+                            <SelectValue placeholder="All Departments" />
+                        </span>
                     </div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--foreground)', lineHeight: 1 }}>{k.value}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 4 }}>{k.label}</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, marginTop: 3, color: k.up ? '#16a34a' : '#dc2626' }}>
-                        {k.up ? '↑' : '↓'} {k.delta}
-                    </div>
-                </div>
-            ))}
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="All Departments" className="text-xs">All Departments</SelectItem>
+                    {departments.map(d => (
+                        <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+
+            <div className="flex items-center gap-1.5 h-8 rounded-md border border-input bg-background px-3 text-xs">
+                <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <Input type="date" value={local.date_from} onChange={e => set("date_from", e.target.value)}
+                    className="h-auto border-none shadow-none p-0 text-xs w-28 focus-visible:ring-0" />
+                <span className="text-muted-foreground">-</span>
+                <Input type="date" value={local.date_to} onChange={e => set("date_to", e.target.value)}
+                    className="h-auto border-none shadow-none p-0 text-xs w-28 focus-visible:ring-0" />
+            </div>
+
+            <Button size="sm" className="h-8 text-xs" onClick={() => onApply(local)}>
+                <Activity className="w-3.5 h-3.5 mr-1.5" /> Apply
+            </Button>
+            {isDirty && (
+                <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={reset}>Reset</Button>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1.5"
+                    onClick={() => router.get(
+                        route("reports_and_analytics.attendance-report.index"),
+                        {
+                            department: local.department !== "All Departments" ? local.department : undefined,
+                            date_from: local.date_from || undefined,
+                            date_to: local.date_to || undefined,
+                        },
+                        { preserveScroll: true }
+                    )}
+                >
+                    <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                </Button>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1.5"
+                    onClick={() => {
+                        const params = new URLSearchParams({
+                            ...(local.department !== "All Departments" && { department: local.department }),
+                            ...(local.date_from && { date_from: local.date_from }),
+                            ...(local.date_to && { date_to: local.date_to }),
+                            export: "csv",
+                        })
+                        window.location.href = route("reports_and_analytics.attendance-report.index") + "?" + params.toString()
+                    }}
+                >
+                    <Download className="w-3.5 h-3.5" /> Export
+                </Button>
+            </div>
         </div>
-    );
+    )
 }
 
-/* ── filter bar ── */
-function FilterBar({ dept, setDept, dateFrom, setDateFrom, dateTo, setDateTo }) {
-    return (
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
-            <select value={dept} onChange={e => setDept(e.target.value)} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '7px 12px', fontSize: 11, color: 'var(--foreground)', background: 'var(--card)', cursor: 'pointer', outline: 'none' }}>
-                {DEPTS.map(d => <option key={d}>{d}</option>)}
-            </select>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)', borderRadius: 12, padding: '6px 12px', background: 'var(--card)' }}>
-                <span style={{ fontSize: 11 }}>📅</span>
-                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                    style={{ border: 'none', background: 'transparent', fontSize: 11, color: 'var(--foreground)', outline: 'none', cursor: 'pointer' }} />
-                <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>–</span>
-                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                    style={{ border: 'none', background: 'transparent', fontSize: 11, color: 'var(--foreground)', outline: 'none', cursor: 'pointer' }} />
-            </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                {['🔄 Refresh', '🖨 Print'].map(l => (
-                    <button key={l} style={{ padding: '7px 12px', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', fontSize: 11, cursor: 'pointer', color: 'var(--foreground)' }}>{l}</button>
-                ))}
-                <button style={{ padding: '7px 14px', borderRadius: 12, border: 'none', background: 'var(--foreground)', color: 'var(--background)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>⬇ Export</button>
-            </div>
-        </div>
-    );
-}
+// Charts
 
-/* ── charts ── */
-function WeeklyBar() {
+function DailyBreakdownChart({ data }: { data: DailyStat[] }) {
     return (
         <Card>
-            <SH title="Daily Attendance Breakdown" sub="Present · Late · Absent per day" />
-            <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={weekly} barGap={3} barCategoryGap="28%">
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={28} />
-                    <Tooltip contentStyle={TS} cursor={{ fill: 'var(--muted)' }} />
-                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Bar dataKey="Present" fill={emerald} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Late"    fill={amber}   radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Absent"  fill={red}     radius={[4, 4, 0, 0]} />
-                </BarChart>
-            </ResponsiveContainer>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">Daily Attendance Breakdown</CardTitle>
+                <CardDescription className="text-xs">Present · Late · Half-day · Absent per day</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={210}>
+                    <BarChart data={data} barGap={3} barCategoryGap="28%">
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                        <XAxis dataKey="day" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} width={28} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "var(--color-muted)" }} />
+                        <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                        <Bar dataKey="present"  name="Present"  fill={C.present}  radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="late"     name="Late"     fill={C.late}     radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="half_day" name="Half Day" fill={C.halfDay}  radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="absent"   name="Absent"   fill={C.absent}   radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
         </Card>
-    );
+    )
 }
 
-function MonthlyLine() {
+function WeeklyRateChart({ data }: { data: WeeklyStat[] }) {
     return (
         <Card>
-            <SH title="Monthly Attendance Rate" sub="Week-over-week this month" />
-            <ResponsiveContainer width="100%" height={200}>
-                <ComposedChart data={monthly}>
-                    <defs>
-                        <linearGradient id="rG" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%"   stopColor={indigo} stopOpacity={0.18} />
-                            <stop offset="100%" stopColor={indigo} stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="week" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="c" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={34} />
-                    <YAxis yAxisId="r" orientation="right" domain={[78, 98]} unit="%" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={34} />
-                    <Tooltip contentStyle={TS} />
-                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Bar yAxisId="c" dataKey="Present" fill={emerald} radius={[3, 3, 0, 0]} opacity={0.35} name="Present" />
-                    <Bar yAxisId="c" dataKey="Absent"  fill={red}     radius={[3, 3, 0, 0]} opacity={0.35} name="Absent" />
-                    <Area yAxisId="r" type="monotone" dataKey="Rate" fill="url(#rG)" stroke={indigo} strokeWidth={2.5} dot={{ fill: indigo, r: 4, strokeWidth: 0 }} activeDot={{ r: 6 }} name="Rate %" />
-                    <ReferenceLine yAxisId="r" y={90} stroke="var(--border)" strokeDasharray="4 2" />
-                </ComposedChart>
-            </ResponsiveContainer>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">Weekly Attendance Rate</CardTitle>
+                <CardDescription className="text-xs">Week-over-week attendance rate with headcount breakdown</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={210}>
+                    <ComposedChart data={data}>
+                        <defs>
+                            <linearGradient id="rateGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.22} />
+                                <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                        <XAxis dataKey="week" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+                        <YAxis yAxisId="c" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} width={34} />
+                        <YAxis yAxisId="r" orientation="right" domain={[75, 100]} unit="%" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} width={38} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE} />
+                        <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                        <Bar yAxisId="c" dataKey="present" name="Present" fill={C.present} radius={[3, 3, 0, 0]} opacity={0.45} />
+                        <Bar yAxisId="c" dataKey="absent"  name="Absent"  fill={C.absent}  radius={[3, 3, 0, 0]} opacity={0.45} />
+                        <Area yAxisId="r" type="monotone" dataKey="rate" name="Rate %"
+                            fill="url(#rateGrad)" stroke="var(--color-primary)" strokeWidth={2.5}
+                            dot={{ fill: "var(--color-primary)", r: 4, strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                        <ReferenceLine yAxisId="r" y={90} stroke="var(--color-border)" strokeDasharray="4 2" />
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </CardContent>
         </Card>
-    );
+    )
 }
 
-function YearlyTrend() {
+function MonthlyTrendChart({ data }: { data: MonthlyTrend[] }) {
     return (
         <Card>
-            <SH title="1-Year Attendance Rate + Trend" sub="Apr 2024 – Mar 2025" />
-            <ResponsiveContainer width="100%" height={210}>
-                <ComposedChart data={yearly}>
-                    <defs>
-                        <linearGradient id="yG" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%"   stopColor={cyan} stopOpacity={0.2} />
-                            <stop offset="100%" stopColor={cyan} stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="m" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[79, 96]} unit="%" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={34} />
-                    <Tooltip contentStyle={TS} formatter={(v: any, n: string) => [`${v}%`, n === 'Rate' ? 'Actual' : 'Trend']} />
-                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} formatter={(v: string) => v === 'Rate' ? 'Actual Rate' : 'Moving Trend'} />
-                    <ReferenceLine y={90} stroke="var(--border)" strokeDasharray="4 2" label={{ value: '90% target', position: 'insideTopRight', fontSize: 9, fill: 'var(--muted-foreground)' }} />
-                    <Area type="monotone" dataKey="Rate" fill="url(#yG)" stroke={cyan} strokeWidth={2.5} dot={{ fill: cyan, r: 3.5, strokeWidth: 0 }} activeDot={{ r: 6 }} />
-                    <Line type="monotone" dataKey="Trend" stroke={rose} strokeWidth={1.8} strokeDasharray="5 3" dot={false} />
-                </ComposedChart>
-            </ResponsiveContainer>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">12-Month Attendance Trend</CardTitle>
+                <CardDescription className="text-xs">Actual rate vs moving average - 90% target line</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                    <ComposedChart data={data}>
+                        <defs>
+                            <linearGradient id="yearGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.22} />
+                                <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                        <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+                        <YAxis domain={[75, 100]} unit="%" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} width={38} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE}
+                            formatter={(v: unknown, n: unknown) => [
+                                typeof v === "number" ? `${v}%` : String(v),
+                                n === "rate" ? "Actual Rate" : "Moving Trend",
+                            ]} />
+                        <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                            formatter={(v: string) => v === "rate" ? "Actual Rate" : "Moving Trend"} />
+                        <ReferenceLine y={90} stroke="var(--color-border)" strokeDasharray="4 2"
+                            label={{ value: "90% target", position: "insideTopRight", fontSize: 9, fill: "var(--color-muted-foreground)" }} />
+                        <Area type="monotone" dataKey="rate" name="rate"
+                            fill="url(#yearGrad)" stroke="var(--color-primary)" strokeWidth={2.5}
+                            dot={{ fill: "var(--color-primary)", r: 3.5, strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                        <Line type="monotone" dataKey="trend" name="trend"
+                            stroke={C.trend} strokeWidth={1.8} strokeDasharray="5 3" dot={false} />
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </CardContent>
         </Card>
-    );
+    )
 }
 
-function DeptTable() {
-    const [sort, setSort] = useState({ key: 'rate', dir: -1 });
-    const sorted = useMemo(() => [...depts].sort((a: any, b: any) => (a[sort.key] - b[sort.key]) * sort.dir), [sort]);
-    const fK = (v: number) => `₱${(v / 1000).toFixed(0)}K`;
-    const rateColor = (r: number) => r >= 92 ? '#16a34a' : r >= 88 ? '#d97706' : '#dc2626';
-    const rateBg    = (r: number) => r >= 92 ? emerald : r >= 88 ? amber : red;
+// Page
 
-    const TH = ({ k, label }: { k: string; label: string }) => (
-        <th onClick={() => setSort(s => ({ key: k, dir: s.key === k ? -s.dir : -1 }))}
-            style={{ textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '10px 14px', cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none', borderBottom: '1px solid var(--border)' }}>
-            {label} {sort.key === k ? (sort.dir === -1 ? '↓' : '↑') : ''}
-        </th>
-    );
+export default function AttendanceReportIndex({
+    summary,
+    daily_breakdown,
+    weekly_breakdown,
+    monthly_trend,
+    department_breakdown,
+    departments,
+    filters: propFilters,
+}: Props) {
+    const [filters, setFilters] = useState(propFilters ?? { department: "All Departments", date_from: "", date_to: "" })
+    const depts = department_breakdown ?? []
+    const s: Summary = summary ?? {
+        total_employees: 0,
+        present_today: 0,
+        late_today: 0,
+        absent_today: 0,
+        half_day_today: 0,
+        attendance_rate: 0,
+        rate_delta: 0,
+        rate_delta_direction: "same",
+    }
+    const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
 
-    return (
-        <Card>
-            <SH title="Department Breakdown" sub="Click column headers to sort" />
-            <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: 'var(--muted)' }}>
-                        <tr>
-                            <TH k="dept"    label="Department" />
-                            <TH k="total"   label="Total" />
-                            <TH k="present" label="Present" />
-                            <TH k="late"    label="Late" />
-                            <TH k="absent"  label="Absent" />
-                            <TH k="rate"    label="Rate %" />
-                            <TH k="payroll" label="Payroll" />
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sorted.map((r: any, i: number) => (
-                            <tr key={r.dept}
-                                style={{ background: i % 2 === 0 ? 'var(--card)' : 'var(--muted/30)' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--muted)')}
-                                onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'var(--card)' : 'var(--muted/30)')}>
-                                <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 600, color: 'var(--foreground)' }}>{r.dept}</td>
-                                <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--foreground)' }}>{r.total}</td>
-                                <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: '#16a34a' }}>{r.present}</td>
-                                <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: '#d97706' }}>{r.late}</td>
-                                <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: '#dc2626' }}>{r.absent}</td>
-                                <td style={{ padding: '10px 14px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <div style={{ width: 72, height: 6, background: 'var(--muted)', borderRadius: 4, overflow: 'hidden' }}>
-                                            <div style={{ width: `${r.rate}%`, height: '100%', borderRadius: 4, background: rateBg(r.rate) }} />
-                                        </div>
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: rateColor(r.rate) }}>{r.rate}%</span>
-                                    </div>
-                                </td>
-                                <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--foreground)' }}>{fK(r.payroll)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                    <tfoot>
-                        <tr style={{ background: 'var(--muted)', borderTop: '2px solid var(--border)' }}>
-                            {[
-                                'TOTAL',
-                                depts.reduce((s, r) => s + r.total,   0),
-                                <span style={{ color: '#16a34a', fontWeight: 700 }}>{depts.reduce((s, r) => s + r.present, 0)}</span>,
-                                <span style={{ color: '#d97706', fontWeight: 700 }}>{depts.reduce((s, r) => s + r.late,    0)}</span>,
-                                <span style={{ color: '#dc2626', fontWeight: 700 }}>{depts.reduce((s, r) => s + r.absent,  0)}</span>,
-                                '91.2%',
-                                fK(depts.reduce((s, r) => s + r.payroll, 0)),
-                            ].map((v, i) => (
-                                <td key={i} style={{ padding: '10px 14px', fontSize: 12, fontWeight: 700, color: 'var(--foreground)' }}>{v}</td>
-                            ))}
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </Card>
-    );
-}
+    function applyFilters(f: Props["filters"]) {
+        setFilters(f)
+        router.get(
+            route("reports_and_analytics.attendance-report.index"),
+            {
+                department: f.department !== "All Departments" ? f.department : undefined,
+                date_from: f.date_from || undefined,
+                date_to: f.date_to || undefined,
+            },
+            { preserveScroll: true, preserveState: true },
+        )
+    }
 
-/* ══════════════════════════════════════════════════
-   PAGE EXPORT  –  wrapped in AppLayout
-══════════════════════════════════════════════════ */
-export default function Index() {
-    const [period,   setPeriod]   = useState('This Week');
-    const [dept,     setDept]     = useState('All Departments');
-    const [dateFrom, setDateFrom] = useState('2026-03-01');
-    const [dateTo,   setDateTo]   = useState('2026-03-10');
-    const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const deptTotals = useMemo(() => computeDeptTotals(depts), [depts])
+    const deptColumns = useMemo(() => getDeptColumns(), [])
+
+    const rateAccentStyle: React.CSSProperties =
+        s.attendance_rate >= 90 ? { borderLeftColor: "var(--color-chart-3)" }
+            : s.attendance_rate >= 85 ? { borderLeftColor: "var(--color-chart-4)" }
+                : { borderLeftColor: "var(--color-destructive)" }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Reports and Analytics" />
+            <Head title="Attendance Reports & Analytics" />
+            <div className="flex flex-col gap-5 px-5 pt-5 pb-8">
 
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16, fontFamily: 'var(--font-sans)' }}>
-
-                {/* Page header */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
-                        <h1 style={{ fontSize: 22, fontWeight: 900, color: 'var(--foreground)', margin: 0, letterSpacing: '-0.02em' }}>
-                            Attendance Overview
-                        </h1>
-                        <p style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4, margin: 0 }}>
-                            Attendance · Payroll · Headcount · Performance — as of {date}
+                        <h1 className="text-xl font-semibold tracking-tight">Attendance Reports & Analytics</h1>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                            Attendance overview as of <span className="font-semibold text-foreground">{today}</span>
                         </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" /> Live data
+                        </span>
+                        <DeltaChip delta={s.rate_delta} direction={s.rate_delta_direction} />
                     </div>
                 </div>
 
-                <FilterBar
-                period={period} setPeriod={setPeriod}
-                dept={dept} setDept={setDept}
-                dateFrom={dateFrom} setDateFrom={setDateFrom}
-                dateTo={dateTo} setDateTo={setDateTo}
-                />
-                <KpiStrip />
+                <FilterBar departments={departments ?? []} filters={filters} onApply={applyFilters} />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <WeeklyBar /><MonthlyLine />
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <StatCard title="Total Employees" value={s.total_employees} description="Active headcount"
+                        icon={<Users className="w-4 h-4 m-2 text-primary" />} />
+                    <StatCard title="Present Today" value={s.present_today} description="Clocked in or active"
+                        icon={<UserCheck className="w-4 h-4 m-2" style={COLOR.present} />} />
+                    <StatCard title="Half Day" value={s.half_day_today} description="Left before time out"
+                        icon={<Coffee className="w-4 h-4 m-2" style={COLOR.halfDay} />} />
+                    <StatCard title="Late Today" value={s.late_today} description="Arrived after schedule"
+                        icon={<AlertTriangle className="w-4 h-4 m-2" style={COLOR.late} />} />
+                    <StatCard title="Absent Today" value={s.absent_today} description="No attendance recorded"
+                        icon={<UserX className="w-4 h-4 m-2" style={COLOR.absent} />} />
                 </div>
 
-                <YearlyTrend />
+                <Card className="border-l-4" style={rateAccentStyle}>
+                    <CardContent className="py-3 px-5 flex items-center justify-between flex-wrap gap-3">
+                        <div className="flex items-center gap-3">
+                            <BarChart3 className="w-5 h-5 text-muted-foreground" />
+                            <div>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Today's Attendance Rate</p>
+                                <p className="text-2xl font-bold tabular-nums tracking-tight">{s.attendance_rate.toFixed(1)}%</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-6 text-sm text-muted-foreground flex-wrap">
+                            {[
+                                { bgStyle: BG_COLOR.present, label: "Present",  val: s.present_today },
+                                { bgStyle: BG_COLOR.halfDay, label: "Half Day", val: s.half_day_today },
+                                { bgStyle: BG_COLOR.late,    label: "Late",     val: s.late_today },
+                                { bgStyle: BG_COLOR.absent,  label: "Absent",   val: s.absent_today },
+                            ].map(({ bgStyle, label, val }) => (
+                                <div key={label} className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={bgStyle} />
+                                    {label} <span className="font-semibold text-foreground">{val}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
 
-                <DeptTable />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <DailyBreakdownChart data={daily_breakdown} />
+                    <WeeklyRateChart data={weekly_breakdown} />
+                </div>
+
+                <MonthlyTrendChart data={monthly_trend} />
+
+                <div className="flex flex-col gap-2">
+                    <div>
+                        <h2 className="text-base font-semibold tracking-tight">Department Breakdown</h2>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Attendance by department · {depts.length} department{depts.length !== 1 ? "s" : ""} ·{" "}
+                            <span className="font-semibold text-foreground">{deptTotals.total}</span> total employees
+                        </p>
+                    </div>
+                    <DataTable
+                        columns={deptColumns}
+                        data={depts}
+                        getRowId={row => row.department}
+                        searchColumnId="department"
+                        searchPlaceholder="Search department..."
+                        filters={[{ columnId: "rate_category", title: "Rating", options: ratingOptions }]}
+                        footerRow={buildDeptFooterRow}
+                    />
+                </div>
 
             </div>
         </AppLayout>
-    );
+    )
 }

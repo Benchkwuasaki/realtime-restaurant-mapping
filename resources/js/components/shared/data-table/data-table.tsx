@@ -736,7 +736,7 @@ export function DataTable<TData, TValue>({
                             {/* ── Optional footer / totals row ── */}
                             {footerRow && pageRows?.length > 0 && (
                                 <tfoot>
-                                    <tr className="border-t-2 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-700">
+                                    <tr className="border-t-2 border-border bg-muted/50 text-sm font-semibold text-foreground">
                                         {footerRow(pageRows)}
                                     </tr>
                                 </tfoot>

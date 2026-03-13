@@ -66,6 +66,7 @@ class EmployeeReportController extends Controller
             'id'          => (string) $employee->employee_id,
             'workId'      => $employee->work_id,
             'name'        => $basicInfo?->full_name ?? '—',
+            'avatarUrl'   => $employee?->avatar_url ?? '—',
             'department'  => $position?->department?->department_name ?? '—',
             'division'    => $position?->division?->division_name ?? '—',
             'position'    => $position?->position_name ?? '—',

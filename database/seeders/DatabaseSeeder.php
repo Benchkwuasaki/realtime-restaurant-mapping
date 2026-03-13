@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Employee;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -15,7 +13,6 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
         ]);
-        // TODO: refactor to separate seeder files
 
         // ── 0. Government Account Types ───────────────────────────────────
         $gsisTypeId = DB::table('government_acc_types')->insertGetId([
@@ -204,29 +201,27 @@ class DatabaseSeeder extends Seeder
 
         // ── 2. Departments ─────────────────────────────────────────────────
         $deptId = DB::table('departments')->insertGetId([
-            'department_name' => 'Office of Business Excellence',
-            'department_acronym' => 'OBE',
+            'department_name'        => 'Office of Business Excellence',
+            'department_acronym'     => 'OBE',
             'department_description' => 'Handles overall business operations and excellence.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'             => now(),
+            'updated_at'             => now(),
         ]);
 
-        // Department #2 (NEW)
         $deptOpsId = DB::table('departments')->insertGetId([
-            'department_name' => 'Operations and Services Department',
-            'department_acronym' => 'OSD',
+            'department_name'        => 'Operations and Services Department',
+            'department_acronym'     => 'OSD',
             'department_description' => 'Oversees daily operations, facilities, and customer-facing services.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'             => now(),
+            'updated_at'             => now(),
         ]);
 
-        // Department #3 (NEW)
         $deptGovId = DB::table('departments')->insertGetId([
-            'department_name' => 'Governance and Public Affairs Department',
-            'department_acronym' => 'GPAD',
+            'department_name'        => 'Governance and Public Affairs Department',
+            'department_acronym'     => 'GPAD',
             'department_description' => 'Manages governance initiatives, public information, and stakeholder relations.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'             => now(),
+            'updated_at'             => now(),
         ]);
 
         // ── 3. Divisions ───────────────────────────────────────────────────
@@ -312,84 +307,84 @@ class DatabaseSeeder extends Seeder
 
         // ── 4. Units ───────────────────────────────────────────────────────
         $unitRecruitId = DB::table('units')->insertGetId([
-            'division_id' => $divHrId,
-            'unit_name' => 'Recruitment Unit',
-            'unit_acronym' => 'RU',
+            'division_id'      => $divHrId,
+            'unit_name'        => 'Recruitment Unit',
+            'unit_acronym'     => 'RU',
             'unit_description' => 'Handles hiring and onboarding of new employees.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         $unitPayrollId = DB::table('units')->insertGetId([
-            'division_id' => $divHrId,
-            'unit_name' => 'Payroll and Benefits Unit',
-            'unit_acronym' => 'PBU',
+            'division_id'      => $divHrId,
+            'unit_name'        => 'Payroll and Benefits Unit',
+            'unit_acronym'     => 'PBU',
             'unit_description' => 'Processes payroll, benefits, and leave administration.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         $unitDevId = DB::table('units')->insertGetId([
-            'division_id' => $divItId,
-            'unit_name' => 'Software Development Unit',
-            'unit_acronym' => 'SDU',
+            'division_id'      => $divItId,
+            'unit_name'        => 'Software Development Unit',
+            'unit_acronym'     => 'SDU',
             'unit_description' => 'Develops and maintains internal software systems.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         $unitInfraId = DB::table('units')->insertGetId([
-            'division_id' => $divItId,
-            'unit_name' => 'Infrastructure and Networks Unit',
-            'unit_acronym' => 'INU',
+            'division_id'      => $divItId,
+            'unit_name'        => 'Infrastructure and Networks Unit',
+            'unit_acronym'     => 'INU',
             'unit_description' => 'Manages servers, networks, and IT infrastructure.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         $unitAccountingId = DB::table('units')->insertGetId([
-            'division_id' => $divFinId,
-            'unit_name' => 'Accounting Unit',
-            'unit_acronym' => 'AU',
+            'division_id'      => $divFinId,
+            'unit_name'        => 'Accounting Unit',
+            'unit_acronym'     => 'AU',
             'unit_description' => 'Handles general accounting, ledger, and audit support.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         $unitBudgetId = DB::table('units')->insertGetId([
-            'division_id' => $divFinId,
-            'unit_name' => 'Budget Unit',
-            'unit_acronym' => 'BU',
+            'division_id'      => $divFinId,
+            'unit_name'        => 'Budget Unit',
+            'unit_acronym'     => 'BU',
             'unit_description' => 'Prepares and monitors budget allocations and utilization.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         $unitRecordsId = DB::table('units')->insertGetId([
-            'division_id' => $divAdminId,
-            'unit_name' => 'Records Management Unit',
-            'unit_acronym' => 'RMU',
+            'division_id'      => $divAdminId,
+            'unit_name'        => 'Records Management Unit',
+            'unit_acronym'     => 'RMU',
             'unit_description' => 'Manages official documents and records.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         $unitProcurementId = DB::table('units')->insertGetId([
-            'division_id' => $divAdminId,
-            'unit_name' => 'Procurement Unit',
-            'unit_acronym' => 'PU',
+            'division_id'      => $divAdminId,
+            'unit_name'        => 'Procurement Unit',
+            'unit_acronym'     => 'PU',
             'unit_description' => 'Handles procurement of supplies and services.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         $unitLegalId = DB::table('units')->insertGetId([
-            'division_id' => $divLegalId,
-            'unit_name' => 'Legal Affairs Unit',
-            'unit_acronym' => 'LAU',
+            'division_id'      => $divLegalId,
+            'unit_name'        => 'Legal Affairs Unit',
+            'unit_acronym'     => 'LAU',
             'unit_description' => 'Handles legal documentation and case management.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         // Field Operations Division
@@ -398,26 +393,26 @@ class DatabaseSeeder extends Seeder
             'unit_name' => 'Dispatch and Coordination Unit',
             'unit_acronym' => 'DCU',
             'unit_description' => 'Coordinates schedules, dispatch, and field assignments.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
-        $unitServiceDeliveryId = DB::table('units')->insertGetId([
-            'division_id' => $divOpsFieldId,
-            'unit_name' => 'Service Delivery Unit',
-            'unit_acronym' => 'SDU2',
+        DB::table('units')->insertGetId([
+            'division_id'      => $divOpsFieldId,
+            'unit_name'        => 'Service Delivery Unit',
+            'unit_acronym'     => 'SDU2',
             'unit_description' => 'Ensures delivery of services to end-users and stakeholders.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
-        $unitQualityOpsId = DB::table('units')->insertGetId([
-            'division_id' => $divOpsFieldId,
-            'unit_name' => 'Operations Quality Unit',
-            'unit_acronym' => 'OQU',
+        DB::table('units')->insertGetId([
+            'division_id'      => $divOpsFieldId,
+            'unit_name'        => 'Operations Quality Unit',
+            'unit_acronym'     => 'OQU',
             'unit_description' => 'Monitors operational KPIs and compliance to procedures.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         // Facilities Management Division
@@ -426,17 +421,17 @@ class DatabaseSeeder extends Seeder
             'unit_name' => 'Maintenance Unit',
             'unit_acronym' => 'MU',
             'unit_description' => 'Handles repairs, upkeep, and preventive maintenance.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
-        $unitAssetId = DB::table('units')->insertGetId([
-            'division_id' => $divFacilitiesId,
-            'unit_name' => 'Asset and Inventory Unit',
-            'unit_acronym' => 'AIU',
+        DB::table('units')->insertGetId([
+            'division_id'      => $divFacilitiesId,
+            'unit_name'        => 'Asset and Inventory Unit',
+            'unit_acronym'     => 'AIU',
             'unit_description' => 'Manages fixed assets, supplies, and inventory records.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         // Customer Support Division
@@ -445,17 +440,17 @@ class DatabaseSeeder extends Seeder
             'unit_name' => 'Helpdesk Unit',
             'unit_acronym' => 'HDU',
             'unit_description' => 'Handles tickets, inquiries, and first-level support.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
-        $unitFeedbackId = DB::table('units')->insertGetId([
-            'division_id' => $divCustomerId,
-            'unit_name' => 'Feedback and Resolution Unit',
-            'unit_acronym' => 'FRU',
+        DB::table('units')->insertGetId([
+            'division_id'      => $divCustomerId,
+            'unit_name'        => 'Feedback and Resolution Unit',
+            'unit_acronym'     => 'FRU',
             'unit_description' => 'Manages feedback processing, escalation, and resolution.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         // Policy and Standards Division
@@ -464,45 +459,45 @@ class DatabaseSeeder extends Seeder
             'unit_name' => 'Policy Development Unit',
             'unit_acronym' => 'PDU',
             'unit_description' => 'Drafts policies, circulars, and internal guidelines.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
-        $unitComplianceAuditId = DB::table('units')->insertGetId([
-            'division_id' => $divPolicyId,
-            'unit_name' => 'Compliance and Audit Unit',
-            'unit_acronym' => 'CAU',
+        DB::table('units')->insertGetId([
+            'division_id'      => $divPolicyId,
+            'unit_name'        => 'Compliance and Audit Unit',
+            'unit_acronym'     => 'CAU',
             'unit_description' => 'Performs compliance checks and internal audits.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
-        $unitStandardsId = DB::table('units')->insertGetId([
-            'division_id' => $divPolicyId,
-            'unit_name' => 'Standards and Documentation Unit',
-            'unit_acronym' => 'SDU3',
+        DB::table('units')->insertGetId([
+            'division_id'      => $divPolicyId,
+            'unit_name'        => 'Standards and Documentation Unit',
+            'unit_acronym'     => 'SDU3',
             'unit_description' => 'Maintains standards library, templates, and documentation.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         // Public Affairs Division
         $unitCommsId = DB::table('units')->insertGetId([
-            'division_id' => $divPublicAffairsId,
-            'unit_name' => 'Communications Unit',
-            'unit_acronym' => 'CU',
+            'division_id'      => $divPublicAffairsId,
+            'unit_name'        => 'Communications Unit',
+            'unit_acronym'     => 'CU',
             'unit_description' => 'Handles announcements, press releases, and internal comms.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
-        $unitStakeholderId = DB::table('units')->insertGetId([
-            'division_id' => $divPublicAffairsId,
-            'unit_name' => 'Stakeholder Relations Unit',
-            'unit_acronym' => 'SRU',
+        DB::table('units')->insertGetId([
+            'division_id'      => $divPublicAffairsId,
+            'unit_name'        => 'Stakeholder Relations Unit',
+            'unit_acronym'     => 'SRU',
             'unit_description' => 'Manages external coordination and stakeholder engagement.',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         // ── 5. Positions ───────────────────────────────────────────────────
@@ -543,21 +538,21 @@ class DatabaseSeeder extends Seeder
             ['dept' => $deptId, 'div' => $divLegalId, 'unit' => null,           'name' => 'Legal Division Chief',    'sg_idx' => 10],
         ];
 
-        $positionIds = [];
         foreach ($positions as $pos) {
-            $positionIds[] = DB::table('positions')->insertGetId([
+            DB::table('positions')->insertGetId([
                 'department_id' => $pos['dept'],
-                'division_id' => $pos['div'],
-                'unit_id' => $pos['unit'],
+                'division_id'   => $pos['div'],
+                'unit_id'       => $pos['unit'],
                 'position_name' => $pos['name'],
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at'    => now(),
+                'updated_at'    => now(),
             ]);
         }
 
         // ── 6. Items — 4 slots per position; selected positions get a vacant 5th slot ──
         $positionsWithVacantSlot = [1, 4, 7, 10, 13, 16, 19, 21, 23, 24];
-        $itemIds = [];
+        $positionIds = DB::table('positions')->orderBy('position_id')->pluck('position_id')->toArray();
+
         foreach ($positionIds as $idx => $posId) {
             $posName = $positions[$idx]['name'];
             $hasVacantSlot = in_array($idx, $positionsWithVacantSlot, true);
@@ -1050,6 +1045,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             UserSeeder::class,
+            EmployeeSeeder::class,
             InternalOrganizationSeeder::class,
             HolidaySeeder::class,
             FaceEmbeddingSeeder::class,
