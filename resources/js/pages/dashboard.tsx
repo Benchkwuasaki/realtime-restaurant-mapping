@@ -56,7 +56,7 @@ type ClassificationCount = { classification: string; total: number }
 type LeaveTypeCount = { label: string; value: number; fill: string }
 type TopLeaveTaker = { name: string; days: number; type: string; color: string }
 type LeaveTrendPoint = { m: string; v: number }
-type TopLateEntry = { name: string; dept: string; min: number }
+type TopLateEntry = { name: string; dept: string; min: number; avatar_url?: string | null }
 
 /* ── ATTENDANCE DONUT ────────────────────────────────────────────────────── */
 function AttendanceDonut({ present, late, absent, halfDay, total }: {
@@ -121,7 +121,10 @@ function LateList({ entries }: { entries: TopLateEntry[] }) {
                 <div key={e.name} className="flex items-center gap-3">
                     <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-black text-white"
                         style={{ background: lateColors[i % lateColors.length] }}>
-                        {e.name.charAt(0)}
+                        {e.avatar_url
+                            ? <img src={e.avatar_url} alt={e.name} className="w-full h-full object-cover rounded-2xl" />
+                            : e.name.charAt(0)
+                        }
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
@@ -390,18 +393,22 @@ export default function Page() {
                     </div>
                 </div>
 
-                {/* ── STAT CARDS ───────────────────────────────────────── */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <StatCard title="Total Employees" value={totalEmployees} description="Active headcount"
-                        icon={<Users className="w-4 h-4 m-2 text-primary" />} />
+                        color={COLORS.present}
+                        icon={<Users className="w-4 h-4 m-2" />} />
                     <StatCard title="Present Today" value={realtimePresent} description="Clocked in or active"
-                        icon={<UserCheck className="w-4 h-4 m-2 text-emerald-500" />} />
+                        color={COLORS.present}
+                        icon={<UserCheck className="w-4 h-4 m-2" />} />
                     <StatCard title="On Leave" value={onLeaveCount ?? 0} description="Approved leave today"
-                        icon={<CalendarClock className="w-4 h-4 m-2 text-amber-500" />} />
+                        color={COLORS.late}
+                        icon={<CalendarClock className="w-4 h-4 m-2" />} />
                     <StatCard title="Pending Leave" value={pendingLeaveCount ?? 0} description="Awaiting approval"
-                        icon={<Clock className="w-4 h-4 m-2 text-rose-500" />} />
-                    <StatCard title="Payroll" value={"Mar 15" as any} description="Next payroll date"
-                        icon={<Banknote className="w-4 h-4 m-2 text-emerald-500" />} />
+                        color={COLORS.absent}
+                        icon={<Clock className="w-4 h-4 m-2" />} />
+                    <StatCard title="Payroll" value="Mar 15" description="Next payroll date"
+                        color={COLORS.cyan}
+                        icon={<Banknote className="w-4 h-4 m-2" />} />
                 </div>
 
                 {/* ── ROW 2 ────────────────────────────────────────────── */}

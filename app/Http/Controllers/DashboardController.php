@@ -13,13 +13,15 @@ use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    public function __construct(protected ActivityLogService $activityLogService) {}
+    public function __construct(protected ActivityLogService $activityLogService)
+    {
+    }
 
     public function index()
     {
         $this->activityLogService->createLog([
-            'user_id'  => Auth::id(),
-            'module'   => 'general',
+            'user_id' => Auth::id(),
+            'module' => 'general',
             'activity' => 'Viewed dashboard',
         ]);
 
@@ -36,7 +38,7 @@ class DashboardController extends Controller
 
         $employeeClassificationCounts = $classifications->map(fn(string $name) => [
             'classification' => $name,
-            'total'          => $countsByClassification->get($name, 0),
+            'total' => $countsByClassification->get($name, 0),
         ])->values();
 
         // ── Leave ─────────────────────────────────────────────────────────────
@@ -121,7 +123,7 @@ class DashboardController extends Controller
             ->map(fn($row, $i) => [
                 'label' => $row->label,
                 'value' => (int) $row->value,
-                'fill'  => $leaveTypeColorMap->get($row->label, $chartColors[$i % count($chartColors)]),
+                'fill' => $leaveTypeColorMap->get($row->label, $chartColors[$i % count($chartColors)]),
             ])
             ->toArray());
 
@@ -150,9 +152,9 @@ class DashboardController extends Controller
             ->limit(5)
             ->get()
             ->map(fn($row, $i) => [
-                'name'  => $row->first_name . ' ' . $row->last_name,
-                'days'  => (int) $row->days,
-                'type'  => $row->type,
+                'name' => $row->first_name . ' ' . $row->last_name,
+                'days' => (int) $row->days,
+                'type' => $row->type,
                 'color' => $leaveTypeColorMap->get($row->type, $chartColors[$i % count($chartColors)]),
             ])
             ->toArray());
@@ -172,10 +174,10 @@ class DashboardController extends Controller
         $presentToday = $onTimeToday + $lateToday;
 
         $topLateToday = AttendanceRecord::with([
-                'employee:employee_id,employee_basic_info_id',
-                'employee.basicInfo:employee_basic_info_id,first_name,last_name',
-                'employee.item.position.department:department_id,department_name',
-            ])
+            'employee:employee_id,employee_basic_info_id,avatar_url',
+            'employee.basicInfo:employee_basic_info_id,first_name,last_name',
+            'employee.item.position.department:department_id,department_name',
+        ])
             ->whereDate('date', $today)
             ->where('status', 'PRESENT')
             ->where('late_minutes', '>', 0)
@@ -185,25 +187,26 @@ class DashboardController extends Controller
             ->map(fn($r) => [
                 'name' => trim(($r->employee?->basicInfo?->first_name ?? '') . ' ' . ($r->employee?->basicInfo?->last_name ?? '')),
                 'dept' => $r->employee?->item?->position?->department?->department_name ?? '—',
-                'min'  => (int) $r->late_minutes,
+                'min' => (int) $r->late_minutes,
+                'avatar_url' => $r->employee?->avatar_url ?? null,
             ]);
 
         // ── Render ────────────────────────────────────────────────────────────
 
         return Inertia::render('dashboard', [
             'employeeClassificationCounts' => $employeeClassificationCounts,
-            'onLeaveCount'                 => $onLeaveCount,
-            'pendingLeaveCount'            => $pendingLeaveCount,
-            'urgentLeaveApplicationCount'  => $urgentLeaveApplicationCount,
-            'approvedTodayCount'           => $approvedTodayCount,
-            'avgWaitDays'                  => $avgWaitDays,
-            'leaveTypeCounts'              => $leaveTypeCounts,
-            'topLeaveTakers'               => $topLeaveTakers,
-            'leaveTrend'                   => $leaveTrend,
-            'presentToday'                 => $presentToday,
-            'onTimeToday'                  => $onTimeToday,
-            'lateToday'                    => $lateToday,
-            'topLateToday'                 => $topLateToday,
+            'onLeaveCount' => $onLeaveCount,
+            'pendingLeaveCount' => $pendingLeaveCount,
+            'urgentLeaveApplicationCount' => $urgentLeaveApplicationCount,
+            'approvedTodayCount' => $approvedTodayCount,
+            'avgWaitDays' => $avgWaitDays,
+            'leaveTypeCounts' => $leaveTypeCounts,
+            'topLeaveTakers' => $topLeaveTakers,
+            'leaveTrend' => $leaveTrend,
+            'presentToday' => $presentToday,
+            'onTimeToday' => $onTimeToday,
+            'lateToday' => $lateToday,
+            'topLateToday' => $topLateToday,
         ]);
     }
 }

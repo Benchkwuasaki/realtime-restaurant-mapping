@@ -630,11 +630,11 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                                         <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.positionName}</span>
                                                         {grp.totalSlots > 1 && (
                                                             isDisabled
-                                                                ? <Badge variant="outline" className="text-[10px] font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 shrink-0">Full</Badge>
+                                                                ? <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
                                                                 : <Badge variant="secondary" className="text-[10px] shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
                                                         )}
                                                         {grp.totalSlots === 1 && isDisabled && (
-                                                            <Badge variant="outline" className="text-[10px] font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 shrink-0">Full</Badge>
+                                                            <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
                                                         )}
                                                     </div>
                                                 </SelectItem>
@@ -1051,7 +1051,7 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                         key={slip.whereabout_slip_id}
                         className={cn(
                             "rounded-lg border bg-background overflow-hidden",
-                            isDeducted ? "border-rose-300 dark:border-rose-800" : "border-border",
+                            isDeducted ? "border-destructive/40" : "border-border",
                         )}
                     >
                         <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/20">
@@ -1073,7 +1073,7 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                             ].map(({ label, value, highlight }) => (
                                 <div key={label} className="flex flex-col gap-0.5 px-3 py-2 bg-background">
                                     <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
-                                    <span className={cn("text-xs font-mono font-medium", highlight && "text-rose-600 dark:text-rose-400")}>{value}</span>
+                                    <span className={cn("text-xs font-mono font-medium", highlight && "text-destructive")}>{value}</span>
                                 </div>
                             ))}
                         </div>
@@ -1082,7 +1082,7 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                             <div className={cn(
                                 "flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold border-t",
                                 isDeducted
-                                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/60"
+                                    ? "bg-destructive/10 text-destructive border-destructive/20"
                                     : isPendingDeduct
                                         ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60"
                                         : "bg-muted/30 text-muted-foreground border-border/40",
@@ -1143,7 +1143,7 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
                 <td className="py-2.5 pr-4 text-xs font-medium whitespace-nowrap">{dateLabel}</td>
                 <td className="py-2.5 pr-4"><StatusBadge status={record.status} /></td>
                 <td className="py-2.5 pr-4">
-                    <span className={cn("text-xs font-mono", isLate && "text-rose-600 dark:text-rose-400 font-semibold")}>
+                    <span className={cn("text-xs font-mono", isLate && "text-destructive font-semibold")}>
                         {fmtTime(record.time_in)}
                     </span>
                 </td>
@@ -1153,12 +1153,12 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
                 <td className="py-2.5 pr-4 text-xs font-mono font-semibold">{fmtMinutes(record.work_minutes)}</td>
                 <td className="py-2.5 pr-4">
                     {isLate
-                        ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">{fmtMinutes(record.late_minutes)}</span>
+                        ? <span className="text-xs font-mono font-semibold text-destructive">{fmtMinutes(record.late_minutes)}</span>
                         : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
                 </td>
                 <td className="py-2.5 pr-3">
                     {personalDeductionMins > 0
-                        ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">-{fmtMinutes(personalDeductionMins)}</span>
+                        ? <span className="text-xs font-mono font-semibold text-destructive">-{fmtMinutes(personalDeductionMins)}</span>
                         : slips.some(s => s.purpose_type === "personal" && s.return_status === "returned" && !hasTimedOut)
                             ? <span className="text-[10px] text-amber-500 font-semibold">Pending</span>
                             : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
@@ -1412,14 +1412,14 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                                 {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                             </Button>
                                             <Button onClick={() => openEditGovDialog(type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                            <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </>
                                     ) : (
                                         <Button
                                             onClick={() => setGovDialog({
                                                 open: true,
                                                 mode: "standard",
-                                                type,          // ← "GSIS", "PhilHealth", or "Pag-IBIG"
+                                                type,
                                                 id: undefined,
                                                 value: "",
                                                 customTypeName: ""
@@ -1448,7 +1448,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                     </Button>
                                     <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
-                                    <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
                         )
@@ -1478,7 +1478,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                         <Button onClick={() => openEligDialog(e)} variant="ghost" size="icon-xs">
                                             <Pencil className="w-3.5 h-3.5" />
                                         </Button>
-                                        <Button onClick={() => setDeleteEligId(e.eligibility_information_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">
+                                        <Button onClick={() => setDeleteEligId(e.eligibility_information_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
                                     </div>
@@ -1863,7 +1863,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}>
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteFamilyIndex(i)}>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}>
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
@@ -1917,7 +1917,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                                         <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}>
                                                             <Pencil className="w-3.5 h-3.5" />
                                                         </Button>
-                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteEducIndex(globalIndex)}>
+                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteEducIndex(globalIndex)}>
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </Button>
                                                     </div>
@@ -1965,7 +1965,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}>
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteSeminarId(s.id)}>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}>
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
@@ -2010,7 +2010,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}>
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteServiceId(s.id)}>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}>
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
@@ -2341,7 +2341,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                                 </Button>
                                             </a>
                                         )}
-                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 w-8 h-8 sm:w-7 sm:h-7" onClick={() => setDeleteFileId(file.id)} title="Delete">
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-8 h-8 sm:w-7 sm:h-7" onClick={() => setDeleteFileId(file.id)} title="Delete">
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
                                     </div>
