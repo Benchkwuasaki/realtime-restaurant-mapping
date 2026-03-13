@@ -50,7 +50,6 @@ class AttendanceSeeder extends Seeder
     private const SCHED_BREAK_OUT = '12:00:00';
     private const SCHED_BREAK_IN  = '13:00:00';
     private const SCHED_OUT       = '17:00:00';
-    private const BREAK_DURATION  = 60;
 
     // Cached supervisor employee_id used for whereabout slip FK fields.
     private int $supervisorId;

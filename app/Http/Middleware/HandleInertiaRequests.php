@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\DocumentTracking;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,9 +36,24 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $user = $request->user()?->loadMissing('employee.basicInfo');
+        $user = $request->user()?->loadMissing(
+            'employee.basicInfo',
+            'employee.item.position.department',
+            'employee.item.position.division',
+            'employee.item.position.unit'
+        );
 
-        // dd($user);
+        $position = $user?->employee?->item?->position;
+        $department = $position?->department;
+        $division = $position?->division;
+        $unit = $position?->unit;
+        $departmentId = $department?->department_id;
+        $incomingDocumentsCount = $departmentId
+            ? DocumentTracking::query()
+                ->where('current_office_id', $departmentId)
+                ->whereNotIn('status', ['completed', 'cancelled'])
+                ->count()
+            : 0;
 
         return [
             ...parent::share($request),
@@ -47,7 +63,25 @@ class HandleInertiaRequests extends Middleware
                     'id' => $user->id,
                     'name' => $user->getFullName(),
                     'email' => $user->email,
+                    'position' => $position?->position_name,
                     'roles' => $user->getRoleNames()->values()->all(),
+                    'offices' => [
+                        'department' => [
+                            'name' => $department?->department_name,
+                            'acronym' => $department?->department_acronym,
+                        ],
+                        'division' => [
+                            'name' => $division?->division_name,
+                            'acronym' => $division?->division_acronym,
+                        ],
+                        'unit' => [
+                            'name' => $unit?->unit_name,
+                            'acronym' => $unit?->unit_acronym,
+                        ],
+                    ],
+                    'notifications' => [
+                        'incoming_documents_count' => $incomingDocumentsCount,
+                    ],
                 ] : null,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state')

@@ -1,14 +1,5 @@
-import { Link, router, usePage } from "@inertiajs/react"
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  Settings,
-  Sparkles,
-} from "lucide-react"
-
+import { Link, router } from "@inertiajs/react"
+import { ChevronsUpDown, LogOut, Settings } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,18 +16,16 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { UserInfo } from "@/components/user-info"
-import { route } from "ziggy-js"
 import { useAuth } from "@/hooks/use-auth"
+import { route } from "ziggy-js"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
   const { user } = useAuth()
 
-  const handleLogout = () => {
-    router.post(route('logout'))
-  }
-
   if (!user) return null
+
+  const handleLogout = () => router.post(route("logout"))
 
   return (
     <SidebarMenu>
@@ -62,38 +51,22 @@ export function NavUser() {
                 <UserInfo user={user} />
               </div>
             </DropdownMenuLabel>
-            {/* <DropdownMenuSeparator /> */}
-            {/* <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link href="#">
-                  <Sparkles />
-                  Upgrade to Pro
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuGroup> */}
+
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href={route('profile.edit')}>
+                <Link href={route("profile.edit")}>
                   <Settings />
                   Settings
                 </Link>
               </DropdownMenuItem>
-              {/* <DropdownMenuItem asChild>
-                <Link href="#">
-                  <CreditCard />
-                  Billing
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="#">
-                  <Bell />
-                  Notifications
-                </Link>
-              </DropdownMenuItem> */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={handleLogout} className="cursor-pointer">
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={handleLogout}
+              className="cursor-pointer"
+            >
               <LogOut />
               Log out
             </DropdownMenuItem>

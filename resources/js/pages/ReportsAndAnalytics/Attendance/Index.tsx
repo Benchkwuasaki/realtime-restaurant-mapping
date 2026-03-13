@@ -5,9 +5,8 @@ import {
     UserCheck, Coffee, UserX, AlertTriangle, Users,
     TrendingUp, TrendingDown, Minus,
     RefreshCw, Download, CalendarDays, Building2, Clock,
-    BarChart3, Activity,
+    BarChart3, ListFilter,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
     Area, ComposedChart, ReferenceLine, ResponsiveContainer, Line,
@@ -161,7 +160,7 @@ function FilterBar({ departments, filters, onApply }: {
             </div>
 
             <Button size="sm" className="h-8 text-xs" onClick={() => onApply(local)}>
-                <Activity className="w-3.5 h-3.5 mr-1.5" /> Apply
+                <ListFilter className="w-3.5 h-3.5 mr-1.5" /> Apply
             </Button>
             {isDirty && (
                 <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={reset}>Reset</Button>

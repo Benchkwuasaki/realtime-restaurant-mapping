@@ -1,6 +1,8 @@
 import * as React from "react"
 import { ChevronRight, type LucideIcon } from "lucide-react"
 import { Link, usePage } from "@inertiajs/react"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 import {
   Collapsible,
   CollapsibleContent,
@@ -21,9 +23,10 @@ export type NavItem = {
   title: string
   url?: string | null
   icon: LucideIcon
+  badgeCount?: number
   isActive?: boolean
   show?: boolean
-  items?: { title: string; url?: string | null }[]
+  items?: { title: string; url?: string | null; badgeCount?: number }[]
 }
 
 export function NavMain({ items }: { items: NavItem[] }) {
@@ -80,7 +83,6 @@ export function NavMain({ items }: { items: NavItem[] }) {
             <Collapsible key={item.title} defaultOpen={defaultOpen} className="group/collapsible">
               <SidebarMenuItem>
                 {hasChildren ? (
-                  // Parent with children: whole row toggles the collapsible
                   <CollapsibleTrigger className="hover:cursor-pointer" asChild>
                     <SidebarMenuButton
                       tooltip={item.title}
@@ -88,6 +90,14 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     >
                       <item.icon />
                       <span className="flex-1">{item.title}</span>
+                      {(item.badgeCount ?? 0) > 0 ? (
+                        <Badge
+                          variant="destructive"
+                          className="h-4 min-w-4 rounded-full px-1 text-[9px] font-medium leading-none"
+                        >
+                          {item.badgeCount}
+                        </Badge>
+                      ) : null}
                       <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
@@ -117,11 +127,23 @@ export function NavMain({ items }: { items: NavItem[] }) {
                         return (
                           <SidebarMenuSubItem key={subItem.title}>
                             {subItem.url ? (
-                              <SidebarMenuSubButton asChild isActive={isChildActive}>
-                                <Link href={subItem.url}>
-                                  <span>{subItem.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
+                              <Link
+                                href={subItem.url}
+                                className={cn(
+                                  "text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground flex h-7 min-w-0 -translate-x-px items-center justify-between gap-2 overflow-hidden rounded-md px-2 text-sm outline-hidden focus-visible:ring-2",
+                                  isChildActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                                )}
+                              >
+                                <span>{subItem.title}</span>
+                                {(subItem.badgeCount ?? 0) > 0 ? (
+                                  <Badge
+                                    variant="destructive"
+                                    className="h-4 min-w-4 rounded-full px-1 text-[9px] font-medium leading-none"
+                                  >
+                                    {subItem.badgeCount}
+                                  </Badge>
+                                ) : null}
+                              </Link>
                             ) : (
                               <SidebarMenuSubButton isActive={false}>
                                 <span>{subItem.title}</span>
