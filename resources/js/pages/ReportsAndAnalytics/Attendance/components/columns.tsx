@@ -39,7 +39,7 @@ export function RateBar({ rate }: { rate: number }) {
             <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden shrink-0">
                 <div
                     className={cn("h-full rounded-full transition-all", RATE_BAR_FILL[cat])}
-                    style={{ width: `${Math.min(r, 100)}%` }} 
+                    style={{ width: `${Math.min(r, 100)}%` }}
                 />
             </div>
             <span className={cn("text-xs font-semibold tabular-nums", RATE_TEXT[cat])}>
@@ -159,35 +159,33 @@ export function getDeptColumns(): DataTableColumnDef<DepartmentStat>[] {
 
 // ─── Footer row (page-aware totals via DataTable footerRow prop) ──────────────
 
-export function buildDeptFooterRow(pageRows: Row<DepartmentStat>[]): React.ReactNode[] {
+export function buildDeptFooterRow(
+    pageRows: Row<DepartmentStat>[],
+    visibleColumnIds: string[],         // ← add this
+): React.ReactNode[] {
     const t = computeDeptTotals(pageRows.map(r => r.original))
+
+    const cell = (id: string, content: React.ReactNode, className = "") =>
+        visibleColumnIds.includes(id)
+            ? <TableCell key={id} className={`py-2.5 px-4 ${className}`}>{content}</TableCell>
+            : null
+
     return [
         <TableCell key="dept" className="py-2.5 px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Totals
         </TableCell>,
-        <TableCell key="total" className="py-2.5 px-4">
+
+        cell("total",
             <div className="flex items-center gap-1.5 text-sm font-bold tabular-nums text-foreground">
                 <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 {t.total}
             </div>
-        </TableCell>,
-        <TableCell key="present" className="py-2.5 px-4 text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-            {t.present}
-        </TableCell>,
-        <TableCell key="late" className="py-2.5 px-4 text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
-            {t.late > 0 ? t.late : "—"}
-        </TableCell>,
-        <TableCell key="half_day" className="py-2.5 px-4 text-sm font-bold tabular-nums text-indigo-600 dark:text-indigo-400">
-            {t.half_day > 0 ? t.half_day : "—"}
-        </TableCell>,
-        <TableCell key="absent" className="py-2.5 px-4 text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
-            {t.absent > 0 ? t.absent : "—"}
-        </TableCell>,
-        <TableCell key="rate" className="py-2.5 px-4">
-            <RateBar rate={t.avgRate} />
-        </TableCell>,
-        <TableCell key="badge" className="py-2.5 px-4">
-            <RateBadge rate={t.avgRate} />
-        </TableCell>,
+        ),
+        cell("present", t.present, "text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400"),
+        cell("late", t.late > 0 ? t.late : "—", "text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400"),
+        cell("half_day", t.half_day > 0 ? t.half_day : "—", "text-sm font-bold tabular-nums text-indigo-600 dark:text-indigo-400"),
+        cell("absent", t.absent > 0 ? t.absent : "—", "text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400"),
+        cell("rate", <RateBar rate={t.avgRate} />),
+        cell("rate_category", <RateBadge rate={t.avgRate} />),
     ]
 }
