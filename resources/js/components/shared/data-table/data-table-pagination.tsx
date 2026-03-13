@@ -40,11 +40,14 @@ export function DataTablePagination<TData>({
 }: DataTablePaginationProps<TData>) {
   // Count keys in rowSelection — this is always accurate regardless of pagination
   const selectedCount = Object.keys(rowSelection).length
+  const hasSelectionColumn = !!table.getColumn("select")
 
   return (
     <div className="flex items-center justify-between px-2">
       <div className="text-muted-foreground flex-1 text-sm">
-        {selectedCount} of {totalFiltered} row(s) selected.
+        {hasSelectionColumn && (
+          <>{selectedCount} of {totalFiltered} row(s) selected.</>
+        )}  
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8">
         <div className="flex items-center space-x-2">

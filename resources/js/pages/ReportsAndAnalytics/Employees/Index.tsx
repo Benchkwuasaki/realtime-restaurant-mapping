@@ -2,7 +2,7 @@ import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { route } from 'ziggy-js';
-import { usePage } from '@inertiajs/react';
+import { usePage, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTable } from '@/components/shared/data-table/data-table';
+import { StatCard } from '@/components/shared/stat-card';
+import { Users, UserCheck, UserMinus } from 'lucide-react';;
 
 import {
     EMP_TYPES, STATUSES, GENDERS, EDUC_LEVELS,
@@ -97,79 +99,79 @@ function ActiveFilters({ filters, setFilters }: { filters: EmployeeFilters; setF
    EMPLOYEE DETAIL DRAWER
 ══════════════════════════════════════════ */
 function EmployeeDrawer({ employee, onClose }: { employee: Employee | null; onClose: () => void }) {
-    const open = !!employee;
     const color = employee ? deptColor(employee.department) : blue;
 
     return (
-        <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+        <Sheet open={!!employee} onOpenChange={(o) => { if (!o) onClose(); }}>
             <SheetContent side="right" className="flex flex-col w-[340px] sm:max-w-[340px] p-0 gap-0">
-
-                {/* Header */}
-                <SheetHeader className="flex-row items-start gap-3 p-5 border-b">
-                    <Avatar size="sm">
-                        <AvatarImage src={employee?.avatarUrl ?? undefined} alt={employee?.name} />
-                        <AvatarFallback
-                            className="text-white text-xs font-black"
-                            style={{ background: color }}
-                        >
-                            {employee?.name?.charAt(0)}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                        <SheetTitle className="text-sm font-extrabold leading-tight truncate">
-                            {employee?.name}
-                        </SheetTitle>
-                        <SheetDescription className="text-xs mt-0.5">
-                            {employee?.position} · {employee?.department}
-                        </SheetDescription>
-                        <div className="flex gap-1.5 mt-2">
-                            {employee && <StatusBadge status={employee.status} />}
-                            {employee && <TypeBadge type={employee.type} />}
-                        </div>
-                    </div>
-                </SheetHeader>
-
-                {/* Detail rows */}
-                <div className="flex-1 overflow-y-auto px-5 py-3">
-                    {employee && ([
-                        { label: 'Work ID', value: employee.workId, mono: true },
-                        { label: 'Email', value: employee.email },
-                        { label: 'Salary Grade', value: employee.salaryGrade },
-                        { label: 'Division', value: employee.division },
-                        { label: 'Date Hired', value: employee.dateHired },
-                        { label: 'Age', value: `${employee.age} yrs` },
-                        { label: 'Gender', value: employee.gender },
-                        { label: 'Education', value: employee.education },
-                        { label: 'City', value: employee.city },
-                        { label: 'State', value: employee.state },
-                    ] as { label: string; value: string; mono?: boolean }[]).map((r, i, arr) => (
-                        <div key={r.label}>
-                            <div className="flex items-center justify-between py-2.5">
-                                <span className="text-xs font-semibold text-muted-foreground">{r.label}</span>
-                                <span className={`text-xs font-bold text-foreground ${r.mono ? 'font-mono' : ''}`}>
-                                    {r.value || '—'}
-                                </span>
+                {!employee ? null : (
+                    <>
+                        {/* Header */}
+                        <SheetHeader className="flex-row items-start gap-3 p-5 border-b">
+                            <Avatar size="sm">
+                                <AvatarImage src={employee.avatarUrl ?? undefined} alt={employee.name} />
+                                <AvatarFallback
+                                    className="text-white text-xs font-black"
+                                    style={{ background: color }}
+                                >
+                                    {employee.name.charAt(0)}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                                <SheetTitle className="text-sm font-extrabold leading-tight truncate">
+                                    {employee.name}
+                                </SheetTitle>
+                                <SheetDescription className="text-xs mt-0.5">
+                                    {employee.position} · {employee.department}
+                                </SheetDescription>
+                                <div className="flex gap-1.5 mt-2">
+                                    <StatusBadge status={employee.status} />
+                                    <TypeBadge type={employee.type} />
+                                </div>
                             </div>
-                            {i < arr.length - 1 && <Separator />}
+                        </SheetHeader>
+
+                        {/* Detail rows */}
+                        <div className="flex-1 overflow-y-auto px-5 py-3">
+                            {([
+                                { label: 'Work ID', value: employee.workId, mono: true },
+                                { label: 'Email', value: employee.email },
+                                { label: 'Salary Grade', value: employee.salaryGrade },
+                                { label: 'Division', value: employee.division },
+                                { label: 'Date Hired', value: employee.dateHired },
+                                { label: 'Age', value: `${employee.age} yrs` },
+                                { label: 'Gender', value: employee.gender },
+                                { label: 'Education', value: employee.education },
+                                { label: 'City', value: employee.city },
+                                { label: 'State', value: employee.state },
+                            ] as { label: string; value: string; mono?: boolean }[]).map((r, i, arr) => (
+                                <div key={r.label}>
+                                    <div className="flex items-center justify-between py-2.5">
+                                        <span className="text-xs font-semibold text-muted-foreground">{r.label}</span>
+                                        <span className={`text-xs font-bold text-foreground ${r.mono ? 'font-mono' : ''}`}>
+                                            {r.value || '—'}
+                                        </span>
+                                    </div>
+                                    {i < arr.length - 1 && <Separator />}
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
 
-                {/* Footer */}
-                <SheetFooter className="flex-row gap-2 p-4 border-t">
-                    <SheetClose asChild>
-                        <Button variant="outline" className="flex-1">Close</Button>
-                    </SheetClose>
-                    <Button className="flex-1" onClick={() => {/* navigate to employee.show */ }}>
-                        View Profile
-                    </Button>
-                </SheetFooter>
-
+                        {/* Footer */}
+                        <SheetFooter className="flex-row gap-2 p-4 border-t">
+                            <SheetClose asChild>
+                                <Button variant="outline" className="flex-1">Close</Button>
+                            </SheetClose>
+                            <Button className="flex-1" onClick={() => router.visit(route('employee.show', { employee: employee.id }))}>
+                                View Profile
+                            </Button>
+                        </SheetFooter>
+                    </>
+                )}
             </SheetContent>
         </Sheet>
     );
 }
-
 /* ══════════════════════════════════════════
    1. KPI STRIP
    Uses server-provided totals for the header cards;
@@ -183,9 +185,27 @@ function KpiStrip({
     filters: EmployeeFilters; setFilters: (f: EmployeeFilters) => void;
 }) {
     const kpis = [
-        { label: 'Total Employees', value: totalEmployees, accent: blue, bg: 'color-mix(in oklch, var(--primary) 12%, transparent)', icon: '👥', statusFilter: '' },
-        { label: 'Active', value: activeEmployees, accent: emerald, bg: 'color-mix(in oklch, var(--accent) 20%, transparent)', icon: '✅', statusFilter: 'Active' },
-        { label: 'Inactive', value: inactiveEmployees, accent: slate, bg: 'color-mix(in oklch, var(--muted) 60%, transparent)', icon: '⏸', statusFilter: 'Inactive' },
+        {
+            label: 'Total Employees',
+            value: totalEmployees,
+            description: 'All employees across all departments',
+            icon: <Users className="size-5 m-1" />,
+            statusFilter: '',
+        },
+        {
+            label: 'Active',
+            value: activeEmployees,
+            description: 'Currently active employees',
+            icon: <UserCheck className="size-5 m-1" />,
+            statusFilter: 'Active',
+        },
+        {
+            label: 'Inactive',
+            value: inactiveEmployees,
+            description: 'Currently inactive employees',
+            icon: <UserMinus className="size-5 m-1" />,
+            statusFilter: 'Inactive',
+        },
     ];
 
     return (
@@ -194,30 +214,32 @@ function KpiStrip({
                 const isActive = !!k.statusFilter && filters.status === k.statusFilter;
                 const clickable = !!k.statusFilter;
                 return (
-                    <div key={k.label}
+                    <div
+                        key={k.label}
                         onClick={() => clickable && setFilters({ ...filters, status: filters.status === k.statusFilter ? '' : k.statusFilter })}
                         style={{
-                            background: 'var(--card)', borderRadius: 16,
-                            border: `1px solid ${isActive ? k.accent : 'var(--border)'}`,
-                            borderLeft: `4px solid ${k.accent}`, padding: 16,
-                            boxShadow: isActive ? `0 0 0 3px ${k.accent}22, var(--shadow-sm)` : 'var(--shadow-sm)',
                             cursor: clickable ? 'pointer' : 'default',
                             transition: 'all .15s',
                             transform: isActive ? 'translateY(-1px)' : 'none',
+                            outline: isActive ? `2px solid var(--primary)` : 'none',
+                            outlineOffset: 2,
+                            borderRadius: 16,
                         }}
                         onMouseEnter={e => { if (clickable) (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; }}
                         onMouseLeave={e => { if (clickable) (e.currentTarget as HTMLDivElement).style.transform = isActive ? 'translateY(-1px)' : 'none'; }}
                     >
-                        <div style={{ background: k.bg, borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10, fontSize: 16 }}>
-                            {k.icon}
-                        </div>
-                        <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--foreground)', lineHeight: 1 }}>{k.value}</div>
-                        <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 4 }}>{k.label}</div>
-                        {clickable && (
-                            <div style={{ fontSize: 10, color: k.accent, fontWeight: 700, marginTop: 3 }}>
-                                {isActive ? '✓ Filtering' : 'Click to filter'}
-                            </div>
-                        )}
+                        <StatCard
+                            title={k.label}
+                            value={k.value}
+                            description={
+                                clickable
+                                    ? isActive
+                                        ? `✓ Filtering · ${k.description}`
+                                        : k.description
+                                    : k.description
+                            }
+                            icon={k.icon}
+                        />
                     </div>
                 );
             })}

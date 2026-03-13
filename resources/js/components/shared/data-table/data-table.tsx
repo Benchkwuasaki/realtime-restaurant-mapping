@@ -112,7 +112,7 @@ interface DataTableProps<TData, TValue> {
      *   <td className="text-right">{peso(rows.reduce((s,r) => s + r.original.grossPay, 0))}</td>,
      * ]}
      */
-    footerRow?: (rows: Row<TData>[]) => React.ReactNode[]
+    footerRow?: (rows: Row<TData>[], visibleColumnIds: string[]) => React.ReactNode[]
 
     /**
      * Zebra-stripe body rows (index % 2 === 0 → white, odd → slate-50/50).
@@ -494,7 +494,10 @@ export function DataTable<TData, TValue>({
                             {footerRow && pageRows?.length > 0 && (
                                 <tfoot>
                                     <tr className="border-t-2 border-border bg-muted/50 text-sm font-semibold text-foreground">
-                                        {footerRow(pageRows)}
+                                        {footerRow(
+                                            pageRows,
+                                            table.getVisibleLeafColumns().map((col) => col.id),
+                                        )}
                                     </tr>
                                 </tfoot>
                             )}
