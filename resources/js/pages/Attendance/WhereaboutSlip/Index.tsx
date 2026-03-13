@@ -823,20 +823,6 @@ export default function WhereaboutSlipIndex({ slips, employees }: Props) {
             <Head title="Whereabout Slips" />
 
             <div className="flex h-full flex-1 flex-col gap-5 py-4 px-6">
-
-                {/* Page header */}
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                            <ClipboardList className="w-5 h-5 text-primary" />
-                            Whereabout Slips
-                        </h1>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {slips.length} slip{slips.length !== 1 ? "s" : ""} on record
-                        </p>
-                    </div>
-                </div>
-
                 {props.flash?.success && (
                     <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
                         {props.flash.success}
