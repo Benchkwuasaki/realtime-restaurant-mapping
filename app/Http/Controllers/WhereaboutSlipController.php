@@ -94,14 +94,13 @@ class WhereaboutSlipController extends Controller
 
         $employee = Employee::findOrFail($validated['employee_id']);
 
-        // dd($validated);
 
         WhereaboutSlip::create($validated);
 
         $this->activityLogService->createLog([
             'user_id'     => Auth::id(),
             'module'      => 'attendance',
-            'description' => "Created whereabout slip for {$employee->basicInfo->full_name}",
+            'activity' => "Created whereabout slip for {$employee->basicInfo->full_name}",
         ]);
 
         return back()->with('success', 'Whereabout slip created successfully.');
