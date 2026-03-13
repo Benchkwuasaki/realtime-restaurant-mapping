@@ -68,7 +68,7 @@ class WhereaboutSlipController extends Controller
             'employees' => $employees,
         ]);
     }
-
+    
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -80,9 +80,15 @@ class WhereaboutSlipController extends Controller
             'purpose_type'             => ['required', 'string', 'in:official,personal'],
             'purpose_description'      => ['required', 'string', 'max:1000'],
             'time_out'                 => ['required', 'date_format:H:i:s'],
+            'latitude'                 => ['required', 'numeric'],
+            'longitude'                 => ['required', 'numeric'],
+            'prov_code'                 => ['required', 'numeric'],
+            'city_code'                 => ['required', 'numeric'],
+            'brgy_code'                 => ['required', 'numeric'],
         ]);
 
         $employee = Employee::findOrFail($validated['employee_id']);
+
 
         WhereaboutSlip::create($validated);
 

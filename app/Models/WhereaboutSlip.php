@@ -22,6 +22,11 @@ class WhereaboutSlip extends Model
         'minutes_gone',   // computed on logReturn — null until employee returns
         'status',
         'return_status',
+        'prov_code',
+        'city_code',
+        'brgy_code',
+        'latitude',
+        'longitude',
     ];
 
     protected $casts = [
