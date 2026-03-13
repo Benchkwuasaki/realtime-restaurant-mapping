@@ -564,12 +564,14 @@ class DatabaseSeeder extends Seeder
             $slotLimit = $hasVacantSlot ? 5 : 4;
 
             for ($slot = 1; $slot <= $slotLimit; $slot++) {
-                DB::table('items')->insertGetId([
+                $isVacant = $hasVacantSlot && $slot === $slotLimit;
+                $newId = DB::table('items')->insertGetId([
                     'position_id' => $posId,
                     'item_name' => "{$posName} Item {$slot}",
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                $itemIds[] = ['id' => $newId, 'pos_idx' => $idx, 'is_vacant_slot' => $isVacant];
             }
         }
 
@@ -1045,13 +1047,14 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+
         $this->call([
             UserSeeder::class,
             InternalOrganizationSeeder::class,
             HolidaySeeder::class,
             FaceEmbeddingSeeder::class,
             RecognitionLogSeeder::class,
-            AttendanceRecordSeeder::class,
+            AttendanceSeeder::class,
             LeaveTypeSeeder::class,
             LeaveBalanceSeeder::class,
             LeaveApplicationSeeder::class,
