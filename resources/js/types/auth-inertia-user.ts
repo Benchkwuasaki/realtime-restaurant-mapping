@@ -5,7 +5,7 @@ export type AuthInertiaUser = {
     email: string;
     position: string;
     roles: string[];
-    avatar: string;
+    avatar_url: string;
     notifications?: {
         incoming_documents_count: number
     }

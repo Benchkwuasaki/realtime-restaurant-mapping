@@ -66,6 +66,7 @@ class HandleInertiaRequests extends Middleware
                     'employee_id' => $user->employee_id,
                     'name' => $user->getFullName(),
                     'email' => $user->email,
+                    'avatar_url' => $user->employee?->avatar_url,
                     'position' => $position?->position_name,
                     'roles' => $user->getRoleNames()->values()->all(),
                     'offices' => [
