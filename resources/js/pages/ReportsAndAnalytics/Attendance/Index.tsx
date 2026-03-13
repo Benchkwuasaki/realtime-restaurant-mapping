@@ -376,7 +376,7 @@ export default function AttendanceReportIndex({
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <StatCard title="Total Employees" value={s.total_employees} description="Active headcount"
-                        icon={<Users className="w-4 h-4 m-2 text-primary" />} />
+                        icon={<Users className="w-4 h-4 m-2 " />} />
                     <StatCard title="Present Today" value={s.present_today} description="Clocked in or active"
                         icon={<UserCheck className="w-4 h-4 m-2" style={COLOR.present} />} />
                     <StatCard title="Half Day" value={s.half_day_today} description="Left before time out"

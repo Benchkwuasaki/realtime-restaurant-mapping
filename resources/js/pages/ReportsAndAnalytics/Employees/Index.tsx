@@ -196,14 +196,14 @@ function KpiStrip({
             label: 'Active',
             value: activeEmployees,
             description: 'Currently active employees',
-            icon: <UserCheck className="size-5 m-1" />,
+            icon: <UserCheck className="size-5 m-1 text-primary" />,
             statusFilter: 'Active',
         },
         {
             label: 'Inactive',
             value: inactiveEmployees,
             description: 'Currently inactive employees',
-            icon: <UserMinus className="size-5 m-1" />,
+            icon: <UserMinus className="size-5 m-1 text-destructive" />,
             statusFilter: 'Inactive',
         },
     ];
