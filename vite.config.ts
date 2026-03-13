@@ -18,7 +18,6 @@ export default defineConfig({
         }),
         tailwindcss(),
     ],
-    
     esbuild: {
         jsx: 'automatic',
     },
