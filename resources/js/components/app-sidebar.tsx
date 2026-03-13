@@ -34,11 +34,19 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/use-auth';
 
+type Office = { name: string | null; acronym: string | null }
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-    const { hasRole } = useAuth();
+    const { user, hasRole } = useAuth();
 
     const isAdminOrHR =
         hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin');
+
+    const { department, division, unit } = user?.offices ?? {}
+    const hasLinkedDepartment = Boolean(department?.name)
+    const incomingDocumentsCount = user?.notifications?.incoming_documents_count ?? 0
+    const officeParts = ([department, division, unit] as (Office | undefined | null)[])
+    .filter((office): office is Office => !!office?.name)
 
     const data = {
         overview: [
@@ -61,6 +69,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 url: route('employee.index'),
                 icon: User,
                 show: isAdminOrHR,
+            },
+            {
+                title: "Document Tracking",
+                url: null,
+                icon: File,
+                badgeCount: incomingDocumentsCount,
+                show: hasLinkedDepartment && (
+                hasRole("ogm") ||
+                hasRole("hr_admin") ||
+                hasRole("super_admin") ||
+                hasRole("document_tracking_operator")
+                ),
+                items: [
+                {
+                    title: "Incoming",
+                    url: route('document-tracking-incoming.index'),
+                    badgeCount: incomingDocumentsCount,
+                },
+                {
+                    title: "Outgoing",
+                    url: route('document-tracking-outgoing.index'),
+                },
+                {
+                    title: "Archive",
+                    url: route('document-tracking-archive.index'),
+                },
+                ]
             },
             {
                 title: 'Organization',
@@ -215,12 +250,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             },
         ],
         system: [
-            {
-                title: 'Document Tracking',
-                url: route('document_tracking.index'),
-                icon: File,
-                show: isAdminOrHR || hasRole('org') || hasRole('inventory'),
-            },
+            
             {
                 title: 'Reports and Analytics',
                 url: route('reports_and_analytics.index'),
