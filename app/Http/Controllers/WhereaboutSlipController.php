@@ -45,6 +45,11 @@ class WhereaboutSlipController extends Controller
                 'minutes_gone'             => $slip->minutes_gone,
                 'status'                   => $slip->status,
                 'return_status'            => $slip->return_status,
+                'prov_code' => $slip->prov_code,
+                'city_code' => $slip->city_code,
+                'brgy_code' => $slip->brgy_code,
+                'latitude' => $slip->latitude,
+                'longitude' => $slip->longitude,
                 'employee'              => self::mapEmployee($slip->employee),
                 'reviewed_and_noted_by' => self::mapEmployee($slip->reviewedAndNotedBy),
                 'approved_by'           => self::mapEmployee($slip->approvedBy),
@@ -68,7 +73,7 @@ class WhereaboutSlipController extends Controller
             'employees' => $employees,
         ]);
     }
-    
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -81,14 +86,15 @@ class WhereaboutSlipController extends Controller
             'purpose_description'      => ['required', 'string', 'max:1000'],
             'time_out'                 => ['required', 'date_format:H:i:s'],
             'latitude'                 => ['required', 'numeric'],
-            'longitude'                 => ['required', 'numeric'],
-            'prov_code'                 => ['required', 'numeric'],
-            'city_code'                 => ['required', 'numeric'],
-            'brgy_code'                 => ['required', 'numeric'],
+            'longitude'                 => ['required', 'string'],
+            'prov_code'                 => ['required', 'string'],
+            'city_code'                 => ['required', 'string'],
+            'brgy_code'                 => ['required', 'string'],
         ]);
 
         $employee = Employee::findOrFail($validated['employee_id']);
 
+        // dd($validated);
 
         WhereaboutSlip::create($validated);
 

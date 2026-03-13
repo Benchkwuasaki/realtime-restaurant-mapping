@@ -44,9 +44,9 @@ use Illuminate\Database\Seeder;
  * Codes follow the PSA Philippine Standard Geographic Code (PSGC) format as
  * returned by the GeoRisk ArcGIS APIs:
  *
- *   prov_code — 4-digit province code
- *   city_code — 6-digit city/muni code (prov_code + 2 digits)
- *   brgy_code — 9-digit barangay code  (city_code + 3 digits)
+ *   prov_code — 9-char zero-padded string  (e.g. "112400000")
+ *   city_code — 9-char zero-padded string  (e.g. "112401000")
+ *   brgy_code — 9-char zero-padded string  (e.g. "112401001")
  *
  * Five real locations in Region XI (Davao Region) are used and rotated
  * across slips so the seed data is spatially varied:
@@ -70,52 +70,52 @@ class AttendanceSeeder extends Seeder
 
     // ── Seed location pool ────────────────────────────────────────────────────
     //
-    // Codes are PSGC-derived, matching what the GeoRisk ArcGIS REST APIs
-    // return in the `prov_code`, `city_code`, and `brgy_code` fields.
+    // Codes are stored exactly as returned by the GeoRisk ArcGIS REST APIs —
+    // 9-character strings with leading zeros, matching the PSGC format.
     //
-    // Format:
-    //   prov_code = 4 digits  (e.g. "1124"      → Davao del Sur)
-    //   city_code = 6 digits  (e.g. "112401"    → Davao City)
-    //   brgy_code = 9 digits  (e.g. "112401001" → Brgy. 1-A, Davao City)
+    // Format (all are 9-digit zero-padded strings):
+    //   prov_code = "RRPPP0000"  (e.g. "112400000" → Davao del Sur)
+    //   city_code = "RRPPPMM000" (e.g. "112401000" → Davao City)
+    //   brgy_code = "RRPPPMMBB" (e.g. "112401001" → Brgy. 1-A, Davao City)
     //
     private const LOCATIONS = [
         // A — Barangay 1-A, Davao City, Davao del Sur
         [
-            'prov_code' => '1124',
-            'city_code' => '112401',
+            'prov_code' => '112400000',
+            'city_code' => '112401000',
             'brgy_code' => '112401001',
             'latitude'  => 7.0636,
             'longitude' => 125.6105,
         ],
         // B — Barangay Aplaya, Digos City, Davao del Sur
         [
-            'prov_code' => '1124',
-            'city_code' => '112402',
+            'prov_code' => '112400000',
+            'city_code' => '112402000',
             'brgy_code' => '112402001',
             'latitude'  => 6.7497,
             'longitude' => 125.3572,
         ],
         // C — Barangay Canocotan, Tagum City, Davao del Norte
         [
-            'prov_code' => '1105',
-            'city_code' => '110501',
-            'brgy_code' => '110501003',
+            'prov_code' => '101300000',
+            'city_code' => '101315000',
+            'brgy_code' => '101315018',
             'latitude'  => 7.4478,
             'longitude' => 125.8078,
         ],
         // D — Barangay A. O. Floirendo, Panabo City, Davao del Norte
         [
-            'prov_code' => '1105',
-            'city_code' => '110502',
-            'brgy_code' => '110502001',
+            'prov_code' => '101300000',
+            'city_code' => '101321000',
+            'brgy_code' => '101321001',
             'latitude'  => 7.3097,
             'longitude' => 125.6845,
         ],
         // E — Barangay Badas, Mati City, Davao Oriental
         [
-            'prov_code' => '1118',
-            'city_code' => '111801',
-            'brgy_code' => '111801002',
+            'prov_code' => '124700000',
+            'city_code' => '124708000',
+            'brgy_code' => '124708004',
             'latitude'  => 6.9570,
             'longitude' => 126.2241,
         ],
@@ -522,9 +522,9 @@ class AttendanceSeeder extends Seeder
      * location C — City Hall area).
      *
      * Location fields match what the GeoRisk ArcGIS APIs return:
-     *   prov_code — 4-digit province     (string, e.g. "1124")
-     *   city_code — 6-digit city/muni    (string, e.g. "112401")
-     *   brgy_code — 9-digit barangay     (string, e.g. "112401001")
+     *   prov_code — 9-char zero-padded string (e.g. "112400000")
+     *   city_code — 9-char zero-padded string (e.g. "112401000")
+     *   brgy_code — 9-char zero-padded string (e.g. "112401001")
      *   latitude  — decimal(11,7)
      *   longitude — decimal(11,7)
      *
