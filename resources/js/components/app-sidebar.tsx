@@ -104,10 +104,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Holiday Management",
             url: "/holiday",
           },
-          {
-            title: "Overtime Entry",
-            url: "/organization/overtime_entry",
-          },
         ]
       },
       {

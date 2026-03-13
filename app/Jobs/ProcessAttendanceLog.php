@@ -37,23 +37,25 @@ class ProcessAttendanceLog implements ShouldQueue
 
     private const TZ = 'Asia/Manila';
 
-    public int $tries   = 3;
+    public int $tries = 3;
     public int $backoff = 5;
 
-    public function __construct(private readonly int $attendanceLogId) {}
+    public function __construct(private readonly int $attendanceLogId)
+    {
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
 
     public function handle(): void
     {
-        $log      = Attendance::find($this->attendanceLogId);
+        $log = Attendance::find($this->attendanceLogId);
         $employee = $log?->employee;
 
         if (!$log || !$employee) {
             return;
         }
 
-        $date    = Carbon::parse($log->captured_at)->setTimezone(self::TZ)->toDateString();
+        $date = Carbon::parse($log->captured_at)->setTimezone(self::TZ)->toDateString();
         $setting = AttendanceSetting::getDefault();
 
         // Load the existing record (if any) BEFORE computing.
@@ -63,7 +65,7 @@ class ProcessAttendanceLog implements ShouldQueue
 
         // ── Pull ALL raw logs for this employee on this date ──────────────────
         $dayStart = Carbon::parse($date, self::TZ)->startOfDay()->utc();
-        $dayEnd   = Carbon::parse($date, self::TZ)->endOfDay()->utc();
+        $dayEnd = Carbon::parse($date, self::TZ)->endOfDay()->utc();
 
         $rawLogs = Attendance::where('employee_id', $employee->employee_id)
             ->whereBetween('captured_at', [$dayStart, $dayEnd])
@@ -84,31 +86,47 @@ class ProcessAttendanceLog implements ShouldQueue
             'employee.basicInfo:employee_basic_info_id,first_name,last_name,middle_name',
         ]);
 
+        $record = AttendanceRecord::updateOrCreate(
+            ['employee_id' => $employee->employee_id, 'date' => $date],
+            $computed
+        );
+
+        // Capture before load() — wasRecentlyCreated survives eager loading
+        // but we pin it explicitly to be safe
+        $isNewRecord = $record->wasRecentlyCreated;
+
+        $record->load([
+            'employee:employee_id,employee_basic_info_id,work_id,avatar_url',
+            'employee.basicInfo:employee_basic_info_id,first_name,last_name,middle_name',
+        ]);
+
+        $record->wasRecentlyCreated = $isNewRecord;
+
         broadcast(new AttendanceRecordUpdated($record))->toOthers();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
 
     private function computeRecord(
-        Employee          $employee,
-        string            $date,
-        Collection        $rawLogs,
+        Employee $employee,
+        string $date,
+        Collection $rawLogs,
         AttendanceSetting $setting,
         ?AttendanceRecord $existing,
     ): array {
         $tz = self::TZ;
 
-        $scheduledTimeIn   = $employee->work_schedule_start;
+        $scheduledTimeIn = $employee->work_schedule_start;
         $scheduledBreakOut = $employee->break_start;
-        $scheduledBreakIn  = $employee->break_end;
-        $scheduledTimeOut  = $employee->work_schedule_end;
+        $scheduledBreakIn = $employee->break_end;
+        $scheduledTimeOut = $employee->work_schedule_end;
 
         $anchor = fn(string $time) => Carbon::parse("{$date} {$time}", $tz);
 
-        $timeInAnchor   = $scheduledTimeIn   ? $anchor($scheduledTimeIn)   : null;
+        $timeInAnchor = $scheduledTimeIn ? $anchor($scheduledTimeIn) : null;
         $breakOutAnchor = $scheduledBreakOut ? $anchor($scheduledBreakOut) : null;
-        $breakInAnchor  = $scheduledBreakIn  ? $anchor($scheduledBreakIn)  : null;
-        $timeOutAnchor  = $scheduledTimeOut  ? $anchor($scheduledTimeOut)  : null;
+        $breakInAnchor = $scheduledBreakIn ? $anchor($scheduledBreakIn) : null;
+        $timeOutAnchor = $scheduledTimeOut ? $anchor($scheduledTimeOut) : null;
 
         // ── Zone-based scan assignment ────────────────────────────────────────
         //
@@ -124,8 +142,8 @@ class ProcessAttendanceLog implements ShouldQueue
         $endOfDay = Carbon::parse("{$date} 23:59:59", $tz);
 
         $zone1End = $breakOutAnchor ?? $timeOutAnchor ?? $endOfDay;
-        $zone2End = $breakInAnchor  ?? $timeOutAnchor ?? $endOfDay;
-        $zone3End = $timeOutAnchor  ?? $endOfDay;
+        $zone2End = $breakInAnchor ?? $timeOutAnchor ?? $endOfDay;
+        $zone3End = $timeOutAnchor ?? $endOfDay;
 
         // ── Sort raw logs into Carbon timestamps ──────────────────────────────
         $sorted = $rawLogs
@@ -137,10 +155,10 @@ class ProcessAttendanceLog implements ShouldQueue
         // Once a slot is written to the DB it is never overwritten.
         // A 7:56 AM clock-in stays 7:56 AM even on subsequent scans.
 
-        $existingTimeIn   = $existing?->time_in;
+        $existingTimeIn = $existing?->time_in;
         $existingBreakOut = $existing?->break_out;
-        $existingBreakIn  = $existing?->break_in;
-        $existingTimeOut  = $existing?->time_out;
+        $existingBreakIn = $existing?->break_in;
+        $existingTimeOut = $existing?->time_out;
 
         // ── Zone 1: time_in ───────────────────────────────────────────────────
         if ($existingTimeIn !== null) {
@@ -185,7 +203,7 @@ class ProcessAttendanceLog implements ShouldQueue
         if ($existingTimeOut !== null) {
             $timeOutCarbon = Carbon::parse("{$date} {$existingTimeOut}", $tz);
         } elseif ($timeOutAnchor) {
-            $zone4End      = $timeOutAnchor->copy()->addMinutes($setting->late_time_out_minutes);
+            $zone4End = $timeOutAnchor->copy()->addMinutes($setting->late_time_out_minutes);
             $timeOutCarbon = $sorted
                 ->filter(fn($c) => $c->gte($timeOutAnchor) && $c->lte($zone4End))
                 ->last();
@@ -198,7 +216,7 @@ class ProcessAttendanceLog implements ShouldQueue
         //   Leaving at 17:15 does NOT cancel the late flag.
         $lateMinutes = null;
         if ($timeInCarbon && $timeInAnchor) {
-            $diff        = (int) $timeInAnchor->diffInMinutes($timeInCarbon, false);
+            $diff = (int) $timeInAnchor->diffInMinutes($timeInCarbon, false);
             $lateMinutes = max(0, $diff);
         }
 
@@ -217,13 +235,13 @@ class ProcessAttendanceLog implements ShouldQueue
         //  ABSENT   — anything else
 
         $workMinutes = null;
-        $now         = Carbon::now(self::TZ);
+        $now = Carbon::now(self::TZ);
 
         $withinWorkWindow = $timeOutAnchor
             && $now->lte($timeOutAnchor->copy()->addMinutes($setting->late_time_out_minutes));
 
         if ($timeInCarbon && $timeOutCarbon) {
-            $status      = 'PRESENT';
+            $status = 'PRESENT';
             $workMinutes = max(0, (int) $timeInCarbon->diffInMinutes($timeOutCarbon) - $scheduledBreakDuration);
 
         } elseif (($timeInCarbon || $breakInCarbon) && $withinWorkWindow) {
@@ -232,12 +250,12 @@ class ProcessAttendanceLog implements ShouldQueue
 
         } elseif ($timeInCarbon && $breakOutCarbon && !$timeOutCarbon) {
             // Clocked in and went on break but never returned
-            $status      = 'HALF_DAY';
+            $status = 'HALF_DAY';
             $workMinutes = (int) $timeInCarbon->diffInMinutes($breakOutCarbon);
 
         } elseif ($breakInCarbon && $timeOutCarbon && !$timeInCarbon) {
             // Missed the morning but worked the afternoon (break_in → time_out)
-            $status      = 'HALF_DAY';
+            $status = 'HALF_DAY';
             $workMinutes = (int) $breakInCarbon->diffInMinutes($timeOutCarbon);
 
         } else {
@@ -265,18 +283,18 @@ class ProcessAttendanceLog implements ShouldQueue
         }
 
         return [
-            'scheduled_time_in'   => $scheduledTimeIn,
+            'scheduled_time_in' => $scheduledTimeIn,
             'scheduled_break_out' => $scheduledBreakOut,
-            'scheduled_break_in'  => $scheduledBreakIn,
-            'scheduled_time_out'  => $scheduledTimeOut,
-            'grace_minutes'       => 0,
-            'time_in'             => $timeInCarbon?->format('H:i:s'),
-            'break_out'           => $breakOutCarbon?->format('H:i:s'),
-            'break_in'            => $breakInCarbon?->format('H:i:s'),
-            'time_out'            => $timeOutCarbon?->format('H:i:s'),
-            'late_minutes'        => $lateMinutes,
-            'work_minutes'        => $workMinutes,
-            'status'              => $status,
+            'scheduled_break_in' => $scheduledBreakIn,
+            'scheduled_time_out' => $scheduledTimeOut,
+            'grace_minutes' => 0,
+            'time_in' => $timeInCarbon?->format('H:i:s'),
+            'break_out' => $breakOutCarbon?->format('H:i:s'),
+            'break_in' => $breakInCarbon?->format('H:i:s'),
+            'time_out' => $timeOutCarbon?->format('H:i:s'),
+            'late_minutes' => $lateMinutes,
+            'work_minutes' => $workMinutes,
+            'status' => $status,
         ];
     }
 }

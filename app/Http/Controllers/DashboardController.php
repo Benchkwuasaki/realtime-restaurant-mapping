@@ -8,7 +8,7 @@ use App\Models\LeaveApplication;
 use App\Models\LeaveType;
 use App\Services\ActivityLogService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use App\Models\AttendanceRecord;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -18,10 +18,12 @@ class DashboardController extends Controller
     public function index()
     {
         $this->activityLogService->createLog([
-            'user_id' => Auth::id(),
-            'module' => 'general',
+            'user_id'  => Auth::id(),
+            'module'   => 'general',
             'activity' => 'Viewed dashboard',
         ]);
+
+        // ── Workforce ─────────────────────────────────────────────────────────
 
         $classifications = EmploymentClassification::orderBy('name')->pluck('name');
 
@@ -32,10 +34,12 @@ class DashboardController extends Controller
             ->groupBy('employment_classification')
             ->pluck('total', 'employment_classification');
 
-        $employeeClassificationCounts = $classifications->map(fn (string $name) => [
+        $employeeClassificationCounts = $classifications->map(fn(string $name) => [
             'classification' => $name,
             'total'          => $countsByClassification->get($name, 0),
         ])->values();
+
+        // ── Leave ─────────────────────────────────────────────────────────────
 
         $today = now()->toDateString();
 
@@ -51,21 +55,18 @@ class DashboardController extends Controller
             ->whereNull('deleted_at')
             ->count();
 
-        // Pending applications filed more than 3 days ago (urgent)
         $urgentLeaveApplicationCount = LeaveApplication::query()
             ->where('status', 'Pending')
             ->whereRaw('DATEDIFF(?, date_of_filing) > 3', [$today])
             ->whereNull('deleted_at')
             ->count();
 
-        // Leave applications approved today
         $approvedTodayCount = LeaveApplication::query()
             ->where('status', 'Approved')
             ->whereDate('updated_at', $today)
             ->whereNull('deleted_at')
             ->count();
 
-        // Average days from filing to approval — sum of (updated_at - date_of_filing) divided by approved count
         $approvedApplications = LeaveApplication::query()
             ->where('status', 'Approved')
             ->whereNull('deleted_at')
@@ -76,7 +77,8 @@ class DashboardController extends Controller
             ? round($approvedApplications->total_days / $approvedApplications->total_count, 1)
             : 0;
 
-        // Monthly leave trend — count of approved applications per month for the current year
+        // ── Monthly leave trend ───────────────────────────────────────────────
+
         $currentYear = now()->year;
         $monthLabels = ['J', 'F', 'M', 'A', 'My', 'Jn', 'Jl', 'Au', 'S', 'O', 'N', 'D'];
 
@@ -89,10 +91,12 @@ class DashboardController extends Controller
             ->orderBy('month')
             ->pluck('total', 'month');
 
-        $leaveTrend = array_values(collect(range(1, 12))->map(fn ($m) => [
+        $leaveTrend = array_values(collect(range(1, 12))->map(fn($m) => [
             'm' => $monthLabels[$m - 1],
             'v' => (int) $monthlyCounts->get($m, 0),
         ])->toArray());
+
+        // ── Leave type chart ──────────────────────────────────────────────────
 
         $chartColors = ['#818cf8', '#fb7185', '#22d3ee', '#f472b6', '#fb923c', '#34d399', '#fbbf24', '#a78bfa'];
 
@@ -102,7 +106,7 @@ class DashboardController extends Controller
 
         $leaveTypeColorMap = $activeLeaveTypes
             ->values()
-            ->mapWithKeys(fn (string $name, int $i) => [
+            ->mapWithKeys(fn(string $name, int $i) => [
                 $name => $chartColors[$i % count($chartColors)],
             ]);
 
@@ -114,12 +118,14 @@ class DashboardController extends Controller
             ->groupBy('leave_types.leave_type_name')
             ->orderByDesc('value')
             ->get()
-            ->map(fn ($row, $i) => [
+            ->map(fn($row, $i) => [
                 'label' => $row->label,
                 'value' => (int) $row->value,
                 'fill'  => $leaveTypeColorMap->get($row->label, $chartColors[$i % count($chartColors)]),
             ])
             ->toArray());
+
+        // ── Top leave takers ──────────────────────────────────────────────────
 
         $topLeaveTakers = array_values(LeaveApplication::query()
             ->whereNull('leave_applications.deleted_at')
@@ -143,13 +149,46 @@ class DashboardController extends Controller
             ->orderByDesc('days')
             ->limit(5)
             ->get()
-            ->map(fn ($row, $i) => [
+            ->map(fn($row, $i) => [
                 'name'  => $row->first_name . ' ' . $row->last_name,
                 'days'  => (int) $row->days,
                 'type'  => $row->type,
                 'color' => $leaveTypeColorMap->get($row->type, $chartColors[$i % count($chartColors)]),
             ])
             ->toArray());
+
+        // ── Attendance ────────────────────────────────────────────────────────
+
+        $onTimeToday = AttendanceRecord::whereDate('date', $today)
+            ->where('status', 'PRESENT')
+            ->where(fn($q) => $q->whereNull('late_minutes')->orWhere('late_minutes', 0))
+            ->count();
+
+        $lateToday = AttendanceRecord::whereDate('date', $today)
+            ->where('status', 'PRESENT')
+            ->where('late_minutes', '>', 0)
+            ->count();
+
+        $presentToday = $onTimeToday + $lateToday;
+
+        $topLateToday = AttendanceRecord::with([
+                'employee:employee_id,employee_basic_info_id',
+                'employee.basicInfo:employee_basic_info_id,first_name,last_name',
+                'employee.item.position.department:department_id,department_name',
+            ])
+            ->whereDate('date', $today)
+            ->where('status', 'PRESENT')
+            ->where('late_minutes', '>', 0)
+            ->orderByDesc('late_minutes')
+            ->limit(5)
+            ->get()
+            ->map(fn($r) => [
+                'name' => trim(($r->employee?->basicInfo?->first_name ?? '') . ' ' . ($r->employee?->basicInfo?->last_name ?? '')),
+                'dept' => $r->employee?->item?->position?->department?->department_name ?? '—',
+                'min'  => (int) $r->late_minutes,
+            ]);
+
+        // ── Render ────────────────────────────────────────────────────────────
 
         return Inertia::render('dashboard', [
             'employeeClassificationCounts' => $employeeClassificationCounts,
@@ -161,6 +200,10 @@ class DashboardController extends Controller
             'leaveTypeCounts'              => $leaveTypeCounts,
             'topLeaveTakers'               => $topLeaveTakers,
             'leaveTrend'                   => $leaveTrend,
+            'presentToday'                 => $presentToday,
+            'onTimeToday'                  => $onTimeToday,
+            'lateToday'                    => $lateToday,
+            'topLateToday'                 => $topLateToday,
         ]);
     }
 }
