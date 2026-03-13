@@ -58,7 +58,7 @@ export default function Login({
         },
         {
             role: 'employee',
-            email: 'orazon.autista7@obx.gov.ph',
+            email: 'amon.antos@obx.gov.ph',
             department: 'OBE',
         },
         {
@@ -68,7 +68,7 @@ export default function Login({
         },
         {
             role: 'employee',
-            email: 'cheryl.ocampo23@gmail.com',
+            email: 'orazon.autista7@obx.gov.ph',
             department: 'OBE',
         },
     ];
