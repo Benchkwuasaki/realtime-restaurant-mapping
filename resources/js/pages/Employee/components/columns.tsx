@@ -3,7 +3,7 @@
 import { router } from "@inertiajs/react"
 import React from "react"
 import { route } from "ziggy-js"
-
+import { toast } from 'sonner'
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
 import {
   DataTableRowActions,
@@ -15,8 +15,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 
 import { type Employee } from "../data/schema"
 
-// ─── Reusable mobile field row ─────────────────────────────────────────────────
-
 function CardField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4 text-sm">
@@ -25,46 +23,6 @@ function CardField({ label, value }: { label: string; value: React.ReactNode }) 
     </div>
   )
 }
-
-// ─── Clickable status badge ────────────────────────────────────────────────────
-
-function StatusBadge({ employee }: { employee: Employee }) {
-  const [isActive, setIsActive] = React.useState(employee.status)
-  const [isPending, setIsPending] = React.useState(false)
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (isPending) return
-    const next = !isActive
-    setIsActive(next)
-    setIsPending(true)
-    router.patch(
-      route("employee.toggleStatus", employee.id),
-      {},
-      {
-        preserveScroll: true,
-        onFinish: () => setIsPending(false),
-        onError: () => {
-          setIsActive(!next)
-          setIsPending(false)
-        },
-      }
-    )
-  }
-
-  return (
-    <Badge
-      variant={isActive ? "default" : "destructive"}
-      onClick={handleClick}
-      className={`min-w-[70px] justify-center transition-opacity ${isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:opacity-80"
-        }`}
-    >
-      {isActive ? "Active" : "Inactive"}
-    </Badge>
-  )
-}
-
-// ─── Columns ───────────────────────────────────────────────────────────────────
 
 export const columns: DataTableColumnDef<Employee>[] = [
   {
@@ -189,14 +147,20 @@ export const columns: DataTableColumnDef<Employee>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Status" />
     ),
-    cell: ({ row }) => <StatusBadge employee={row.original} />,
+    cell: ({ row }) => (
+      <Badge variant={row.original.status ? "default" : "destructive"}>
+        {row.original.status ? "Active" : "Inactive"}
+      </Badge>
+    ),
     enableSorting: true,
     enableHiding: true,
     filterFn: (row, id, value: boolean[]) => value.includes(row.getValue(id)),
     mobileCard: (row) => (
       <div className="flex flex-col gap-1">
         <span className="text-muted-foreground text-xs ml-2">Status</span>
-        <StatusBadge employee={row} />
+        <Badge variant={row.status ? "default" : "destructive"}>
+          {row.status ? "Active" : "Inactive"}
+        </Badge>
       </div>
     ),
   },
@@ -208,11 +172,19 @@ export const columns: DataTableColumnDef<Employee>[] = [
         row={row}
         actions={[
           deleteAction(
-            (employee) =>
+            (row) => {
+              const employee = row as Employee
               router.delete(route("employee.destroy", employee.id), {
                 preserveScroll: true,
-              }),
-            { getName: (e) => e.name }
+                onSuccess: () => toast.success("Employee deleted", {
+                  description: `"${employee.name}" has been removed successfully.`,
+                }),
+                onError: () => toast.error("Failed to delete employee", {
+                  description: "Something went wrong. Please try again.",
+                }),
+              })
+            },
+            { getName: (e) => (e as Employee).name }
           ),
         ]}
       />
