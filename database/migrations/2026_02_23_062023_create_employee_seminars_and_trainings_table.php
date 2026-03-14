@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('seminar_training_name');
             $table->date('date_attended');
             $table->string('venue')->nullable();
+            $table->string('organizer')->nullable();
             $table->timestamps();
         });
     }

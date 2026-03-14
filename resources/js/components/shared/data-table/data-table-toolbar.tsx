@@ -36,15 +36,11 @@ export interface ToolbarAddButtonConfig {
 }
 
 export interface ToolbarBulkDeleteConfig {
-  /** Route string or full URL for the bulk-delete request */
   route: string
-  /**
-   * Extract the IDs from each selected row.
-   * Defaults to `(row) => row.id` if omitted.
-   */
   getId?: (rowOriginal: unknown) => string | number
-  /** Singular noun used in confirmation copy, e.g. "Holiday" */
   entityName: string
+  onSuccess?: (count: number) => void  
+  onError?: () => void                 
 }
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
@@ -90,11 +86,11 @@ export function DataTableToolbar<TData>({
       data: { ids },
       preserveScroll: true,
       onSuccess: () => {
-        toast.success(`${entityPlural} deleted successfully.`) 
+        toast.success(`${entityPlural} deleted successfully.`)
         table.resetRowSelection()
         setDeleteDialogOpen(false)
       },
-       onError: () => toast.error(`Failed to delete ${entityPlural}.`),
+      onError: () => toast.error(`Failed to delete ${entityPlural}.`),
     })
   }
 
@@ -121,7 +117,7 @@ export function DataTableToolbar<TData>({
 
           {filters.map(({ columnId, title, options }) =>
             table.getColumn(columnId) ? (
-          <DataTableFacetedFilter
+              <DataTableFacetedFilter
                 key={columnId}
                 column={table.getColumn(columnId)}
                 title={title}

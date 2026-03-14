@@ -7,12 +7,14 @@ import AppLayout from '@/layouts/app-layout';
 import { columns } from '@/pages/Employee/components/columns';
 import { type Employee } from '@/pages/Employee/data/schema';
 import type { BreadcrumbItem } from '@/types';
+import { toast } from "sonner"
 
 interface Props {
     employees: Employee[];
     totalEmployees: number;
     activeEmployees: number;
     inactiveEmployees: number;
+
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -86,6 +88,12 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
                         route: route('employee.bulk-destroy'),
                         entityName: 'Employee',
                         getId: (row) => (row as Employee).id,
+                        onSuccess: (count) => toast.success('Employees deleted', {        
+                            description: `${count} employee(s) removed successfully.`,
+                        }),
+                        onError: () => toast.error('Failed to delete employees', {        
+                            description: 'Please check your permissions and try again.',
+                        }),
                     }}
                 />
             </div>
