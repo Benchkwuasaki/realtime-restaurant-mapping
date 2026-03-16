@@ -198,6 +198,16 @@ class EmployeeSeeder extends Seeder
         '1634',
         '1700',
         '1800',
+        '1100',
+        '1200',
+        '1300',
+        '1400',
+        '1500',
+        '1550',
+        '1600',
+        '1634',
+        '1700',
+        '1800',
     ];
 
     private array $schools = [
@@ -346,8 +356,8 @@ class EmployeeSeeder extends Seeder
 
             $workEmail = strtolower(
                 preg_replace('/[^a-z0-9]/', '', $names['first']) . '.' .
-                preg_replace('/[^a-z0-9]/', '', $names['last']) .
-                ($i > 0 ? $i : '') . '@obx.gov.ph'
+                    preg_replace('/[^a-z0-9]/', '', $names['last']) .
+                    ($i > 0 ? $i : '') . '@obx.gov.ph'
             );
 
             DB::transaction(function () use ($i, $isFemale, $names, $dates, $location, $schoolData, $classif, $civStat, $status, $sgIdx, $sgStepIds, $itemEntry, $posIdx, $positions, $occurrence, $workEmail, $docTrackMap, $roleMap) {
@@ -400,6 +410,14 @@ class EmployeeSeeder extends Seeder
                     $user->assignRole('hr_admin');
                 }
                 if ($posIdx === $roleMap['ogm'] && $occurrence === 1) {
+                    $user->assignRole('ogm');
+                }
+
+                if ($i === 32) { // Employee 1
+                    $user->assignRole('hr_admin');
+                }
+
+                if ($i === 33) { // Employee 2
                     $user->assignRole('ogm');
                 }
 
