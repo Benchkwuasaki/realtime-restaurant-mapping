@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id('employee_seminar_training_id');
             $table->foreignId('employee_id')->constrained('employees', 'employee_id')->onDelete('cascade');
             $table->string('seminar_training_name');
-            $table->string('provider');
+            $table->string('provider')->nullable();
             $table->date('date_attended');
             $table->string('venue')->nullable();
             $table->string('organizer')->nullable();
