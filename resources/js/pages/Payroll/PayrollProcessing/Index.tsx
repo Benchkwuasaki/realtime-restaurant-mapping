@@ -1634,7 +1634,9 @@ export default function Index({
                                 </Field>
 
                                 <Field>
-                                    <FieldLabel>HR Officer Name</FieldLabel>
+                                    <FieldLabel>
+                                        HR Officer Name (optional)
+                                    </FieldLabel>
 
                                     <InputGroup className="w-full">
                                         <InputGroupInput
