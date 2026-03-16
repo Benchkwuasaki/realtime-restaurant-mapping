@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { router } from '@inertiajs/react';
 import type { BreadcrumbItem } from '@/types';
 import { route } from 'ziggy-js';
@@ -53,7 +53,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+
+//  Types 
 
 interface Employee {
     employee_id: number;
@@ -90,10 +91,18 @@ type Props = {
     total_pending: number;
     total_approved: number;
     total_disapproved: number;
+    auth_employee_id?: number | null;
+    hr_admin_employee_ids?: number[];
+    dto_employee_ids?: number[];
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//  Helpers 
 
+
+/**
+ * Compute number of working days between two dates
+ * Weekends (Saturday and Sunday) are not counted
+ */
 function computeWorkingDays(start: string, end: string): number {
     if (!start || !end) return 0;
     const s = new Date(start), e = new Date(end);
@@ -108,37 +117,69 @@ function computeWorkingDays(start: string, end: string): number {
     return n;
 }
 
+
+/**
+ * Returns today's date label for display
+ */
 function todayLabel() {
     return new Date().toLocaleDateString('en-US', {
         month: 'long', day: 'numeric', year: 'numeric',
     });
 }
 
+
+/**
+ * Add working days to a start date
+ * Skips weekends
+ */
 function addWorkingDays(startIso: string, workingDays: number): string {
+
+    // split YYYY-MM-DD
     const [y, m, d] = startIso.split('-').map(Number);
+
+    // month - 1 because JS months start at 0
     const cur = new Date(y, m - 1, d);
     let counted = 0;
+
+    // loop until required working days are counted
     while (counted < workingDays) {
         const day = cur.getDay();
+
+        // count weekdays only
         if (day !== 0 && day !== 6) counted++;
+
+        // move forward if we still need more days
         if (counted < workingDays) cur.setDate(cur.getDate() + 1);
     }
     return `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
 }
 
+
+/**
+ * Check if leave type uses accrual credits
+ * (vacation, sick, mandatory/forced, special privilege)
+ */
 function isAccrualLeave(name: string): boolean {
     return /vacation|sick|mandatory|forced|special privilege/i.test(name);
 }
 
+
+/**
+ * Convert date to MM/DD/YYYY format
+ */
 function toDisplay(iso: string): string {
     if (!iso) return '';
     const [y, m, d] = iso.split('-');
+
+    // if format is not valid, return original
     if (!y || !m || !d) return iso;
     return `${m}/${d}/${y}`;
 }
 
-// ─── Small shared UI ──────────────────────────────────────────────────────────
 
+/**
+ * Show validation error under a field
+ */
 function FieldError({ message }: { message?: string }) {
     if (!message) return null;
     return (
@@ -149,13 +190,21 @@ function FieldError({ message }: { message?: string }) {
     );
 }
 
+
+/**
+ * Reusable date input with calendar popover
+ * Uses ISO format internally (yyyy-MM-dd)
+ */
 function DateInput({
     value, onChange, placeholder = 'mm/dd/yyyy', disabled = false,
 }: {
     value: string; onChange: (isoValue: string) => void;
     placeholder?: string; disabled?: boolean;
 }) {
+    // convert ISO string into date object
     const parsed = value ? parse(value, 'yyyy-MM-dd', new Date()) : undefined;
+
+    // ensure date is valid before passing to calendar
     const selected = parsed && isValid(parsed) ? parsed : undefined;
     return (
         <Popover>
@@ -166,10 +215,14 @@ function DateInput({
                     disabled={disabled}
                     className={cn(
                         'w-full justify-start font-normal shadow-none',
+
+                        // show muted color if no date selected
                         !selected && 'text-muted-foreground',
                     )}
                 >
                     <CalendarIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+
+                    {/* show formatted date or placeholder */}
                     {selected ? format(selected, 'MM/dd/yyyy') : placeholder}
                 </Button>
             </PopoverTrigger>
@@ -177,6 +230,8 @@ function DateInput({
                 <Calendar
                     mode="single"
                     selected={selected}
+
+                    // convert calendar date back to ISO format
                     onSelect={day => onChange(day ? format(day, 'yyyy-MM-dd') : '')}
                     initialFocus
                 />
@@ -185,6 +240,40 @@ function DateInput({
     );
 }
 
+// function SqCheck({
+//     checked, onChange, label, law, disabled = false,
+// }: {
+//     checked: boolean; onChange: () => void; label: string; law?: string; disabled?: boolean;
+// }) {
+//     return (
+//         <label
+//             className={`flex items-start gap-2 py-0.5 select-none
+//                 ${disabled ? 'opacity-30 pointer-events-none' : 'cursor-pointer'}`}
+//             onClick={onChange}
+//         >
+//             <span
+//                 className={`mt-px w-3 h-3 shrink-0 border flex items-center justify-center rounded-sm
+//                     transition-colors ${checked ? 'bg-primary border-primary' : 'border-input bg-background'}`}
+//             >
+//                 {checked && (
+//                     <svg className="w-2 h-2 text-primary-foreground" viewBox="0 0 10 8" fill="none">
+//                         <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8"
+//                             strokeLinecap="round" strokeLinejoin="round" />
+//                     </svg>
+//                 )}
+//             </span>
+//             <span className="text-xs leading-snug text-foreground">
+//                 {label}
+//                 {law && <span className="text-muted-foreground text-[10px]"> ({law})</span>}
+//             </span>
+//         </label>
+//     );
+// }
+
+
+/**
+ * checkbox used in leave options
+ */
 function SqCheck({
     checked, onChange, label, law, disabled = false,
 }: {
@@ -194,60 +283,90 @@ function SqCheck({
         <label
             className={`flex items-start gap-2 py-0.5 select-none
                 ${disabled ? 'opacity-30 pointer-events-none' : 'cursor-pointer'}`}
-            onClick={onChange}
         >
-            <span
-                className={`mt-px w-3 h-3 shrink-0 border flex items-center justify-center rounded-sm
-                    transition-colors ${checked ? 'bg-primary border-primary' : 'border-input bg-background'}`}
-            >
-                {checked && (
-                    <svg className="w-2 h-2 text-primary-foreground" viewBox="0 0 10 8" fill="none">
-                        <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8"
-                            strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                )}
-            </span>
+            <Checkbox
+                checked={checked}
+                onCheckedChange={() => onChange()}
+                disabled={disabled}
+
+            />
             <span className="text-xs leading-snug text-foreground">
                 {label}
-                {law && <span className="text-muted-foreground text-[10px]"> ({law})</span>}
+                {law && (
+                    <span className="text-muted-foreground text-[10px]"> ({law})</span>
+                )}
             </span>
         </label>
     );
 }
 
-// Read-only square checkbox (for view modal)
+// // Read-only square checkbox (for view modal)
+// function ROCheck({ checked, label }: { checked: boolean; label: string }) {
+//     return (
+//         <div className="flex items-start gap-2 py-0.5">
+//             <span className={`mt-px w-3 h-3 shrink-0 border flex items-center justify-center rounded-sm
+//                 ${checked ? 'bg-primary border-primary' : 'border-input bg-muted/20'}`}>
+//                 {checked && (
+//                     <svg className="w-2 h-2 text-primary-foreground" viewBox="0 0 10 8" fill="none">
+//                         <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8"
+//                             strokeLinecap="round" strokeLinejoin="round" />
+//                     </svg>
+//                 )}
+//             </span>
+//             <span className="text-xs leading-snug text-foreground">{label}</span>
+//         </div>
+//     );
+// }
+
+
+/**
+ * Read-only checkbox used in view mode
+ */
 function ROCheck({ checked, label }: { checked: boolean; label: string }) {
     return (
         <div className="flex items-start gap-2 py-0.5">
-            <span className={`mt-px w-3 h-3 shrink-0 border flex items-center justify-center rounded-sm
-                ${checked ? 'bg-primary border-primary' : 'border-input bg-muted/20'}`}>
-                {checked && (
-                    <svg className="w-2 h-2 text-primary-foreground" viewBox="0 0 10 8" fill="none">
-                        <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8"
-                            strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                )}
-            </span>
+            <Checkbox
+                checked={checked}
+                className="pointer-events-none"
+            />
             <span className="text-xs leading-snug text-foreground">{label}</span>
         </div>
     );
 }
 
+
+// Section header
 const SH = ({ children }: { children: React.ReactNode }) =>
     <p className="text-xs font-semibold text-foreground mb-2">{children}</p>;
 
+// Section header
 const Sub = ({ children }: { children: React.ReactNode }) =>
     <p className="text-xs font-medium text-muted-foreground mb-1.5">{children}</p>;
 
+// Small italic helper text
 const Italic = ({ children }: { children: React.ReactNode }) =>
     <p className="text-[10.5px] italic text-muted-foreground mb-1">{children}</p>;
 
+
+/**
+ * OfficerBlock
+ *
+ * Reusable UI block for selecting an officer (Authorized Officer / Authorized Official).
+ * Displays an EmployeeCombobox and optional validation error.
+ */
 function OfficerBlock({
     label, value, onChange, employees, error,
 }: {
     label: string; value: string; onChange: (v: string) => void;
     employees: Employee[]; error?: string;
 }) {
+
+    /**
+     * Formats the employee display name as:
+     * Lastname, Firstname Middlename
+     *
+     * Falls back to employee_name if structured name fields are missing.
+     */
     const displayName = (emp: Employee) => emp.last_name
         ? `${emp.last_name}, ${emp.first_name ?? ''} ${emp.middle_name ?? ''}`.trim()
         : emp.employee_name;
@@ -267,8 +386,12 @@ function OfficerBlock({
     );
 }
 
-// ─── Instructions Gate ────────────────────────────────────────────────────────
-
+/**
+ * List of instructions and documentary requirements
+ * shown before the user proceeds to the Leave Application form.
+ *
+ * These correspond to the official CSC Form No. 6 instructions.
+ */
 const INSTRUCTIONS = [
     { n: 1, t: 'Vacation leave*', b: 'It shall be filed five (5) days in advance, whenever possible. Vacation leave within the Philippines or abroad shall be indicated for purposes of securing travel authority.' },
     { n: 2, t: 'Mandatory/Forced leave', b: 'Annual five-day vacation leave shall be forfeited if not taken during the year. Availment of one (1) day or more VL shall be considered for complying the mandatory/forced leave.' },
@@ -287,10 +410,22 @@ const INSTRUCTIONS = [
     { n: 15, t: 'Adoption Leave', b: 'Filed with an authenticated copy of the Pre-Adoptive Placement Authority issued by the DSWD.' },
 ];
 
+
+/**
+ * InstructionsGate
+ *
+ * Modal screen shown before accessing the leave form.
+ * Forces the user to acknowledge that they read the instructions
+ * before proceeding with the application.
+ */
 function InstructionsGate({ onAcknowledge }: { onAcknowledge: () => void }) {
+
+    // Tracks whether the user checked the acknowledgment checkbox
     const [checked, setChecked] = useState(false);
     return (
         <div className="flex flex-col h-full overflow-hidden">
+
+            {/* Header explanation */}
             <div className="px-5 py-3 border-b border-secondary">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                     Application for any type of leave shall be made on this Form and to be{' '}
@@ -300,8 +435,12 @@ function InstructionsGate({ onAcknowledge }: { onAcknowledge: () => void }) {
                     with documentary requirements, as follows:
                 </p>
             </div>
+
+            {/* Scrollable instructions list */}
             <div className="flex-1 overflow-y-auto px-5 py-4">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+
+                    {/* Render instructions dynamically */}
                     {INSTRUCTIONS.map(({ n, t, b }) => (
                         <div key={n} className="flex gap-2 text-xs">
                             <span className="font-semibold text-foreground w-5 shrink-0">{n}.</span>
@@ -312,12 +451,16 @@ function InstructionsGate({ onAcknowledge }: { onAcknowledge: () => void }) {
                         </div>
                     ))}
                 </div>
+
+                {/* Footnote from CSC guidelines */}
                 <p className="text-[10px] text-muted-foreground italic mt-4 pt-4 border-t border-secondary">
                     * For leave of absence for thirty (30) calendar days or more and terminal leave, application
                     shall be accompanied by a clearance from money, property and work-related accountabilities
                     (CSC MC No. 2, s. 1985).
                 </p>
             </div>
+
+            {/* Acknowledgment section */}
             <div className="border-t border-secondary bg-muted/30 px-5 py-3 shrink-0">
                 <label className="flex items-start gap-3 cursor-pointer">
                     <Checkbox
@@ -340,8 +483,7 @@ function InstructionsGate({ onAcknowledge }: { onAcknowledge: () => void }) {
     );
 }
 
-// ─── Form Data ────────────────────────────────────────────────────────────────
-
+// Form Data 
 interface FormData {
     employee_id: string;
     office_department: string;
@@ -378,63 +520,122 @@ interface FormData {
 
 function useFormValid(data: FormData): boolean {
     return useMemo(() => {
+
+        /** Basic required fields */
         if (!data.employee_id) return false;
         if (!data.office_department.trim()) return false;
         if (!data.position.trim()) return false;
         if (!data.salary.trim()) return false;
+
+        /**
+        * Validate leave type selection
+        */
         if (!data.other_purpose) {
             if (!data.is_others && !data.leave_type_availed) return false;
             if (data.is_others && !data.others_text.trim()) return false;
         }
+
+        // Resolve actual leave type name
         const availed = data.is_others ? data.others_text : data.leave_type_availed;
 
+
+        /**
+        * Date validation
+        */
         if (!data.other_purpose) {
             if (!data.start_date || !data.end_date) return false;
+
+            // End date cannot be before start date
             if (new Date(data.end_date) < new Date(data.start_date)) return false;
-            // SPL capped at 3 days, Mandatory/Forced capped at 5 days
+
+            /**
+            * Apply policy limits for specific leave types
+            * SPL capped at 3 days, Mandatory/Forced capped at 5 days
+            */
             const wd = computeWorkingDays(data.start_date, data.end_date);
             if (/special privilege/i.test(availed ?? '') && wd > 3) return false;
             if (/mandatory|forced/i.test(availed ?? '') && wd > 5) return false;
         }
+
+        /**
+        * Monetization validation
+        */
         if (data.other_purpose === 'Monetization of Leave Credits') {
             const vlDays = parseFloat(data.monetization_vl_days) || 0;
             const slDays = parseFloat(data.monetization_sl_days) || 0;
             if (vlDays < 0 || slDays < 0) return false;
+
+            // CSC rule: minimum of 10 leave credits to monetize
             if (vlDays + slDays < 10) return false;
         }
+
+        /**
+        * Determine which additional sections must be filled
+        */
         const showLoc = /vacation|special privilege/i.test(availed);
         const showSick = /sick|rehabilitation/i.test(availed);
         const showWomen = /women/i.test(availed);
+
+        /**
+        * Vacation / SPL location requirement
+        */
         if (showLoc) {
             if (!data.loc_type) return false;
             if (data.loc_type === 'ph' && !data.loc_ph_text.trim()) return false;
             if (data.loc_type === 'abroad' && !data.loc_abroad_text.trim()) return false;
         }
+
+        /**
+         * Sick leave illness requirement
+         */
         if (showSick) {
             if (!data.sick_type) return false;
             if (data.sick_type === 'hospital' && !data.sick_hospital_text.trim()) return false;
             if (data.sick_type === 'outpatient' && !data.sick_outpatient_text.trim()) return false;
         }
+
+        /**
+         * Women leave illness description
+         */
         if (showWomen && !data.illness_women.trim()) return false;
+
+        /**
+        * Officer approvals
+        */
         if (!data.recommendation_officer) return false;
         if (!data.approval_officer) return false;
+
         return true;
     }, [data]);
 }
 
+/**
+ * Returns the formatted full name of an employee.
+ * Uses structured name fields when available.
+ * Falls back to employee_name if last_name is missing.
+ */
 function getFullName(e: Employee) {
     return e.last_name
-        ? `${e.last_name}, ${e.first_name ?? ''} ${e.middle_name ?? ''}`.trim()
+        ? `${e.first_name ?? ''} ${e.middle_name ?? ''} ${e.last_name}`.trim()
         : e.employee_name;
 }
 
+/**
+ * EmployeeCombobox
+ *
+ * Searchable dropdown for selecting an employee.
+ * Uses a Popover + Command pattern for searchable lists.
+ */
 function EmployeeCombobox({
     id, placeholder = 'Select employee…', value, onChange, employees,
 }: {
     id?: string; placeholder?: string; value: string;
     onChange: (value: string) => void; employees: Employee[];
 }) {
+    // Controls popover open state
     const [open, setOpen] = useState(false);
+
+    // Find currently selected employee
     const selected = employees.find(e => String(e.employee_id) === value);
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -446,6 +647,7 @@ function EmployeeCombobox({
                     aria-expanded={open}
                     className="w-full justify-between font-normal text-sm mt-1 rounded-md border border-input bg-background px-3 py-1.5 shadow-none hover:bg-background focus:ring-1 focus:ring-ring focus:outline-none"
                 >
+                    {/* Display selected employee name or placeholder */}
                     <span className={cn('truncate', !selected && 'text-muted-foreground')}>
                         {selected ? getFullName(selected) : placeholder}
                     </span>
@@ -453,9 +655,15 @@ function EmployeeCombobox({
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command filter={(itemValue, search) =>
-                    itemValue.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
-                }>
+                <Command
+                    /**
+                         * Custom search filter
+                         * Matches typed search text against employee name
+                         */
+
+                    filter={(itemValue, search) =>
+                        itemValue.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+                    }>
                     <CommandInput placeholder="Search employee…" className="text-sm" />
                     <CommandList className="max-h-52 overflow-y-auto">
                         <CommandEmpty>No employees found.</CommandEmpty>
@@ -467,12 +675,19 @@ function EmployeeCombobox({
                                     <CommandItem
                                         key={empId}
                                         value={fullName}
+
+                                        /**
+                                             * Toggle selection:
+                                             * selecting the same employee again clears it
+                                             */
                                         onSelect={() => {
                                             onChange(value === empId ? '' : empId);
                                             setOpen(false);
                                         }}
                                         className="text-sm"
                                     >
+
+                                        {/* Show check icon when selected */}
                                         <Check className={cn('mr-2 h-4 w-4', value === empId ? 'opacity-100' : 'opacity-0')} />
                                         {fullName}
                                     </CommandItem>
@@ -486,11 +701,13 @@ function EmployeeCombobox({
     );
 }
 
-// ─── Leave Form ───────────────────────────────────────────────────────────────
+//  Leave Form 
 
 function LeaveForm({
     data, setData, errors, employees, leave_entitlements,
-    processing, onSubmit, onClose, isEdit,
+    processing, onSubmit, onClose, isEdit, auth_employee_id = null,
+    hr_admin_employee_ids = [], singleHrAdmin = false,
+    dto_employees_in_dept = [], singleDto = false,
 }: {
     data: FormData;
     setData: (keyOrData: keyof FormData | Partial<FormData>, value?: any) => void;
@@ -501,6 +718,11 @@ function LeaveForm({
     onSubmit: (e: React.FormEvent) => void;
     onClose: () => void;
     isEdit: boolean;
+    auth_employee_id?: number | null;
+    hr_admin_employee_ids?: number[];
+    singleHrAdmin?: boolean;
+    dto_employees_in_dept?: Employee[];
+    singleDto?: boolean;
 }) {
     const isFormValid = useFormValid(data);
     const selectedEmp = employees.find(e => String(e.employee_id) === data.employee_id);
@@ -528,11 +750,12 @@ function LeaveForm({
         ? Math.min(workDays, Math.floor(Math.max(0, slBal)))
         : Math.min(workDays, Math.floor(Math.max(0, vlBal)));
     const showLoc = /vacation|special privilege/i.test(selectedName);
-    const showSick = /sick|rehabilitation/i.test(selectedName);
+    const showSick = /sick/i.test(selectedName) && !/rehabilitation/i.test(selectedName);
     const showWomen = /women/i.test(selectedName);
     const showStudy = /study/i.test(selectedName);
 
-    // ── Resolve the entitlement for the currently selected leave type ────────
+
+    // Resolve the entitlement for the currently selected leave type 
     // Finds the matching entitlement row so we can read days_entitled.
     const selectedEntitlement = useMemo(() => {
         if (!data.leave_type_id || data.is_others) return null;
@@ -548,7 +771,7 @@ function LeaveForm({
     useEffect(() => {
         if (isOtherPurpose) return;
 
-        // ── Non-VL/SL: days_entitled → approved_others ───────────────────────
+        // Non-VL/SL: days_entitled → approved_others 
         if (!isVLSLType && selectedEntitlement) {
             const days = String(selectedEntitlement.days_entitled);
             setData('approved_with_pay', selectedEntitlement.is_paid ? days : '');
@@ -557,7 +780,7 @@ function LeaveForm({
             return;
         }
 
-        // ── VL/SL: split applied days against acquired balance ────────────────
+        //  VL/SL: split applied days against acquired balance 
         if (workDays <= 0) {
             setData('approved_with_pay', '');
             setData('approved_without_pay', '');
@@ -654,7 +877,7 @@ function LeaveForm({
                             <label className="text-xs font-medium">
                                 Employee Name <span className="text-destructive">*</span>
                             </label>
-                            {isEdit ? (
+                            {isEdit || !!auth_employee_id ? (
                                 <div className="w-full rounded-md border border-input bg-muted/40 px-3 py-1.5 text-sm mt-1 text-foreground">
                                     {employees.find(e => String(e.employee_id) === data.employee_id)
                                         ? getFullName(employees.find(e => String(e.employee_id) === data.employee_id)!)
@@ -677,7 +900,7 @@ function LeaveForm({
                                 value={data.office_department}
                                 onChange={e => setData('office_department', e.target.value)}
                                 placeholder="Department name"
-                                readOnly={isEdit}
+                                readOnly={isEdit || !!auth_employee_id}
                                 className={cn('mt-1', isEdit && 'bg-muted/40 cursor-default')}
                             />
                             <FieldError message={errors.office_department} />
@@ -690,7 +913,7 @@ function LeaveForm({
                                 value={data.position}
                                 onChange={e => setData('position', e.target.value)}
                                 placeholder="Job position"
-                                readOnly={isEdit}
+                                readOnly={isEdit || !!auth_employee_id}
                                 className={cn('mt-1', isEdit && 'bg-muted/40 cursor-default')}
                             />
                             <FieldError message={errors.position} />
@@ -703,7 +926,7 @@ function LeaveForm({
                                 value={data.salary}
                                 onChange={e => setData('salary', e.target.value)}
                                 placeholder="Monthly salary"
-                                readOnly={isEdit}
+                                readOnly={isEdit || !!auth_employee_id}
                                 className={cn('mt-1', isEdit && 'bg-muted/40 cursor-default')}
                             />
                             <FieldError message={errors.salary} />
@@ -1056,16 +1279,28 @@ function LeaveForm({
                         </section>
                     </div>
 
-                    <OfficerBlock
-                        label="Authorized Officer"
-                        value={data.recommendation_officer}
-                        onChange={v => setData('recommendation_officer', v)}
-                        employees={employees}
-                        error={errors.recommendation_officer}
-                    />
+                    {/* Authorized Officer */}
+                    {singleDto ? (
+                        <div className="flex flex-col items-center mt-6">
+                            <div className="w-56 rounded-md border border-input bg-muted/40 px-3 py-1.5 text-sm text-foreground text-center">
+                                {employees.find(e => String(e.employee_id) === data.recommendation_officer)
+                                    ? getFullName(employees.find(e => String(e.employee_id) === data.recommendation_officer)!)
+                                    : '—'}
+                            </div>
+                            <p className="text-[10px] italic text-muted-foreground">(Authorized Officer)</p>
+                        </div>
+                    ) : (
+                        <OfficerBlock
+                            label="Authorized Officer"
+                            value={data.recommendation_officer}
+                            onChange={v => setData('recommendation_officer', v)}
+                            employees={dto_employees_in_dept.length > 0 ? dto_employees_in_dept : employees}
+                            error={errors.recommendation_officer}
+                        />
+                    )}
 
                     {/* 7.C */}
-                    {!isOtherPurpose && (
+                    {!isOtherPurpose && data.status !== 'Pending' && (
                         <div className="mt-6">
                             <Sub>7.C Approved For:</Sub>
                             <div className="border border-secondary rounded-md text-xs overflow-hidden">
@@ -1106,13 +1341,27 @@ function LeaveForm({
                         </div>
                     )}
 
-                    <OfficerBlock
-                        label="Authorized Official"
-                        value={data.approval_officer}
-                        onChange={v => setData('approval_officer', v)}
-                        employees={employees}
-                        error={errors.approval_officer}
-                    />
+                    {/* Authorized Official */}
+                    {!['Pending', 'For Approval', 'For Disapproval'].includes(data.status) && (
+                        singleHrAdmin ? (
+                            <div className="flex flex-col items-center mt-6">
+                                <div className="w-56 rounded-md border border-input bg-muted/40 px-3 py-1.5 text-sm text-foreground text-center">
+                                    {employees.find(e => String(e.employee_id) === data.approval_officer)
+                                        ? getFullName(employees.find(e => String(e.employee_id) === data.approval_officer)!)
+                                        : '—'}
+                                </div>
+                                <p className="text-[10px] italic text-muted-foreground">(Authorized Official)</p>
+                            </div>
+                        ) : (
+                            <OfficerBlock
+                                label="Authorized Official"
+                                value={data.approval_officer}
+                                onChange={v => setData('approval_officer', v)}
+                                employees={employees.filter(e => hr_admin_employee_ids.includes(e.employee_id))}
+                                error={errors.approval_officer}
+                            />
+                        )
+                    )}
                 </div>
             </div>
 
@@ -1133,19 +1382,37 @@ function LeaveForm({
     );
 }
 
-// ─── Leave Modal (create / edit) ──────────────────────────────────────────────
+//  Leave Modal (create / edit)
 
 function LeaveModal({
-    open, editingApp, employees, leave_entitlements, onClose,
+    open, editingApp, employees, leave_entitlements, onClose, auth_employee_id, hr_admin_employee_ids = [], dto_employee_ids = [],
 }: {
     open: boolean; editingApp: LeaveFiling | null;
     employees: Employee[]; leave_entitlements: LeaveEntitlement[]; onClose: () => void;
+    auth_employee_id?: number | null;
+    hr_admin_employee_ids?: number[];
+    dto_employee_ids?: number[];
 }) {
     const isEdit = !!editingApp;
     const detail = (editingApp as any)?.detail;
     const [acknowledged, setAcknowledged] = useState(isEdit);
     const [serverErrors, setServerErrors] = useState<Partial<Record<string, string>>>({});
     const [processing, setProcessing] = useState(false);
+
+    const singleHrAdmin = hr_admin_employee_ids.length === 1;
+
+    const defaultEmpId = !isEdit && auth_employee_id ? String(auth_employee_id) : '';
+    const defaultEmp = employees.find(e => String(e.employee_id) === defaultEmpId);
+
+    const filingEmp = defaultEmp
+        ?? (editingApp ? employees.find(e => String(e.employee_id) === String(editingApp.employee_id)) : undefined)
+
+    const dtoEmployeesInDept = employees.filter(e =>
+        dto_employee_ids.includes(e.employee_id) &&
+        !!filingEmp?.department_name &&
+        e.department_name === filingEmp.department_name
+    );
+    const singleDto = dtoEmployeesInDept.length === 1;
 
     function restoreLocType(): 'ph' | 'abroad' | '' {
         return (detail?.leave_location_type as 'ph' | 'abroad') ?? '';
@@ -1155,10 +1422,10 @@ function LeaveModal({
     }
 
     const { data, setData, reset, clearErrors } = useForm<FormData>({
-        employee_id: editingApp?.employee_id ? String(editingApp.employee_id) : '',
-        office_department: (editingApp as any)?.office_department ?? '',
-        position: (editingApp as any)?.position ?? '',
-        salary: (editingApp as any)?.salary ?? '',
+        employee_id: editingApp?.employee_id ? String(editingApp.employee_id) : defaultEmpId,
+        office_department: (editingApp as any)?.office_department ?? defaultEmp?.department_name ?? '',
+        position: (editingApp as any)?.position ?? defaultEmp?.position_name ?? '',
+        salary: (editingApp as any)?.salary ?? (defaultEmp?.monthly_salary ? defaultEmp.monthly_salary.replace(/,/g, '') : ''),
         leave_type_id: editingApp?.leave_type_id ? String(editingApp.leave_type_id) : '',
         leave_type_availed: editingApp?.leave_type_availed ?? '',
         is_others: editingApp
@@ -1183,10 +1450,14 @@ function LeaveModal({
         end_date: editingApp?.end_date ?? '',
         is_requested: editingApp?.is_requested ?? false,
         is_with_pay: editingApp?.is_with_pay ?? true,
-        recommendation_officer: editingApp?.recommendation_officer ? String(editingApp.recommendation_officer) : '',
+        recommendation_officer: editingApp?.recommendation_officer
+            ? String(editingApp.recommendation_officer)
+            : singleDto ? String(dtoEmployeesInDept[0].employee_id) : '',
         status: editingApp?.status ?? 'Pending',
         for_disapproval_reason: editingApp?.for_disapproval_reason ?? '',
-        approval_officer: editingApp?.approval_officer ? String(editingApp.approval_officer) : '',
+        approval_officer: editingApp?.approval_officer
+            ? String(editingApp.approval_officer)
+            : singleHrAdmin ? String(hr_admin_employee_ids[0]) : '',
         approved_with_pay: editingApp ? String((editingApp as any).approved_with_pay ?? '') : '',
         approved_without_pay: editingApp ? String((editingApp as any).approved_without_pay ?? '') : '',
         approved_others: (editingApp as any)?.approved_others ?? '',
@@ -1290,6 +1561,11 @@ function LeaveModal({
                         leave_entitlements={leave_entitlements} processing={processing}
                         onSubmit={handleSubmit} onClose={handleClose}
                         isEdit={isEdit}
+                        auth_employee_id={auth_employee_id}
+                        hr_admin_employee_ids={hr_admin_employee_ids}
+                        singleHrAdmin={singleHrAdmin}
+                        dto_employees_in_dept={dtoEmployeesInDept}
+                        singleDto={singleDto}
                     />
                 )}
             </DialogContent>
@@ -1297,7 +1573,7 @@ function LeaveModal({
     );
 }
 
-// ─── Applied Leave View Modal ─────────────────────────────────────────────────
+//  Applied Leave View Modal 
 //
 // Shared read-only (+ action) modal for all 5 views:
 //   view               → full read-only, no action button
@@ -1307,14 +1583,20 @@ function LeaveModal({
 //   disapprove         → greyed top, 7.B greyed, active 7.D, red button
 
 function AppliedLeaveViewModal({
-    app, mode, employees, onClose,
+    app, mode, employees, hr_admin_employee_ids = [], onClose,
 }: {
     app: LeaveFiling | null;
     mode: ActionMode;
     employees: Employee[];
+    hr_admin_employee_ids?: number[];
     onClose: () => void;
 }) {
     const [reason, setReason] = useState('');
+    const [selectedApprovalOfficer, setSelectedApprovalOfficer] = useState(
+        app?.approval_officer
+            ? String(app.approval_officer)
+            : hr_admin_employee_ids.length > 0 ? String(hr_admin_employee_ids[0]) : ''
+    );
     const [processing, setProcessing] = useState(false);
 
     // Pre-fill reason with existing DB value when opening action modes
@@ -1326,6 +1608,11 @@ function AppliedLeaveViewModal({
         } else {
             setReason('');
         }
+        setSelectedApprovalOfficer(
+            app?.approval_officer
+                ? String(app.approval_officer)
+                : hr_admin_employee_ids.length > 0 ? String(hr_admin_employee_ids[0]) : ''
+        );
         setProcessing(false);
     }, [app?.leave_application_id, mode]);
 
@@ -1443,7 +1730,9 @@ function AppliedLeaveViewModal({
             is_requested: app.is_requested ?? false,
             is_with_pay: app.is_with_pay ?? false,
             recommendation_officer: app.recommendation_officer ? String(app.recommendation_officer) : null,
-            approval_officer: app.approval_officer ? String(app.approval_officer) : null,
+            approval_officer: ['approve', 'disapprove'].includes(mode)
+                ? (selectedApprovalOfficer || null)
+                : (app.approval_officer ? String(app.approval_officer) : null),
             approved_with_pay: (app as any).approved_with_pay ?? null,
             approved_without_pay: (app as any).approved_without_pay ?? null,
             approved_others: (app as any).approved_others ?? null,
@@ -1563,7 +1852,7 @@ function AppliedLeaveViewModal({
                             </div>
                         )}
 
-                        {(sickType || /sick|rehabilitation/i.test(leaveName)) && (
+                        {(sickType || (/sick/i.test(leaveName) && !/rehabilitation/i.test(leaveName))) && (
                             <div className="mb-2">
                                 <Italic>In case of Sick Leave:</Italic>
                                 {sickType && (
@@ -1622,7 +1911,7 @@ function AppliedLeaveViewModal({
 
                     <div className="border-t border-secondary" />
 
-                    {/* ── Details of Action on Application ── */}
+                    {/* Details of Action on Application */}
                     <div>
                         <SH>Details of Action on Application</SH>
 
@@ -1672,16 +1961,14 @@ function AppliedLeaveViewModal({
                             )}>
                                 <Sub>7.B Recommendation</Sub>
                                 <div className="space-y-1 mb-3">
-                                    <ROCheck
-                                        checked={!app.for_disapproval_reason}
-                                        label="For approval"
-                                    />
-                                    <ROCheck
-                                        checked={!!app.for_disapproval_reason}
-                                        label="For disapproval due to"
-                                    />
+                                    {!app.for_disapproval_reason && (
+                                        <ROCheck checked label="For approval" />
+                                    )}
+                                    {!!app.for_disapproval_reason && (
+                                        <ROCheck checked label="For disapproval due to" />
+                                    )}
                                     {app.for_disapproval_reason && (
-                                        <div className="mt-1.5 ml-5 rounded-md border border-input bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                                        <div className="mt-1.5 rounded-md border border-secondary  px-3 py-2 text-xs text-muted-foreground">
                                             {app.for_disapproval_reason}
                                         </div>
                                     )}
@@ -1734,51 +2021,40 @@ function AppliedLeaveViewModal({
                             </div>
                         )}
 
-                        {/* 7.C Approved For — hidden for Monetization / Terminal Leave, and when all fields empty */}
-                        {show7C && (approvedWithPay || approvedWithoutPay || approvedOthers) && (
-                            <div className={cn(
-                                'transition-opacity mb-3',
-                                (mode === 'recommend-disapproval' || mode === 'disapprove')
-                                && 'opacity-40 pointer-events-none select-none',
-                            )}>
-                                <Sub>7.C Approved for:</Sub>
-                                <div className="border border-secondary rounded-md text-xs overflow-hidden">
-                                    {/* days with pay — only when set */}
-                                    {approvedWithPay && (
-                                        <div className={cn(
-                                            'grid grid-cols-[1fr_auto] items-center px-3 py-2',
-                                            (approvedWithoutPay || approvedOthers) && 'border-b border-secondary',
-                                        )}>
+                        {/* 7.C Approved For — shown when status is Approved/Disapproved or when user clicks approve/disapprove.
+    All rows always shown with 0 as fallback. */}
+                        {show7C && (
+                            ['Approved', 'Disapproved'].includes(app.status) ||
+                            ['approve', 'disapprove'].includes(mode)
+                        ) && (
+                                <div className={cn(
+                                    'transition-opacity mb-3',
+                                    (mode === 'recommend-disapproval' || mode === 'disapprove')
+                                    && 'opacity-40 pointer-events-none select-none',
+                                )}>
+                                    <Sub>7.C Approved for:</Sub>
+                                    <div className="border border-secondary rounded-md text-xs overflow-hidden">
+                                        <div className="grid grid-cols-[1fr_auto] items-center px-3 py-2 border-b border-secondary">
                                             <span className="italic text-muted-foreground">Days with pay</span>
                                             <span className="font-semibold tabular-nums text-right min-w-20">
-                                                {approvedWithPay}
+                                                {approvedWithPay || '0'}
                                             </span>
                                         </div>
-                                    )}
-                                    {/* days without pay — only when set */}
-                                    {approvedWithoutPay && (
-                                        <div className={cn(
-                                            'grid grid-cols-[1fr_auto] items-center px-3 py-2',
-                                            approvedOthers && 'border-b border-secondary',
-                                        )}>
+                                        <div className="grid grid-cols-[1fr_auto] items-center px-3 py-2 border-b border-secondary">
                                             <span className="italic text-muted-foreground">Days without pay</span>
                                             <span className="font-semibold tabular-nums text-right min-w-20">
-                                                {approvedWithoutPay}
+                                                {approvedWithoutPay || '0'}
                                             </span>
                                         </div>
-                                    )}
-                                    {/* others — only when set */}
-                                    {approvedOthers && (
                                         <div className="grid grid-cols-[1fr_auto] items-center px-3 py-2">
                                             <span className="italic text-muted-foreground">Others (Specify)</span>
                                             <span className="font-semibold tabular-nums text-right min-w-20">
-                                                {approvedOthers}
+                                                {approvedOthers || '0'}
                                             </span>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
                         {/* 7.D Disapproved Due To — read-only (view), only when there's a value */}
                         {show7DReadOnly && app.disapproved_reason && (
@@ -1806,16 +2082,33 @@ function AppliedLeaveViewModal({
                             </div>
                         )}
 
-                        {/* Authorized Official footer — hidden for Monetization when still Pending */}
-                        {!(isMonetization && isPending) && (
-                            <div className="flex flex-col items-center mt-5">
-                                <div className="w-48 mb-0.5" />
-                                {appOfficerName && (
-                                    <p className="text-xs font-medium text-foreground mt-1">{appOfficerName}</p>
-                                )}
-                                <p className="text-[10px] italic text-muted-foreground border-t border-border w-48 pt-1 text-center">(Authorized Official)</p>
-                            </div>
-                        )}
+
+                        {/* Authorized Official footer — shown when Approved/Disapproved, or when user is acting approve/disapprove on a For Approval/Disapproval application.
+    Editable when user clicks approve/disapprove so they can reselect if needed. */}
+                        {(!['Pending', 'For Approval', 'For Disapproval'].includes(app.status) ||
+                            (['For Approval', 'For Disapproval'].includes(app.status) && ['approve', 'disapprove'].includes(mode))
+                        ) && (
+                                <div className="flex flex-col items-center mt-5">
+                                    {['approve', 'disapprove'].includes(mode) ? (
+                                        <div className="w-56">
+                                            <EmployeeCombobox
+                                                value={selectedApprovalOfficer || (app.approval_officer ? String(app.approval_officer) : '')}
+                                                onChange={setSelectedApprovalOfficer}
+                                                employees={employees.filter(e => hr_admin_employee_ids.includes(e.employee_id))}
+                                                placeholder="Select Authorized Official…"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="w-48 mb-0.5" />
+                                            {appOfficerName && (
+                                                <p className="text-xs font-medium text-foreground mt-1">{appOfficerName}</p>
+                                            )}
+                                        </>
+                                    )}
+                                    <p className="text-[10px] italic text-muted-foreground border-t border-border w-48 pt-1 text-center">(Authorized Official)</p>
+                                </div>
+                            )}
                     </div>
                 </div>
 
@@ -1847,7 +2140,7 @@ function AppliedLeaveViewModal({
     );
 }
 
-// ─── Mobile Detail Modal ──────────────────────────────────────────────────────
+// Mobile Detail Modal 
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
     return (
@@ -1948,6 +2241,10 @@ export default function LeaveFilingIndex({
     total_pending = 0,
     total_approved = 0,
     total_disapproved = 0,
+    auth_employee_id = null,
+    hr_admin_employee_ids = [],
+    dto_employee_ids = [],
+
 }: Props) {
     const isMobile = useIsMobile();
 
@@ -1967,14 +2264,40 @@ export default function LeaveFilingIndex({
         'Disapproved': 4,
     };
 
+    const { auth } = usePage<{ auth: { user: { roles: string[] } } }>().props;
+    const roles: string[] = auth?.user?.roles ?? [];
+    const hasRole = (role: string) => roles.includes(role);
+
+    const isHrAdmin = hasRole('hr_admin');
+    const isDto = hasRole('document_tracking_operator') && !hasRole('hr_admin') && !hasRole('super_admin');
+    console.log({ roles, isHrAdmin, isDto });
+
+    const HR_ADMIN_STATUSES = ['For Approval', 'For Disapproval', 'Approved', 'Disapproved'];
+
+
+
+    const DTO_STATUSES = ['Pending', 'Approved', 'Disapproved'];
+
     const sortedApplications = useMemo(() => {
-        return [...leave_applications].sort((a, b) => {
+        let filtered = [...leave_applications];
+
+        if (isHrAdmin) {
+            filtered = filtered.filter(a =>
+                ['For Approval', 'For Disapproval', 'Approved', 'Disapproved'].includes(a.status)
+            );
+            // } else if (isDto) {
+            //     filtered = filtered.filter(a =>
+            //         ['Pending', 'Approved', 'Disapproved'].includes(a.status)
+            //     );
+        }
+
+        return filtered.sort((a, b) => {
             const statusDiff = (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
             if (statusDiff !== 0) return statusDiff;
             // Within same status: latest filed first
             return new Date(b.date_of_filing ?? 0).getTime() - new Date(a.date_of_filing ?? 0).getTime();
         });
-    }, [leave_applications]);
+    }, [leave_applications, isHrAdmin, isDto]);
 
 
     function openCreate() { setEditingApp(null); setModalOpen(true); }
@@ -2053,6 +2376,7 @@ export default function LeaveFilingIndex({
                 app={viewApp}
                 mode={viewMode}
                 employees={employees}
+                hr_admin_employee_ids={hr_admin_employee_ids}
                 onClose={closeViewModal}
             />
 
@@ -2064,6 +2388,9 @@ export default function LeaveFilingIndex({
                 employees={employees}
                 leave_entitlements={leave_entitlements}
                 onClose={closeModal}
+                auth_employee_id={auth_employee_id}
+                hr_admin_employee_ids={hr_admin_employee_ids}
+                dto_employee_ids={dto_employee_ids}
             />
         </AppLayout>
     );
