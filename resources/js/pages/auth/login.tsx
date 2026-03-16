@@ -34,17 +34,24 @@ export default function Login({
             email: 'superadmin@gmail.com',
         },
         {
-            role: 'hr_admin',
-            email: 'anessa.orales20@obx.gov.ph',
+            role: 'ONLY hr_admin',
+            email: 'oanna.ucero32@obx.gov.ph',
+            department: 'OBE',
         },
         {
-            role: 'ogm',
-            email: 'usan.una28@obx.gov.ph',
+            role: 'ONLY ogm',
+            email: 'iguel.alazar33@obx.gov.ph',
+            department: 'OBE',
         },
         {
-            role: 'document_tracking_operator',
+            role: 'hr_admin, document_tracking_operator',
             email: 'anessa.orales20@obx.gov.ph',
             department: 'OBE',
+        },
+        {
+            role: 'ogm, document_tracking_operator',
+            email: 'usan.una28@obx.gov.ph',
+            department: 'GPAD',
         },
         {
             role: 'document_tracking_operator',
@@ -52,9 +59,19 @@ export default function Login({
             department: 'OSD',
         },
         {
-            role: 'document_tracking_operator',
-            email: 'usan.una28@obx.gov.ph',
+            role: 'employee',
+            email: 'amon.antos@obx.gov.ph',
+            department: 'OBE',
+        },
+        {
+            role: 'employee',
+            email: 'amon.izal30@obx.gov.ph',
             department: 'GPAD',
+        },
+        {
+            role: 'employee',
+            email: 'orazon.autista7@obx.gov.ph',
+            department: 'OBE',
         },
     ];
 

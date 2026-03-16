@@ -1,8 +1,8 @@
 "use client"
 
 import { type ColumnDef } from "@tanstack/react-table"
-import { CornerDownLeft, Clock } from "lucide-react"
-import { useState } from "react"
+import { CornerDownLeft, Clock, MapPin } from "lucide-react"
+import { useState, useEffect } from "react"
 import { useForm } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
@@ -23,6 +23,71 @@ import {
     editAction,
     deleteAction,
 } from "@/components/shared/data-table/data-table-row-action"
+
+// ─── GeoRisk API base URLs ────────────────────────────────────────────────────
+
+const ARCGIS_PROV = "https://ulap-nga.georisk.gov.ph/arcgis/rest/services/PSA/Provincial/MapServer/0"
+const ARCGIS_MUNI = "https://ulap-nga.georisk.gov.ph/arcgis/rest/services/PSA/Municipal/MapServer/0"
+const ARCGIS_BRGY = "https://portal.georisk.gov.ph/arcgis/rest/services/PSA/Barangay/MapServer/4"
+
+// ─── Module-level name cache ──────────────────────────────────────────────────
+// Shared across all LocationCell instances so the same code is never fetched
+// more than once per page load, even when the table re-renders.
+
+const provNameCache = new Map<string, Promise<string>>()
+const muniNameCache = new Map<string, Promise<string>>()
+const brgyNameCache = new Map<string, Promise<string>>()
+
+function fetchProvName(provCode: string): Promise<string> {
+    if (!provNameCache.has(provCode)) {
+        provNameCache.set(
+            provCode,
+            fetch(
+                `${ARCGIS_PROV}/query?f=json` +
+                `&where=${encodeURIComponent(`prov_code='${provCode}'`)}` +
+                `&outFields=prov_name&returnGeometry=false`
+            )
+                .then((r) => r.json())
+                .then((d) => (d.features?.[0]?.attributes?.prov_name as string) ?? provCode)
+                .catch(() => provCode)
+        )
+    }
+    return provNameCache.get(provCode)!
+}
+
+function fetchMuniName(cityCode: string): Promise<string> {
+    if (!muniNameCache.has(cityCode)) {
+        muniNameCache.set(
+            cityCode,
+            fetch(
+                `${ARCGIS_MUNI}/query?f=json` +
+                `&where=${encodeURIComponent(`city_code='${cityCode}'`)}` +
+                `&outFields=city_name&returnGeometry=false`
+            )
+                .then((r) => r.json())
+                .then((d) => (d.features?.[0]?.attributes?.city_name as string) ?? cityCode)
+                .catch(() => cityCode)
+        )
+    }
+    return muniNameCache.get(cityCode)!
+}
+
+function fetchBrgyName(brgyCode: string): Promise<string> {
+    if (!brgyNameCache.has(brgyCode)) {
+        brgyNameCache.set(
+            brgyCode,
+            fetch(
+                `${ARCGIS_BRGY}/query?f=json` +
+                `&where=${encodeURIComponent(`brgy_code='${brgyCode}'`)}` +
+                `&outFields=brgy_name&returnGeometry=false`
+            )
+                .then((r) => r.json())
+                .then((d) => (d.features?.[0]?.attributes?.brgy_name as string) ?? brgyCode)
+                .catch(() => brgyCode)
+        )
+    }
+    return brgyNameCache.get(brgyCode)!
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -58,11 +123,103 @@ function formatTime(value?: string | null) {
     return `${hour12}:${m} ${period}`
 }
 
-// Convert "HH:MM:SS" or "HH:MM" to total minutes for easy comparison
 function timeToMinutes(time?: string | null): number {
     if (!time) return 0
     const [hh, mm] = time.split(":")
     return parseInt(hh, 10) * 60 + parseInt(mm, 10)
+}
+
+// ─── LocationCell ─────────────────────────────────────────────────────────────
+// Fetches province, municipality, and barangay names in parallel on first mount.
+// Falls back to the raw code while loading, and silently falls back to the code
+// on error (fetch helpers already handle that).
+
+interface LocationNames {
+    prov: string
+    muni: string
+    brgy: string
+}
+
+function LocationCell({ slip }: { slip: WhereaboutSlip }) {
+    const { prov_code, city_code, brgy_code } = slip
+
+    const [names, setNames] = useState<LocationNames | null>(null)
+
+    useEffect(() => {
+        if (!prov_code && !city_code && !brgy_code) return
+
+        let cancelled = false
+
+        Promise.all([
+            prov_code ? fetchProvName(prov_code) : Promise.resolve(null),
+            city_code ? fetchMuniName(city_code) : Promise.resolve(null),
+            brgy_code ? fetchBrgyName(brgy_code) : Promise.resolve(null),
+        ]).then(([prov, muni, brgy]) => {
+            if (!cancelled) {
+                setNames({
+                    prov: prov ?? "—",
+                    muni: muni ?? "—",
+                    brgy: brgy ?? "—",
+                })
+            }
+        })
+
+        return () => { cancelled = true }
+    }, [prov_code, city_code, brgy_code])
+
+    // No location data at all
+    if (!prov_code && !city_code && !brgy_code) {
+        return <span className="text-muted-foreground text-sm">—</span>
+    }
+
+    // Still loading
+    if (!names) {
+        return (
+            <div className="space-y-1 min-w-[180px] animate-pulse">
+                <div className="h-3 w-28 rounded bg-muted" />
+                <div className="h-3 w-24 rounded bg-muted" />
+                <div className="h-3 w-20 rounded bg-muted" />
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-w-[180px] space-y-0.5">
+            {/* Province */}
+            {prov_code && (
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground w-[52px] shrink-0">
+                        Prov
+                    </span>
+                    <span className="text-sm font-medium text-foreground leading-tight">
+                        {names.prov}
+                    </span>
+                </div>
+            )}
+            {/* Municipality / City */}
+            {city_code && (
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground w-[52px] shrink-0">
+                        Muni
+                    </span>
+                    <span className="text-sm text-foreground/80 leading-tight">
+                        {names.muni}
+                    </span>
+                </div>
+            )}
+            {/* Barangay */}
+            {brgy_code && (
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground w-[52px] shrink-0">
+                        Brgy
+                    </span>
+                    <span className="text-sm text-foreground/60 leading-tight">
+                        {names.brgy}
+                    </span>
+                </div>
+            )}
+        </div>
+    )
 }
 
 // ─── TimeInput ────────────────────────────────────────────────────────────────
@@ -71,12 +228,11 @@ interface TimeInputProps {
     id?: string
     value: string
     onChange: (value: string) => void
-    min?: string // "HH:MM" — browser will enforce visually
+    min?: string
 }
 
 function TimeInput({ id, value, onChange, min }: TimeInputProps) {
     const normalized = value ? value.slice(0, 5) : ""
-
     return (
         <Input
             id={id}
@@ -108,7 +264,6 @@ function TimeReturnedDialog({ open, slip, onClose }: TimeReturnedDialogProps) {
         time_noted: slip?.time_noted ?? "",
     })
 
-    // Client-side errors for time comparison
     const [clientErrors, setClientErrors] = useState<Partial<TimeReturnedFormData>>({})
 
     const timeOutMinutes = timeToMinutes(slip?.time_out)
@@ -135,18 +290,12 @@ function TimeReturnedDialog({ open, slip, onClose }: TimeReturnedDialogProps) {
         return Object.keys(errs).length === 0
     }
 
-    function handleClose() {
-        reset()
-        setClientErrors({})
-        onClose()
-    }
+    function handleClose() { reset(); setClientErrors({}); onClose() }
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (!validate()) return
-        put(route("whereabout-slip.log-return", slip!.whereabout_slip_id), {
-            onSuccess: handleClose,
-        })
+        put(route("whereabout-slip.log-return", slip!.whereabout_slip_id), { onSuccess: handleClose })
     }
 
     return (
@@ -166,11 +315,10 @@ function TimeReturnedDialog({ open, slip, onClose }: TimeReturnedDialogProps) {
 
                 <form onSubmit={handleSubmit}>
                     <div className="px-5 py-5 space-y-5">
-
-                        {/* Time Out reference — read only, so user knows the constraint */}
                         {slip?.time_out && (
                             <div className="rounded-md bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground">
-                                Time Out: <span className="font-medium text-foreground">{formatTime(slip.time_out)}</span>
+                                Time Out:{" "}
+                                <span className="font-medium text-foreground">{formatTime(slip.time_out)}</span>
                                 {" "}— both times below must be after this.
                             </div>
                         )}
@@ -204,25 +352,13 @@ function TimeReturnedDialog({ open, slip, onClose }: TimeReturnedDialogProps) {
                             />
                             <FieldError message={clientErrors.time_noted ?? errors.time_noted} />
                         </div>
-
                     </div>
 
                     <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleClose}
-                            className="text-xs"
-                        >
+                        <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            size="sm"
-                            disabled={processing}
-                            className="text-xs"
-                        >
+                        <Button type="submit" size="sm" disabled={processing} className="text-xs">
                             {processing ? "Saving…" : "Confirm Return"}
                         </Button>
                     </DialogFooter>
@@ -246,25 +382,12 @@ function TimeReturnedCell({ slip }: { slip: WhereaboutSlip }) {
                 className="h-7 w-7"
                 disabled={isReturned}
                 title={isReturned ? "Already returned" : "Log return time"}
-                onClick={(e) => {
-                    e.stopPropagation()
-                    setOpen(true)
-                }}
+                onClick={(e) => { e.stopPropagation(); setOpen(true) }}
             >
-                <Clock
-                    className={
-                        isReturned
-                            ? "w-4 h-4 text-muted-foreground/40"
-                            : "w-4 h-4 text-primary"
-                    }
-                />
+                <Clock className={isReturned ? "w-4 h-4 text-muted-foreground/40" : "w-4 h-4 text-primary"} />
             </Button>
 
-            <TimeReturnedDialog
-                open={open}
-                slip={slip}
-                onClose={() => setOpen(false)}
-            />
+            <TimeReturnedDialog open={open} slip={slip} onClose={() => setOpen(false)} />
         </>
     )
 }
@@ -390,6 +513,17 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Where
             enableSorting: true,
             enableHiding: true,
         },
+        // ── Location ──────────────────────────────────────────────────────────
+        {
+            id: "location",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Location" />
+            ),
+            cell: ({ row }) => <LocationCell slip={row.original} />,
+            enableSorting: false,
+            enableHiding: true,
+        },
+        // ─────────────────────────────────────────────────────────────────────
         {
             accessorKey: "status",
             header: ({ column }) => (
@@ -428,30 +562,7 @@ export function getColumns({ onEdit, onDelete }: ColumnOptions): ColumnDef<Where
         {
             id: "actions",
             header: "Actions",
-            cell: ({ row }) => (
-                <TimeReturnedCell slip={row.original} />
-                // <DataTableRowActions
-                //     row={row}
-                //     actions={[
-                //         editAction(onEdit),
-                //         deleteAction(onDelete, {
-                //             getName: (s) =>
-                //                 formatEmployeeName(s.employee) ||
-                //                 `Slip #${s.whereabout_slip_id}`,
-                //             description: (s) => (
-                //                 <>
-                //                     Are you sure you want to delete the whereabout slip for{" "}
-                //                     <span className="font-medium text-foreground">
-                //                         {formatEmployeeName(s.employee)}
-                //                     </span>
-                //                     ? This action cannot be undone.
-                //                 </>
-                //             ),
-                //             confirmLabel: "Delete Slip",
-                //         }),
-                //     ]}
-                // />
-            ),
+            cell: ({ row }) => <TimeReturnedCell slip={row.original} />,
             enableHiding: false,
         },
     ]

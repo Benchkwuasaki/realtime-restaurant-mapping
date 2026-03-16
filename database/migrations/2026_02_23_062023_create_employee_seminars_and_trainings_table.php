@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('provider');
             $table->date('date_attended');
             $table->string('venue')->nullable();
+            $table->string('organizer')->nullable();
             $table->timestamps();
         });
     }

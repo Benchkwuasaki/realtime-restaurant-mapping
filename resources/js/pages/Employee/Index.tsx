@@ -7,12 +7,14 @@ import AppLayout from '@/layouts/app-layout';
 import { columns } from '@/pages/Employee/components/columns';
 import { type Employee } from '@/pages/Employee/data/schema';
 import type { BreadcrumbItem } from '@/types';
+import { toast } from "sonner"
 
 interface Props {
     employees: Employee[];
     totalEmployees: number;
     activeEmployees: number;
     inactiveEmployees: number;
+
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -42,19 +44,19 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
                         title="Total Employees"
                         value={totalEmployees}
                         description="All registered employees"
-                        icon={<Users className="size-5 m-2 text-blue-500" />}
+                        icon={<Users className="size-5 m-2" />}
                     />
                     <StatCard
                         title="Active Employees"
                         value={activeEmployees}
                         description="Currently active employees"
-                        icon={<UserCheck className="size-5 m-2 text-green-500" />}
+                        icon={<UserCheck className="size-5 m-2 text-primary" />}
                     />
                     <StatCard
                         title="Inactive Employees"
                         value={inactiveEmployees}
                         description="On leave or inactive"
-                        icon={<UserX className="size-5 m-2 text-red-500" />}
+                        icon={<UserX className="size-5 m-2 text-destructive" />}
                     />
                 </div>
 
@@ -86,6 +88,12 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
                         route: route('employee.bulk-destroy'),
                         entityName: 'Employee',
                         getId: (row) => (row as Employee).id,
+                        onSuccess: (count) => toast.success('Employees deleted', {        
+                            description: `${count} employee(s) removed successfully.`,
+                        }),
+                        onError: () => toast.error('Failed to delete employees', {        
+                            description: 'Please check your permissions and try again.',
+                        }),
                     }}
                 />
             </div>

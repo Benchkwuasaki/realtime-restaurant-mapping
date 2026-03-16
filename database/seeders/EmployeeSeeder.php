@@ -21,69 +21,208 @@ class EmployeeSeeder extends Seeder
     // ─────────────────────────────────────────────────────────────────────────
 
     private array $firstNamesMale = [
-        'Ramon', 'Carlo', 'Jose', 'Miguel', 'Eduardo', 'Roberto', 'Fernando',
-        'Antonio', 'Ricardo', 'Emmanuel', 'Rodrigo', 'Alfredo', 'Bernard',
-        'Leonardo', 'Danilo', 'Renato', 'Armando', 'Cesar', 'Victor', 'Nelson',
-        'Bryan', 'Kevin', 'Mark', 'Christian', 'Ronald', 'Joel', 'Jerome',
-        'Patrick', 'Dennis', 'Alvin',
+        'Ramon',
+        'Carlo',
+        'Jose',
+        'Miguel',
+        'Eduardo',
+        'Roberto',
+        'Fernando',
+        'Antonio',
+        'Ricardo',
+        'Emmanuel',
+        'Rodrigo',
+        'Alfredo',
+        'Bernard',
+        'Leonardo',
+        'Danilo',
+        'Renato',
+        'Armando',
+        'Cesar',
+        'Victor',
+        'Nelson',
+        'Bryan',
+        'Kevin',
+        'Mark',
+        'Christian',
+        'Ronald',
+        'Joel',
+        'Jerome',
+        'Patrick',
+        'Dennis',
+        'Alvin',
     ];
 
     private array $firstNamesFemale = [
-        'Maria', 'Ana', 'Joanna', 'Rosa', 'Maricel', 'Lourdes', 'Teresita',
-        'Corazon', 'Josephine', 'Erlinda', 'Gina', 'Rowena', 'Charissa',
-        'Kristine', 'Patricia', 'Melissa', 'Diana', 'Catherine', 'Angela',
-        'Sheila', 'Vanessa', 'Aileen', 'Mylene', 'Cheryl', 'Fe', 'Elvira',
-        'Nora', 'Cynthia', 'Susan', 'Marites',
+        'Maria',
+        'Ana',
+        'Joanna',
+        'Rosa',
+        'Maricel',
+        'Lourdes',
+        'Teresita',
+        'Corazon',
+        'Josephine',
+        'Erlinda',
+        'Gina',
+        'Rowena',
+        'Charissa',
+        'Kristine',
+        'Patricia',
+        'Melissa',
+        'Diana',
+        'Catherine',
+        'Angela',
+        'Sheila',
+        'Vanessa',
+        'Aileen',
+        'Mylene',
+        'Cheryl',
+        'Fe',
+        'Elvira',
+        'Nora',
+        'Cynthia',
+        'Susan',
+        'Marites',
     ];
 
     private array $lastNames = [
-        'Santos', 'Dela Cruz', 'Reyes', 'Mendoza', 'Garcia', 'Torres',
-        'Villanueva', 'Bautista', 'Ramos', 'Aquino', 'Fernandez', 'Flores',
-        'Lopez', 'Diaz', 'Castro', 'Aguilar', 'Tolentino', 'Espinosa',
-        'Navarro', 'Palma', 'Morales', 'Velasco', 'Ibanez', 'Ocampo',
-        'Macapagal', 'Pangilinan', 'Mercado', 'Bonifacio', 'Luna', 'Mabini',
-        'Rizal', 'Pascual', 'Lucero', 'Salazar', 'Macaraeg',
+        'Santos',
+        'Dela Cruz',
+        'Reyes',
+        'Mendoza',
+        'Garcia',
+        'Torres',
+        'Villanueva',
+        'Bautista',
+        'Ramos',
+        'Aquino',
+        'Fernandez',
+        'Flores',
+        'Lopez',
+        'Diaz',
+        'Castro',
+        'Aguilar',
+        'Tolentino',
+        'Espinosa',
+        'Navarro',
+        'Palma',
+        'Morales',
+        'Velasco',
+        'Ibanez',
+        'Ocampo',
+        'Macapagal',
+        'Pangilinan',
+        'Mercado',
+        'Bonifacio',
+        'Luna',
+        'Mabini',
+        'Rizal',
+        'Pascual',
+        'Lucero',
+        'Salazar',
+        'Macaraeg',
     ];
 
     private array $middleNames = [
-        'Cruz', 'Gomez', 'Lim', 'Tan', 'Ong', 'Aquino', 'Rivera', 'Pascual',
-        'Jimenez', 'Reyes', 'Santos', 'Bautista', 'Garcia', 'Torres', 'Ramos',
-        'Fernandez', 'Flores', 'Soriano', 'Valdez', 'Manalo', 'Bartolome',
-        'Castillo', 'Guevara', 'Zabala',
+        'Cruz',
+        'Gomez',
+        'Lim',
+        'Tan',
+        'Ong',
+        'Aquino',
+        'Rivera',
+        'Pascual',
+        'Jimenez',
+        'Reyes',
+        'Santos',
+        'Bautista',
+        'Garcia',
+        'Torres',
+        'Ramos',
+        'Fernandez',
+        'Flores',
+        'Soriano',
+        'Valdez',
+        'Manalo',
+        'Bartolome',
+        'Castillo',
+        'Guevara',
+        'Zabala',
     ];
 
     private array $cities = [
-        'Quezon City', 'Manila', 'Pasig City', 'Taguig City', 'Mandaluyong City',
-        'Marikina City', 'Pasay City', 'Makati City', 'Paranaque City',
-        'Caloocan City', 'Valenzuela City', 'Malabon City', 'Las Pinas City',
-        'Muntinlupa City', 'Pateros',
+        'Quezon City',
+        'Manila',
+        'Pasig City',
+        'Taguig City',
+        'Mandaluyong City',
+        'Marikina City',
+        'Pasay City',
+        'Makati City',
+        'Paranaque City',
+        'Caloocan City',
+        'Valenzuela City',
+        'Malabon City',
+        'Las Pinas City',
+        'Muntinlupa City',
+        'Pateros',
     ];
 
     private array $streets = [
-        'Rizal Street', 'Mabini Avenue', 'Luna Street', 'Bonifacio Boulevard',
-        'Aguinaldo Street', 'Quezon Avenue', 'Commonwealth Avenue', 'España Boulevard',
-        'Taft Avenue', 'EDSA', 'Ortigas Avenue', 'Shaw Boulevard',
-        'Aurora Boulevard', 'C-5 Road', 'Marcos Highway',
+        'Rizal Street',
+        'Mabini Avenue',
+        'Luna Street',
+        'Bonifacio Boulevard',
+        'Aguinaldo Street',
+        'Quezon Avenue',
+        'Commonwealth Avenue',
+        'España Boulevard',
+        'Taft Avenue',
+        'EDSA',
+        'Ortigas Avenue',
+        'Shaw Boulevard',
+        'Aurora Boulevard',
+        'C-5 Road',
+        'Marcos Highway',
     ];
 
     private array $zipCodes = [
-        '1100', '1200', '1300', '1400', '1500',
-        '1550', '1600', '1634', '1700', '1800',
+        '1100',
+        '1200',
+        '1300',
+        '1400',
+        '1500',
+        '1550',
+        '1600',
+        '1634',
+        '1700',
+        '1800',
+        '1100',
+        '1200',
+        '1300',
+        '1400',
+        '1500',
+        '1550',
+        '1600',
+        '1634',
+        '1700',
+        '1800',
     ];
 
     private array $schools = [
-        ['school' => 'University of the Philippines Diliman',      'address' => 'Diliman, Quezon City'],
-        ['school' => 'De La Salle University',                     'address' => 'Taft Avenue, Manila'],
-        ['school' => 'Ateneo de Manila University',                'address' => 'Loyola Heights, Quezon City'],
-        ['school' => 'University of Santo Tomas',                  'address' => 'España Blvd., Sampaloc, Manila'],
-        ['school' => 'Mapúa University',                           'address' => 'Muralla Street, Intramuros, Manila'],
-        ['school' => 'Far Eastern University',                     'address' => 'Nicanor Reyes Street, Manila'],
-        ['school' => 'San Beda University',                        'address' => 'Mendiola Street, Manila'],
-        ['school' => 'Polytechnic University of the Philippines',  'address' => 'Anonas Street, Santa Mesa, Manila'],
-        ['school' => 'Pamantasan ng Lungsod ng Maynila',           'address' => 'Intramuros, Manila'],
-        ['school' => 'Philippine Normal University',               'address' => 'Taft Avenue, Manila'],
+        ['school' => 'University of the Philippines Diliman', 'address' => 'Diliman, Quezon City'],
+        ['school' => 'De La Salle University', 'address' => 'Taft Avenue, Manila'],
+        ['school' => 'Ateneo de Manila University', 'address' => 'Loyola Heights, Quezon City'],
+        ['school' => 'University of Santo Tomas', 'address' => 'España Blvd., Sampaloc, Manila'],
+        ['school' => 'Mapúa University', 'address' => 'Muralla Street, Intramuros, Manila'],
+        ['school' => 'Far Eastern University', 'address' => 'Nicanor Reyes Street, Manila'],
+        ['school' => 'San Beda University', 'address' => 'Mendiola Street, Manila'],
+        ['school' => 'Polytechnic University of the Philippines', 'address' => 'Anonas Street, Santa Mesa, Manila'],
+        ['school' => 'Pamantasan ng Lungsod ng Maynila', 'address' => 'Intramuros, Manila'],
+        ['school' => 'Philippine Normal University', 'address' => 'Taft Avenue, Manila'],
         ['school' => 'Technological Institute of the Philippines', 'address' => 'Cubao, Quezon City'],
-        ['school' => 'National University Philippines',            'address' => 'M.V. Delos Santos Street, Manila'],
+        ['school' => 'National University Philippines', 'address' => 'M.V. Delos Santos Street, Manila'],
     ];
 
     private array $degrees = [
@@ -103,7 +242,12 @@ class EmployeeSeeder extends Seeder
     ];
 
     private array $eduLevels = [
-        'College', 'Post-Graduate', 'College', 'College', 'College', 'Post-Graduate',
+        'College',
+        'Post-Graduate',
+        'College',
+        'College',
+        'College',
+        'Post-Graduate',
     ];
 
     private array $eligibilities = [
@@ -117,48 +261,63 @@ class EmployeeSeeder extends Seeder
     ];
 
     private array $govtSeminars = [
-        ['name' => 'Strategic Planning Workshop',                 'venue' => 'PICC, Pasay City'],
-        ['name' => 'Labor Law and Employee Relations Seminar',    'venue' => 'Makati City Hall'],
-        ['name' => 'Cybersecurity Awareness Training',            'venue' => 'Online (Zoom)'],
-        ['name' => 'Laravel Advanced Workshop',                   'venue' => 'BGC Tech Hub, Taguig'],
-        ['name' => 'Leadership and Management',                   'venue' => 'Manila Hotel'],
-        ['name' => 'Digital Transformation for Government',       'venue' => 'Sofitel Philippine Plaza, Pasay'],
-        ['name' => 'Public Financial Management Seminar',         'venue' => 'COA Headquarters, Quezon City'],
-        ['name' => 'Records and Documents Management',            'venue' => 'NEDA Pasig'],
-        ['name' => 'Project Management Essentials',               'venue' => 'Online (MS Teams)'],
-        ['name' => 'Anti-Corruption and Ethics in Public Service','venue' => 'CSC Regional Office, Manila'],
-        ['name' => 'Gender and Development Awareness Program',    'venue' => 'DSWD Office, Diliman'],
-        ['name' => 'Procurement Law and GPPB Guidelines',         'venue' => 'GPPB-TSO, Pasig City'],
-        ['name' => 'Network Security Fundamentals',               'venue' => 'Online (MS Teams)'],
-        ['name' => 'Executive Leadership Program',                'venue' => 'Asian Institute of Management, Makati'],
-        ['name' => 'Budget and Financial Reporting',              'venue' => 'DBM Conference Hall, Manila'],
+        ['name' => 'Strategic Planning Workshop', 'venue' => 'PICC, Pasay City', 'organizer' => 'National Economic and Development Authority'],
+        ['name' => 'Labor Law and Employee Relations Seminar', 'venue' => 'Makati City Hall', 'organizer' => 'Department of Labor and Employment'],
+        ['name' => 'Cybersecurity Awareness Training', 'venue' => 'Online (Zoom)', 'organizer' => 'Department of Information and Communications Technology'],
+        ['name' => 'Laravel Advanced Workshop', 'venue' => 'BGC Tech Hub, Taguig', 'organizer' => 'Philippine Software Industry Association'],
+        ['name' => 'Leadership and Management', 'venue' => 'Manila Hotel', 'organizer' => 'Civil Service Commission'],
+        ['name' => 'Digital Transformation for Government', 'venue' => 'Sofitel Philippine Plaza, Pasay', 'organizer' => 'Department of Information and Communications Technology'],
+        ['name' => 'Public Financial Management Seminar', 'venue' => 'COA Headquarters, Quezon City', 'organizer' => 'Commission on Audit'],
+        ['name' => 'Records and Documents Management', 'venue' => 'NEDA Pasig', 'organizer' => 'National Archives of the Philippines'],
+        ['name' => 'Project Management Essentials', 'venue' => 'Online (MS Teams)', 'organizer' => 'Project Management Institute Philippines'],
+        ['name' => 'Anti-Corruption and Ethics in Public Service', 'venue' => 'CSC Regional Office, Manila', 'organizer' => 'Office of the Ombudsman'],
+        ['name' => 'Gender and Development Awareness Program', 'venue' => 'DSWD Office, Diliman', 'organizer' => 'Philippine Commission on Women'],
+        ['name' => 'Procurement Law and GPPB Guidelines', 'venue' => 'GPPB-TSO, Pasig City', 'organizer' => 'Government Procurement Policy Board'],
+        ['name' => 'Network Security Fundamentals', 'venue' => 'Online (MS Teams)', 'organizer' => 'Department of Information and Communications Technology'],
+        ['name' => 'Executive Leadership Program', 'venue' => 'Asian Institute of Management, Makati', 'organizer' => 'Asian Institute of Management'],
+        ['name' => 'Budget and Financial Reporting', 'venue' => 'DBM Conference Hall, Manila', 'organizer' => 'Department of Budget and Management'],
     ];
 
     private array $allowanceTypes = [
         ['allowance_name' => 'Transportation Allowance', 'allowance_amount' => 2000.00],
-        ['allowance_name' => 'Rice Subsidy',             'allowance_amount' => 1500.00],
-        ['allowance_name' => 'Clothing Allowance',       'allowance_amount' => 6000.00],
-        ['allowance_name' => 'Hazard Pay',               'allowance_amount' => 3000.00],
+        ['allowance_name' => 'Rice Subsidy', 'allowance_amount' => 1500.00],
+        ['allowance_name' => 'Clothing Allowance', 'allowance_amount' => 6000.00],
+        ['allowance_name' => 'Hazard Pay', 'allowance_amount' => 3000.00],
         ['allowance_name' => 'Representation Allowance', 'allowance_amount' => 5000.00],
-        ['allowance_name' => 'Subsistence Allowance',    'allowance_amount' => 1800.00],
-        ['allowance_name' => 'Laundry Allowance',        'allowance_amount' => 600.00],
+        ['allowance_name' => 'Subsistence Allowance', 'allowance_amount' => 1800.00],
+        ['allowance_name' => 'Laundry Allowance', 'allowance_amount' => 600.00],
     ];
 
     private array $employmentClassifications = [
-        'Regular', 'Regular', 'Regular', 'Job Order', 'Casual',
+        'Regular',
+        'Regular',
+        'Regular',
+        'Job Order',
+        'Casual',
     ];
 
     private array $civStatuses = [
-        'single', 'married', 'married', 'married', 'single', 'widowed',
+        'single',
+        'married',
+        'married',
+        'married',
+        'single',
+        'widowed',
     ];
 
     private array $placesBirth = [
-        'Manila, Philippines',         'Cebu City, Philippines',
-        'Davao City, Philippines',     'Quezon City, Philippines',
-        'Iloilo City, Philippines',    'Cagayan de Oro, Philippines',
-        'Zamboanga City, Philippines', 'Bacolod City, Philippines',
-        'General Santos City, Philippines', 'Baguio City, Philippines',
-        'Tacloban City, Philippines',  'Butuan City, Philippines',
+        'Manila, Philippines',
+        'Cebu City, Philippines',
+        'Davao City, Philippines',
+        'Quezon City, Philippines',
+        'Iloilo City, Philippines',
+        'Cagayan de Oro, Philippines',
+        'Zamboanga City, Philippines',
+        'Bacolod City, Philippines',
+        'General Santos City, Philippines',
+        'Baguio City, Philippines',
+        'Tacloban City, Philippines',
+        'Butuan City, Philippines',
     ];
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -168,83 +327,78 @@ class EmployeeSeeder extends Seeder
     public function run(): void
     {
         // Fetch seed data produced by OrganizationSeeder / SalaryGradeSeeder
-        $sgStepIds    = DB::table('salary_grade_steps')->orderBy('salary_grade_step_id')->pluck('salary_grade_step_id')->toArray();
-        $positions    = $this->resolvePositions();
+        $sgStepIds = DB::table('salary_grade_steps')->orderBy('salary_grade_step_id')->pluck('salary_grade_step_id')->toArray();
+        $positions = $this->resolvePositions();
         $fillableItems = $this->resolveFillableItems($positions);
 
         // Role-assignment targets (position-index → role name)
         $docTrackMap = $this->buildDocTrackMap($positions);
-        $roleMap     = ['hr_admin' => 5, 'ogm' => 7]; // position indices
+        $roleMap = ['hr_admin' => 5, 'ogm' => 7]; // position indices
 
         $positionSeenCount = [];
         srand(42); // reproducible randomness
 
         for ($i = 0; $i < 100; $i++) {
-            $isFemale  = ($i % 3 !== 0);
+            $isFemale = ($i % 3 !== 0);
             $itemEntry = $fillableItems[$i];
-            $posIdx    = $itemEntry['pos_idx'];
+            $posIdx = $itemEntry['pos_idx'];
             $positionSeenCount[$posIdx] = ($positionSeenCount[$posIdx] ?? 0) + 1;
             $occurrence = $positionSeenCount[$posIdx];
 
-            $names     = $this->generateNames($i, $isFemale);
-            $dates     = $this->generateDates($i);
-            $location  = $this->generateLocation($i);
+            $names = $this->generateNames($i, $isFemale);
+            $dates = $this->generateDates($i);
+            $location = $this->generateLocation($i);
             $schoolData = $this->schools[$i % count($this->schools)];
-            $classif   = $this->employmentClassifications[$i % count($this->employmentClassifications)];
-            $civStat   = $this->civStatuses[$i % count($this->civStatuses)];
-            $status    = ($i % 10 !== 0);
-            $sgIdx     = $positions[$posIdx]['sg_idx'];
+            $classif = $this->employmentClassifications[$i % count($this->employmentClassifications)];
+            $civStat = $this->civStatuses[$i % count($this->civStatuses)];
+            $status = ($i % 10 !== 0);
+            $sgIdx = $positions[$posIdx]['sg_idx'];
 
             $workEmail = strtolower(
                 preg_replace('/[^a-z0-9]/', '', $names['first']) . '.' .
-                preg_replace('/[^a-z0-9]/', '', $names['last']) .
-                ($i > 0 ? $i : '') . '@obx.gov.ph'
+                    preg_replace('/[^a-z0-9]/', '', $names['last']) .
+                    ($i > 0 ? $i : '') . '@obx.gov.ph'
             );
 
-            DB::transaction(function () use (
-                $i, $isFemale, $names, $dates, $location, $schoolData,
-                $classif, $civStat, $status, $sgIdx, $sgStepIds,
-                $itemEntry, $posIdx, $positions, $occurrence,
-                $workEmail, $docTrackMap, $roleMap
-            ) {
+            DB::transaction(function () use ($i, $isFemale, $names, $dates, $location, $schoolData, $classif, $civStat, $status, $sgIdx, $sgStepIds, $itemEntry, $posIdx, $positions, $occurrence, $workEmail, $docTrackMap, $roleMap) {
                 // ── Basic Info ────────────────────────────────────────────
                 $basicInfo = EmployeeBasicInfo::create([
-                    'first_name'    => $names['first'],
-                    'last_name'     => $names['last'],
-                    'middle_name'   => $names['middle'],
-                    'name_extension'=> ($i % 15 === 0 && !$isFemale) ? 'Jr.' : null,
-                    'birth_date'    => $dates['birth'],
-                    'sex'           => $isFemale ? 1 : 0,
-                    'personal_email'=> strtolower("{$names['first']}.{$names['last']}{$i}@gmail.com"),
-                    'phone_number'  => '09' . str_pad((171000000 + $i * 1234567) % 900000000 + 100000000, 9, '0'),
-                    'civil_status'  => $civStat,
-                    'place_of_birth'=> $this->placesBirth[$i % count($this->placesBirth)],
+                    'first_name' => $names['first'],
+                    'last_name' => $names['last'],
+                    'middle_name' => $names['middle'],
+                    'name_extension' => ($i % 15 === 0 && !$isFemale) ? 'Jr.' : null,
+                    'birth_date' => $dates['birth'],
+                    'sex' => $isFemale ? 1 : 0,
+                    'personal_email' => strtolower("{$names['first']}.{$names['last']}{$i}@gmail.com"),
+                    'phone_number' => '09' . str_pad((171000000 + $i * 1234567) % 900000000 + 100000000, 9, '0'),
+                    'civil_status' => $civStat,
+                    'place_of_birth' => $this->placesBirth[$i % count($this->placesBirth)],
                 ]);
 
                 // ── Employee ──────────────────────────────────────────────
                 $employee = Employee::create([
-                    'employee_basic_info_id'  => $basicInfo->employee_basic_info_id,
-                    'item_id'                 => $itemEntry['id'],
-                    'salary_grade_step_id'    => $sgStepIds[$sgIdx],
-                    'employment_classification'=> $classif,
-                    'work_id'                 => sprintf('EMP-%04d', $i + 1),
-                    'work_email'              => $workEmail,
-                    'password'                => Hash::make('password'),
-                    'date_applied'            => $dates['applied'],
-                    'date_hired'              => $dates['hired'],
-                    'work_schedule_start'     => '08:00:00',
-                    'work_schedule_end'       => '17:00:00',
-                    'break_start'             => '12:00:00',
-                    'break_end'               => '13:00:00',
-                    'status'                  => $status,
+                    'employee_basic_info_id' => $basicInfo->employee_basic_info_id,
+                    'item_id' => $itemEntry['id'],
+                    'salary_grade_step_id' => $sgStepIds[$sgIdx],
+                    'employment_classification' => $classif,
+                    'work_id' => sprintf('EMP-%04d', $i + 1),
+                    'work_email' => $workEmail,
+                    'password' => Hash::make('password'),
+                    'date_applied' => $dates['applied'],
+                    'date_hired' => $dates['hired'],
+                    'work_schedule_start' => '08:00:00',
+                    'work_schedule_end' => '17:00:00',
+                    'break_start' => '12:00:00',
+                    'break_end' => '13:00:00',
+                    'status' => $status,
                 ]);
 
                 // ── User & Roles ──────────────────────────────────────────
                 $user = User::create([
-                    'employee_id'        => $employee->employee_id,
-                    'email'              => $employee->work_email,
-                    'email_verified_at'  => now(),
-                    'password'           => $employee->password,
+                    'employee_id' => $employee->employee_id,
+                    'email' => $employee->work_email,
+                    'email_verified_at' => now(),
+                    'password' => $employee->password,
                 ]);
 
                 $user->assignRole('employee');
@@ -256,6 +410,14 @@ class EmployeeSeeder extends Seeder
                     $user->assignRole('hr_admin');
                 }
                 if ($posIdx === $roleMap['ogm'] && $occurrence === 1) {
+                    $user->assignRole('ogm');
+                }
+
+                if ($i === 32) { // Employee 1
+                    $user->assignRole('hr_admin');
+                }
+
+                if ($i === 33) { // Employee 2
                     $user->assignRole('ogm');
                 }
 
@@ -303,10 +465,10 @@ class EmployeeSeeder extends Seeder
     {
         EmployeeAddress::create([
             'employee_basic_info_id' => $basicInfoId,
-            'street_address'         => "{$location['street_num']} {$location['street']}",
-            'city'                   => $location['city'],
-            'state'                  => 'Metro Manila',
-            'zip_code'               => $location['zip'],
+            'street_address' => "{$location['street_num']} {$location['street']}",
+            'city' => $location['city'],
+            'state' => 'Metro Manila',
+            'zip_code' => $location['zip'],
         ]);
     }
 
@@ -316,11 +478,11 @@ class EmployeeSeeder extends Seeder
 
         EmployeeEducation::create([
             'employee_basic_info_id' => $basicInfoId,
-            'level'           => $this->eduLevels[$i % count($this->eduLevels)],
-            'school_name'     => $schoolData['school'],
-            'school_address'  => $schoolData['address'],
+            'level' => $this->eduLevels[$i % count($this->eduLevels)],
+            'school_name' => $schoolData['school'],
+            'school_address' => $schoolData['address'],
             'graduation_date' => "{$gradYear}-03-25",
-            'degree'          => $this->degrees[$i % count($this->degrees)],
+            'degree' => $this->degrees[$i % count($this->degrees)],
         ]);
     }
 
@@ -330,32 +492,32 @@ class EmployeeSeeder extends Seeder
             ? $this->firstNamesMale[$i % count($this->firstNamesMale)]
             : $this->firstNamesFemale[$i % count($this->firstNamesFemale)];
 
-        $spouseBirthYear  = 1975 + (($i + 3) % 25);
+        $spouseBirthYear = 1975 + (($i + 3) % 25);
         $spouseBirthMonth = str_pad((($i + 3) % 12) + 1, 2, '0', STR_PAD_LEFT);
-        $spouseBirthDay   = str_pad((($i + 3) % 28) + 1, 2, '0', STR_PAD_LEFT);
+        $spouseBirthDay = str_pad((($i + 3) % 28) + 1, 2, '0', STR_PAD_LEFT);
 
         FamilyInfo::create([
             'employee_basic_info_id' => $basicInfoId,
-            'full_name'       => "{$spouseFirst} {$lastName}",
-            'contact_number'  => '09' . str_pad((281000000 + $i * 7654321) % 900000000 + 100000000, 9, '0'),
-            'relationship'    => 'Spouse',
-            'sex'             => !$isFemale ? 1 : 0,
-            'date_of_birth'   => "{$spouseBirthYear}-{$spouseBirthMonth}-{$spouseBirthDay}",
-            'place_of_birth'  => $this->placesBirth[($i + 2) % count($this->placesBirth)],
+            'full_name' => "{$spouseFirst} {$lastName}",
+            'contact_number' => '09' . str_pad((281000000 + $i * 7654321) % 900000000 + 100000000, 9, '0'),
+            'relationship' => 'Spouse',
+            'sex' => !$isFemale ? 1 : 0,
+            'date_of_birth' => "{$spouseBirthYear}-{$spouseBirthMonth}-{$spouseBirthDay}",
+            'place_of_birth' => $this->placesBirth[($i + 2) % count($this->placesBirth)],
         ]);
     }
 
     private function seedGovernmentAccounts(int $employeeId, int $i, string $classif, int $hireYear): void
     {
         $accounts = [
-            ['account_type' => 'SSS',       'account_number' => sprintf('%02d-%07d-%d', ($i % 9) + 1, $i * 1234567 % 9999999, $i % 9)],
+            ['account_type' => 'SSS', 'account_number' => sprintf('%02d-%07d-%d', ($i % 9) + 1, $i * 1234567 % 9999999, $i % 9)],
             ['account_type' => 'PhilHealth', 'account_number' => sprintf('%02d-%09d-%d', ($i % 9) + 11, $i * 9876543 % 999999999, $i % 9)],
-            ['account_type' => 'Pag-IBIG',   'account_number' => sprintf('%04d-%04d-%04d', ($i * 7) % 9999, ($i * 3) % 9999, ($i * 11) % 9999)],
+            ['account_type' => 'Pag-IBIG', 'account_number' => sprintf('%04d-%04d-%04d', ($i * 7) % 9999, ($i * 3) % 9999, ($i * 11) % 9999)],
         ];
 
         if ($classif === 'Regular' && $hireYear < 2015) {
             $accounts[] = [
-                'account_type'   => 'GSIS',
+                'account_type' => 'GSIS',
                 'account_number' => sprintf('%010d', ($i + 1) * 97 + $hireYear), // 10-digit format per GSIS validation
             ];
         }
@@ -370,16 +532,20 @@ class EmployeeSeeder extends Seeder
         // Everyone gets Transportation + Rice Subsidy
         $allowances = [$this->allowanceTypes[0], $this->allowanceTypes[1]];
 
-        if ($i % 4 === 0) $allowances[] = $this->allowanceTypes[2]; // Clothing
-        if ($i % 7 === 0) $allowances[] = $this->allowanceTypes[3]; // Hazard Pay
-        if ($sgIdx >= 9)  $allowances[] = $this->allowanceTypes[4]; // Representation (senior)
-        if ($i % 5 === 0) $allowances[] = $this->allowanceTypes[5]; // Subsistence
+        if ($i % 4 === 0)
+            $allowances[] = $this->allowanceTypes[2]; // Clothing
+        if ($i % 7 === 0)
+            $allowances[] = $this->allowanceTypes[3]; // Hazard Pay
+        if ($sgIdx >= 9)
+            $allowances[] = $this->allowanceTypes[4]; // Representation (senior)
+        if ($i % 5 === 0)
+            $allowances[] = $this->allowanceTypes[5]; // Subsistence
 
         foreach ($allowances as $allowance) {
             DB::table('employee_allowances')->insert(array_merge($allowance, [
                 'employee_id' => $employeeId,
-                'created_at'  => now(),
-                'updated_at'  => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]));
         }
     }
@@ -389,51 +555,53 @@ class EmployeeSeeder extends Seeder
         $hiredDate = "{$hireYear}-" . str_pad(($i % 12) + 1, 2, '0', STR_PAD_LEFT) . '-01';
 
         DB::table('employee_service_records')->insert([
-            'employee_id'   => $employeeId,
-            'department'    => $this->resolveDivisionName($position['div']),
+            'employee_id' => $employeeId,
+            'department' => $this->resolveDivisionName($position['div']),
             'service_title' => $position['name'],
             'durationStart' => $hiredDate,
-            'durationEnd'   => null,
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'durationEnd' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         if ($hireYear <= 2015) {
             DB::table('employee_service_records')->insert([
-                'employee_id'   => $employeeId,
-                'department'    => $this->resolveDivisionName($position['div']),
+                'employee_id' => $employeeId,
+                'department' => $this->resolveDivisionName($position['div']),
                 'service_title' => 'Administrative Aide',
                 'durationStart' => "{$hireYear}-01-01",
-                'durationEnd'   => ($hireYear + 4) . '-12-31',
-                'created_at'    => now(),
-                'updated_at'    => now(),
+                'durationEnd' => ($hireYear + 4) . '-12-31',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }
 
     private function seedSeminars(int $employeeId, int $i, int $hireYear): void
     {
-        $semYear   = min(2024, $hireYear + 2);
-        $seminar1  = $this->govtSeminars[$i % count($this->govtSeminars)];
+        $semYear = min(2024, $hireYear + 2);
+        $seminar1 = $this->govtSeminars[$i % count($this->govtSeminars)];
 
         DB::table('employee_seminars_and_trainings')->insert([
-            'employee_id'          => $employeeId,
-            'seminar_training_name'=> $seminar1['name'],
-            'date_attended'        => "{$semYear}-06-15",
-            'venue'                => $seminar1['venue'],
-            'created_at'           => now(),
-            'updated_at'           => now(),
+            'employee_id' => $employeeId,
+            'seminar_training_name' => $seminar1['name'],
+            'date_attended' => "{$semYear}-06-15",
+            'venue' => $seminar1['venue'],
+            'organizer' => $seminar1['organizer'],   // ← add
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         if ($i % 3 === 0) {
             $seminar2 = $this->govtSeminars[($i + 5) % count($this->govtSeminars)];
             DB::table('employee_seminars_and_trainings')->insert([
-                'employee_id'          => $employeeId,
-                'seminar_training_name'=> $seminar2['name'],
-                'date_attended'        => min(2024, $semYear + 1) . '-11-20',
-                'venue'                => $seminar2['venue'],
-                'created_at'           => now(),
-                'updated_at'           => now(),
+                'employee_id' => $employeeId,
+                'seminar_training_name' => $seminar2['name'],
+                'date_attended' => min(2024, $semYear + 1) . '-11-20',
+                'venue' => $seminar2['venue'],
+                'organizer' => $seminar2['organizer'],   // ← add
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }
@@ -443,9 +611,9 @@ class EmployeeSeeder extends Seeder
         $eligYear = min($hireYear - 1, $birthYear + 22);
 
         EligibilityInformation::create([
-            'employee_id'      => $employeeId,
+            'employee_id' => $employeeId,
             'eligibility_name' => $this->eligibilities[$i % count($this->eligibilities)],
-            'year_passed'      => "{$eligYear}-08-01",
+            'year_passed' => "{$eligYear}-08-01",
         ]);
     }
 
@@ -453,30 +621,30 @@ class EmployeeSeeder extends Seeder
     {
         foreach (['Vacation Leave', 'Sick Leave'] as $leaveType) {
             DB::table('leave_information')->insert([
-                'employee_id'   => $employeeId,
-                'leave_type'    => $leaveType,
-                'leave_days'    => '2024-01-01',
+                'employee_id' => $employeeId,
+                'leave_type' => $leaveType,
+                'leave_days' => '2024-01-01',
                 'leave_balance' => '2024-12-31',
-                'created_at'    => now(),
-                'updated_at'    => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
 
         if ($i % 5 !== 0) {
             $leaveTypes = ['Vacation Leave', 'Sick Leave'];
-            $lvType  = $leaveTypes[$i % 2];
+            $lvType = $leaveTypes[$i % 2];
             $lvMonth = str_pad(($i % 11) + 1, 2, '0', STR_PAD_LEFT);
-            $lvDay   = str_pad(($i % 20) + 1, 2, '0', STR_PAD_LEFT);
-            $lvEnd   = str_pad(((int) $lvDay + 1) % 28 + 1, 2, '0', STR_PAD_LEFT);
+            $lvDay = str_pad(($i % 20) + 1, 2, '0', STR_PAD_LEFT);
+            $lvEnd = str_pad(((int) $lvDay + 1) % 28 + 1, 2, '0', STR_PAD_LEFT);
 
             DB::table('leave_availments')->insert([
-                'employee_id'      => $employeeId,
-                'leave_type'       => $lvType,
+                'employee_id' => $employeeId,
+                'leave_type' => $lvType,
                 'leave_start_date' => "2024-{$lvMonth}-{$lvDay}",
-                'leave_end_date'   => "2024-{$lvMonth}-{$lvEnd}",
-                'status'           => 'approved',
-                'created_at'       => now(),
-                'updated_at'       => now(),
+                'leave_end_date' => "2024-{$lvMonth}-{$lvEnd}",
+                'status' => 'approved',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }
@@ -488,30 +656,30 @@ class EmployeeSeeder extends Seeder
             ->skip($sgIdx)
             ->value('monthly_salary');
 
-        $deduction   = round($baseSalary * 0.12, 2);
+        $deduction = round($baseSalary * 0.12, 2);
         $finalAmount = round($baseSalary - $deduction, 2);
 
         DB::table('employee_payroll_data')->insert([
-            'employee_id'    => $employeeId,
+            'employee_id' => $employeeId,
             'initial_amount' => $baseSalary,
-            'deduction_amount'=> $deduction,
-            'final_amount'   => $finalAmount,
+            'deduction_amount' => $deduction,
+            'final_amount' => $finalAmount,
             'date_processed' => '2025-01-31',
             'payroll_status' => 'Released',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 
     private function seedWaterBill(int $employeeId, int $i, array $names, array $location): void
     {
         DB::table('employee_water_bill')->insert([
-            'employee_id'       => $employeeId,
+            'employee_id' => $employeeId,
             'water_bill_number' => sprintf('WB-%03d-2024', $i + 1),
-            'account_name'      => "{$names['first']} {$names['middle'][0]}. {$names['last']}",
-            'address'           => "{$location['street_num']} {$location['street']}, {$location['city']}",
-            'created_at'        => now(),
-            'updated_at'        => now(),
+            'account_name' => "{$names['first']} {$names['middle'][0]}. {$names['last']}",
+            'address' => "{$location['street_num']} {$location['street']}, {$location['city']}",
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 
@@ -522,38 +690,38 @@ class EmployeeSeeder extends Seeder
     private function generateNames(int $i, bool $isFemale): array
     {
         return [
-            'first'  => $isFemale
+            'first' => $isFemale
                 ? $this->firstNamesFemale[$i % count($this->firstNamesFemale)]
                 : $this->firstNamesMale[$i % count($this->firstNamesMale)],
-            'last'   => $this->lastNames[$i % count($this->lastNames)],
+            'last' => $this->lastNames[$i % count($this->lastNames)],
             'middle' => $this->middleNames[$i % count($this->middleNames)],
         ];
     }
 
     private function generateDates(int $i): array
     {
-        $birthYear  = 1975 + ($i % 25);
-        $hireYear   = min(2023, 2000 + ($i % 24));
-        $hireMonth  = str_pad(($i % 12) + 1, 2, '0', STR_PAD_LEFT);
-        $hiredDate  = "{$hireYear}-{$hireMonth}-01";
+        $birthYear = 1975 + ($i % 25);
+        $hireYear = min(2023, 2000 + ($i % 24));
+        $hireMonth = str_pad(($i % 12) + 1, 2, '0', STR_PAD_LEFT);
+        $hiredDate = "{$hireYear}-{$hireMonth}-01";
         $appliedDate = date('Y-m-d', strtotime($hiredDate . ' -1 month'));
 
         return [
-            'birth'      => sprintf('%d-%s-%s', $birthYear, str_pad(($i % 12) + 1, 2, '0', STR_PAD_LEFT), str_pad(($i % 28) + 1, 2, '0', STR_PAD_LEFT)),
+            'birth' => sprintf('%d-%s-%s', $birthYear, str_pad(($i % 12) + 1, 2, '0', STR_PAD_LEFT), str_pad(($i % 28) + 1, 2, '0', STR_PAD_LEFT)),
             'birth_year' => $birthYear,
-            'hired'      => $hiredDate,
-            'hire_year'  => $hireYear,
-            'applied'    => $appliedDate,
+            'hired' => $hiredDate,
+            'hire_year' => $hireYear,
+            'applied' => $appliedDate,
         ];
     }
 
     private function generateLocation(int $i): array
     {
         return [
-            'city'       => $this->cities[$i % count($this->cities)],
-            'street'     => $this->streets[$i % count($this->streets)],
+            'city' => $this->cities[$i % count($this->cities)],
+            'street' => $this->streets[$i % count($this->streets)],
             'street_num' => (($i + 1) * 7) % 200 + 1,
-            'zip'        => $this->zipCodes[$i % count($this->zipCodes)],
+            'zip' => $this->zipCodes[$i % count($this->zipCodes)],
         ];
     }
 
@@ -567,69 +735,69 @@ class EmployeeSeeder extends Seeder
      */
     private function resolvePositions(): array
     {
-        $dept    = fn(string $acronym) => DB::table('departments')->where('department_acronym', $acronym)->value('department_id');
-        $div     = fn(string $acronym) => DB::table('divisions')->where('division_acronym', $acronym)->value('division_id');
-        $unit    = fn(string $acronym) => DB::table('units')->where('unit_acronym', $acronym)->value('unit_id');
+        $dept = fn(string $acronym) => DB::table('departments')->where('department_acronym', $acronym)->value('department_id');
+        $div = fn(string $acronym) => DB::table('divisions')->where('division_acronym', $acronym)->value('division_id');
+        $unit = fn(string $acronym) => DB::table('units')->where('unit_acronym', $acronym)->value('unit_id');
 
-        $deptId     = $dept('OBE');
-        $deptOpsId  = $dept('OSD');
-        $deptGovId  = $dept('GPAD');
+        $deptId = $dept('OBE');
+        $deptOpsId = $dept('OSD');
+        $deptGovId = $dept('GPAD');
 
-        $divHrId        = $div('HRD');
-        $divItId        = $div('ITD');
-        $divFinId       = $div('FBD');
-        $divAdminId     = $div('ASD');
-        $divLegalId     = $div('LCD');
-        $divOpsFieldId  = $div('FOD');
+        $divHrId = $div('HRD');
+        $divItId = $div('ITD');
+        $divFinId = $div('FBD');
+        $divAdminId = $div('ASD');
+        $divLegalId = $div('LCD');
+        $divOpsFieldId = $div('FOD');
         $divPublicAffId = $div('PAD');
 
-        $unitRecruitId    = $unit('RU');
-        $unitPayrollId    = $unit('PBU');
-        $unitDevId        = $unit('SDU');
-        $unitInfraId      = $unit('INU');
+        $unitRecruitId = $unit('RU');
+        $unitPayrollId = $unit('PBU');
+        $unitDevId = $unit('SDU');
+        $unitInfraId = $unit('INU');
         $unitAccountingId = $unit('AU');
-        $unitBudgetId     = $unit('BU');
-        $unitRecordsId    = $unit('RMU');
-        $unitProcurementId= $unit('PU');
-        $unitLegalId      = $unit('LAU');
-        $unitDispatchId   = $unit('DCU');
-        $unitCommsId      = $unit('CU');
+        $unitBudgetId = $unit('BU');
+        $unitRecordsId = $unit('RMU');
+        $unitProcurementId = $unit('PU');
+        $unitLegalId = $unit('LAU');
+        $unitDispatchId = $unit('DCU');
+        $unitCommsId = $unit('CU');
 
         return [
             // HR
-            ['dept' => $deptId, 'div' => $divHrId,    'unit' => $unitRecruitId,     'name' => 'HR Officer',            'sg_idx' => 2],
-            ['dept' => $deptId, 'div' => $divHrId,    'unit' => $unitRecruitId,     'name' => 'Recruitment Specialist', 'sg_idx' => 4],
-            ['dept' => $deptId, 'div' => $divHrId,    'unit' => $unitPayrollId,     'name' => 'Payroll Officer',        'sg_idx' => 4],
-            ['dept' => $deptId, 'div' => $divHrId,    'unit' => $unitPayrollId,     'name' => 'Benefits Administrator', 'sg_idx' => 3],
-            ['dept' => $deptId, 'div' => $divHrId,    'unit' => null,               'name' => 'HR Division Chief',      'sg_idx' => 9],
-            ['dept' => $deptId, 'div' => $divHrId,    'unit' => null,               'name' => 'HR Manager',             'sg_idx' => 9],
+            ['dept' => $deptId, 'div' => $divHrId, 'unit' => $unitRecruitId, 'name' => 'HR Officer', 'sg_idx' => 2],
+            ['dept' => $deptId, 'div' => $divHrId, 'unit' => $unitRecruitId, 'name' => 'Recruitment Specialist', 'sg_idx' => 4],
+            ['dept' => $deptId, 'div' => $divHrId, 'unit' => $unitPayrollId, 'name' => 'Payroll Officer', 'sg_idx' => 4],
+            ['dept' => $deptId, 'div' => $divHrId, 'unit' => $unitPayrollId, 'name' => 'Benefits Administrator', 'sg_idx' => 3],
+            ['dept' => $deptId, 'div' => $divHrId, 'unit' => null, 'name' => 'HR Division Chief', 'sg_idx' => 9],
+            ['dept' => $deptId, 'div' => $divHrId, 'unit' => null, 'name' => 'HR Manager', 'sg_idx' => 9],
             // Operations
-            ['dept' => $deptOpsId, 'div' => $divOpsFieldId,  'unit' => $unitDispatchId, 'name' => 'Operations Coordinator', 'sg_idx' => 5],
+            ['dept' => $deptOpsId, 'div' => $divOpsFieldId, 'unit' => $unitDispatchId, 'name' => 'Operations Coordinator', 'sg_idx' => 5],
             // Governance
-            ['dept' => $deptGovId, 'div' => $divPublicAffId, 'unit' => $unitCommsId,    'name' => 'Public Affairs Officer', 'sg_idx' => 5],
+            ['dept' => $deptGovId, 'div' => $divPublicAffId, 'unit' => $unitCommsId, 'name' => 'Public Affairs Officer', 'sg_idx' => 5],
             // IT
-            ['dept' => $deptId, 'div' => $divItId,    'unit' => $unitDevId,         'name' => 'Software Developer',    'sg_idx' => 4],
-            ['dept' => $deptId, 'div' => $divItId,    'unit' => $unitDevId,         'name' => 'Senior Developer',      'sg_idx' => 6],
-            ['dept' => $deptId, 'div' => $divItId,    'unit' => $unitDevId,         'name' => 'Systems Analyst',       'sg_idx' => 5],
-            ['dept' => $deptId, 'div' => $divItId,    'unit' => $unitInfraId,       'name' => 'Systems Administrator', 'sg_idx' => 7],
-            ['dept' => $deptId, 'div' => $divItId,    'unit' => $unitInfraId,       'name' => 'Network Engineer',      'sg_idx' => 6],
-            ['dept' => $deptId, 'div' => $divItId,    'unit' => null,               'name' => 'IT Manager',            'sg_idx' => 12],
+            ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitDevId, 'name' => 'Software Developer', 'sg_idx' => 4],
+            ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitDevId, 'name' => 'Senior Developer', 'sg_idx' => 6],
+            ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitDevId, 'name' => 'Systems Analyst', 'sg_idx' => 5],
+            ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitInfraId, 'name' => 'Systems Administrator', 'sg_idx' => 7],
+            ['dept' => $deptId, 'div' => $divItId, 'unit' => $unitInfraId, 'name' => 'Network Engineer', 'sg_idx' => 6],
+            ['dept' => $deptId, 'div' => $divItId, 'unit' => null, 'name' => 'IT Manager', 'sg_idx' => 12],
             // Finance
-            ['dept' => $deptId, 'div' => $divFinId,   'unit' => $unitAccountingId,  'name' => 'Accountant',            'sg_idx' => 4],
-            ['dept' => $deptId, 'div' => $divFinId,   'unit' => $unitAccountingId,  'name' => 'Senior Accountant',     'sg_idx' => 7],
-            ['dept' => $deptId, 'div' => $divFinId,   'unit' => $unitBudgetId,      'name' => 'Budget Officer',        'sg_idx' => 5],
-            ['dept' => $deptId, 'div' => $divFinId,   'unit' => $unitBudgetId,      'name' => 'Budget Analyst',        'sg_idx' => 3],
-            ['dept' => $deptId, 'div' => $divFinId,   'unit' => null,               'name' => 'Finance Manager',       'sg_idx' => 11],
+            ['dept' => $deptId, 'div' => $divFinId, 'unit' => $unitAccountingId, 'name' => 'Accountant', 'sg_idx' => 4],
+            ['dept' => $deptId, 'div' => $divFinId, 'unit' => $unitAccountingId, 'name' => 'Senior Accountant', 'sg_idx' => 7],
+            ['dept' => $deptId, 'div' => $divFinId, 'unit' => $unitBudgetId, 'name' => 'Budget Officer', 'sg_idx' => 5],
+            ['dept' => $deptId, 'div' => $divFinId, 'unit' => $unitBudgetId, 'name' => 'Budget Analyst', 'sg_idx' => 3],
+            ['dept' => $deptId, 'div' => $divFinId, 'unit' => null, 'name' => 'Finance Manager', 'sg_idx' => 11],
             // Admin
-            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitRecordsId,     'name' => 'Records Officer',       'sg_idx' => 2],
-            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitRecordsId,     'name' => 'Administrative Aide',   'sg_idx' => 0],
-            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId, 'name' => 'Procurement Officer',   'sg_idx' => 5],
-            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId, 'name' => 'Procurement Specialist','sg_idx' => 3],
-            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => null,               'name' => 'Admin Division Chief',  'sg_idx' => 9],
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitRecordsId, 'name' => 'Records Officer', 'sg_idx' => 2],
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitRecordsId, 'name' => 'Administrative Aide', 'sg_idx' => 0],
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId, 'name' => 'Procurement Officer', 'sg_idx' => 5],
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => $unitProcurementId, 'name' => 'Procurement Specialist', 'sg_idx' => 3],
+            ['dept' => $deptId, 'div' => $divAdminId, 'unit' => null, 'name' => 'Admin Division Chief', 'sg_idx' => 9],
             // Legal
-            ['dept' => $deptId, 'div' => $divLegalId, 'unit' => $unitLegalId,       'name' => 'Legal Officer',         'sg_idx' => 7],
-            ['dept' => $deptId, 'div' => $divLegalId, 'unit' => $unitLegalId,       'name' => 'Compliance Officer',    'sg_idx' => 6],
-            ['dept' => $deptId, 'div' => $divLegalId, 'unit' => null,               'name' => 'Legal Division Chief',  'sg_idx' => 10],
+            ['dept' => $deptId, 'div' => $divLegalId, 'unit' => $unitLegalId, 'name' => 'Legal Officer', 'sg_idx' => 7],
+            ['dept' => $deptId, 'div' => $divLegalId, 'unit' => $unitLegalId, 'name' => 'Compliance Officer', 'sg_idx' => 6],
+            ['dept' => $deptId, 'div' => $divLegalId, 'unit' => null, 'name' => 'Legal Division Chief', 'sg_idx' => 10],
         ];
     }
 
@@ -654,9 +822,9 @@ class EmployeeSeeder extends Seeder
                 continue;
             }
 
-            $posName         = $positions[$idx]['name'];
-            $hasVacantSlot   = in_array($idx, $positionsWithVacantSlot, true);
-            $slotLimit       = $hasVacantSlot ? 5 : 4;
+            $posName = $positions[$idx]['name'];
+            $hasVacantSlot = in_array($idx, $positionsWithVacantSlot, true);
+            $slotLimit = $hasVacantSlot ? 5 : 4;
 
             for ($slot = 1; $slot <= $slotLimit; $slot++) {
                 $isVacant = $hasVacantSlot && $slot === 5;
@@ -668,8 +836,8 @@ class EmployeeSeeder extends Seeder
 
                 if ($itemId) {
                     $allItems[] = [
-                        'id'             => $itemId,
-                        'pos_idx'        => $idx,
+                        'id' => $itemId,
+                        'pos_idx' => $idx,
                         'is_vacant_slot' => $isVacant,
                     ];
                 }
@@ -687,8 +855,8 @@ class EmployeeSeeder extends Seeder
         $dept = fn(string $acronym) => DB::table('departments')->where('department_acronym', $acronym)->value('department_id');
 
         $docTrackTargets = [
-            $dept('OBE')  => 5,
-            $dept('OSD')  => 6,
+            $dept('OBE') => 5,
+            $dept('OSD') => 6,
             $dept('GPAD') => 7,
         ];
 

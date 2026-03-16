@@ -23,6 +23,11 @@ return new class extends Migration
             $table->unsignedSmallInteger('minutes_gone')->nullable(); // null until employee returns; personal only deducts from work_minutes
             $table->enum('status', ['pending', 'done'])->default('pending');
             $table->enum('return_status', ['not_returned', 'returned'])->default('not_returned');
+            $table->string('prov_code')->nullable();
+            $table->string('city_code')->nullable();
+            $table->string('brgy_code')->nullable();
+            $table->decimal('latitude', 11, 7);
+            $table->decimal('longitude', 11, 7);
             $table->timestamps();
         });
     }

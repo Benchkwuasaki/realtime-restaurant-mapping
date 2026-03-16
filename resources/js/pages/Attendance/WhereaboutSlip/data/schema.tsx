@@ -29,6 +29,12 @@ export const whereaboutSlipSchema = z.object({
     minutes_gone: z.number().nullable().optional(),  // null until employee returns
     status: z.enum(["pending", "done"]),
     return_status: z.enum(["not_returned", "returned"]),
+    prov_code: z.string().nullable().optional(),
+    city_code: z.string().nullable().optional(),
+    brgy_code: z.string().nullable().optional(),
+    latitude: z.string().nullable().optional(),
+    longitude: z.string().nullable().optional(),
+
     created_at: z.string().nullable().optional(),
     updated_at: z.string().nullable().optional(),
 
