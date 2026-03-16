@@ -113,7 +113,7 @@ function LateList({ entries }: { entries: TopLateEntry[] }) {
     if (!entries.length) return (
         <p className="text-xs text-muted-foreground text-center py-8">No late arrivals today</p>
     )
-    const lateColors = [COLORS.late, COLORS.indigo, COLORS.pink, COLORS.cyan, COLORS.orange]
+    const lateColors = [COLORS.absent, COLORS.indigo, COLORS.pink, COLORS.cyan, COLORS.orange]
     const max = entries[0]?.min ?? 1
     return (
         <div className="flex flex-col gap-3">
@@ -139,7 +139,10 @@ function LateList({ entries }: { entries: TopLateEntry[] }) {
                                 <div className="h-full rounded-full transition-all"
                                     style={{ width: `${(e.min / max) * 100}%`, background: lateColors[i % lateColors.length] }} />
                             </div>
-                            <span className="text-[9px] text-muted-foreground shrink-0 w-16 text-right truncate">{e.dept}</span>
+                            {/* Only show dept if it's not a dash/empty */}
+                            {e.dept && e.dept !== "—" && e.dept.trim() !== "" && (
+                                <span className="text-[9px] text-muted-foreground shrink-0 w-16 text-right truncate">{e.dept}</span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -200,6 +203,32 @@ function LeaveTypeChart({ data }: { data: LeaveTypeCount[] }) {
     )
 }
 
+/* ── TOP 5 LEAVE TYPES ───────────────────────────────────────────────────── */
+function Top5LeaveTypes({ data }: { data: LeaveTypeCount[] }) {
+    const top5 = [...data].sort((a, b) => b.value - a.value).slice(0, 5)
+    if (!top5.length) return <p className="text-xs text-muted-foreground text-center py-8">No data available</p>
+    const max = top5[0]?.value ?? 1
+    return (
+        <div className="flex flex-col gap-3">
+            {top5.map((e, i) => (
+                <div key={e.label} className="flex items-center gap-3">
+                    <span className="text-[10px] font-black text-muted-foreground w-3 shrink-0">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs font-semibold text-foreground truncate">{e.label}</span>
+                            <span className="text-xs font-black ml-2 shrink-0" style={{ color: e.fill }}>{e.value}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full overflow-hidden bg-muted">
+                            <div className="h-full rounded-full transition-all duration-500"
+                                style={{ width: `${(e.value / max) * 100}%`, background: e.fill }} />
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    )
+}
+
 /* ── TOP LEAVE TAKERS ────────────────────────────────────────────────────── */
 function TopLeaveTakers({ takers }: { takers: TopLeaveTaker[] }) {
     if (!takers.length) return <p className="text-xs text-muted-foreground text-center py-8">No data available</p>
@@ -231,11 +260,37 @@ function TopLeaveTakers({ takers }: { takers: TopLeaveTaker[] }) {
 }
 
 /* ── TREND AREA ──────────────────────────────────────────────────────────── */
+
+const MONTH_ABBR: Record<string, string> = {
+    January: "Jan", February: "Feb", March: "Mar", April: "Apr",
+    May: "May", June: "Jun", July: "Jul", August: "Aug",
+    September: "Sep", October: "Oct", November: "Nov", December: "Dec",
+}
+
+function abbreviateMonth(m: string): string {
+    // Already short (e.g. "Jan")
+    if (m.length <= 3) return m
+
+    // Full name (e.g. "January")
+    if (MONTH_ABBR[m]) return MONTH_ABBR[m]
+
+    // ISO format: "2025-01" or "2025-01-01"
+    const parts = m.split("-")
+    if (parts.length >= 2) {
+        const monthIndex = parseInt(parts[1], 10) - 1
+        const names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        return names[monthIndex] ?? m
+    }
+
+    return m.slice(0, 3)
+}
+
 function LeaveTrend({ data }: { data: LeaveTrendPoint[] }) {
+    const abbreviated = data.map(d => ({ ...d, m: abbreviateMonth(d.m) }))
     return (
         <div className="w-full h-32">
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data} margin={{ top: 4, right: 0, left: -30, bottom: 0 }}>
+                <AreaChart data={abbreviated} margin={{ top: 4, right: 0, left: -30, bottom: 0 }}>
                     <defs>
                         <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor={COLORS.indigo} stopOpacity={0.25} />
@@ -300,6 +355,7 @@ export default function Page() {
         absentToday,
         halfDayToday,
         topLateToday,
+        authUserName,
     } = usePage<{
         employeeClassificationCounts: ClassificationCount[]
         onLeaveCount: number
@@ -316,14 +372,12 @@ export default function Page() {
         absentToday: number
         halfDayToday: number
         topLateToday: TopLateEntry[]
+        authUserName?: string
     }>().props
 
     const totalEmployees = (employeeClassificationCounts ?? []).reduce((s, c) => s + c.total, 0)
 
     // ── Realtime attendance state ─────────────────────────────────────────
-    // realtimePresent = onTime + late (for stat card)
-    // realtimeOnTime  = on-time only (green slice in donut)
-    // realtimeLate    = late only    (yellow slice in donut)
     const [realtimePresent, setRealtimePresent] = useState(presentToday ?? 0)
     const [realtimeOnTime, setRealtimeOnTime] = useState(onTimeToday ?? 0)
     const [realtimeLate, setRealtimeLate] = useState(lateToday ?? 0)
@@ -333,7 +387,6 @@ export default function Page() {
         const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
         if (e.date !== todayStr) return
 
-        // Always update top late list (uses DB value, safe to overwrite)
         if (e.status === "PRESENT" && (e.late_minutes ?? 0) > 0) {
             const name = [
                 e.employee?.basic_info?.first_name,
@@ -341,14 +394,12 @@ export default function Page() {
             ].filter(Boolean).join(" ")
 
             setRealtimeTopLate(prev =>
-                [...prev.filter(x => x.name !== name), { name, dept: "—", min: e.late_minutes }]
+                [...prev.filter(x => x.name !== name), { name, dept: e.employee?.department ?? "", min: e.late_minutes }]
                     .sort((a, b) => b.min - a.min)
                     .slice(0, 5)
             )
         }
 
-        // Only increment counters for brand-new records (first clock-in)
-        // Subsequent scans (break_out, break_in, time_out) are updates — skip
         if (!e.is_new_record) return
 
         if (e.status === "PRESENT") {
@@ -372,6 +423,11 @@ export default function Page() {
     const lowestMonth = trend.reduce((a, b) => b.v < a.v ? b : a, { m: "—", v: Infinity })
     const avgMonthly = trend.length ? Math.round(trend.reduce((s, b) => s + b.v, 0) / trend.length) : 0
 
+    // Greeting based on time of day
+    const hour = time.getHours()
+    const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+    const displayName = authUserName ?? "Admin"
+
     return (
         <AppLayout>
             <Head title="Dashboard" />
@@ -384,12 +440,19 @@ export default function Page() {
                             <div className="w-1.5 h-5 rounded-full bg-primary" />
                             <h1 className="text-xl font-black text-foreground tracking-tight">Dashboard</h1>
                         </div>
-                        <p className="text-xs text-muted-foreground pl-3.5">{dateStr}</p>
+                        <div className="flex items-center gap-1.5 pl-3.5 mt-0.5">
+                            <span className="text-xs text-muted-foreground">{greeting},</span>
+                            <span className="text-xs font-bold text-foreground">{displayName}</span>
+                            <span className="text-xs text-muted-foreground">— Welcome back 👋</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-card border border-border shadow-sm">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-sm text-muted-foreground font-medium">Live</span>
-                        <span className="text-sm font-mono font-black text-foreground tabular-nums">{timeStr}</span>
+                    <div className="flex flex-col items-end gap-0.5 px-4 py-2.5 rounded-2xl bg-card border border-border shadow-sm">
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="text-xs text-muted-foreground font-medium">Live</span>
+                            <span className="text-sm font-mono font-black text-foreground tabular-nums">{timeStr}</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground text-right">{dateStr}</span>
                     </div>
                 </div>
 
@@ -435,16 +498,16 @@ export default function Page() {
                     </DashCard>
                 </div>
 
-                {/* ── ROW 3: LEAVE ─────────────────────────────────────── */}
+                {/* ── ROW 3: LEAVE OVERVIEW ────────────────────────────── */}
                 <DashCard>
                     <SH icon={CalendarClock} color={COLORS.late} title="Leave Overview" />
                     <div className="grid grid-cols-2 gap-8">
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">By type</p>
-                            <LeaveTypeChart data={leaveTypeCounts ?? []} />
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">Top 5 Most Used Leave Types</p>
+                            <LeaveTypeChart data={[...(leaveTypeCounts ?? [])].sort((a, b) => b.value - a.value).slice(0, 5)} />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">Top takers</p>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">Highest Leave Utilization</p>
                             <TopLeaveTakers takers={topLeaveTakers ?? []} />
                         </div>
                     </div>
@@ -453,7 +516,7 @@ export default function Page() {
                 {/* ── ROW 4: PENDING + TREND ───────────────────────────── */}
                 <div className="grid grid-cols-2 gap-4">
                     <DashCard>
-                        <SH icon={Clock} color={COLORS.absent} title="Pending Requests" />
+                        <SH icon={Clock} color={COLORS.absent} title="Leave Pending Requests" />
                         <div className="flex items-stretch gap-4 mb-5">
                             <div className="flex flex-col items-center justify-center p-5 rounded-2xl flex-1"
                                 style={{ background: `${COLORS.absent}10`, border: `1.5px solid ${COLORS.absent}28` }}>
@@ -483,8 +546,8 @@ export default function Page() {
                         <LeaveTrend data={trend} />
                         <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-border">
                             {[
-                                { label: "Peak", value: peakMonth.m, note: `${peakMonth.v} staff` },
-                                { label: "Lowest", value: lowestMonth.m === "—" ? "—" : lowestMonth.m, note: lowestMonth.v === Infinity ? "—" : `${lowestMonth.v} staff` },
+                                { label: "Peak", value: abbreviateMonth(peakMonth.m), note: `${peakMonth.v} staff` },
+                                { label: "Lowest", value: lowestMonth.m === "—" ? "—" : abbreviateMonth(lowestMonth.m), note: lowestMonth.v === Infinity ? "—" : `${lowestMonth.v} staff` },
                                 { label: "Average", value: avgMonthly, note: "/ month" },
                             ].map(s => (
                                 <div key={s.label} className="text-center p-2 rounded-xl bg-muted/30">

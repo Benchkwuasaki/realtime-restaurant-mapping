@@ -43,7 +43,7 @@ const SearchInput = ({ value, onChange, placeholder = 'Search...' }: {
     value: string; onChange: (v: string) => void; placeholder?: string;
 }) => (
     <div style={{ position: 'relative', marginBottom: 14 }}>
-        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--muted-foreground)' }}>🔍</span>
+        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--muted-foreground)' }}></span>
         <input
             value={value}
             onChange={e => onChange(e.target.value)}
