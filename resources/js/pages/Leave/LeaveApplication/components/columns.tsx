@@ -8,10 +8,10 @@ import { usePage } from '@inertiajs/react';
 import {
     MoreHorizontal,
     Pencil,
-    Send,
-    Ban,
-    CheckCircle,
-    XCircle,
+    Navigation,
+    NavigationOff,
+    CheckCheck,
+    X,
 } from 'lucide-react';
 
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
@@ -43,6 +43,9 @@ export type ActionMode =
 interface ColumnOptions {
     onEdit: (app: LeaveFiling) => void;
     onAction: (app: LeaveFiling, mode: ActionMode) => void;
+    authEmployeeId?: number | null;
+    hasOtherRoles?: boolean;
+    hasOwnApplications?: boolean;
 }
 
 // convert date string into readable PH format
@@ -156,7 +159,7 @@ function useRoles() {
     // HR can make final decision
     const canDecide = isSuperAdmin || isHr;
 
-    return { hideActions, canEdit, canRecommend, canDecide };
+    return { hideActions, canEdit, canRecommend, canDecide, isOgm };
 }
 
 // row actions props
@@ -164,358 +167,106 @@ interface RowActionsProps {
     row: LeaveFiling;
     onEdit: (app: LeaveFiling) => void;
     onAction: (app: LeaveFiling, mode: ActionMode) => void;
+    authEmployeeId?: number | null;
+    hasOtherRoles?: boolean;
 }
-
 
 /**
  * Row action buttons
+ * Actions are driven by status, not role combinations:
+ * - Pending     → recommend for approval/disapproval + edit (if owner)
+ * - For Approval / For Disapproval → approve/disapprove
+ * - Approved / Disapproved → no actions
  */
-function RowActions({ row, onEdit, onAction }: RowActionsProps) {
+function RowActions({ row, onEdit, onAction, authEmployeeId, hasOtherRoles }: RowActionsProps) {
     const { hideActions, canEdit, canRecommend, canDecide } = useRoles();
 
+    const isOwner = String(row.employee_id) === String(authEmployeeId);
+    // edit is only for owners when the user has other roles beyond employee
+    const effectiveCanEdit = canEdit && (!hasOtherRoles || isOwner);
+
     const status = row.status;
-
-    // pending status allows editing and recommendation
     const isPending = status === 'Pending';
-
-    // only these statuses allow final approval/disapproval
-    const isForDecision =
-        status === 'For Approval' || status === 'For Disapproval';
+    const isForDecision = status === 'For Approval' || status === 'For Disapproval';
 
     if (hideActions) return null;
 
-    /**
-     * Count how many capabilities user has
-     * Example:
-     * edit only = 1
-     * edit + recommend = 2
-     * edit + recommend + decide = 3
-     */
-    const combos = [canEdit, canRecommend, canDecide].filter(Boolean).length;
+    // no actions shown for terminal statuses (Approved / Disapproved)
+    if (!isPending && !isForDecision) return null;
 
-    /**
-     * If user can recommend AND decide,
-     * use dropdown menu instead of many buttons
-     */
-    const useKebab = combos >= 2 && canRecommend && canDecide; 
-
-    // approved or disapproved cannot be changed anymore
-    const isTerminal = status === 'Approved' || status === 'Disapproved';
-
-    
-
-    /**
-     * Employee only — edit button
-     */
-    if (canEdit && !canRecommend && !canDecide) {
-        return (
-            <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(row);
-                }}
-                disabled={!isPending}
-                title={isPending ? 'Edit application' : 'No action available'}
-            >
-                <Pencil className="h-4 w-4" />
-                <span className="sr-only">Edit application</span>
-            </Button>
-        );
-    }
-
-    // recommend only (dto alone, dto+ogm)
-    if (canRecommend && !canDecide && !canEdit) {
-        return (
-            <div
-                className="flex items-center gap-1"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* recommend approval */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 disabled:pointer-events-none disabled:opacity-30"
-                    onClick={() => onAction(row, 'recommend-approval')}
-                    disabled={!isPending}
-                    title={
-                        isPending
-                            ? 'Recommend for approval'
-                            : 'No action available'
-                    }
-                >
-                    <Send className="h-4 w-4" />
-                    <span className="sr-only">Recommend for approval</span>
-                </Button>
-
-                {/* recommend disapproval */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-orange-600 hover:bg-orange-50 hover:text-orange-700 disabled:pointer-events-none disabled:opacity-30"
-                    onClick={() => onAction(row, 'recommend-disapproval')}
-                    disabled={!isPending}
-                    title={
-                        isPending
-                            ? 'Recommend for disapproval'
-                            : 'No action available'
-                    }
-                >
-                    <Ban className="h-4 w-4" />
-                    <span className="sr-only">Recommend for disapproval</span>
-                </Button>
-            </div>
-        );
-    }
-
-    // decide only (hr_admin alone, hr_admin+ogm)
-    if (canDecide && !canRecommend && !canEdit) {
-        return (
-            <div
-                className="flex items-center gap-1"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* approve leave */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 disabled:pointer-events-none disabled:opacity-30"
-                    onClick={() => onAction(row, 'approve')}
-                    disabled={!isForDecision}
-                    title={isForDecision ? 'Approve' : 'No action available'}
-                >
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="sr-only">Approve</span>
-                </Button>
-
-                {/* disapprove leave */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 disabled:pointer-events-none disabled:opacity-30"
-                    onClick={() => onAction(row, 'disapprove')}
-                    disabled={!isForDecision}
-                    title={isForDecision ? 'Disapprove' : 'No action available'}
-                >
-                    <XCircle className="h-4 w-4" />
-                    <span className="sr-only">Disapprove</span>
-                </Button>
-            </div>
-        );
-    }
-
-    // two capabilities: no recommend+decide overlap yet
-
-    // edit + recommend (employee+dto)
-    if (canEdit && canRecommend && !canDecide) {
-        return (
-            <div
-                className="flex items-center gap-1"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 disabled:pointer-events-none disabled:opacity-30"
-                    onClick={() => onAction(row, 'recommend-approval')}
-                    disabled={!isPending}
-                    title={
-                        isPending
-                            ? 'Recommend for approval'
-                            : 'No action available'
-                    }
-                >
-                    <Send className="h-4 w-4" />
-                    <span className="sr-only">Recommend for approval</span>
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-orange-600 hover:bg-orange-50 hover:text-orange-700 disabled:pointer-events-none disabled:opacity-30"
-                    onClick={() => onAction(row, 'recommend-disapproval')}
-                    disabled={!isPending}
-                    title={
-                        isPending
-                            ? 'Recommend for disapproval'
-                            : 'No action available'
-                    }
-                >
-                    <Ban className="h-4 w-4" />
-                    <span className="sr-only">Recommend for disapproval</span>
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(row);
-                    }}
-                    disabled={!isPending}
-                    title={
-                        isPending ? 'Edit application' : 'No action available'
-                    }
-                >
-                    <Pencil className="h-4 w-4" />
-                    <span className="sr-only">Edit application</span>
-                </Button>
-            </div>
-        );
-    }
-
-    // edit + decide (employee+hr, hr+ogm+employee)
-    if (canEdit && canDecide && !canRecommend) {
-        return (
-            <div
-                className="flex items-center gap-1"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 disabled:pointer-events-none disabled:opacity-30"
-                    onClick={() => onAction(row, 'approve')}
-                    disabled={!isForDecision}
-                    title={isForDecision ? 'Approve' : 'No action available'}
-                >
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="sr-only">Approve</span>
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 disabled:pointer-events-none disabled:opacity-30"
-                    onClick={() => onAction(row, 'disapprove')}
-                    disabled={!isForDecision}
-                    title={isForDecision ? 'Disapprove' : 'No action available'}
-                >
-                    <XCircle className="h-4 w-4" />
-                    <span className="sr-only">Disapprove</span>
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(row);
-                    }}
-                    disabled={!isPending}
-                    title={
-                        isPending ? 'Edit application' : 'No action available'
-                    }
-                >
-                    <Pencil className="h-4 w-4" />
-                    <span className="sr-only">Edit application</span>
-                </Button>
-            </div>
-        );
-    }
-
-    // kebab: any combo with both recommend + decide (dto+hr, super_admin, all roles)
+    // user has no applicable capability for the current status
+    if (isPending && !canRecommend && !effectiveCanEdit) return null;
+    if (isForDecision && !canDecide) return null;
 
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+
+            {/* Pending → recommend actions (only if canRecommend) */}
+            {isPending && canRecommend && (
+                <>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                        onClick={() => onAction(row, 'recommend-approval')}
+                        title="Recommend for approval"
+                    >
+                        <Navigation className="h-4 w-4 text-chart-1" />
+                        <span className="sr-only">Recommend for approval</span>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-md text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                        onClick={() => onAction(row, 'recommend-disapproval')}
+                        title="Recommend for disapproval"
+                    >
+                        <NavigationOff className="h-4 w-4 text-chart-3" />
+                        <span className="sr-only">Recommend for disapproval</span>
+                    </Button>
+                </>
+            )}
+
+            {/* Pending → edit (only for owners with canEdit) */}
+            {isPending && effectiveCanEdit && (
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground"
-                    onClick={(e) => e.stopPropagation()}
-                    disabled={isTerminal}
+                    className="h-7 w-7 rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground"
+                    onClick={(e) => { e.stopPropagation(); onEdit(row); }}
+                    title="Edit application"
                 >
-                    <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Open actions menu</span>
+                    <Pencil className="h-4 w-4" />
+                    <span className="sr-only">Edit application</span>
                 </Button>
-            </DropdownMenuTrigger>
+            )}
 
-            <DropdownMenuContent
-                align="end"
-                sideOffset={4}
-                className="w-48 rounded-lg border border-border/60 p-1 shadow-md"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {canRecommend && (
-                    <>
-                        <DropdownMenuLabel className="px-2.5 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground/60 uppercase select-none">
-                            Recommendation
-                        </DropdownMenuLabel>
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem
-                                className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 disabled:pointer-events-none disabled:opacity-40"
-                                onClick={() =>
-                                    isPending &&
-                                    onAction(row, 'recommend-approval')
-                                }
-                                disabled={!isPending}
-                            >
-                                <Send className="h-3.5 w-3.5 shrink-0" />
-                                For Approval
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-orange-700 focus:bg-orange-50 focus:text-orange-700 disabled:pointer-events-none disabled:opacity-40"
-                                onClick={() =>
-                                    isPending &&
-                                    onAction(row, 'recommend-disapproval')
-                                }
-                                disabled={!isPending}
-                            >
-                                <Ban className="h-3.5 w-3.5 shrink-0" />
-                                For Disapproval
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        {(canEdit || canDecide) && (
-                            <DropdownMenuSeparator className="-mx-1 my-1" />
-                        )}
-                    </>
-                )}
-
-                {canEdit && (
-                    <>
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem
-                                className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-foreground disabled:pointer-events-none disabled:opacity-40"
-                                onClick={() => isPending && onEdit(row)}
-                                disabled={!isPending}
-                            >
-                                <Pencil className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                Edit application
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        {canDecide && (
-                            <DropdownMenuSeparator className="-mx-1 my-1" />
-                        )}
-                    </>
-                )}
-
-                {canDecide && (
-                    <DropdownMenuGroup>
-                        <DropdownMenuItem
-                            className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 disabled:pointer-events-none disabled:opacity-40"
-                            onClick={() =>
-                                isForDecision && onAction(row, 'approve')
-                            }
-                            disabled={!isForDecision}
-                        >
-                            <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                            Approve
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-red-700 focus:bg-red-50 focus:text-red-700 disabled:pointer-events-none disabled:opacity-40"
-                            onClick={() =>
-                                isForDecision && onAction(row, 'disapprove')
-                            }
-                            disabled={!isForDecision}
-                        >
-                            <XCircle className="h-3.5 w-3.5 shrink-0" />
-                            Disapprove
-                        </DropdownMenuItem>
-                    </DropdownMenuGroup>
-                )}
-            </DropdownMenuContent>
-        </DropdownMenu>
+            {/* For Approval / For Disapproval → decide (only if canDecide) */}
+            {isForDecision && canDecide && (
+                <>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                        onClick={() => onAction(row, 'approve')}
+                        title="Approve"
+                    >
+                        <CheckCheck className="h-4 w-4 text-chart-2" />
+                        <span className="sr-only">Approve</span>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-md text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => onAction(row, 'disapprove')}
+                        title="Disapprove"
+                    >
+                        <X className="h-4 w-4 text-destructive" />
+                        <span className="sr-only">Disapprove</span>
+                    </Button>
+                </>
+            )}
+        </div>
     );
 }
 
@@ -561,8 +312,14 @@ function MobileLeaveCard({
 export function getColumns({
     onEdit,
     onAction,
+    authEmployeeId,
+    hasOtherRoles,
+    hasOwnApplications,
 }: ColumnOptions): DataTableColumnDef<LeaveFiling>[] {
     const { hideActions } = useRoles();
+
+    const isOgmOnly = useRoles().isOgm && !useRoles().canRecommend && !useRoles().canDecide;
+    const showActionsColumn = !hideActions && (!isOgmOnly || hasOwnApplications);
 
     return [
         // checkbox
@@ -743,21 +500,24 @@ export function getColumns({
         },
 
         // actions — hidden entirely for ogm only
-        ...(!hideActions
+        ...(showActionsColumn
             ? ([
-                  {
-                      id: 'actions',
-                      header: 'Actions',
-                      cell: ({ row }: any) => (
-                          <RowActions
-                              row={row.original}
-                              onEdit={onEdit}
-                              onAction={onAction}
-                          />
-                      ),
-                      enableHiding: false,
-                  },
-              ] as DataTableColumnDef<LeaveFiling>[])
+                {
+                    id: 'actions',
+                    header: 'Actions',
+                    cell: ({ row }: any) => (
+                        <RowActions
+                            row={row.original}
+                            onEdit={onEdit}
+                            onAction={onAction}
+                            authEmployeeId={authEmployeeId}
+                            hasOtherRoles={hasOtherRoles}
+
+                        />
+                    ),
+                    enableHiding: false,
+                },
+            ] as DataTableColumnDef<LeaveFiling>[])
             : []),
     ];
 }
