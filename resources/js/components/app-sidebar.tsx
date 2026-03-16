@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/use-auth';
 
-type Office = { name: string | null; acronym: string | null }
+type Office = { name: string | null; acronym: string | null };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const { user, hasRole } = useAuth();
@@ -42,11 +42,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const isAdminOrHR =
         hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin');
 
-    const { department, division, unit } = user?.offices ?? {}
-    const hasLinkedDepartment = Boolean(department?.name)
-    const incomingDocumentsCount = user?.notifications?.incoming_documents_count ?? 0
-    const officeParts = ([department, division, unit] as (Office | undefined | null)[])
-    .filter((office): office is Office => !!office?.name)
+    const { department, division, unit } = user?.offices ?? {};
+    const hasLinkedDepartment = Boolean(department?.name);
+    const incomingDocumentsCount =
+        user?.notifications?.incoming_documents_count ?? 0;
+    const officeParts = (
+        [department, division, unit] as (Office | undefined | null)[]
+    ).filter((office): office is Office => !!office?.name);
 
     const data = {
         overview: [
@@ -71,31 +73,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 show: isAdminOrHR,
             },
             {
-                title: "Document Tracking",
+                title: 'Document Tracking',
                 url: null,
                 icon: File,
                 badgeCount: incomingDocumentsCount,
-                show: hasLinkedDepartment && (
-                hasRole("ogm") ||
-                hasRole("hr_admin") ||
-                hasRole("super_admin") ||
-                hasRole("document_tracking_operator")
-                ),
+                show:
+                    hasLinkedDepartment &&
+                    (hasRole('ogm') ||
+                        hasRole('hr_admin') ||
+                        hasRole('super_admin') ||
+                        hasRole('document_tracking_operator')),
                 items: [
-                {
-                    title: "Incoming",
-                    url: route('document-tracking-incoming.index'),
-                    badgeCount: incomingDocumentsCount,
-                },
-                {
-                    title: "Outgoing",
-                    url: route('document-tracking-outgoing.index'),
-                },
-                {
-                    title: "Archive",
-                    url: route('document-tracking-archive.index'),
-                },
-                ]
+                    {
+                        title: 'Incoming',
+                        url: route('document-tracking-incoming.index'),
+                        badgeCount: incomingDocumentsCount,
+                    },
+                    {
+                        title: 'Outgoing',
+                        url: route('document-tracking-outgoing.index'),
+                    },
+                    {
+                        title: 'Archive',
+                        url: route('document-tracking-archive.index'),
+                    },
+                ],
             },
             {
                 title: 'Organization',
@@ -246,11 +248,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         title: 'Salary Grade Table',
                         url: route('payroll.salary-grade.index'),
                     },
+                    {
+                        title: 'Step Increment',
+                        url: route('payroll.step-increment.index'),
+                    },
                 ],
             },
         ],
         system: [
-            
             {
                 title: 'Reports and Analytics',
                 url: route('reports_and_analytics.index'),

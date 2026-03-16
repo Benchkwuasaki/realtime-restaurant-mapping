@@ -477,29 +477,9 @@ export default function Show({
                     </div>
                 </div>
 
-                {/* ── Edit mode alert ── */}
-                {isDraft && isEditing && (
-                    <Alert className="border-amber-200 bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-                        <Pencil className="size-4" />
-                        <AlertDescription className="text-xs">
-                            Editing mode — click any cell to update its value.
-                            Press{' '}
-                            <kbd className="rounded border border-amber-300 bg-amber-100 px-1 font-mono text-[10px]">
-                                Enter
-                            </kbd>{' '}
-                            to confirm and move to the next cell,{' '}
-                            <kbd className="rounded border border-amber-300 bg-amber-100 px-1 font-mono text-[10px]">
-                                Esc
-                            </kbd>{' '}
-                            to cancel. Click <strong>Save Changes</strong> when
-                            done.
-                        </AlertDescription>
-                    </Alert>
-                )}
-
                 {/* ── Incomplete warning ── */}
                 {isDraft && !isEditing && emptyRequiredCells > 0 && (
-                    <Alert className="border-orange-200 bg-orange-50 text-orange-800 dark:bg-orange-950/30 dark:text-orange-300">
+                    <Alert variant="default">
                         <AlertTriangle className="size-4" />
                         <AlertDescription className="text-xs">
                             <strong>{emptyRequiredCells} cells</strong> still

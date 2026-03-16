@@ -1,6 +1,4 @@
 // Other Deduction Entry — Index.tsx
-// Handles simple special category deductions (Water Bill, NS & ND, Miscellaneous)
-// These are straightforward transactional deductions not linked to organizations
 
 import { useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
@@ -17,15 +15,22 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { useOtherDeductionColumns } from '@/components/Payroll/Earnings&Deductions/OtherDeductionEntry/components/columns';
 import type { OtherDeduction } from '@/components/Payroll/Earnings&Deductions/OtherDeductionEntry/data/schema';
 import type { BreadcrumbItem } from '@/types';
@@ -38,8 +43,6 @@ const SPECIAL_TABS = [
     { key: 'Miscellaneous', label: 'Miscellaneous' },
 ] as const;
 
-type SpecialTabKey = (typeof SPECIAL_TABS)[number]['key'];
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Employee {
@@ -49,7 +52,7 @@ interface Employee {
 }
 
 interface Tab {
-    key: string; // category string
+    key: string;
     label: string;
 }
 
@@ -70,7 +73,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const makeEmptyForm = () => ({
     employee_id: '',
-    category: '',
     description: '',
     amount: '',
     period_start: '',
@@ -94,12 +96,16 @@ function DeductionDialog({
 }: DeductionDialogProps) {
     const [form, setForm] = useState(makeEmptyForm);
     const [submitting, setSubmitting] = useState(false);
+    const [employeeOpen, setEmployeeOpen] = useState(false);
 
     const set = (key: string, value: string) =>
         setForm((f) => ({ ...f, [key]: value }));
 
     const handleOpenChange = (value: boolean) => {
-        if (!value) setForm(makeEmptyForm());
+        if (!value) {
+            setForm(makeEmptyForm());
+            setEmployeeOpen(false);
+        }
         onOpenChange(value);
     };
 
@@ -127,6 +133,10 @@ function DeductionDialog({
         );
     };
 
+    const selectedEmployee = employees.find(
+        (e) => String(e.id) === form.employee_id,
+    );
+
     const isValid =
         form.employee_id &&
         form.amount &&
@@ -144,8 +154,7 @@ function DeductionDialog({
                 <Separator />
 
                 <div className="grid gap-4 py-2">
-                    {/* Category info */}
-                    <div className="rounded-lg border bg-muted/40 px-4 py-3">
+                    <div className="rounded-lg border border-input bg-muted/40 px-4 py-3">
                         <p className="text-xs text-muted-foreground">
                             Adding entry under
                         </p>
@@ -154,30 +163,80 @@ function DeductionDialog({
                         </p>
                     </div>
 
-                    {/* Employee */}
                     <div className="grid gap-1.5">
                         <Label>
                             Employee <span className="text-destructive">*</span>
                         </Label>
-                        <Select
-                            value={form.employee_id}
-                            onValueChange={(v) => set('employee_id', v)}
+                        <Popover
+                            open={employeeOpen}
+                            onOpenChange={setEmployeeOpen}
                         >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select employee..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {employees.map((e) => (
-                                    <SelectItem key={e.id} value={String(e.id)}>
-                                        {e.full_name}
-                                        {e.position ? ` — ${e.position}` : ''}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={employeeOpen}
+                                    className="w-full justify-between border-input font-normal"
+                                >
+                                    <span className="truncate">
+                                        {selectedEmployee
+                                            ? selectedEmployee.full_name
+                                            : 'Select employee...'}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                className="w-[--radix-popover-trigger-width] border-input p-0"
+                                align="start"
+                            >
+                                <Command>
+                                    <CommandInput placeholder="Search employee..." />
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            No employee found.
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                            {employees.map((e) => (
+                                                <CommandItem
+                                                    key={e.id}
+                                                    value={e.full_name}
+                                                    onSelect={() => {
+                                                        set(
+                                                            'employee_id',
+                                                            String(e.id),
+                                                        );
+                                                        setEmployeeOpen(false);
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={`mr-2 h-4 w-4 ${
+                                                            String(e.id) ===
+                                                            form.employee_id
+                                                                ? 'opacity-100'
+                                                                : 'opacity-0'
+                                                        }`}
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span>
+                                                            {e.full_name}
+                                                        </span>
+                                                        {e.position && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {e.position}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
-                    {/* Description - Optional for special categories */}
+                    {/* Description */}
                     <div className="grid gap-1.5">
                         <Label>Description</Label>
                         <Input
@@ -258,13 +317,8 @@ function DeductionDialog({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Index({ deductions = [], employees = [] }: Props) {
-    // Build tab list from fixed special categories
     const tabs = useMemo<Tab[]>(
-        () =>
-            SPECIAL_TABS.map((s) => ({
-                key: s.key,
-                label: s.label,
-            })),
+        () => SPECIAL_TABS.map((s) => ({ key: s.key, label: s.label })),
         [],
     );
 
@@ -278,7 +332,6 @@ export default function Index({ deductions = [], employees = [] }: Props) {
         [tabs, activeTabKey],
     );
 
-    // Filter deductions by category string
     const filtered = useMemo(
         () => deductions.filter((d) => d.tab_key === activeTabKey),
         [deductions, activeTabKey],
@@ -311,7 +364,6 @@ export default function Index({ deductions = [], employees = [] }: Props) {
             <Head title="Other Deductions Entry" />
 
             <div className="flex h-full flex-1 flex-col gap-4 p-8">
-                {/* ── Tab Navigation ──────────────────────────────────────── */}
                 <Tabs value={activeTabKey} onValueChange={setActiveTabKey}>
                     <div className="shrink-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <TabsList className="flex h-auto flex-nowrap gap-0 bg-transparent p-0">
@@ -328,7 +380,6 @@ export default function Index({ deductions = [], employees = [] }: Props) {
                     </div>
                 </Tabs>
 
-                {/* ── Table ───────────────────────────────────────────────── */}
                 <DataTable
                     data={filtered}
                     columns={columns}
@@ -347,7 +398,6 @@ export default function Index({ deductions = [], employees = [] }: Props) {
                 />
             </div>
 
-            {/* ── Dialog ──────────────────────────────────────────────────── */}
             {activeTab && (
                 <DeductionDialog
                     open={dialogOpen}

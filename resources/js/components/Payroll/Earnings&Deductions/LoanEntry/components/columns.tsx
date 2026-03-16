@@ -17,51 +17,19 @@ interface UseLoanColumnsProps {
 }
 
 function SourceBadge({ source }: { source: string }) {
-    const isGSIS = source === 'GSIS';
     return (
-        <Badge
-            className={
-                isGSIS
-                    ? 'border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50'
-                    : 'border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50'
-            }
-        >
-            {source}
-        </Badge>
+        <Badge variant={source === 'GSIS' ? 'blue' : 'yellow'}>{source}</Badge>
     );
 }
 
 function StatusBadge({ status }: { status: Loan['status'] }) {
-    const map: Record<
-        Loan['status'],
-        { label: string; className: string; dot: string }
-    > = {
-        Active: {
-            label: 'Active',
-            className:
-                'border border-green-200 bg-green-50 text-green-700 hover:bg-green-50',
-            dot: 'bg-green-500',
-        },
-        Completed: {
-            label: 'Completed',
-            className:
-                'border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-100',
-            dot: 'bg-slate-400',
-        },
-        Suspended: {
-            label: 'Suspended',
-            className:
-                'border border-red-200 bg-red-50 text-red-700 hover:bg-red-50',
-            dot: 'bg-red-500',
-        },
+    const map: Record<Loan['status'], { variant: 'green' | 'red' | 'gray' }> = {
+        Active: { variant: 'green' },
+        Completed: { variant: 'gray' },
+        Suspended: { variant: 'red' },
     };
-    const { label, className, dot } = map[status];
-    return (
-        <Badge className={`gap-1.5 ${className}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-            {label}
-        </Badge>
-    );
+    const { variant } = map[status];
+    return <Badge variant={variant}>{status}</Badge>;
 }
 
 function BalanceCell({ loan }: { loan: Loan }) {
@@ -153,16 +121,7 @@ export function useLoanColumns({
                 const type = row.getValue<string>('loan_type');
                 const isGSIS = row.original.source === 'GSIS';
                 return (
-                    <Badge
-                        variant="outline"
-                        className={
-                            isGSIS
-                                ? 'border-blue-300 text-blue-700'
-                                : 'border-orange-300 text-orange-700'
-                        }
-                    >
-                        {type}
-                    </Badge>
+                    <Badge variant={isGSIS ? 'blue' : 'yellow'}>{type}</Badge>
                 );
             },
         },

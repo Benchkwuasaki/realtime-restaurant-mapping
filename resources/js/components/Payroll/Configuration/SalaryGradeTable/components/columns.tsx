@@ -10,16 +10,9 @@ import {
 } from '@/components/shared/data-table/data-table-row-action';
 import type { SslTableSummary } from '@/pages/Payroll/Configuration/SalaryGradeTable/Index';
 
-// ── Status Badge ───────────────────────────────────────────────────────────────
-
 function StatusBadge({ status }: { status: SslTableSummary['status'] }) {
     if (status === 'active') {
-        return (
-            <Badge className="gap-1 bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-400">
-                <CheckCircle2 className="size-3" />
-                Active
-            </Badge>
-        );
+        return <Badge variant="green">Active</Badge>;
     }
     if (status === 'draft') {
         return (
@@ -29,12 +22,7 @@ function StatusBadge({ status }: { status: SslTableSummary['status'] }) {
             </Badge>
         );
     }
-    return (
-        <Badge variant="secondary" className="gap-1 text-muted-foreground">
-            <Clock className="size-3" />
-            Superseded
-        </Badge>
-    );
+    return <Badge variant="secondary">Superseded</Badge>;
 }
 
 // ── Fill Progress Bar ──────────────────────────────────────────────────────────

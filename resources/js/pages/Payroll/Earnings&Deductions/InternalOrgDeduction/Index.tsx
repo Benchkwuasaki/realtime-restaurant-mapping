@@ -23,6 +23,20 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { useInternalOrgDeductionColumns } from '@/pages/Payroll/Earnings&Deductions/InternalOrgDeduction/components/columns';
 import {
@@ -99,7 +113,7 @@ interface DeductionDialogProps {
     onOpenChange: (open: boolean) => void;
     employees: Employee[];
     activeTab: Tab;
-    servicesForOrg: Record<string, ServiceOption[]>; // { [category]: services[] }
+    servicesForOrg: Record<string, ServiceOption[]>;
 }
 
 function DeductionDialog({
@@ -111,23 +125,27 @@ function DeductionDialog({
 }: DeductionDialogProps) {
     const [form, setForm] = useState(makeEmptyForm);
     const [submitting, setSubmitting] = useState(false);
+    const [employeeOpen, setEmployeeOpen] = useState(false);
 
     const set = (key: string, value: string) =>
         setForm((f) => ({ ...f, [key]: value }));
 
     const handleOpenChange = (value: boolean) => {
-        if (!value) setForm(makeEmptyForm());
+        if (!value) {
+            setForm(makeEmptyForm());
+            setEmployeeOpen(false);
+        }
         onOpenChange(value);
     };
 
-    // Available categories for this org
-    const availableCategories = Object.keys(servicesForOrg) as ServiceCategory[];
+    const availableCategories = Object.keys(
+        servicesForOrg,
+    ) as ServiceCategory[];
 
-    // Services under the selected category
-    const servicesForCategory: ServiceOption[] =
-        form.service_category ? (servicesForOrg[form.service_category] ?? []) : [];
+    const servicesForCategory: ServiceOption[] = form.service_category
+        ? (servicesForOrg[form.service_category] ?? [])
+        : [];
 
-    // Reset service when category changes
     const handleCategoryChange = (category: string) => {
         setForm((f) => ({
             ...f,
@@ -161,10 +179,6 @@ function DeductionDialog({
         );
     };
 
-    const selectedService = servicesForCategory.find(
-        (s) => String(s.id) === form.internal_organization_service_id,
-    );
-
     const isValid =
         !!form.employee_id &&
         !!form.service_category &&
@@ -185,35 +199,92 @@ function DeductionDialog({
 
                 <div className="grid gap-4 py-2">
                     {/* Organization info */}
-                    <div className="rounded-lg border bg-muted/40 px-4 py-3">
-                        <p className="text-xs text-muted-foreground">Organization</p>
-                        <p className="mt-0.5 text-sm font-semibold">{activeTab.label}</p>
+                    <div className="rounded-lg border border-input bg-muted/40 px-4 py-3">
+                        <p className="text-xs text-muted-foreground">
+                            Organization
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold">
+                            {activeTab.label}
+                        </p>
                     </div>
 
-                    {/* Employee */}
+                    {/* Employee — Popover + Command */}
                     <div className="grid gap-1.5">
                         <Label>
                             Employee <span className="text-destructive">*</span>
                         </Label>
-                        <Select
-                            value={form.employee_id}
-                            onValueChange={(v) => set('employee_id', v)}
+                        <Popover
+                            open={employeeOpen}
+                            onOpenChange={setEmployeeOpen}
                         >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select employee..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {employees.map((e) => (
-                                    <SelectItem key={e.id} value={String(e.id)}>
-                                        {e.full_name}
-                                        {e.position ? ` — ${e.position}` : ''}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={employeeOpen}
+                                    className="w-full justify-between border-input font-normal"
+                                >
+                                    <span className="truncate">
+                                        {employees.find(
+                                            (e) =>
+                                                String(e.id) ===
+                                                form.employee_id,
+                                        )?.full_name ?? 'Select employee...'}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                className="w-[--radix-popover-trigger-width] border-input p-0"
+                                align="start"
+                            >
+                                <Command className="border-0">
+                                    <CommandInput placeholder="Search employee..." />
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            No employee found.
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                            {employees.map((e) => (
+                                                <CommandItem
+                                                    key={e.id}
+                                                    value={e.full_name}
+                                                    onSelect={() => {
+                                                        set(
+                                                            'employee_id',
+                                                            String(e.id),
+                                                        );
+                                                        setEmployeeOpen(false);
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={`mr-2 h-4 w-4 ${
+                                                            String(e.id) ===
+                                                            form.employee_id
+                                                                ? 'opacity-100'
+                                                                : 'opacity-0'
+                                                        }`}
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span>
+                                                            {e.full_name}
+                                                        </span>
+                                                        {e.position && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {e.position}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
-                    {/* Step 1 — Category */}
+                    {/* Category */}
                     <div className="grid gap-1.5">
                         <Label>
                             Category <span className="text-destructive">*</span>
@@ -229,7 +300,9 @@ function DeductionDialog({
                             <SelectContent>
                                 {availableCategories.map((cat) => (
                                     <SelectItem key={cat} value={cat}>
-                                        {SERVICE_CATEGORY_LABELS[cat as ServiceCategory] ?? cat}
+                                        {SERVICE_CATEGORY_LABELS[
+                                            cat as ServiceCategory
+                                        ] ?? cat}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -238,13 +311,17 @@ function DeductionDialog({
                             <p className="text-xs text-muted-foreground">
                                 Deducted on:{' '}
                                 <span className="font-medium">
-                                    {SERVICE_CATEGORY_CUTOFF[form.service_category as ServiceCategory]}
+                                    {
+                                        SERVICE_CATEGORY_CUTOFF[
+                                            form.service_category as ServiceCategory
+                                        ]
+                                    }
                                 </span>
                             </p>
                         )}
                     </div>
 
-                    {/* Step 2 — Service (depends on category) */}
+                    {/* Service */}
                     <div className="grid gap-1.5">
                         <Label>
                             Service <span className="text-destructive">*</span>
@@ -254,7 +331,10 @@ function DeductionDialog({
                             onValueChange={(v) =>
                                 set('internal_organization_service_id', v)
                             }
-                            disabled={!form.service_category || servicesForCategory.length === 0}
+                            disabled={
+                                !form.service_category ||
+                                servicesForCategory.length === 0
+                            }
                         >
                             <SelectTrigger>
                                 <SelectValue
@@ -275,7 +355,7 @@ function DeductionDialog({
                         </Select>
                     </div>
 
-                    {/* Description (optional) */}
+                    {/* Description */}
                     <div className="grid gap-1.5">
                         <Label>Description</Label>
                         <Input
@@ -288,7 +368,8 @@ function DeductionDialog({
                     {/* Amount */}
                     <div className="grid gap-1.5">
                         <Label>
-                            Amount (₱) <span className="text-destructive">*</span>
+                            Amount (₱){' '}
+                            <span className="text-destructive">*</span>
                         </Label>
                         <Input
                             type="number"
@@ -304,22 +385,28 @@ function DeductionDialog({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-1.5">
                             <Label>
-                                Period Start <span className="text-destructive">*</span>
+                                Period Start{' '}
+                                <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 type="date"
                                 value={form.period_start}
-                                onChange={(e) => set('period_start', e.target.value)}
+                                onChange={(e) =>
+                                    set('period_start', e.target.value)
+                                }
                             />
                         </div>
                         <div className="grid gap-1.5">
                             <Label>
-                                Period End <span className="text-destructive">*</span>
+                                Period End{' '}
+                                <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 type="date"
                                 value={form.period_end}
-                                onChange={(e) => set('period_end', e.target.value)}
+                                onChange={(e) =>
+                                    set('period_end', e.target.value)
+                                }
                             />
                         </div>
                     </div>
@@ -328,10 +415,16 @@ function DeductionDialog({
                 <Separator />
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => handleOpenChange(false)}>
+                    <Button
+                        variant="outline"
+                        onClick={() => handleOpenChange(false)}
+                    >
                         Cancel
                     </Button>
-                    <Button onClick={handleSubmit} disabled={!isValid || submitting}>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={!isValid || submitting}
+                    >
                         {submitting ? 'Saving...' : 'Add Entry'}
                     </Button>
                 </DialogFooter>
@@ -358,8 +451,8 @@ export default function Index({
         [organizations],
     );
 
-    const [activeTabKey, setActiveTabKey] = useState<string>(
-        () => String(tabs[0]?.key ?? ''),
+    const [activeTabKey, setActiveTabKey] = useState<string>(() =>
+        String(tabs[0]?.key ?? ''),
     );
     const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -384,10 +477,9 @@ export default function Index({
     );
 
     const handleDelete = (deduction: InternalOrgDeduction) => {
-        router.delete(
-            route('internal-org-deductions.destroy', deduction.id),
-            { preserveScroll: true },
-        );
+        router.delete(route('internal-org-deductions.destroy', deduction.id), {
+            preserveScroll: true,
+        });
     };
 
     const handleAmountChange = (
@@ -411,7 +503,6 @@ export default function Index({
             <Head title="Internal Organization Deductions" />
 
             <div className="flex h-full flex-1 flex-col gap-4 p-8">
-                {/* ── Tab Navigation ──────────────────────────────────────── */}
                 <Tabs value={activeTabKey} onValueChange={setActiveTabKey}>
                     <div className="shrink-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <TabsList className="flex h-auto flex-nowrap gap-0 bg-transparent p-0">
@@ -428,7 +519,6 @@ export default function Index({
                     </div>
                 </Tabs>
 
-                {/* ── Table ───────────────────────────────────────────────── */}
                 <DataTable
                     data={filtered}
                     columns={columns}
@@ -447,7 +537,6 @@ export default function Index({
                 />
             </div>
 
-            {/* ── Dialog ──────────────────────────────────────────────────── */}
             {activeTab && (
                 <DeductionDialog
                     open={dialogOpen}
