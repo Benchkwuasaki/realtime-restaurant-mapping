@@ -994,7 +994,7 @@ function LeaveCalendar({ requests }: { requests: LeaveReq[] }) {
                     <div className={`overflow-y-auto px-4 py-3 ${panelOpen ? 'max-h-72 sm:max-h-80' : 'hidden'} md:block md:max-h-[520px]`}>
                         {selectedEntries.length === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center gap-2 py-6 text-center">
-                                <div className="text-2xl">🌿</div>
+                                <div className="text-lg">🌿</div>
                                 <p className="text-xs text-muted-foreground">No approved leaves on this day.</p>
                             </div>
                         ) : (
@@ -1156,7 +1156,7 @@ export default function LeaveOverview({ requests: rawRequests = [], balances = [
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                             <div style={{ width: 3, height: 20, borderRadius: 2, background: emerald }} />
-                            <h1 className="text-lg font-black tracking-tight sm:text-2xl" style={{ color: 'var(--foreground)', margin: 0, letterSpacing: '-0.02em' }}>
+                            <h1 className="text-lg font-black tracking-tight sm:text-lg" style={{ color: 'var(--foreground)', margin: 0, letterSpacing: '-0.02em' }}>
                                 Leave Overview
                             </h1>
                         </div>

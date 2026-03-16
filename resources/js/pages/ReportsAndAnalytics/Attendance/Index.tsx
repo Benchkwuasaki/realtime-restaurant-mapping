@@ -443,7 +443,7 @@ export default function AttendanceReportIndex({
                             <BarChart3 className="w-5 h-5 text-muted-foreground" />
                             <div>
                                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Today's Attendance Rate</p>
-                                <p className="text-2xl font-bold tabular-nums tracking-tight">{s.attendance_rate.toFixed(1)}%</p>
+                                <p className="text-lg font-bold tabular-nums tracking-tight">{s.attendance_rate.toFixed(1)}%</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-6 text-sm text-muted-foreground flex-wrap">

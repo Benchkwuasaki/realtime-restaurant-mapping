@@ -171,7 +171,7 @@ export function DocumentHistoryDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="overflow-hidden border-0 p-0 shadow-2xl sm:max-w-5xl">
+            <DialogContent className="overflow-hidden border-0 p-0 shadow-lg sm:max-w-5xl">
                 {document ? (
                     <div className="grid max-h-[85vh] min-h-0 bg-background lg:grid-cols-[320px_minmax(0,1fr)]">
                         <div className="border-b border-border bg-muted/30 p-6 lg:border-r lg:border-b-0">
@@ -251,7 +251,7 @@ export function DocumentHistoryDialog({
                                         </h3>
                                     </div>
 
-                                    <div className="rounded-2xl border border-border bg-muted/20 p-4">
+                                    <div className="rounded-lg border border-border bg-muted/20 p-4">
                                         <div className="flex flex-wrap items-center gap-2">
                                             {document.flow.length > 0 ? (
                                                 document.flow.map((step, index) => (
@@ -313,7 +313,7 @@ export function DocumentHistoryDialog({
                                                         ) : null}
                                                     </div>
                                                     <div className="pb-6">
-                                                        <div className={`rounded-2xl border p-4 shadow-xs ${timelineTone(action.action).card}`}>
+                                                        <div className={`rounded-lg border p-4 shadow-xs ${timelineTone(action.action).card}`}>
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <p className="text-sm font-semibold text-foreground">
                                                                     {action.label}
@@ -364,7 +364,7 @@ export function DocumentHistoryDialog({
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
+                                            <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
                                                 No action history available.
                                             </div>
                                         )}

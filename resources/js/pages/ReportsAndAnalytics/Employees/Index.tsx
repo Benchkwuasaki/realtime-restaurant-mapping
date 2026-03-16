@@ -489,7 +489,7 @@ export default function Index() {
 
                 {/* Page header */}
                 <div>
-                    <h1 className="text-lg font-black tracking-tight sm:text-2xl" style={{ color: 'var(--foreground)', margin: 0, letterSpacing: '-0.02em' }}>
+                    <h1 className="text-lg font-black tracking-tight sm:text-lg" style={{ color: 'var(--foreground)', margin: 0, letterSpacing: '-0.02em' }}>
                         Employee Overview
                     </h1>
                     <p style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4, marginBottom: 0 }}>

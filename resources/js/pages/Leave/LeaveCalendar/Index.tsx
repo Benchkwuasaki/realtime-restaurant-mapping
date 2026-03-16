@@ -201,7 +201,7 @@ function CalendarTab({ leaves }: { leaves: LeaveApplication[] }) {
                             <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     </button>
-                    <h2 className="text-lg lg:text-2xl font-semibold text-foreground">
+                    <h2 className="text-lg lg:text-lg font-semibold text-foreground">
                         {MONTHS[month]}{" "}
                         <span className="text-muted-foreground font-normal">{year}</span>
                     </h2>

@@ -257,7 +257,7 @@ const DivisionNode: React.FC<{
             <div
                 data-division-id={division.id}
                 data-employee-ids={allEmployees.map(e => e.id).join(',')}
-                className={`group relative flex flex-col items-center gap-2 p-4 rounded-2xl
+                className={`group relative flex flex-col items-center gap-2 p-4 rounded-lg
                     border bg-card text-card-foreground
                     shadow-sm transition-all duration-200 min-w-[160px] max-w-[200px]
                     ${isHighlighted
@@ -666,7 +666,7 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
                             {/* Department root node */}
                             <div
                                 onClick={handleDeptClick}
-                                className="group flex flex-col items-center gap-3 p-5 rounded-2xl
+                                className="group flex flex-col items-center gap-3 p-5 rounded-lg
                                 border-2 border-primary/30 bg-card text-card-foreground
                                 shadow-md hover:shadow-lg hover:border-primary/60
                                 cursor-pointer transition-all duration-200
@@ -679,7 +679,7 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
                                         fallback={department.acronym?.substring(0, 2) || 'DP'}
                                         className="h-20 w-20 ring-4 ring-primary/20
                                         group-hover:ring-primary/40 transition-all
-                                        bg-accent text-accent-foreground font-bold text-2xl"
+                                        bg-accent text-accent-foreground font-bold text-lg"
                                     />
                                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary
                                     rounded-full ring-2 ring-background

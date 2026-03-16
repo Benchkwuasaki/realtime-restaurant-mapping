@@ -473,10 +473,10 @@ export default function Show({ organization, availableEmployees, orgTypes }: Pro
             <div className="flex gap-5 p-5 min-h-full bg-background">
 
                 {/* ── Left Sidebar ───────────────────────────────────────────────────── */}
-                <aside className="w-72 shrink-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col p-5">
+                <aside className="w-72 shrink-0 bg-card rounded-lg border border-border shadow-sm overflow-hidden flex flex-col p-5">
 
                     <div className="mb-4 flex flex-col items-center gap-3 text-center">
-                        <div className="bg-primary/10 border-primary/20 flex h-20 w-20 items-center justify-center rounded-2xl border-2">
+                        <div className="bg-primary/10 border-primary/20 flex h-20 w-20 items-center justify-center rounded-lg border-2">
                             <Building2 className="text-primary h-10 w-10" />
                         </div>
 
@@ -589,7 +589,7 @@ export default function Show({ organization, availableEmployees, orgTypes }: Pro
                 </aside>
 
                 {/* ── Right Content ──────────────────────────────────────────────────── */}
-                <main className="flex-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col min-w-0 p-5">
+                <main className="flex-1 bg-card rounded-lg border border-border shadow-sm overflow-hidden flex flex-col min-w-0 p-5">
 
                     <div className="flex items-center justify-between">
                         <div>
