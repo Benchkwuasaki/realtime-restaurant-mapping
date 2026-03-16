@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import {
-    CheckCircle2,
     CircleDashed,
     FilePlus2,
     ShieldCheck,
+    TriangleAlert,
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
     Card,
     CardContent,
@@ -35,7 +34,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { DataTable } from '@/components/shared/data-table/data-table';
 import type { BreadcrumbItem } from '@/types';
 import { sslTableColumns } from '@/components/Payroll/Configuration/SalaryGradeTable/components/columns';
@@ -223,7 +221,8 @@ export default function Index({ tables, activeTable }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Salary Grade Table" />
 
-            <div className="flex h-full flex-1 flex-col gap-8 p-8">
+            <div className="flex h-full flex-1 flex-col gap-6 p-8">
+                {/* Header */}
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h1 className="text-xl font-semibold">
@@ -237,6 +236,7 @@ export default function Index({ tables, activeTable }: Props) {
                     <CreateDraftDialog />
                 </div>
 
+                {/* Active SSL Table banner */}
                 {activeTable ? (
                     <Card
                         className="cursor-pointer border-green-200 bg-green-50/50 transition-colors hover:bg-green-50 dark:border-green-900 dark:bg-green-950/20"
@@ -249,63 +249,47 @@ export default function Index({ tables, activeTable }: Props) {
                             )
                         }
                     >
-                        <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="rounded-full bg-green-100 p-2 dark:bg-green-900/40">
-                                        <ShieldCheck className="size-5 text-green-600 dark:text-green-400" />
-                                    </div>
-                                    <div>
-                                        <CardTitle className="text-base">
-                                            {activeTable.ssl_version} —{' '}
-                                            {activeTable.tranche_ordinal}{' '}
-                                            Tranche
-                                        </CardTitle>
-                                        <CardDescription className="mt-0.5">
-                                            {activeTable.legal_basis} ·
-                                            Effective{' '}
-                                            {new Date(
-                                                activeTable.effectivity_date,
-                                            ).toLocaleDateString('en-PH', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric',
-                                            })}
-                                        </CardDescription>
-                                    </div>
-                                </div>
-                                <Badge className="gap-1 bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-400">
-                                    <CheckCircle2 className="size-3" />
-                                    Active
-                                </Badge>
+                        <CardHeader className="pt-4 pb-3">
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck className="size-4 text-green-600" />
+                                <CardTitle className="text-sm font-medium text-green-800 dark:text-green-300">
+                                    Active SSL Table
+                                </CardTitle>
                             </div>
+                            <CardDescription className="text-green-700 dark:text-green-400">
+                                {activeTable.ssl_version} —{' '}
+                                {activeTable.tranche_ordinal} Tranche ·{' '}
+                                {activeTable.legal_basis} · Effective{' '}
+                                {new Date(
+                                    activeTable.effectivity_date,
+                                ).toLocaleDateString('en-PH', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                })}
+                                {activeTable.activated_by_name && (
+                                    <>
+                                        {' '}
+                                        · Activated by{' '}
+                                        {activeTable.activated_by_name}
+                                    </>
+                                )}
+                            </CardDescription>
                         </CardHeader>
-                        <Separator className="bg-green-200 dark:bg-green-900" />
-                        <CardContent className="pt-3">
-                            <p className="text-xs text-muted-foreground">
-                                {activeTable.activated_by_name
-                                    ? `Activated by ${activeTable.activated_by_name} on ${new Date(activeTable.activated_at!).toLocaleDateString('en-PH')}.`
-                                    : 'Active table — all employee salaries are based on this schedule.'}{' '}
-                                Click to view the full 33×8 salary grid.
-                            </p>
-                        </CardContent>
                     </Card>
                 ) : (
-                    <Card className="border-dashed">
-                        <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
-                            <CircleDashed className="size-8 text-muted-foreground/50" />
-                            <p className="text-sm font-medium text-muted-foreground">
-                                No active salary grade table
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                Create a draft, fill in the salary amounts, then
-                                activate it.
+                    <Card className="border-destructive/40 bg-destructive/5">
+                        <CardContent className="flex items-center gap-3 py-4">
+                            <TriangleAlert className="size-4 shrink-0 text-destructive" />
+                            <p className="text-sm text-destructive">
+                                No active salary grade table. Create a draft,
+                                fill in the salary amounts, then activate it.
                             </p>
                         </CardContent>
                     </Card>
                 )}
 
-                {/* ── All Tables ── */}
+                {/* All Tables */}
                 <DataTable
                     data={tables}
                     columns={sslTableColumns}

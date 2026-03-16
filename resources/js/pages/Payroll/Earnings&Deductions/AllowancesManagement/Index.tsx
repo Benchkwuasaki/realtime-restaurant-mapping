@@ -824,7 +824,7 @@ export default function Index({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Allowance Management" />
 
-            <div className="flex h-full flex-1 flex-col gap-8 p-8">
+            <div className="h-full flex-col gap-8 p-8">
                 <Heading
                     title="Allowance Management"
                     description="Manage allowances for employees here"
