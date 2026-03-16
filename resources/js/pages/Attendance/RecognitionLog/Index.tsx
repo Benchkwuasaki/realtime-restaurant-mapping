@@ -665,11 +665,11 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl max-h-[90vh] flex flex-col">
+            <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-lg max-h-[90vh] flex flex-col">
                 <div className="relative shrink-0">
                     <div className="absolute inset-0 overflow-hidden">
                         <SnapshotImage path={record.snapshot_path} avatarUrl={record.employee?.avatar_url} name={name} className="w-full h-full scale-110" />
-                        <div className="absolute inset-0 bg-primary/85 backdrop-blur-2xl" />
+                        <div className="absolute inset-0 bg-primary/85 backdrop-blur-lg" />
                     </div>
                     <button
                         onClick={onClose}
@@ -678,7 +678,7 @@ function EmployeeDetailDialog({ record, allRecords, open, onClose }: {
                         <X className="w-3.5 h-3.5" />
                     </button>
                     <div className="relative z-10 flex items-end gap-4 px-5 pt-8 pb-5">
-                        <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-primary-foreground/20 shadow-xl shrink-0">
+                        <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary-foreground/20 shadow-xl shrink-0">
                             <SnapshotImage path={record.snapshot_path} avatarUrl={record.employee?.avatar_url} name={name} className="w-full h-full" />
                         </div>
                         <div className="min-w-0 pb-1">
@@ -986,7 +986,7 @@ export default function RecognitionLogIndex({
                                     )}
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-3 gap-2.5">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-2 lg:grid-cols-3 gap-2.5">
                                     {filtered.map(record => (
                                         <AttendanceCard
                                             key={record.id}

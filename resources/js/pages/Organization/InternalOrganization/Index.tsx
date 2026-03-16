@@ -66,19 +66,19 @@ export default function Index({
             title="Total Organizations"
             value={totalOrganizations}
             description="All registered organizations"
-            icon={<Building2 className="size-4 text-destructive" />}
+            icon={<Building2 className="size-4 text-primary" />}
           />
           <StatCard
             title="Active"
             value={activeOrganizations}
             description="Currently active organizations"
-            icon={<CheckCircle2 className="size-4 text-green-500" />}
+            icon={<CheckCircle2 className="size-4 text-primary" />}
           />
           <StatCard
             title="Inactive"
             value={inactiveOrganizations}
             description="Currently inactive organizations"
-            icon={<XCircle className="size-4 text-destructive" />}
+            icon={<XCircle className="size-4 text-primary" />}
           />
         </div>
 

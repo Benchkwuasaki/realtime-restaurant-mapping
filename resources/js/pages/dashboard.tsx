@@ -122,7 +122,7 @@ function LateList({ entries }: { entries: TopLateEntry[] }) {
                     <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-black text-white"
                         style={{ background: lateColors[i % lateColors.length] }}>
                         {e.avatar_url
-                            ? <img src={e.avatar_url} alt={e.name} className="w-full h-full object-cover rounded-2xl" />
+                            ? <img src={e.avatar_url} alt={e.name} className="w-full h-full object-cover rounded-lg" />
                             : e.name.charAt(0)
                         }
                     </div>
@@ -327,7 +327,7 @@ function SH({ icon: Icon, color, title, sub }: { icon: any; color: string; title
 /* ── CARD ────────────────────────────────────────────────────────────────── */
 function DashCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={`bg-card border border-border rounded-2xl p-5 shadow-sm ${className}`}>
+        <div className={`bg-card border border-border rounded-lg p-5 shadow-sm ${className}`}>
             {children}
         </div>
     )
@@ -458,20 +458,15 @@ export default function Page() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <StatCard title="Total Employees" value={totalEmployees} description="Active headcount"
-                        color={COLORS.present}
-                        icon={<Users className="w-4 h-4 m-2" />} />
+                        icon={<Users className="w-4 h-4 m-2 text-primary" />} />
                     <StatCard title="Present Today" value={realtimePresent} description="Clocked in or active"
-                        color={COLORS.present}
-                        icon={<UserCheck className="w-4 h-4 m-2" />} />
+                        icon={<UserCheck className="w-4 h-4 m-2 text-primary" />} />
                     <StatCard title="On Leave" value={onLeaveCount ?? 0} description="Approved leave today"
-                        color={COLORS.late}
-                        icon={<CalendarClock className="w-4 h-4 m-2" />} />
+                        icon={<CalendarClock className="w-4 h-4 m-2 text-primary" />} />
                     <StatCard title="Pending Leave" value={pendingLeaveCount ?? 0} description="Awaiting approval"
-                        color={COLORS.absent}
-                        icon={<Clock className="w-4 h-4 m-2" />} />
+                        icon={<Clock className="w-4 h-4 m-2 text-primary" />} />
                     <StatCard title="Payroll" value="Mar 15" description="Next payroll date"
-                        color={COLORS.cyan}
-                        icon={<Banknote className="w-4 h-4 m-2" />} />
+                        icon={<Banknote className="w-4 h-4 m-2 text-primary" />} />
                 </div>
 
                 {/* ── ROW 2 ────────────────────────────────────────────── */}
@@ -518,7 +513,7 @@ export default function Page() {
                     <DashCard>
                         <SH icon={Clock} color={COLORS.absent} title="Leave Pending Requests" />
                         <div className="flex items-stretch gap-4 mb-5">
-                            <div className="flex flex-col items-center justify-center p-5 rounded-2xl flex-1"
+                            <div className="flex flex-col items-center justify-center p-5 rounded-lg flex-1"
                                 style={{ background: `${COLORS.absent}10`, border: `1.5px solid ${COLORS.absent}28` }}>
                                 <p className="text-6xl font-black leading-none" style={{ color: COLORS.absent }}>{pendingLeaveCount}</p>
                                 <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-widest font-semibold">total pending</p>

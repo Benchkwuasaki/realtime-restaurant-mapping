@@ -599,13 +599,13 @@ export default function HolidayIndex({ holidays, currentYear }: Props) {
                         title="Total Holidays"
                         value={holidays.length}
                         description={`Holidays in ${currentYear}`}
-                        icon={<CalendarDays className="size-4" />}
+                        icon={<CalendarDays className="size-4 text-primary" />}
                     />
                     <StatCard
                         title="Recurring"
                         value={holidays.filter(h => h.is_recurring).length}
                         description="Repeat automatically every year"
-                        icon={<RefreshCw className="size-4" />}
+                        icon={<RefreshCw className="size-4 text-primary" />}
                     />
                 </div>
 
