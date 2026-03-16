@@ -1187,4 +1187,4 @@ export default function LeaveOverview({ requests: rawRequests = [], balances = [
             </div>
         </AppLayout>
     );
-}
+} 
