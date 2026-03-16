@@ -2002,10 +2002,10 @@ export default function LeaveFilingIndex({
             <Head title="Leave Filing" />
             <section className="w-full p-6">
                 <section className="max-w-300 grid grid-cols-1 lg:grid-cols-4 gap-5 mb-6">
-                    <StatCard title="Total Applications" value={total_applications} description="All leave applications" icon={<CalendarDays className="size-4" />} />
-                    <StatCard title="Pending" value={total_pending} description="Awaiting action" icon={<Clock className="size-4" />} />
-                    <StatCard title="Approved" value={total_approved} description="Approved applications" icon={<CheckCircle className="size-4" />} />
-                    <StatCard title="Disapproved" value={total_disapproved} description="Disapproved applications" icon={<XCircle className="size-4" />} />
+                    <StatCard title="Total Applications" value={total_applications} description="All leave applications" icon={<CalendarDays className="size-4 text-primary" />} />
+                    <StatCard title="Pending" value={total_pending} description="Awaiting action" icon={<Clock className="size-4 text-primary" />} />
+                    <StatCard title="Approved" value={total_approved} description="Approved applications" icon={<CheckCircle className="size-4 text-primary" />} />
+                    <StatCard title="Disapproved" value={total_disapproved} description="Disapproved applications" icon={<XCircle className="size-4 text-primary" />} />
                 </section>
 
                 <section className="bg-card p-6 rounded-lg border border-secondary">

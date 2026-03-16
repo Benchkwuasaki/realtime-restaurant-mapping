@@ -308,19 +308,19 @@ export default function DivisionIndex({ divisions, departments, totalDivisions, 
                             title="Total Divisions"
                             value={totalDivisions}
                             description="All registered divisions"
-                            icon={<Building2 className="size-4" />}
+                            icon={<Building2 className="size-4 text-primary" />}
                         />
                         <StatCard
                             title="Total Departments"
                             value={totalDepartments}
                             description="Departments with divisions"
-                            icon={<LayoutGrid className="size-4" />}
+                            icon={<LayoutGrid className="size-4 text-primary" />}
                         />
                         <StatCard
                             title="Total Units"
                             value={totalUnits}
                             description="Units across all divisions"
-                            icon={<Layers className="size-4" />}
+                            icon={<Layers className="size-4 text-primary" />}
                         />
                     </div>
                 </div>

@@ -161,9 +161,9 @@ function KpiStrip({ totalEmployees, activeEmployees, inactiveEmployees, filters,
     filters: EmployeeFilters; setFilters: (f: EmployeeFilters) => void;
 }) {
     const kpis = [
-        { label: 'Total Employees', value: totalEmployees,    description: 'All employees',      icon: <Users     className="size-4 p-0.5" />, statusFilter: '', color: undefined },
-        { label: 'Active',          value: activeEmployees,   description: 'Currently active',   icon: <UserCheck className="size-4 p-0.5" />, statusFilter: 'Active',   color: emerald },
-        { label: 'Inactive',        value: inactiveEmployees, description: 'Currently inactive', icon: <UserMinus className="size-4 p-0.5" />, statusFilter: 'Inactive', color: rose },
+        { label: 'Total Employees', value: totalEmployees,    description: 'All employees',      icon: <Users     className="size-4 p-0.5 text-primary" />, statusFilter: '' },
+        { label: 'Active',          value: activeEmployees,   description: 'Currently active',   icon: <UserCheck className="size-4 p-0.5 text-primary" />, statusFilter: 'Active' },
+        { label: 'Inactive',        value: inactiveEmployees, description: 'Currently inactive', icon: <UserMinus className="size-4 p-0.5 text-primary" />, statusFilter: 'Inactive' },
     ];
     return (
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -181,7 +181,6 @@ function KpiStrip({ totalEmployees, activeEmployees, inactiveEmployees, filters,
                             value={k.value}
                             description={isActive ? `✓ Filtering` : k.description}
                             icon={k.icon}
-                            color={k.color}
                         />
                     </div>
                 );

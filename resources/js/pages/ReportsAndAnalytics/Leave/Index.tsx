@@ -259,10 +259,10 @@ function KpiCards({ requests, allRequests, filters, setFilters }: {
     const pending  = allRequests.filter(r => r.status === 'Pending').length;
 
     const kpis = [
-        { title: 'Total Leave Requests', value: total,    description: 'All time',        icon: <ClipboardList className="size-4" />, filterStatus: '' },
-        { title: 'Approved Leaves',      value: approved, description: total > 0 ? `${((approved / total) * 100).toFixed(1)}% approval rate` : 'No requests yet', icon: <CalendarCheck className="size-4" />, filterStatus: 'Approved' },
-        { title: 'Currently On Leave',   value: onLeave,  description: 'As of today',     icon: <Umbrella className="size-4" />,      filterStatus: '' },
-        { title: 'Pending Approval',     value: pending,  description: 'Awaiting action', icon: <Clock className="size-4" />,         filterStatus: 'Pending' },
+        { title: 'Total Leave Requests', value: total,    description: 'All time',        icon: <ClipboardList className="size-4 text-primary" />, filterStatus: '' },
+        { title: 'Approved Leaves',      value: approved, description: total > 0 ? `${((approved / total) * 100).toFixed(1)}% approval rate` : 'No requests yet', icon: <CalendarCheck className="size-4 text-primary" />, filterStatus: 'Approved' },
+        { title: 'Currently On Leave',   value: onLeave,  description: 'As of today',     icon: <Umbrella className="size-4 text-primary" />,      filterStatus: '' },
+        { title: 'Pending Approval',     value: pending,  description: 'Awaiting action', icon: <Clock className="size-4 text-primary" />,         filterStatus: 'Pending' },
     ];
 
     return (

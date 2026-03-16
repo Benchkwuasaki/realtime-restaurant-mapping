@@ -426,15 +426,15 @@ export default function AttendanceReportIndex({
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <StatCard title="Total Employees" value={s.total_employees} description="Active headcount"
-                        icon={<Users className="w-4 h-4 m-2 " />} />
+                        icon={<Users className="w-4 h-4 m-2 text-primary" />} />
                     <StatCard title="Present Today" value={s.present_today} description="Clocked in or active"
-                        icon={<UserCheck className="w-4 h-4 m-2" style={COLOR.present} />} />
+                        icon={<UserCheck className="w-4 h-4 m-2 text-primary"/>} />
                     <StatCard title="Half Day" value={s.half_day_today} description="Left before time out"
-                        icon={<Coffee className="w-4 h-4 m-2" style={COLOR.halfDay} />} />
+                        icon={<Coffee className="w-4 h-4 m-2 text-primary"/>} />
                     <StatCard title="Late Today" value={s.late_today} description="Arrived after schedule"
-                        icon={<AlertTriangle className="w-4 h-4 m-2" style={COLOR.late} />} />
+                        icon={<AlertTriangle className="w-4 h-4 m-2 text-primary" />} />
                     <StatCard title="Absent Today" value={s.absent_today} description="No attendance recorded"
-                        icon={<UserX className="w-4 h-4 m-2" style={COLOR.absent} />} />
+                        icon={<UserX className="w-4 h-4 m-2 text-primary" />} />
                 </div>
 
                 <Card className="border-l-4" style={rateAccentStyle}>

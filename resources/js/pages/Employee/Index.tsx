@@ -44,7 +44,7 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
                         title="Total Employees"
                         value={totalEmployees}
                         description="All registered employees"
-                        icon={<Users className="size-5 m-2" />}
+                        icon={<Users className="size-5 m-2 text-primary" />}
                     />
                     <StatCard
                         title="Active Employees"
@@ -56,7 +56,7 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
                         title="Inactive Employees"
                         value={inactiveEmployees}
                         description="On leave or inactive"
-                        icon={<UserX className="size-5 m-2 text-destructive" />}
+                        icon={<UserX className="size-5 m-2 text-primary" />}
                     />
                 </div>
 

@@ -395,19 +395,19 @@ export default function LeaveCalendarIndex({ leaves = DUMMY_LEAVES }: Props) {
                         title="On Leave Today"
                         value={onLeaveToday}
                         description="Total Employees on Leave Today"
-                        icon={<Users className="size-4" />}
+                        icon={<Users className="size-4 text-primary" />}
                     />
                     <StatCard
                         title="Pending Approval"
                         value={pendingCount}
                         description="Leave requests awaiting action"
-                        icon={<CalendarClock className="size-4" />}
+                        icon={<CalendarClock className="size-4 text-primary" />}
                     />
                     <StatCard
                         title="Approved This Month"
                         value={approvedCount}
                         description="Leaves approved"
-                        icon={<CalendarCheck className="size-4" />}
+                        icon={<CalendarCheck className="size-4 text-primary" />}
                     />
                 </div>
 
