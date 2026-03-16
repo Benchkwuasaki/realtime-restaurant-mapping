@@ -1341,7 +1341,7 @@ export default function Index({
 
                 <Stepper
                     steps={steps}
-                    currentStep={currentStep - 1}
+                    currentStep={isFinalized ? steps.length : currentStep - 1}
                     onStepChange={() => {}}
                 />
 

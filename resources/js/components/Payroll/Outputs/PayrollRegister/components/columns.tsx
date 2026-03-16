@@ -154,12 +154,7 @@ export const columns: DataTableColumnDef<Period>[] = [
             const status = getValue() as string;
             return (
                 <Badge
-                    variant="outline"
-                    className={
-                        status === 'Closed'
-                            ? 'border-green-500 text-green-600'
-                            : 'border-blue-500 text-blue-600'
-                    }
+                    variant={status === 'Closed' ? 'green' : 'blue'}
                 >
                     {status}
                 </Badge>
@@ -169,30 +164,5 @@ export const columns: DataTableColumnDef<Period>[] = [
         enableHiding: true,
         filterFn: (row, _id, filterValues: string[]) =>
             filterValues.includes(row.original.status),
-    },
-    {
-        id: 'actions',
-        header: 'Actions',
-        enableHiding: false,
-        enableSorting: false,
-        cell: ({ row }) => (
-            <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-cyan-600 hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-cyan-950"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    router.visit(
-                        route(
-                            'payroll-register.show',
-                            row.original.payroll_period_id,
-                        ),
-                    );
-                }}
-            >
-                <FileText className="h-3.5 w-3.5" />
-                View Register
-            </Button>
-        ),
     },
 ];

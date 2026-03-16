@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import { route } from 'ziggy-js';
+import { StatCard as SharedStatCard } from '@/components/shared/stat-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -21,14 +22,18 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import {
-    Download,
+    Printer,
     Calendar,
     Landmark,
     AlertCircle,
     Filter,
+    TrendingUp,
+    TrendingDown,
+    Users,
+    Receipt,
     Info,
 } from 'lucide-react';
 import type { BreadcrumbItem } from '@/types';
@@ -357,6 +362,29 @@ const formatCurrency = (amount: number) =>
         currency: 'PHP',
         minimumFractionDigits: 2,
     }).format(amount);
+
+// Local wrapper — lets us pass formatted currency strings without touching the
+// shared StatCard component (which expects value: number).
+function StatCard({
+    title,
+    value,
+    description,
+    icon,
+}: {
+    title: string;
+    value: number | string;
+    description?: string;
+    icon: React.ReactNode;
+}) {
+    return (
+        <SharedStatCard
+            title={title}
+            value={typeof value === 'number' ? value : (value as any)}
+            description={description}
+            icon={icon}
+        />
+    );
+}
 
 interface AgencyTableProps {
     agencyId: string;
@@ -727,50 +755,40 @@ function AgencyTable({
     );
 }
 
-// ── UPDATED Signature Section ─────────────────────────────────────────────────
-
 interface SignatureSectionProps {
     isPrintView?: boolean;
     userName?: string;
+    preparedDate?: string;
 }
 
 function SignatureSection({
     isPrintView = false,
     userName = 'Admin User',
+    preparedDate = '',
 }: SignatureSectionProps) {
     if (isPrintView) {
         return (
             <div className="print-signature">
                 <div className="signature-block">
                     <p className="signature-label">PREPARED BY:</p>
-                    <p className="mt-2 text-sm font-medium">{userName}</p>
-                    <div className="signature-field mt-4" />
-                    <p className="text-xs text-muted-foreground">
-                        Signature over Printed Name
-                    </p>
-                    <p className="date-field mt-1 text-xs">
-                        Date: _______________
-                    </p>
+                    <p style={{ fontSize: '12px', fontWeight: '600', margin: '30px 0 0 0' }}>{userName}</p>
+                    <div style={{ borderTop: '1px solid #000', width: '100%', margin: '2px 0 5px 0' }} />
+                    <p style={{ fontSize: '10px', color: '#666' }}>Signature over Printed Name</p>
+                    <p className="date-field">Date: {preparedDate}</p>
                 </div>
                 <div className="signature-block">
                     <p className="signature-label">REVIEWED BY:</p>
-                    <div className="signature-field mt-8" />
-                    <p className="text-xs text-muted-foreground">
-                        Signature over Printed Name
-                    </p>
-                    <p className="date-field mt-1 text-xs">
-                        Date: _______________
-                    </p>
+                    <p style={{ fontSize: '12px', margin: '30px 0 0 0', visibility: 'hidden' }}>placeholder</p>
+                    <div style={{ borderTop: '1px solid #000', width: '100%', margin: '2px 0 5px 0' }} />
+                    <p style={{ fontSize: '10px', color: '#666' }}>Signature over Printed Name</p>
+                    <p className="date-field">Date: _______________</p>
                 </div>
                 <div className="signature-block">
                     <p className="signature-label">APPROVED BY:</p>
-                    <div className="signature-field mt-8" />
-                    <p className="text-xs text-muted-foreground">
-                        Signature over Printed Name
-                    </p>
-                    <p className="date-field mt-1 text-xs">
-                        Date: _______________
-                    </p>
+                    <p style={{ fontSize: '12px', margin: '30px 0 0 0', visibility: 'hidden' }}>placeholder</p>
+                    <div style={{ borderTop: '1px solid #000', width: '100%', margin: '2px 0 5px 0' }} />
+                    <p style={{ fontSize: '10px', color: '#666' }}>Signature over Printed Name</p>
+                    <p className="date-field">Date: _______________</p>
                 </div>
             </div>
         );
@@ -780,24 +798,28 @@ function SignatureSection({
         <div className="no-print mt-10">
             <Separator className="mb-8" />
             <div className="grid grid-cols-3 gap-8">
-                {['Prepared by', 'Reviewed by', 'Approved by'].map((label) => (
-                    <div key={label} className="flex flex-col gap-2">
-                        <p className="text-sm font-semibold text-foreground">
+                {[
+                    { label: 'Prepared by', name: userName, showDate: true },
+                    { label: 'Reviewed by', name: '', showDate: false },
+                    { label: 'Approved by', name: '', showDate: false },
+                ].map(({ label, name, showDate }) => (
+                    <div key={label} className="flex flex-col">
+                        <p className="text-sm font-semibold text-foreground mb-6">
                             {label}:
                         </p>
-                        {label === 'Prepared by' && (
-                            <p className="text-sm text-muted-foreground">
-                                {userName}
+                        <div className="flex-1" />
+                        {name && (
+                            <p className="text-sm font-medium text-foreground mb-0.5">
+                                {name}
                             </p>
                         )}
-                        <div className="mt-4 border-t border-gray-400 pt-1">
-                            <p className="text-xs text-muted-foreground">
-                                Signature over Printed Name
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                Date: _______________
-                            </p>
-                        </div>
+                        <div style={{ borderTop: '1.5px solid #000' }} className="w-full" />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            Signature over Printed Name
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            Date: {showDate ? preparedDate : '_______________'}
+                        </p>
                     </div>
                 ))}
             </div>
@@ -838,14 +860,19 @@ export default function GovernmentRemittanceReport({
         setEmployeeTypeFilter(currentEmployeeTypeFilter);
     }, [currentEmployeeTypeFilter]);
 
-    // Periods from the backend are already 2nd cut-off only — one per month.
-    // Display just the month name (e.g. "June 2026") instead of the date range.
+    // ── CHANGE: deduplicate by monthLabel instead of id ──────────────────────
     const monthPeriods = useMemo(() => {
-        const seen = new Set<number>();
+        const seen = new Set<string>();
         return periods
             .filter((p) => {
-                if (seen.has(p.id)) return false;
-                seen.add(p.id);
+                const label = new Date(
+                    p.end_date + 'T00:00:00',
+                ).toLocaleDateString('en-PH', {
+                    month: 'long',
+                    year: 'numeric',
+                });
+                if (seen.has(label)) return false;
+                seen.add(label);
                 return true;
             })
             .map((p) => ({
@@ -941,9 +968,14 @@ export default function GovernmentRemittanceReport({
             minute: '2-digit',
         });
 
+    const preparedDate = new Date().toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    });
+
     const hasSelectedPeriod = selectedPeriod !== null;
 
-    // Derive the month name from the period's end_date (2nd cut-off determines the month)
     const monthLabel = selectedPeriod
         ? new Date(selectedPeriod.end_date + 'T00:00:00').toLocaleDateString(
               'en-PH',
@@ -1016,12 +1048,12 @@ export default function GovernmentRemittanceReport({
                         Government Remittance Report
                     </h1>
                     <Button
-                        className={`${hasSelectedPeriod ? 'bg-blue-600 hover:bg-blue-700' : 'cursor-not-allowed bg-gray-400'} text-white`}
+                        variant="default"
                         onClick={handleExport}
                         disabled={!hasSelectedPeriod}
                     >
-                        <Download className="mr-2 h-4 w-4" />
-                        Export
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print
                     </Button>
                 </div>
 
@@ -1060,43 +1092,17 @@ export default function GovernmentRemittanceReport({
                                     <Filter className="h-3.5 w-3.5" />
                                     <span>Show:</span>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() =>
-                                            handleEmployeeTypeFilter('all')
-                                        }
-                                        className={`rounded-md px-2 py-1 text-sm transition-colors ${
-                                            employeeTypeFilter === 'all'
-                                                ? 'bg-muted font-medium text-foreground'
-                                                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                                        }`}
-                                    >
-                                        All
-                                    </button>
-                                    <button
-                                        onClick={() =>
-                                            handleEmployeeTypeFilter('regular')
-                                        }
-                                        className={`rounded-md px-2 py-1 text-sm transition-colors ${
-                                            employeeTypeFilter === 'regular'
-                                                ? 'bg-muted font-medium text-foreground'
-                                                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                                        }`}
-                                    >
-                                        Regular
-                                    </button>
-                                    <button
-                                        onClick={() =>
-                                            handleEmployeeTypeFilter('casual')
-                                        }
-                                        className={`rounded-md px-2 py-1 text-sm transition-colors ${
-                                            employeeTypeFilter === 'casual'
-                                                ? 'bg-muted font-medium text-foreground'
-                                                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                                        }`}
-                                    >
-                                        Casual
-                                    </button>
+                                <div className="flex gap-1">
+                                    {(['all', 'regular', 'casual'] as const).map((type) => (
+                                        <Button
+                                            key={type}
+                                            size="sm"
+                                            variant={employeeTypeFilter === type ? 'secondary' : 'ghost'}
+                                            onClick={() => handleEmployeeTypeFilter(type)}
+                                        >
+                                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                                        </Button>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -1169,25 +1175,10 @@ export default function GovernmentRemittanceReport({
                     </CardContent>
                 </Card>
 
-                {/* {hasSelectedPeriod && (
-                    <div className="no-print flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-500" />
-                        <p>
-                            Amounts shown are{' '}
-                            <span className="font-semibold">
-                                total monthly contributions for {monthLabel}
-                            </span>{' '}
-                            — covering both the 1st and 2nd cut-off of the
-                            month. Employee and employer shares displayed are
-                            the combined remittance due for that month.
-                        </p>
-                    </div>
-                )} */}
-
                 {!hasSelectedPeriod ? (
-                    <Card className="no-print border-2 border-dashed py-16">
+                    <Card className="no-print border border-dashed py-16">
                         <CardContent className="text-center">
-                            <Calendar className="mx-auto mb-4 h-16 w-16 text-muted-foreground/50" />
+                            <Calendar className="mx-auto mb-4 h-10 w-10 text-muted-foreground/50" />
                             <p className="mb-2 text-xl font-medium text-muted-foreground">
                                 No Payroll Period Selected
                             </p>
@@ -1213,57 +1204,42 @@ export default function GovernmentRemittanceReport({
                 ) : (
                     <>
                         <div className="no-print grid grid-cols-1 gap-4 md:grid-cols-4">
-                            {[
-                                {
-                                    label:
-                                        activeTab === 'all'
-                                            ? 'Total Employee Deductions'
-                                            : `${remittances[activeTab]?.agency_name} Employee Share`,
-                                    value: currentSummary.employee_deductions,
-                                    isCount: false,
-                                },
-                                {
-                                    label:
-                                        activeTab === 'all'
-                                            ? 'Total Employer Payment'
-                                            : `${remittances[activeTab]?.agency_name} Employer Share`,
-                                    value: currentSummary.employer_payment,
-                                    isCount: false,
-                                },
-                                {
-                                    label:
-                                        activeTab === 'all'
-                                            ? 'Total Remittance'
-                                            : `${remittances[activeTab]?.agency_name} Total`,
-                                    value: currentSummary.total_remit,
-                                    isCount: false,
-                                },
-                                {
-                                    label: 'Employees Covered',
-                                    value: currentSummary.employees_covered,
-                                    isCount: true,
-                                },
-                            ].map(({ label, value, isCount }) => (
-                                <Card key={label}>
-                                    <CardContent className="pt-6">
-                                        <p className="text-sm text-muted-foreground">
-                                            {label}
-                                        </p>
-                                        <p className="mt-2 text-2xl font-bold tabular-nums">
-                                            {isCount
-                                                ? value
-                                                : formatCurrency(
-                                                      value as number,
-                                                  )}
-                                        </p>
-                                        {!isCount && (
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                Monthly — {monthLabel}
-                                            </p>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            ))}
+                            <StatCard
+                                icon={<TrendingDown className="h-4 w-4" />}
+                                title={
+                                    activeTab === 'all'
+                                        ? 'Total Employee Deductions'
+                                        : `${remittances[activeTab]?.agency_name} Employee Share`
+                                }
+                                value={formatCurrency(currentSummary.employee_deductions)}
+                                description={`Monthly — ${monthLabel}`}
+                            />
+                            <StatCard
+                                icon={<TrendingUp className="h-4 w-4" />}
+                                title={
+                                    activeTab === 'all'
+                                        ? 'Total Employer Payment'
+                                        : `${remittances[activeTab]?.agency_name} Employer Share`
+                                }
+                                value={formatCurrency(currentSummary.employer_payment)}
+                                description={`Monthly — ${monthLabel}`}
+                            />
+                            <StatCard
+                                icon={<Receipt className="h-4 w-4" />}
+                                title={
+                                    activeTab === 'all'
+                                        ? 'Total Remittance'
+                                        : `${remittances[activeTab]?.agency_name} Total`
+                                }
+                                value={formatCurrency(currentSummary.total_remit)}
+                                description={`Monthly — ${monthLabel}`}
+                            />
+                            <StatCard
+                                icon={<Users className="h-4 w-4" />}
+                                title="Employees Covered"
+                                value={currentSummary.employees_covered}
+                                description={monthLabel}
+                            />
                         </div>
 
                         <Tabs
@@ -1330,7 +1306,7 @@ export default function GovernmentRemittanceReport({
                                         </Card>
                                     )}
                                 <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'}
+                                    userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate}
                                 />
                             </TabsContent>
 
@@ -1357,7 +1333,7 @@ export default function GovernmentRemittanceReport({
                                     </Card>
                                 )}
                                 <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'}
+                                    userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate}
                                 />
                             </TabsContent>
 
@@ -1386,7 +1362,7 @@ export default function GovernmentRemittanceReport({
                                     </Card>
                                 )}
                                 <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'}
+                                    userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate}
                                 />
                             </TabsContent>
 
@@ -1414,7 +1390,7 @@ export default function GovernmentRemittanceReport({
                                     </Card>
                                 )}
                                 <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'}
+                                    userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate}
                                 />
                             </TabsContent>
 
@@ -1456,7 +1432,7 @@ export default function GovernmentRemittanceReport({
                                     </Card>
                                 )}
                                 <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'}
+                                    userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate}
                                 />
                             </TabsContent>
                         </Tabs>
@@ -1512,6 +1488,7 @@ export default function GovernmentRemittanceReport({
                                     />
                                     <SignatureSection
                                         isPrintView={true}
+                                        preparedDate={preparedDate}
                                         userName={
                                             auth.user?.name || 'Admin User'
                                         }
@@ -1543,6 +1520,7 @@ export default function GovernmentRemittanceReport({
                                     ))}
                                     <SignatureSection
                                         isPrintView={true}
+                                        preparedDate={preparedDate}
                                         userName={
                                             auth.user?.name || 'Admin User'
                                         }
@@ -1558,208 +1536,89 @@ export default function GovernmentRemittanceReport({
                         open={true}
                         onOpenChange={() => setSelectedEmployee(null)}
                     >
-                        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
-                            <div className="border-b px-6 py-4">
-                                <DialogTitle className="text-xl font-semibold">
-                                    {selectedEmployee.name}
-                                </DialogTitle>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    {selectedEmployee.position} ·{' '}
-                                    {selectedEmployee.classification}
-                                    {selectedEmployee.employee_type && (
-                                        <Badge
-                                            className={
-                                                selectedEmployee.employee_type ===
-                                                'regular'
-                                                    ? 'ml-2 bg-green-100 text-green-800'
-                                                    : 'ml-2 bg-amber-100 text-amber-800'
-                                            }
-                                        >
-                                            {selectedEmployee.employee_type}
-                                        </Badge>
-                                    )}
+                        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
+                            {/* Header */}
+                            <DialogHeader className="border-b px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                    <DialogTitle className="text-base font-semibold">
+                                        {selectedEmployee.name}
+                                    </DialogTitle>
+                                    <Badge
+                                        variant="outline"
+                                        className={
+                                            selectedEmployee.employee_type === 'regular'
+                                                ? 'border-green-200 bg-green-50 text-green-700'
+                                                : 'border-amber-200 bg-amber-50 text-amber-700'
+                                        }
+                                    >
+                                        {selectedEmployee.employee_type ?? selectedEmployee.classification}
+                                    </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    {selectedEmployee.position}
                                 </p>
-                            </div>
+                            </DialogHeader>
 
                             <div className="grid grid-cols-2 divide-x">
-                                <div className="space-y-6 p-6">
-                                    <div>
-                                        <h3 className="mb-4 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                            Employee Information
-                                        </h3>
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm text-muted-foreground">
-                                                    Employee ID
-                                                </span>
-                                                <Badge
-                                                    variant="outline"
-                                                    className="bg-slate-100"
-                                                >
-                                                    {selectedEmployee.id}
-                                                </Badge>
-                                            </div>
-                                            <Separator />
-                                            <div className="flex items-start justify-between">
-                                                <span className="text-sm text-muted-foreground">
-                                                    Position
-                                                </span>
-                                                <span className="max-w-[200px] text-right text-sm font-medium">
-                                                    {selectedEmployee.position}
-                                                </span>
-                                            </div>
-                                            <Separator />
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm text-muted-foreground">
-                                                    Classification
-                                                </span>
-                                                <Badge
-                                                    variant="outline"
-                                                    className={
-                                                        selectedEmployee.employee_type ===
-                                                        'regular'
-                                                            ? 'border-green-200 bg-green-50 text-green-700'
-                                                            : selectedEmployee.employee_type ===
-                                                                'casual'
-                                                              ? 'border-amber-200 bg-amber-50 text-amber-700'
-                                                              : 'border-blue-200 bg-blue-50 text-blue-700'
-                                                    }
-                                                >
-                                                    {
-                                                        selectedEmployee.classification
-                                                    }
-                                                </Badge>
-                                            </div>
+                                {/* Left — Employee & Earnings */}
+                                <div className="p-6 space-y-4">
+                                    <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                                        Details
+                                    </p>
+                                    {[
+                                        { label: 'Employee ID', value: String(selectedEmployee.id) },
+                                        { label: 'Position', value: selectedEmployee.position },
+                                        { label: 'Basic Pay (Monthly)', value: formatCurrency(selectedEmployee.basicPay) },
+                                    ].map(({ label, value }) => (
+                                        <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                                            <span className="text-sm text-muted-foreground">{label}</span>
+                                            <span className="text-sm font-medium text-foreground tabular-nums">{value}</span>
                                         </div>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="mb-4 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                            Earnings
-                                        </h3>
-                                        <div className="rounded-lg bg-blue-50/30 p-5">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Basic Pay
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Monthly
-                                                    </p>
-                                                </div>
-                                                <span className="text-2xl font-bold text-blue-700 tabular-nums">
-                                                    {formatCurrency(
-                                                        selectedEmployee.basicPay,
-                                                    )}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <Separator className="my-4" />
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium">
-                                                Total Monthly Earnings
-                                            </span>
-                                            <span className="text-xl font-bold text-blue-600 tabular-nums">
-                                                {formatCurrency(
-                                                    selectedEmployee.basicPay,
-                                                )}
-                                            </span>
-                                        </div>
-                                    </div>
+                                    ))}
                                 </div>
 
-                                <div className="space-y-6 p-6">
-                                    <div>
-                                        <div className="mb-4 flex items-center justify-between">
-                                            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                                {getAgencyDisplayName(
-                                                    selectedEmployee.agency,
-                                                )}{' '}
-                                                Contribution
-                                            </h3>
-                                            <Badge
-                                                variant="outline"
-                                                className="border-purple-200 bg-purple-50 text-purple-700"
-                                            >
-                                                {getRateDescription(
-                                                    selectedEmployee.agency,
-                                                )}
-                                            </Badge>
+                                {/* Right — Contribution */}
+                                <div className="p-6 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                                            {getAgencyDisplayName(selectedEmployee.agency)} Contribution
+                                        </p>
+                                        <span className="text-xs text-muted-foreground">
+                                            {getRateDescription(selectedEmployee.agency)}
+                                        </span>
+                                    </div>
+                                    {[
+                                        { label: 'Employee Share', sub: 'deducted from salary', value: formatCurrency(selectedEmployee.employeeShare) },
+                                        { label: 'Employer Share', sub: 'company contribution', value: formatCurrency(selectedEmployee.employerShare) },
+                                    ].map(({ label, sub, value }) => (
+                                        <div key={label} className="flex items-center justify-between py-2 border-b border-border/50">
+                                            <div>
+                                                <p className="text-sm font-medium text-foreground">{label}</p>
+                                                <p className="text-xs text-muted-foreground">{sub}</p>
+                                            </div>
+                                            <span className="text-sm font-semibold tabular-nums">{value}</span>
                                         </div>
-
-                                        <div className="space-y-4">
-                                            <div className="rounded-lg bg-red-50/30 p-5">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <p className="text-sm font-medium text-red-700">
-                                                            Employee Share
-                                                        </p>
-                                                        <p className="mt-1 text-xs text-muted-foreground">
-                                                            deducted from salary
-                                                        </p>
-                                                    </div>
-                                                    <span className="text-2xl font-bold text-red-600 tabular-nums">
-                                                        {formatCurrency(
-                                                            selectedEmployee.employeeShare,
-                                                        )}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div className="rounded-lg bg-amber-50/30 p-5">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <p className="text-sm font-medium text-amber-700">
-                                                            Employer Share
-                                                        </p>
-                                                        <p className="mt-1 text-xs text-muted-foreground">
-                                                            company contribution
-                                                        </p>
-                                                    </div>
-                                                    <span className="text-2xl font-bold text-amber-600 tabular-nums">
-                                                        {formatCurrency(
-                                                            selectedEmployee.employerShare,
-                                                        )}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <Separator />
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-sm font-medium">
-                                                        Total Monthly
-                                                        Contribution
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        employee + employer
-                                                    </p>
-                                                </div>
-                                                <span className="text-2xl font-bold text-purple-600 tabular-nums">
-                                                    {formatCurrency(
-                                                        selectedEmployee.subtotal,
-                                                    )}
-                                                </span>
-                                            </div>
+                                    ))}
+                                    <div className="flex items-center justify-between pt-1">
+                                        <div>
+                                            <p className="text-sm font-semibold text-foreground">Total</p>
+                                            <p className="text-xs text-muted-foreground">employee + employer</p>
                                         </div>
+                                        <span className="text-base font-bold tabular-nums">
+                                            {formatCurrency(selectedEmployee.subtotal)}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="border-t bg-muted/20 px-6 py-3">
-                                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                    <span>
-                                        Payroll Period:{' '}
-                                        {selectedPeriod?.label || 'N/A'}
-                                    </span>
+                            <DialogFooter className="border-t bg-muted/20 px-6 py-3">
+                                <div className="flex w-full items-center justify-between text-xs text-muted-foreground">
+                                    <span>Payroll Period: {selectedPeriod?.label || 'N/A'}</span>
                                     <span className="font-medium">
-                                        {getAgencyDisplayName(
-                                            selectedEmployee.agency,
-                                        )}{' '}
-                                        Remittance
+                                        {getAgencyDisplayName(selectedEmployee.agency)} Remittance
                                     </span>
                                 </div>
-                            </div>
+                            </DialogFooter>
                         </DialogContent>
                     </Dialog>
                 )}
