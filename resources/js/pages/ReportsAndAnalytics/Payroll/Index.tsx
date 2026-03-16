@@ -7,6 +7,11 @@ import {
     Area, ComposedChart, ResponsiveContainer, Line, LineChart,
 } from 'recharts';
 import { useState, useMemo } from 'react';
+import { Banknote, Users, CalendarDays, Minus, CircleCheck, Download } from 'lucide-react';
+import { StatCard } from '@/components/shared/stat-card';
+import { DataTable } from '@/components/shared/data-table/data-table';
+import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
+import { type DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -217,31 +222,30 @@ function FilterBar({
    1. KPI STRIP
 ══════════════════════════════════════════ */
 function KpiStrip({ records }: { records: PayrollRecord[] }) {
-    const totalGross   = records.reduce((s, r) => s + r.basicPay + r.allowance, 0);
-    const totalDed     = records.reduce((s, r) => s + r.gsis + r.philhealth + r.pagibig + r.withholding + r.otherDeductions, 0);
-    const totalNet     = totalGross - totalDed;
-    const empCount     = records.length;
-    const nextPayDate  = 'April 15, 2026';
+    const totalGross  = records.reduce((s, r) => s + r.basicPay + r.allowance, 0);
+    const totalDed    = records.reduce((s, r) => s + r.gsis + r.philhealth + r.pagibig + r.withholding + r.otherDeductions, 0);
+    const totalNet    = totalGross - totalDed;
+    const empCount    = records.length;
+    const nextPayDate = 'April 15, 2026';
 
     const kpis = [
-        { label: 'Total Gross Payroll', value: fK(totalGross),  accent: blue,    bg: '#eff6ff', icon: '💰' },
-        { label: 'No. of Employees',    value: String(empCount), accent: emerald, bg: '#f0fdf4', icon: '👥' },
-        { label: 'Next Payroll Date',   value: 'Apr 15',         accent: violet,  bg: '#f5f3ff', icon: '📅', sub: nextPayDate },
-        { label: 'Total Deductions',    value: fK(totalDed),     accent: red,     bg: '#fef2f2', icon: '➖' },
-        { label: 'Total Net Pay',       value: fK(totalNet),     accent: cyan,    bg: '#ecfeff', icon: '✅' },
+        { label: 'Total Gross Payroll', value: fK(totalGross),  description: 'Current period total',            icon: <Banknote    className="size-4 m-1" /> },
+        { label: 'No. of Employees',    value: String(empCount), description: 'Active this period',              icon: <Users       className="size-4 m-1" /> },
+        { label: 'Next Payroll Date',   value: 'Apr 15',         description: nextPayDate,                       icon: <CalendarDays className="size-4 m-1" /> },
+        { label: 'Total Deductions',    value: fK(totalDed),     description: 'SSS, PhilHealth, Pag-IBIG & Tax', icon: <Minus       className="size-4 m-1" /> },
+        { label: 'Total Net Pay',       value: fK(totalNet),     description: 'Take-home this period',           icon: <CircleCheck className="size-4 m-1" /> },
     ];
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {kpis.map(k => (
-                <div key={k.label} style={{ background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)', borderLeft: `4px solid ${k.accent}`, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-                    <div style={{ background: k.bg, borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10, fontSize: 16 }}>
-                        {k.icon}
-                    </div>
-                    <div style={{ fontSize: k.label === 'No. of Employees' ? 26 : 18, fontWeight: 900, color: 'var(--foreground)', lineHeight: 1 }}>{k.value}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 4 }}>{k.label}</div>
-                    {k.sub && <div style={{ fontSize: 10, color: k.accent, fontWeight: 600, marginTop: 3 }}>{k.sub}</div>}
-                </div>
+                <StatCard
+                    key={k.label}
+                    title={k.label}
+                    value={k.value}
+                    description={k.description}
+                    icon={k.icon}
+                />
             ))}
         </div>
     );
@@ -462,15 +466,88 @@ function GovtRemittances({ records }: { records: PayrollRecord[] }) {
 //     );
 // }
 
+
+
 /* ══════════════════════════════════════════
    7. PAYROLL STATUS REPORT + TABLE
 ══════════════════════════════════════════ */
+const PAYROLL_COLUMNS: DataTableColumnDef<PayrollRecord>[] = [
+    {
+        accessorKey: 'id',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Emp ID" />,
+        cell: ({ row }) => (
+            <span className="font-mono text-xs font-bold" style={{ color: blue }}>{row.getValue('id')}</span>
+        ),
+    },
+    {
+        accessorKey: 'name',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+        cell: ({ row }) => <span className="font-semibold">{row.getValue('name')}</span>,
+    },
+    {
+        accessorKey: 'department',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Department" />,
+        cell: ({ row }) => <span className="text-muted-foreground">{row.getValue('department')}</span>,
+    },
+    {
+        accessorKey: 'type',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
+        cell: ({ row }) => {
+            const t = row.getValue('type') as string;
+            return <span className="text-xs font-bold" style={{ color: TYPE_COLORS[t] ?? slate }}>{t}</span>;
+        },
+        filterFn: (row, id, values: string[]) => values.includes(row.getValue(id)),
+    },
+    {
+        accessorKey: 'basicPay',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Basic Pay" />,
+        cell: ({ row }) => <span className="font-mono text-xs">{fPeso(row.getValue('basicPay'))}</span>,
+    },
+    {
+        accessorKey: 'allowance',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Allowance" />,
+        cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{fPeso(row.getValue('allowance'))}</span>,
+    },
+    {
+        accessorKey: 'gsis',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="GSIS" />,
+        cell: ({ row }) => <span className="font-mono text-xs" style={{ color: red }}>{fPeso(row.getValue('gsis'))}</span>,
+    },
+    {
+        accessorKey: 'philhealth',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="PhilHealth" />,
+        cell: ({ row }) => <span className="font-mono text-xs" style={{ color: red }}>{fPeso(row.getValue('philhealth'))}</span>,
+    },
+    {
+        accessorKey: 'pagibig',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Pag-IBIG" />,
+        cell: ({ row }) => <span className="font-mono text-xs" style={{ color: red }}>{fPeso(row.getValue('pagibig'))}</span>,
+    },
+    {
+        accessorKey: 'withholding',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="W/Tax" />,
+        cell: ({ row }) => <span className="font-mono text-xs" style={{ color: red }}>{fPeso(row.getValue('withholding'))}</span>,
+    },
+    {
+        accessorKey: 'status',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+        cell: ({ row }) => statusBadge(row.getValue('status')),
+        filterFn: (row, id, values: string[]) => values.includes(row.getValue(id)),
+    },
+];
+
 function PayrollStatusReport({ records }: { records: PayrollRecord[] }) {
-    const [search,  setSearch]  = useState('');
-    const [sortKey, setSortKey] = useState<keyof PayrollRecord>('id');
-    const [sortDir, setSortDir] = useState<1 | -1>(1);
-    const [page,    setPage]    = useState(1);
-    const PER_PAGE = 12;
+    const total = records.length;
+
+    const exportCSV = () => {
+        const cols: (keyof PayrollRecord)[] = ['id','name','department','type','status','basicPay','allowance','gsis','philhealth','pagibig','withholding','otherDeductions'];
+        const rows = [cols.join(','), ...records.map(r => cols.map(c => `"${r[c]}"`).join(','))];
+        const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'payroll-status.csv';
+        a.click();
+    };
 
     const STATUS_CFG: Record<string, { color: string; bg: string; border: string }> = {
         Processed: { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
@@ -479,46 +556,11 @@ function PayrollStatusReport({ records }: { records: PayrollRecord[] }) {
         'On Hold': { color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
     };
 
-    const filtered = useMemo(() => {
-        let r = records;
-        if (search) r = r.filter(e => [e.id, e.name, e.department].join(' ').toLowerCase().includes(search.toLowerCase()));
-        return [...r].sort((a, b) => {
-            const av = a[sortKey], bv = b[sortKey];
-            return typeof av === 'number' ? (av - (bv as number)) * sortDir : String(av).localeCompare(String(bv)) * sortDir;
-        });
-    }, [records, search, sortKey, sortDir]);
-
-    const pages   = Math.ceil(filtered.length / PER_PAGE);
-    const visible = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
-    const sort = (k: keyof PayrollRecord) => {
-        if (sortKey === k) setSortDir(d => (d === 1 ? -1 : 1));
-        else { setSortKey(k); setSortDir(1); }
-        setPage(1);
-    };
-
-    const exportCSV = () => {
-        const cols: (keyof PayrollRecord)[] = ['id','name','department','type','status','basicPay','allowance','gsis','philhealth','pagibig','withholding','otherDeductions'];
-        const rows = [cols.join(','), ...filtered.map(r => cols.map(c => `"${r[c]}"`).join(','))];
-        const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = 'payroll-status.csv'; a.click();
-    };
-
-    const TH = ({ k, label, w }: { k: keyof PayrollRecord; label: string; w?: number }) => (
-        <th onClick={() => sort(k)}
-            style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none', borderBottom: '2px solid var(--border)', textAlign: 'left', width: w }}>
-            {label} {sortKey === k ? (sortDir === 1 ? '↑' : '↓') : ''}
-        </th>
-    );
-
-    const total = records.length;
-
     return (
         <Card>
-            <SH title="Payroll Status Report" sub={`${filtered.length} of ${total} records`} />
+            <SH title="Payroll Status Report" sub={`${total} total records`} />
 
-            {/* Status summary strip */}
+            {/* Status summary strip — kept exactly as before */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
                 {PAY_STATUSES.map(s => {
                     const cfg   = STATUS_CFG[s];
@@ -530,110 +572,55 @@ function PayrollStatusReport({ records }: { records: PayrollRecord[] }) {
                             <div style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>{s}</div>
                             <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 3 }}>{fK(gross)}</div>
                             <div style={{ marginTop: 6, height: 4, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
-                                <div style={{ width: `${(count/total)*100}%`, height: '100%', background: cfg.color, borderRadius: 2 }} />
+                                <div style={{ width: `${(count / total) * 100}%`, height: '100%', background: cfg.color, borderRadius: 2 }} />
                             </div>
                         </div>
                     );
                 })}
             </div>
 
-            {/* Search + export */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-                <input
-                    placeholder="🔍 Search employee, ID, department…"
-                    value={search}
-                    onChange={e => { setSearch(e.target.value); setPage(1); }}
-                    style={{ flex: 1, border: '1px solid var(--border)', borderRadius: 10, padding: '7px 12px', fontSize: 11, color: 'var(--foreground)', background: 'var(--card)', outline: 'none' }}
-                />
-                <button onClick={exportCSV} style={{ padding: '7px 14px', borderRadius: 10, border: 'none', background: 'var(--foreground)', color: 'var(--background)', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    ⬇ Export CSV
-                </button>
-            </div>
-
-            {/* Table */}
-            <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead style={{ background: 'var(--muted)' }}>
-                        <tr>
-                            <TH k="id"          label="Emp ID"      w={90}  />
-                            <TH k="name"        label="Name"        w={150} />
-                            <TH k="department"  label="Department"  w={110} />
-                            <TH k="type"        label="Type"        w={100} />
-                            <TH k="basicPay"    label="Basic Pay"   w={100} />
-                            <TH k="allowance"   label="Allowance"   w={90}  />
-                            <TH k="gsis"        label="GSIS"        w={80}  />
-                            <TH k="philhealth"  label="PhilHealth"  w={90}  />
-                            <TH k="pagibig"     label="Pag-IBIG"    w={80}  />
-                            <TH k="withholding" label="W/Tax"       w={80}  />
-                            <TH k="status"      label="Status"      w={100} />
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {visible.map((r, i) => {
-                            const gross = r.basicPay + r.allowance;
-                            const ded   = r.gsis + r.philhealth + r.pagibig + r.withholding + r.otherDeductions;
-                            const net   = gross - ded;
-                            return (
-                                <tr key={r.id}
-                                    style={{ background: i % 2 === 0 ? 'var(--card)' : 'var(--muted)' }}
-                                    onMouseEnter={ev => (ev.currentTarget.style.background = 'var(--muted)')}
-                                    onMouseLeave={ev => (ev.currentTarget.style.background = i % 2 === 0 ? 'var(--card)' : 'var(--muted)')}>
-                                    <td style={{ padding: '8px 12px', fontWeight: 700, color: blue, fontFamily: 'monospace', fontSize: 11 }}>{r.id}</td>
-                                    <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--foreground)' }}>{r.name}</td>
-                                    <td style={{ padding: '8px 12px', color: 'var(--foreground)' }}>{r.department}</td>
-                                    <td style={{ padding: '8px 12px' }}>
-                                        <span style={{ fontSize: 10, fontWeight: 700, color: TYPE_COLORS[r.type] ?? slate }}>{r.type}</span>
-                                    </td>
-                                    <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: 'var(--foreground)' }}>{fPeso(r.basicPay)}</td>
-                                    <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: 'var(--muted-foreground)' }}>{fPeso(r.allowance)}</td>
-                                    <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: red }}>{fPeso(r.gsis)}</td>
-                                    <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: red }}>{fPeso(r.philhealth)}</td>
-                                    <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: red }}>{fPeso(r.pagibig)}</td>
-                                    <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: red }}>{fPeso(r.withholding)}</td>
-                                    <td style={{ padding: '8px 12px' }}>{statusBadge(r.status)}</td>
-                                </tr>
-                            );
-                        })}
-                        {visible.length === 0 && (
-                            <tr><td colSpan={11} style={{ padding: 32, textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 13 }}>No records found</td></tr>
-                        )}
-                    </tbody>
-                    <tfoot style={{ background: 'var(--muted)', borderTop: '2px solid var(--border)' }}>
-                        <tr>
-                            <td colSpan={4} style={{ padding: '10px 12px', fontSize: 12, fontWeight: 700, color: 'var(--foreground)' }}>TOTALS ({filtered.length} employees)</td>
-                            <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--foreground)' }}>{fPeso(filtered.reduce((s,r) => s+r.basicPay,0))}</td>
-                            <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--foreground)' }}>{fPeso(filtered.reduce((s,r) => s+r.allowance,0))}</td>
-                            <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: red }}>{fPeso(filtered.reduce((s,r) => s+r.gsis,0))}</td>
-                            <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: red }}>{fPeso(filtered.reduce((s,r) => s+r.philhealth,0))}</td>
-                            <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: red }}>{fPeso(filtered.reduce((s,r) => s+r.pagibig,0))}</td>
-                            <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: red }}>{fPeso(filtered.reduce((s,r) => s+r.withholding,0))}</td>
-                            <td />
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            {/* Pagination */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
-                <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
-                    Showing {Math.min((page-1)*PER_PAGE+1, filtered.length)}–{Math.min(page*PER_PAGE, filtered.length)} of {filtered.length}
-                </span>
-                <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1}
-                        style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)', fontSize: 11, cursor: page===1?'default':'pointer', opacity: page===1?0.4:1 }}>← Prev</button>
-                    {Array.from({ length: Math.min(5,pages) }, (_,idx) => {
-                        const p = Math.max(1, Math.min(page-2, pages-4)) + idx;
-                        return (
-                            <button key={p} onClick={() => setPage(p)}
-                                style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: page===p?'var(--foreground)':'var(--card)', color: page===p?'var(--background)':'var(--foreground)', fontSize: 11, cursor: 'pointer', fontWeight: page===p?700:400 }}>
-                                {p}
-                            </button>
-                        );
-                    })}
-                    <button onClick={() => setPage(p => Math.min(pages,p+1))} disabled={page===pages}
-                        style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)', fontSize: 11, cursor: page===pages?'default':'pointer', opacity: page===pages?0.4:1 }}>Next →</button>
-                </div>
-            </div>
+            {/* Shared DataTable */}
+            <DataTable
+                columns={PAYROLL_COLUMNS}
+                data={records}
+                getRowId={(row) => row.id}
+                searchColumnId="name"
+                searchPlaceholder="Search employee, ID…"
+                striped
+                addButton={{ label: 'Export CSV', onClick: exportCSV }}
+                filters={[
+                    {
+                        columnId: 'department',
+                        title: 'Department',
+                        options: DEPARTMENTS.map(d => ({ label: d, value: d })),
+                    },
+                    {
+                        columnId: 'type',
+                        title: 'Type',
+                        options: EMP_TYPES.map(t => ({ label: t, value: t })),
+                    },
+                    {
+                        columnId: 'status',
+                        title: 'Status',
+                        options: PAY_STATUSES.map(s => ({ label: s, value: s })),
+                    },
+                ]}
+                footerRow={(rows) => {
+                    const recs = rows.map(r => r.original);
+                    return [
+                        <td key="lbl"  colSpan={4} className="px-4 py-2 text-sm font-semibold text-foreground">
+                            Totals ({rows.length} employees)
+                        </td>,
+                        <td key="basic" className="px-4 py-2 font-mono text-xs font-bold">{fPeso(recs.reduce((s,r) => s+r.basicPay,    0))}</td>,
+                        <td key="allow" className="px-4 py-2 font-mono text-xs font-bold text-muted-foreground">{fPeso(recs.reduce((s,r) => s+r.allowance,   0))}</td>,
+                        <td key="gsis"  className="px-4 py-2 font-mono text-xs font-bold" style={{ color: red }}>{fPeso(recs.reduce((s,r) => s+r.gsis,        0))}</td>,
+                        <td key="ph"    className="px-4 py-2 font-mono text-xs font-bold" style={{ color: red }}>{fPeso(recs.reduce((s,r) => s+r.philhealth,   0))}</td>,
+                        <td key="pag"   className="px-4 py-2 font-mono text-xs font-bold" style={{ color: red }}>{fPeso(recs.reduce((s,r) => s+r.pagibig,      0))}</td>,
+                        <td key="wtax"  className="px-4 py-2 font-mono text-xs font-bold" style={{ color: red }}>{fPeso(recs.reduce((s,r) => s+r.withholding,  0))}</td>,
+                        <td key="st" />,
+                    ];
+                }}
+            />
         </Card>
     );
 }

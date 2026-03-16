@@ -82,7 +82,7 @@ class DashboardController extends Controller
         // ── Monthly leave trend ───────────────────────────────────────────────
 
         $currentYear = now()->year;
-        $monthLabels = ['J', 'F', 'M', 'A', 'My', 'Jn', 'Jl', 'Au', 'S', 'O', 'N', 'D'];
+        $monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
         $monthlyCounts = LeaveApplication::query()
             ->where('status', 'Approved')
@@ -186,7 +186,7 @@ class DashboardController extends Controller
             ->get()
             ->map(fn($r) => [
                 'name' => trim(($r->employee?->basicInfo?->first_name ?? '') . ' ' . ($r->employee?->basicInfo?->last_name ?? '')),
-                'dept' => $r->employee?->item?->position?->department?->department_name ?? '—',
+                'dept' => $r->employee?->item?->position?->department?->department_name ?? '',
                 'min' => (int) $r->late_minutes,
                 'avatar_url' => $r->employee?->avatar_url ?? null,
             ]);

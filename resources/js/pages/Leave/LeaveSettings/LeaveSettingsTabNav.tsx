@@ -34,10 +34,10 @@ export default function LeaveSettingsTabNav({ leave_types, leave_entitlements, t
 
         {/* stat card */}
         <section className="max-w-300 grid  grid-cols-1 lg:grid-cols-4 gap-5 mb-6">
-          <StatCard title="Total Leave Types" value={total_leave_types} description="Total No. of Leave Types" icon={<CalendarDays className="size-4" />} />
-          <StatCard title="Total Paid Leave" value={total_paid} description="Total No. of Paid Leave Types" icon={<HandCoins className="size-4" />} />
-          <StatCard title="Total Convertible Leave" value={total_convertible} description="Total No. of Convertible Leave Types" icon={<IterationCcw className="size-4" />} />
-          <StatCard title="Total Cumulative Leave" value={total_convertible} description="Total No. of Cumulative Leave Types" icon={<PackagePlus className="size-4" />} />
+          <StatCard title="Total Leave Types" value={total_leave_types} description="Total No. of Leave Types" icon={<CalendarDays className="size-4 text-primary" />} />
+          <StatCard title="Total Paid Leave" value={total_paid} description="Total No. of Paid Leave Types" icon={<HandCoins className="size-4 text-primary" />} />
+          <StatCard title="Total Convertible Leave" value={total_convertible} description="Total No. of Convertible Leave Types" icon={<IterationCcw className="size-4 text-primary" />} />
+          <StatCard title="Total Cumulative Leave" value={total_convertible} description="Total No. of Cumulative Leave Types" icon={<PackagePlus className="size-4 text-primary" />} />
         </section>
 
         {/* whole content area */}

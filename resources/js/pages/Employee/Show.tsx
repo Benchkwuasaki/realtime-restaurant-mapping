@@ -52,6 +52,10 @@ interface Division { division_name: string }
 interface Unit { unit_name: string }
 interface Position {
     position_name: string
+    position_type?: string
+    department_id?: number | null
+    division_id?: number | null
+    unit_id?: number | null
     department?: Department
     division?: Division
     unit?: Unit
@@ -207,6 +211,7 @@ interface Props {
 
 interface PositionGroup {
     positionName: string
+    displayLabel: string
     position: Position | undefined
     items: Item[]
     totalSlots: number
@@ -217,11 +222,26 @@ interface PositionGroup {
 function buildPositionGroups(items: Item[]): PositionGroup[] {
     const map = new Map<string, PositionGroup>()
     for (const item of items) {
-        const key = item.position?.position_name ?? `__item_${item.item_id}`
+        const pos = item.position
+        const key = pos
+            ? [pos.position_name, pos.department_id ?? "null", pos.division_id ?? "null", pos.unit_id ?? "null"].join("::")
+            : `__item_${item.item_id}`
+
         if (!map.has(key)) {
+            // Build the display label with org context — same as Create.tsx
+            const parts: string[] = []
+            if (pos?.department?.department_name) parts.push(pos.department.department_name)
+            if (pos?.division?.division_name) parts.push(pos.division.division_name)
+            if (pos?.unit?.unit_name) parts.push(pos.unit.unit_name)
+            const orgLabel = parts.join(" / ")
+            const displayLabel = orgLabel
+                ? `${pos?.position_name ?? `Item #${item.item_id}`} — ${orgLabel}`
+                : (pos?.position_name ?? `Item #${item.item_id}`)
+
             map.set(key, {
-                positionName: item.position?.position_name ?? `Item #${item.item_id}`,
-                position: item.position,
+                positionName: pos?.position_name ?? `Item #${item.item_id}`,
+                displayLabel,                    // ← add this
+                position: pos,
                 items: [],
                 totalSlots: 0,
                 availableSlots: 0,
@@ -234,10 +254,18 @@ function buildPositionGroups(items: Item[]): PositionGroup[] {
         if (!item.is_occupied) grp.availableSlots++
     }
     for (const grp of map.values()) grp.isFull = grp.availableSlots === 0
-    return Array.from(map.values()).sort((a, b) => a.positionName.localeCompare(b.positionName))
+    return Array.from(map.values()).sort((a, b) => a.displayLabel.localeCompare(b.displayLabel))
+}
+
+const JOB_ORDER_CLASSIFICATION = "Job Order"
+
+// Match Create.tsx exactly — positions tagged with position_type "Job Order"
+function isJobOrderPosition(grp: PositionGroup): boolean {
+    return grp.position?.position_type === JOB_ORDER_CLASSIFICATION
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 function fmt(date?: string) {
     if (!date) return undefined
@@ -358,6 +386,8 @@ function ActiveBadge({ active }: { active: boolean }) {
         ? <Badge variant="default" >Active</Badge>
         : <Badge variant="destructive" >Inactive</Badge>
 }
+
+
 
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
 
@@ -530,7 +560,7 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
     employee: Employee; field: EditField; onClose: () => void; items: Item[]
 }) {
     const open = field !== null
-    const positionGroups = useMemo(() => buildPositionGroups(items), [items])
+    const allPositionGroups = useMemo(() => buildPositionGroups(items), [items])
     const currentItemId = employee.item?.item_id?.toString() ?? ""
     const currentPositionName = useMemo(() =>
         items.find(i => i.item_id.toString() === currentItemId)?.position?.position_name ?? "",
@@ -549,25 +579,60 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
     })
     const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
-    const handlePositionSelect = (positionName: string) => {
-        const grp = positionGroups.find(g => g.positionName === positionName)
+    // ── Classification-aware position filtering (mirrors Create.tsx) ──────────
+
+    /** Positions filtered by whichever classification is currently selected */
+    const filteredPositionGroups = useMemo(() => {
+        const cls = field === "employment_classification"
+            ? form.employment_classification
+            : employee.employment_classification
+
+        if (!cls) return allPositionGroups
+
+        const isJO = cls === JOB_ORDER_CLASSIFICATION
+        return allPositionGroups.filter(grp =>
+            isJO ? isJobOrderPosition(grp) : !isJobOrderPosition(grp)
+        )
+    }, [allPositionGroups, form.employment_classification, field, employee.employment_classification])
+
+    /** When the classification changes, reset the position so the user is forced to re-pick */
+    const handleClassificationChange = (value: string) => {
+        set("employment_classification", value)
+        set("selected_position_name", "")
+        set("item_id", "")
+    }
+
+    const handlePositionSelect = (displayLabel: string) => {
+        const grp = filteredPositionGroups.find(g => g.displayLabel === displayLabel)
         if (!grp) return
         const ownSlot = grp.items.find(i => i.item_id.toString() === currentItemId)
-        if (ownSlot) { setForm(p => ({ ...p, selected_position_name: positionName, item_id: ownSlot.item_id.toString() })); return }
+        if (ownSlot) {
+            setForm(p => ({ ...p, selected_position_name: displayLabel, item_id: ownSlot.item_id.toString() }))
+            return
+        }
         const firstAvailable = grp.items.find(i => !i.is_occupied)
-        setForm(p => ({ ...p, selected_position_name: positionName, item_id: firstAvailable ? firstAvailable.item_id.toString() : "" }))
+        setForm(p => ({
+            ...p,
+            selected_position_name: displayLabel,
+            item_id: firstAvailable ? firstAvailable.item_id.toString() : "",
+        }))
     }
 
     const selectedGroup = useMemo(() =>
-        positionGroups.find(g => g.positionName === form.selected_position_name),
-        [positionGroups, form.selected_position_name])
+        filteredPositionGroups.find(g => g.displayLabel === form.selected_position_name),
+        [filteredPositionGroups, form.selected_position_name])
+
+    // ── Save ──────────────────────────────────────────────────────────────────
 
     const save = () => {
         let data: Record<string, string> = {}
         if (field === "position") data = { item_id: form.item_id }
         if (field === "date_hired") data = { date_hired: form.date_hired }
         if (field === "date_applied") data = { date_applied: form.date_applied }
-        if (field === "employment_classification") data = { employment_classification: form.employment_classification }
+        if (field === "employment_classification") data = {
+            employment_classification: form.employment_classification,
+            item_id: form.item_id,           // always send the new position together
+        }
         if (field === "work_schedule") data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
         if (field === "break_time") data = { break_start: form.break_start, break_end: form.break_end }
         router.put(route("employee.update", employee.employee_id), data, {
@@ -584,71 +649,128 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         date_applied: "Edit Date Applied", work_schedule: "Edit Work Schedule", break_time: "Edit Break Time",
     }
 
+    // ── Whether the save button should be disabled ────────────────────────────
+    const saveDisabled = (() => {
+        if (field === "position") return !form.item_id
+        if (field === "employment_classification") return !form.employment_classification || !form.item_id
+        return false
+    })()
+
+    // ── Shared position picker JSX (used for both "position" and "employment_classification" fields) ──
+    const PositionPicker = (
+        <div className="space-y-3">
+            <div>
+                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position</Label>
+                <Select
+                    value={form.selected_position_name}
+                    onValueChange={handlePositionSelect}
+                    disabled={filteredPositionGroups.length === 0}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder={
+                            filteredPositionGroups.length === 0
+                                ? "No positions available"
+                                : "Select a position…"
+                        } />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                        {filteredPositionGroups.map(grp => {
+                            const employeeIsInGroup = grp.items.some(i => i.item_id.toString() === currentItemId)
+                            const isDisabled = grp.isFull && !employeeIsInGroup
+                            return (
+                                <SelectItem key={grp.displayLabel} value={grp.displayLabel} disabled={isDisabled} className="py-2.5">
+                                    <div className="flex items-center justify-between gap-3 w-full">
+                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.displayLabel}</span>
+                                        {grp.totalSlots > 1 && (
+                                            isDisabled
+                                                ? <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
+                                                : <Badge variant="secondary" className="text-[10px] shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
+                                        )}
+                                        {grp.totalSlots === 1 && isDisabled && (
+                                            <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
+                                        )}
+                                    </div>
+                                </SelectItem>
+                            )
+                        })}
+                    </SelectContent>
+                </Select>
+                {filteredPositionGroups.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic mt-1.5">
+                        No positions available for this classification.
+                    </p>
+                )}
+                {selectedGroup && selectedGroup.totalSlots > 1 && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                        {selectedGroup.availableSlots === 0
+                            ? "All slots are currently occupied."
+                            : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slots available — a slot will be auto-assigned.`}
+                    </p>
+                )}
+            </div>
+            {selectedGroup?.position && (
+                <div className="rounded-lg border border-border divide-y divide-border bg-muted/20">
+                    {selectedGroup.position.department && (
+                        <div className="flex justify-between px-4 py-2">
+                            <span className="text-xs text-muted-foreground">Department</span>
+                            <span className="text-xs font-medium">{selectedGroup.position.department.department_name}</span>
+                        </div>
+                    )}
+                    {selectedGroup.position.division && (
+                        <div className="flex justify-between px-4 py-2">
+                            <span className="text-xs text-muted-foreground">Division</span>
+                            <span className="text-xs font-medium">{selectedGroup.position.division.division_name}</span>
+                        </div>
+                    )}
+                    {selectedGroup.position.unit && (
+                        <div className="flex justify-between px-4 py-2">
+                            <span className="text-xs text-muted-foreground">Unit</span>
+                            <span className="text-xs font-medium">{selectedGroup.position.unit.unit_name}</span>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    )
+
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-sm">
                 <DialogHeader><DialogTitle>{field ? titles[field] : ""}</DialogTitle></DialogHeader>
                 <div className="py-2 space-y-3">
-                    {field === "position" && (
+
+                    {/* ── Position only ── */}
+                    {field === "position" && PositionPicker}
+
+                    {/* ── Employment Classification + forced position re-pick ── */}
+                    {field === "employment_classification" && (
                         <div className="space-y-3">
                             <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position</Label>
-                                <Select value={form.selected_position_name} onValueChange={handlePositionSelect}>
-                                    <SelectTrigger><SelectValue placeholder="Select a position…" /></SelectTrigger>
-                                    <SelectContent className="max-h-72">
-                                        {positionGroups.map(grp => {
-                                            const employeeIsInGroup = grp.items.some(i => i.item_id.toString() === currentItemId)
-                                            const isDisabled = grp.isFull && !employeeIsInGroup
-                                            return (
-                                                <SelectItem key={grp.positionName} value={grp.positionName} disabled={isDisabled} className="py-2.5">
-                                                    <div className="flex items-center justify-between gap-3 w-full">
-                                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.positionName}</span>
-                                                        {grp.totalSlots > 1 && (
-                                                            isDisabled
-                                                                ? <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
-                                                                : <Badge variant="secondary" className="text-[10px] shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
-                                                        )}
-                                                        {grp.totalSlots === 1 && isDisabled && (
-                                                            <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
-                                                        )}
-                                                    </div>
-                                                </SelectItem>
-                                            )
-                                        })}
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">
+                                    Employment Classification
+                                </Label>
+                                <Select value={form.employment_classification} onValueChange={handleClassificationChange}>
+                                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Regular">Regular</SelectItem>
+                                        <SelectItem value="Job Order">Job Order</SelectItem>
+                                        <SelectItem value="Casual">Casual</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                {selectedGroup && selectedGroup.totalSlots > 1 && (
-                                    <p className="text-xs text-muted-foreground mt-1.5">
-                                        {selectedGroup.availableSlots === 0
-                                            ? "All slots are currently occupied."
-                                            : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slot${selectedGroup.totalSlots > 1 ? "s" : ""} available — a slot will be auto-assigned.`}
+                            </div>
+
+                            {/* Always show position picker; hint text changes when classification changed */}
+                            <div className="space-y-1.5">
+                                {form.employment_classification !== employee.employment_classification && (
+                                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                                        Classification changed — please select a new position.
                                     </p>
                                 )}
+                                {PositionPicker}
                             </div>
-                            {selectedGroup?.position && (
-                                <div className="rounded-lg border border-border divide-y divide-border bg-muted/20">
-                                    {selectedGroup.position.department && (
-                                        <div className="flex justify-between px-4 py-2">
-                                            <span className="text-xs text-muted-foreground">Department</span>
-                                            <span className="text-xs font-medium">{selectedGroup.position.department.department_name}</span>
-                                        </div>
-                                    )}
-                                    {selectedGroup.position.division && (
-                                        <div className="flex justify-between px-4 py-2">
-                                            <span className="text-xs text-muted-foreground">Division</span>
-                                            <span className="text-xs font-medium">{selectedGroup.position.division.division_name}</span>
-                                        </div>
-                                    )}
-                                    {selectedGroup.position.unit && (
-                                        <div className="flex justify-between px-4 py-2">
-                                            <span className="text-xs text-muted-foreground">Unit</span>
-                                            <span className="text-xs font-medium">{selectedGroup.position.unit.unit_name}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
                         </div>
                     )}
+
                     {field === "date_hired" && (
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Hired</Label>
@@ -663,19 +785,6 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                 <div className="flex justify-between px-4 py-2.5"><span className="text-sm text-muted-foreground">Division</span><span className="text-sm font-medium">{employee.item?.position?.division?.division_name ?? "—"}</span></div>
                                 <div className="flex justify-between px-4 py-2.5"><span className="text-sm text-muted-foreground">Department</span><span className="text-sm font-medium">{employee.item?.position?.department?.department_name ?? "—"}</span></div>
                             </div>
-                        </div>
-                    )}
-                    {field === "employment_classification" && (
-                        <div>
-                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Employment Classification</Label>
-                            <Select value={form.employment_classification} onValueChange={v => set("employment_classification", v)}>
-                                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Regular">Regular</SelectItem>
-                                    <SelectItem value="Job Order">Job Order</SelectItem>
-                                    <SelectItem value="Casual">Casual</SelectItem>
-                                </SelectContent>
-                            </Select>
                         </div>
                     )}
                     {field === "date_applied" && (
@@ -700,7 +809,7 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
                     {field !== "unit_division_department" && (
-                        <Button onClick={save} disabled={field === "position" && !form.item_id}>
+                        <Button onClick={save} disabled={saveDisabled}>
                             <Save className="w-3.5 h-3.5 mr-1.5" />Save Changes
                         </Button>
                     )}
@@ -732,17 +841,14 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
         {
             label: "Department",
             value: position?.department?.department_name,
-            onEdit: () => setEditField("unit_division_department"),
         },
         {
             label: "Division",
             value: position?.division?.division_name,
-            onEdit: () => setEditField("unit_division_department"),
         },
         {
             label: "Unit",
             value: position?.unit?.unit_name,
-            onEdit: () => setEditField("unit_division_department"),
         },
         {
             label: "Employment Classification",
@@ -792,7 +898,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                     <div
                         key={label}
                         className={cn(
-                            "flex items-center justify-between px-5 py-3 group",
+                            cn("flex items-center justify-between px-5 py-3", onEdit && "group"),
                             i < fields.length - 1 && "border-b border-border"
                         )}
                     >
@@ -801,14 +907,16 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                             <span className="text-sm font-medium text-foreground truncate">
                                 {value ?? <span className="text-muted-foreground/40 italic font-normal text-xs">N/A</span>}
                             </span>
-                            <Button
-                                size="icon-xs"
-                                variant="ghost"
-                                onClick={onEdit}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                            >
-                                <Pencil className="w-3 h-3" />
-                            </Button>
+                            {onEdit && (
+                                <Button
+                                    size="icon-xs"
+                                    variant="ghost"
+                                    onClick={onEdit}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                >
+                                    <Pencil className="w-3 h-3" />
+                                </Button>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -973,7 +1081,7 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                 </div>
                 {data.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-14 gap-3">
-                        <Calendar className="w-10 h-10 text-muted-foreground/30" />
+                        <CalendarDays className="w-10 h-10 text-muted-foreground/30" />
                         <p className="text-sm italic text-muted-foreground">No leave balances on file.</p>
                     </div>
                 ) : (
@@ -1961,7 +2069,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </div>
                 ) : (
                     <div className="overflow-x-auto overflow-y-auto max-h-64">
-                        <div className="min-w-[700px]"> 
+                        <div className="min-w-[700px]">
                             {/* Header */}
                             <div className="grid grid-cols-[2fr_1fr_1fr_140px_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
                                 {["Seminar / Training", "Venue", "Organizer", "Date Attended", ""].map(h => (
@@ -2684,7 +2792,7 @@ export default function ShowEmployee({ employee, items }: Props) {
 
                 {/* ── Left Panel ── */}
                 <div className="w-full lg:w-72 shrink-0 bg-card rounded-lg border border-border shadow-sm overflow-hidden flex flex-col">
-                    <div className="relative flex flex-col items-center pt-8 pb-5 px-5 bg-linear-to-b from-accent/30 to-card border-b border-border">
+                    <div className="relative flex flex-col items-center pt-8 pb-5 px-5  ">
                         <div className="absolute top-3 right-3">
                             <Button size={"icon-xs"} onClick={() => setBasicEditOpen(true)} variant={"ghost"}>
                                 <Pencil className="w-3.5 h-3.5" />

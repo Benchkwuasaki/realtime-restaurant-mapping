@@ -392,6 +392,10 @@ class EmployeeController extends Controller
                         && $item->employee->employee_id !== $employee->employee_id,
                     'position' => $item->position ? [
                         'position_name' => $item->position->position_name,
+                        'position_type' => $item->position->position_type,
+                        'department_id' => $item->position->department_id,  
+                        'division_id' => $item->position->division_id,    
+                        'unit_id' => $item->position->unit_id,
                         'department' => $item->position->department
                             ? ['department_name' => $item->position->department->department_name]
                             : null,

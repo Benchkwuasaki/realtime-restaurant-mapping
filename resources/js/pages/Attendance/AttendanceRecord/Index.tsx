@@ -787,9 +787,9 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <StatCard title="Present" value={present} description="Completed full day" icon={<UserCheck className="w-4 h-4 m-2 text-primary" />} />
-                    <StatCard title="Half Day" value={halfDay} description="Partial attendance" icon={<Coffee className="w-4 h-4 m-2 text-secondary-foreground" />} />
-                    <StatCard title="Absent" value={absent} description="No attendance recorded" icon={<UserX className="w-4 h-4 m-2 text-destructive" />} />
-                    <StatCard title="Late" value={lateCount} description="Arrived after scheduled time" icon={<AlertTriangle className="w-4 h-4 m-2 text-accent-foreground" />} />
+                    <StatCard title="Half Day" value={halfDay} description="Partial attendance" icon={<Coffee className="w-4 h-4 m-2 text-primary" />} />
+                    <StatCard title="Absent" value={absent} description="No attendance recorded" icon={<UserX className="w-4 h-4 m-2 text-primary" />} />
+                    <StatCard title="Late" value={lateCount} description="Arrived after scheduled time" icon={<AlertTriangle className="w-4 h-4 m-2 text-primary" />} />
                 </div>
 
                 <DataTable

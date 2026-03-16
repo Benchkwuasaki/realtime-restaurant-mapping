@@ -26,6 +26,7 @@ import {
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
 import { type Employee, type WhereaboutSlip } from "./data/schema"
+import { StatCard } from "@/components/shared/stat-card"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -113,36 +114,7 @@ function fetchBrgyName(brgyCode: string): Promise<string> {
     return brgyNameCache.get(brgyCode)!
 }
 
-// ─── Stat Cards ───────────────────────────────────────────────────────────────
-
-interface StatCardProps {
-    icon: React.ReactNode
-    label: string
-    value: React.ReactNode
-    sub?: React.ReactNode
-    accent?: "default" | "green" | "yellow" | "red" | "blue"
-}
-
-function StatCard({ icon, label, value, sub, accent = "default" }: StatCardProps) {
-    const accentClass = {
-        default: "text-primary",
-        green: "text-emerald-500",
-        yellow: "text-amber-500",
-        red: "text-red-500",
-        blue: "text-blue-500",
-    }[accent]
-
-    return (
-        <div className="rounded-lg border border-border bg-card px-4 py-3.5 flex items-start gap-3 min-w-0">
-            <div className={cn("mt-0.5 shrink-0", accentClass)}>{icon}</div>
-            <div className="min-w-0">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">{label}</p>
-                <p className="text-xl font-bold text-foreground leading-none">{value}</p>
-                {sub && <p className="text-xs text-muted-foreground mt-1 truncate">{sub}</p>}
-            </div>
-        </div>
-    )
-}
+// ─── SlipDashboard ─────────────────────────────────────────────────────────────
 
 function SlipDashboard({ slips }: { slips: WhereaboutSlip[] }) {
     const [topBrgyName, setTopBrgyName] = useState<string | null>(null)
@@ -160,7 +132,6 @@ function SlipDashboard({ slips }: { slips: WhereaboutSlip[] }) {
                 ? Math.round(returnedPersonal.reduce((sum, s) => sum + (s.minutes_gone ?? 0), 0) / returnedPersonal.length)
                 : null
 
-        // Top barangay by visit count
         const brgyCount: Record<string, number> = {}
         withLocation.forEach((s) => {
             if (s.brgy_code) brgyCount[s.brgy_code] = (brgyCount[s.brgy_code] ?? 0) + 1
@@ -178,44 +149,36 @@ function SlipDashboard({ slips }: { slips: WhereaboutSlip[] }) {
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <StatCard
-                icon={<ClipboardList className="w-4 h-4" />}
-                label="Total Slips"
+                title="Total Slips"
                 value={slips.length}
-                sub={`${stats.withLocation.length} with location`}
+                description={`${stats.withLocation.length} with location`}
+                icon={<ClipboardList className="w-4 h-4 text-primary" />}
             />
             <StatCard
-                icon={<AlertCircle className="w-4 h-4" />}
-                label="Still Out"
+                title="Still Out"
                 value={stats.pending.length}
-                sub={stats.pending.length > 0 ? "not yet returned" : "all returned"}
-                accent={stats.pending.length > 0 ? "red" : "green"}
+                description={stats.pending.length > 0 ? "not yet returned" : "all returned"}
+                icon={<AlertCircle className="w-4 h-4 text-primary" />}
             />
             <StatCard
-                icon={<Users className="w-4 h-4" />}
-                label="Employees"
+                title="Employees"
                 value={stats.uniqueEmployees}
-                sub={`${stats.official.length} official · ${stats.personal.length} personal`}
-                accent="blue"
+                description={`${stats.official.length} official · ${stats.personal.length} personal`}
+                icon={<Users className="w-4 h-4 text-primary" />}
             />
             <StatCard
-                icon={<Clock className="w-4 h-4" />}
-                label="Avg Time Away"
+                title="Avg Time Away"
                 value={stats.avgMinutes != null ? `${stats.avgMinutes}m` : "—"}
-                sub="personal slips only"
-                accent="yellow"
+                description="personal slips only"
+                icon={<Clock className="w-4 h-4 text-primary" />}
             />
             <StatCard
-                icon={<MapPinned className="w-4 h-4" />}
-                label="Top Destination"
+                title="Top Destination"
                 value={
-                    topBrgyName
-                        ? <span className="text-base leading-tight">{topBrgyName}</span>
-                        : stats.topBrgyEntry
-                            ? <span className="text-sm font-mono">{stats.topBrgyEntry[0]}</span>
-                            : "—"
+                    topBrgyName ?? (stats.topBrgyEntry ? stats.topBrgyEntry[0] : "—")
                 }
-                sub={stats.topBrgyEntry ? `${stats.topBrgyEntry[1]} visit${stats.topBrgyEntry[1] !== 1 ? "s" : ""}` : undefined}
-                accent="green"
+                description={stats.topBrgyEntry ? `${stats.topBrgyEntry[1]} visit${stats.topBrgyEntry[1] !== 1 ? "s" : ""}` : undefined}
+                icon={<MapPinned className="w-4 h-4 text-primary" />}
             />
         </div>
     )

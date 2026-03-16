@@ -64,96 +64,106 @@ class DatabaseSeeder extends Seeder
             'updated_at'             => now(),
         ]);
 
-        // ── 3. Divisions ───────────────────────────────────────────
+        // ── 3. Divisions (each gets a JO position + item) ─────────
         $divHrId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptId,
-            'division_name'       => 'Human Resources Division',
-            'division_acronym'    => 'HRD',
-            'division_description'=> 'Manages recruitment, payroll, and employee relations.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptId,
+            'division_name'        => 'Human Resources Division',
+            'division_acronym'     => 'HRD',
+            'division_description' => 'Manages recruitment, payroll, and employee relations.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
+        $this->seedJoPosition($deptId, $divHrId);
 
         $divItId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptId,
-            'division_name'       => 'Information Technology Division',
-            'division_acronym'    => 'ITD',
-            'division_description'=> 'Manages all IT infrastructure and software systems.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptId,
+            'division_name'        => 'Information Technology Division',
+            'division_acronym'     => 'ITD',
+            'division_description' => 'Manages all IT infrastructure and software systems.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
+        $this->seedJoPosition($deptId, $divItId);
 
         $divFinId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptId,
-            'division_name'       => 'Finance and Budget Division',
-            'division_acronym'    => 'FBD',
-            'division_description'=> 'Manages financial planning, budget allocation, and accounting.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptId,
+            'division_name'        => 'Finance and Budget Division',
+            'division_acronym'     => 'FBD',
+            'division_description' => 'Manages financial planning, budget allocation, and accounting.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
+        $this->seedJoPosition($deptId, $divFinId);
 
         $divAdminId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptId,
-            'division_name'       => 'Administrative Services Division',
-            'division_acronym'    => 'ASD',
-            'division_description'=> 'Handles general administrative support and records management.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptId,
+            'division_name'        => 'Administrative Services Division',
+            'division_acronym'     => 'ASD',
+            'division_description' => 'Handles general administrative support and records management.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
+        $this->seedJoPosition($deptId, $divAdminId);
 
         $divLegalId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptId,
-            'division_name'       => 'Legal and Compliance Division',
-            'division_acronym'    => 'LCD',
-            'division_description'=> 'Provides legal counsel and ensures regulatory compliance.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptId,
+            'division_name'        => 'Legal and Compliance Division',
+            'division_acronym'     => 'LCD',
+            'division_description' => 'Provides legal counsel and ensures regulatory compliance.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
+        $this->seedJoPosition($deptId, $divLegalId);
 
         $divOpsFieldId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptOpsId,
-            'division_name'       => 'Field Operations Division',
-            'division_acronym'    => 'FOD',
-            'division_description'=> 'Coordinates field activities and service delivery operations.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptOpsId,
+            'division_name'        => 'Field Operations Division',
+            'division_acronym'     => 'FOD',
+            'division_description' => 'Coordinates field activities and service delivery operations.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
+        $this->seedJoPosition($deptOpsId, $divOpsFieldId);
 
         $divFacilitiesId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptOpsId,
-            'division_name'       => 'Facilities Management Division',
-            'division_acronym'    => 'FMD',
-            'division_description'=> 'Manages facilities, assets, and building maintenance.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptOpsId,
+            'division_name'        => 'Facilities Management Division',
+            'division_acronym'     => 'FMD',
+            'division_description' => 'Manages facilities, assets, and building maintenance.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
+        $this->seedJoPosition($deptOpsId, $divFacilitiesId);
 
         $divCustomerId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptOpsId,
-            'division_name'       => 'Customer Support Division',
-            'division_acronym'    => 'CSD',
-            'division_description'=> 'Handles client support, service desk, and feedback resolution.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptOpsId,
+            'division_name'        => 'Customer Support Division',
+            'division_acronym'     => 'CSD',
+            'division_description' => 'Handles client support, service desk, and feedback resolution.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
+        $this->seedJoPosition($deptOpsId, $divCustomerId);
 
         $divPolicyId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptGovId,
-            'division_name'       => 'Policy and Standards Division',
-            'division_acronym'    => 'PSD',
-            'division_description'=> 'Develops policies, standards, and governance frameworks.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptGovId,
+            'division_name'        => 'Policy and Standards Division',
+            'division_acronym'     => 'PSD',
+            'division_description' => 'Develops policies, standards, and governance frameworks.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
+        $this->seedJoPosition($deptGovId, $divPolicyId);
 
         $divPublicAffairsId = DB::table('divisions')->insertGetId([
-            'department_id'       => $deptGovId,
-            'division_name'       => 'Public Affairs Division',
-            'division_acronym'    => 'PAD',
-            'division_description'=> 'Leads public information, communications, and stakeholder engagement.',
-            'created_at'          => now(),
-            'updated_at'          => now(),
+            'department_id'        => $deptGovId,
+            'division_name'        => 'Public Affairs Division',
+            'division_acronym'     => 'PAD',
+            'division_description' => 'Leads public information, communications, and stakeholder engagement.',
+            'created_at'           => now(),
+            'updated_at'           => now(),
         ]);
+        $this->seedJoPosition($deptGovId, $divPublicAffairsId);
 
         // ── 4. Units ───────────────────────────────────────────────
         $unitRecruitId = DB::table('units')->insertGetId([
@@ -345,42 +355,42 @@ class DatabaseSeeder extends Seeder
             'updated_at'       => now(),
         ]);
 
-        // ── 5. Positions ───────────────────────────────────────────
+        // ── 5. Positions (plantilla) ───────────────────────────────
         $positions = [
             // HR
-            ['dept' => $deptId,    'div' => $divHrId,         'unit' => $unitRecruitId,     'name' => 'HR Officer',             'sg_idx' => 2],
-            ['dept' => $deptId,    'div' => $divHrId,         'unit' => $unitRecruitId,     'name' => 'Recruitment Specialist', 'sg_idx' => 4],
-            ['dept' => $deptId,    'div' => $divHrId,         'unit' => $unitPayrollId,     'name' => 'Payroll Officer',        'sg_idx' => 4],
-            ['dept' => $deptId,    'div' => $divHrId,         'unit' => $unitPayrollId,     'name' => 'Benefits Administrator', 'sg_idx' => 3],
-            ['dept' => $deptId,    'div' => $divHrId,         'unit' => null,               'name' => 'HR Division Chief',      'sg_idx' => 9],
-            ['dept' => $deptId,    'div' => $divHrId,         'unit' => null,               'name' => 'HR Manager',             'sg_idx' => 9],
+            ['dept' => $deptId,    'div' => $divHrId,            'unit' => $unitRecruitId,     'name' => 'HR Officer',             'sg_idx' => 2],
+            ['dept' => $deptId,    'div' => $divHrId,            'unit' => $unitRecruitId,     'name' => 'Recruitment Specialist', 'sg_idx' => 4],
+            ['dept' => $deptId,    'div' => $divHrId,            'unit' => $unitPayrollId,     'name' => 'Payroll Officer',        'sg_idx' => 4],
+            ['dept' => $deptId,    'div' => $divHrId,            'unit' => $unitPayrollId,     'name' => 'Benefits Administrator', 'sg_idx' => 3],
+            ['dept' => $deptId,    'div' => $divHrId,            'unit' => null,               'name' => 'HR Division Chief',      'sg_idx' => 9],
+            ['dept' => $deptId,    'div' => $divHrId,            'unit' => null,               'name' => 'HR Manager',             'sg_idx' => 9],
             // Operations
-            ['dept' => $deptOpsId, 'div' => $divOpsFieldId,   'unit' => $unitRecruitId,     'name' => 'Operations Coordinator', 'sg_idx' => 5],
+            ['dept' => $deptOpsId, 'div' => $divOpsFieldId,      'unit' => $unitRecruitId,     'name' => 'Operations Coordinator', 'sg_idx' => 5],
             // Governance
-            ['dept' => $deptGovId, 'div' => $divPublicAffairsId, 'unit' => $unitCommsId,   'name' => 'Public Affairs Officer', 'sg_idx' => 5],
+            ['dept' => $deptGovId, 'div' => $divPublicAffairsId, 'unit' => $unitCommsId,       'name' => 'Public Affairs Officer', 'sg_idx' => 5],
             // IT
-            ['dept' => $deptId,    'div' => $divItId,         'unit' => $unitDevId,         'name' => 'Software Developer',    'sg_idx' => 4],
-            ['dept' => $deptId,    'div' => $divItId,         'unit' => $unitDevId,         'name' => 'Senior Developer',      'sg_idx' => 6],
-            ['dept' => $deptId,    'div' => $divItId,         'unit' => $unitDevId,         'name' => 'Systems Analyst',       'sg_idx' => 5],
-            ['dept' => $deptId,    'div' => $divItId,         'unit' => $unitInfraId,       'name' => 'Systems Administrator', 'sg_idx' => 7],
-            ['dept' => $deptId,    'div' => $divItId,         'unit' => $unitInfraId,       'name' => 'Network Engineer',      'sg_idx' => 6],
-            ['dept' => $deptId,    'div' => $divItId,         'unit' => null,               'name' => 'IT Manager',            'sg_idx' => 12],
+            ['dept' => $deptId,    'div' => $divItId,            'unit' => $unitDevId,         'name' => 'Software Developer',     'sg_idx' => 4],
+            ['dept' => $deptId,    'div' => $divItId,            'unit' => $unitDevId,         'name' => 'Senior Developer',       'sg_idx' => 6],
+            ['dept' => $deptId,    'div' => $divItId,            'unit' => $unitDevId,         'name' => 'Systems Analyst',        'sg_idx' => 5],
+            ['dept' => $deptId,    'div' => $divItId,            'unit' => $unitInfraId,       'name' => 'Systems Administrator',  'sg_idx' => 7],
+            ['dept' => $deptId,    'div' => $divItId,            'unit' => $unitInfraId,       'name' => 'Network Engineer',       'sg_idx' => 6],
+            ['dept' => $deptId,    'div' => $divItId,            'unit' => null,               'name' => 'IT Manager',             'sg_idx' => 12],
             // Finance
-            ['dept' => $deptId,    'div' => $divFinId,        'unit' => $unitAccountingId,  'name' => 'Accountant',            'sg_idx' => 4],
-            ['dept' => $deptId,    'div' => $divFinId,        'unit' => $unitAccountingId,  'name' => 'Senior Accountant',     'sg_idx' => 7],
-            ['dept' => $deptId,    'div' => $divFinId,        'unit' => $unitBudgetId,      'name' => 'Budget Officer',        'sg_idx' => 5],
-            ['dept' => $deptId,    'div' => $divFinId,        'unit' => $unitBudgetId,      'name' => 'Budget Analyst',        'sg_idx' => 3],
-            ['dept' => $deptId,    'div' => $divFinId,        'unit' => null,               'name' => 'Finance Manager',       'sg_idx' => 11],
+            ['dept' => $deptId,    'div' => $divFinId,           'unit' => $unitAccountingId,  'name' => 'Accountant',             'sg_idx' => 4],
+            ['dept' => $deptId,    'div' => $divFinId,           'unit' => $unitAccountingId,  'name' => 'Senior Accountant',      'sg_idx' => 7],
+            ['dept' => $deptId,    'div' => $divFinId,           'unit' => $unitBudgetId,      'name' => 'Budget Officer',         'sg_idx' => 5],
+            ['dept' => $deptId,    'div' => $divFinId,           'unit' => $unitBudgetId,      'name' => 'Budget Analyst',         'sg_idx' => 3],
+            ['dept' => $deptId,    'div' => $divFinId,           'unit' => null,               'name' => 'Finance Manager',        'sg_idx' => 11],
             // Admin
-            ['dept' => $deptId,    'div' => $divAdminId,      'unit' => $unitRecordsId,     'name' => 'Records Officer',       'sg_idx' => 2],
-            ['dept' => $deptId,    'div' => $divAdminId,      'unit' => $unitRecordsId,     'name' => 'Administrative Aide',   'sg_idx' => 0],
-            ['dept' => $deptId,    'div' => $divAdminId,      'unit' => $unitProcurementId, 'name' => 'Procurement Officer',   'sg_idx' => 5],
-            ['dept' => $deptId,    'div' => $divAdminId,      'unit' => $unitProcurementId, 'name' => 'Procurement Specialist','sg_idx' => 3],
-            ['dept' => $deptId,    'div' => $divAdminId,      'unit' => null,               'name' => 'Admin Division Chief',  'sg_idx' => 9],
+            ['dept' => $deptId,    'div' => $divAdminId,         'unit' => $unitRecordsId,     'name' => 'Records Officer',        'sg_idx' => 2],
+            ['dept' => $deptId,    'div' => $divAdminId,         'unit' => $unitRecordsId,     'name' => 'Administrative Aide',    'sg_idx' => 0],
+            ['dept' => $deptId,    'div' => $divAdminId,         'unit' => $unitProcurementId, 'name' => 'Procurement Officer',    'sg_idx' => 5],
+            ['dept' => $deptId,    'div' => $divAdminId,         'unit' => $unitProcurementId, 'name' => 'Procurement Specialist', 'sg_idx' => 3],
+            ['dept' => $deptId,    'div' => $divAdminId,         'unit' => null,               'name' => 'Admin Division Chief',   'sg_idx' => 9],
             // Legal
-            ['dept' => $deptId,    'div' => $divLegalId,      'unit' => $unitLegalId,       'name' => 'Legal Officer',         'sg_idx' => 7],
-            ['dept' => $deptId,    'div' => $divLegalId,      'unit' => $unitLegalId,       'name' => 'Compliance Officer',    'sg_idx' => 6],
-            ['dept' => $deptId,    'div' => $divLegalId,      'unit' => null,               'name' => 'Legal Division Chief',  'sg_idx' => 10],
+            ['dept' => $deptId,    'div' => $divLegalId,         'unit' => $unitLegalId,       'name' => 'Legal Officer',          'sg_idx' => 7],
+            ['dept' => $deptId,    'div' => $divLegalId,         'unit' => $unitLegalId,       'name' => 'Compliance Officer',     'sg_idx' => 6],
+            ['dept' => $deptId,    'div' => $divLegalId,         'unit' => null,               'name' => 'Legal Division Chief',   'sg_idx' => 10],
         ];
 
         foreach ($positions as $pos) {
@@ -389,19 +399,24 @@ class DatabaseSeeder extends Seeder
                 'division_id'   => $pos['div'],
                 'unit_id'       => $pos['unit'],
                 'position_name' => $pos['name'],
+                'position_type' => 'Regular',
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ]);
         }
 
-        // ── 6. Items ───────────────────────────────────────────────
+        // ── 6. Items (plantilla slots) ─────────────────────────────
         $positionsWithVacantSlot = [1, 4, 7, 10, 13, 16, 19, 21, 23, 24];
-        $positionIds = DB::table('positions')->orderBy('position_id')->pluck('position_id')->toArray();
+        $positionIds = DB::table('positions')
+            ->where('position_type', 'Regular')
+            ->orderBy('position_id')
+            ->pluck('position_id')
+            ->toArray();
 
         foreach ($positionIds as $idx => $posId) {
-            $posName      = $positions[$idx]['name'];
+            $posName       = $positions[$idx]['name'];
             $hasVacantSlot = in_array($idx, $positionsWithVacantSlot, true);
-            $slotLimit    = $hasVacantSlot ? 5 : 4;
+            $slotLimit     = $hasVacantSlot ? 5 : 4;
 
             for ($slot = 1; $slot <= $slotLimit; $slot++) {
                 DB::table('items')->insertGetId([
@@ -424,6 +439,29 @@ class DatabaseSeeder extends Seeder
             LeaveTypeSeeder::class,
             LeaveBalanceSeeder::class,
             LeaveApplicationSeeder::class,
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helper: seed a Job Order position + item for a division
+    // ─────────────────────────────────────────────────────────────────────────
+    private function seedJoPosition(int $departmentId, int $divisionId): void
+    {
+        $positionId = DB::table('positions')->insertGetId([
+            'department_id' => $departmentId,
+            'division_id'   => $divisionId,
+            'unit_id'       => null,
+            'position_name' => 'Job Order',
+            'position_type' => 'Job Order',
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+
+        DB::table('items')->insertGetId([
+            'position_id' => $positionId,
+            'item_name'   => 'Job Order Item 1',
+            'created_at'  => now(),
+            'updated_at'  => now(),
         ]);
     }
 }

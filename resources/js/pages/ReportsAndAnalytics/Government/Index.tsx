@@ -7,6 +7,8 @@ import {
     Legend, ResponsiveContainer,
 } from 'recharts';
 import { useState, useMemo } from 'react';
+import { Building2, HeartPulse, Home, Receipt, Landmark } from 'lucide-react';
+import { StatCard } from '@/components/shared/stat-card';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -43,7 +45,7 @@ const SearchInput = ({ value, onChange, placeholder = 'Search...' }: {
     value: string; onChange: (v: string) => void; placeholder?: string;
 }) => (
     <div style={{ position: 'relative', marginBottom: 14 }}>
-        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--muted-foreground)' }}>🔍</span>
+        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--muted-foreground)' }}></span>
         <input
             value={value}
             onChange={e => onChange(e.target.value)}
@@ -137,17 +139,24 @@ function filterRows(rows: any[], query: string) {
 }
 
 /* ══ Summary KPI Strip ══ */
+const KPI_ICONS = [
+    <Building2  className="size-4 m-1" />,
+    <HeartPulse className="size-4 m-1" />,
+    <Home       className="size-4 m-1" />,
+    <Receipt    className="size-4 m-1" />,
+    <Landmark   className="size-4 m-1" />,
+];
+
 function SummaryStrip() {
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
-            {summaryKpis.map(k => (
-                <div key={k.label} style={{ background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)', borderLeft: `4px solid ${k.accent}`, padding: 16, boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ background: k.bg, borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                        <span style={{ fontSize: 14 }}>🏛️</span>
-                    </div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--foreground)', lineHeight: 1 }}>{k.value}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 4 }}>{k.label}</div>
-                </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {summaryKpis.map((k, i) => (
+                <StatCard
+                    key={k.label}
+                    title={k.label}
+                    value={k.value}
+                    icon={KPI_ICONS[i]}
+                />
             ))}
         </div>
     );
