@@ -54,7 +54,7 @@ const FALLBACK_COLORS = [COLORS.present, COLORS.pink, COLORS.late, COLORS.absent
 /* ── TYPES ───────────────────────────────────────────────────────────────── */
 type ClassificationCount = { classification: string; total: number }
 type LeaveTypeCount = { label: string; value: number; fill: string }
-type TopLeaveTaker = { name: string; days: number; type: string; color: string }
+type TopLeaveTaker = { name: string; days: number; type: string; color: string; avatar_url?: string | null }
 type LeaveTrendPoint = { m: string; v: number }
 type TopLateEntry = { name: string; dept: string; min: number; avatar_url?: string | null }
 
@@ -238,8 +238,13 @@ function TopLeaveTakers({ takers }: { takers: TopLeaveTaker[] }) {
             {takers.map((e, i) => (
                 <div key={e.name} className="flex items-center gap-3">
                     <span className="text-[10px] font-black text-muted-foreground w-3 shrink-0">{i + 1}</span>
-                    <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white"
-                        style={{ background: e.color }}>{e.name.charAt(0)}</div>
+                    <div className="w-7 h-7 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold text-white"
+                        style={{ background: e.color }}>
+                        {e.avatar_url
+                            ? <img src={e.avatar_url} alt={e.name} className="w-full h-full object-cover" />
+                            : e.name.charAt(0)
+                        }
+                    </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
                             <span className="text-xs font-semibold text-foreground truncate">{e.name}</span>
@@ -278,7 +283,7 @@ function abbreviateMonth(m: string): string {
     const parts = m.split("-")
     if (parts.length >= 2) {
         const monthIndex = parseInt(parts[1], 10) - 1
-        const names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         return names[monthIndex] ?? m
     }
 

@@ -137,11 +137,12 @@ class DashboardController extends Controller
             ->join('leave_types', 'leave_applications.leave_type_id', '=', 'leave_types.leave_type_id')
             ->where('leave_types.status', true)
             ->selectRaw('
-                employee_basic_info.last_name,
-                employee_basic_info.first_name,
-                leave_types.leave_type_name as type,
-                SUM(DATEDIFF(leave_applications.end_date, leave_applications.start_date) + 1) as days
-            ')
+        employee_basic_info.last_name,
+        employee_basic_info.first_name,
+        MAX(employees.avatar_url) as avatar_url,
+        leave_types.leave_type_name as type,
+        SUM(DATEDIFF(leave_applications.end_date, leave_applications.start_date) + 1) as days
+    ')
             ->groupBy(
                 'leave_applications.employee_id',
                 'employee_basic_info.last_name',
@@ -156,6 +157,7 @@ class DashboardController extends Controller
                 'days' => (int) $row->days,
                 'type' => $row->type,
                 'color' => $leaveTypeColorMap->get($row->type, $chartColors[$i % count($chartColors)]),
+                'avatar_url' => $row->avatar_url ?: null,
             ])
             ->toArray());
 
