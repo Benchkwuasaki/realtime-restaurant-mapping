@@ -134,7 +134,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                   isChildActive && "bg-sidebar-accent text-sidebar-accent-foreground",
                                 )}
                               >
-                                <span>{subItem.title}</span>
+                                <span className="truncate">{subItem.title}</span>
                                 {(subItem.badgeCount ?? 0) > 0 ? (
                                   <Badge
                                     variant="destructive"
