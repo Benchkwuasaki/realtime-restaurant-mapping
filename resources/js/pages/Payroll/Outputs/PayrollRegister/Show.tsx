@@ -300,7 +300,7 @@ export default function Show({ period, records, summary }: Props) {
         },
     ];
 
-    // ── Render ──────────────────────��─────────────────────────────────────────
+    // ── Render ────────────────────────────────────────────────────────────────
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -379,52 +379,52 @@ export default function Show({ period, records, summary }: Props) {
                 </Button>
             </div>
 
-            {/* ── Summary stat cards (screen only) ────────────────────────── */}
-            <div className="flex flex-1 flex-col items-center bg-slate-50/50 px-6 py-2 print:hidden">
-                <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <StatCard
-                        icon={Users}
-                        label="Total Employees"
-                        value={String(summary.total_employees)}
-                        sub={`Period #${period.payroll_period_id}`}
-                    />
-                    <StatCard
-                        icon={TrendingUp}
-                        label="Total Gross Pay"
-                        value={peso(summary.total_gross)}
-                        sub="Earnings before deductions"
-                        accent="text-black-600"
-                    />
-                    <StatCard
-                        icon={Landmark}
-                        label="Total Deductions"
-                        value={peso(summary.total_deductions)}
-                        sub="All deduction types"
-                        accent="text-black-600"
-                    />
-                    <StatCard
-                        icon={Receipt}
-                        label="Total Net Pay"
-                        value={peso(summary.total_net_pay)}
-                        sub={
-                            summary.floor_issues > 0
-                                ? `⚠ ${summary.floor_issues} floor issue${summary.floor_issues > 1 ? 's' : ''}`
-                                : 'All employees passed floor check'
-                        }
-                        accent="text-black-600"
-                    />
-                </div>
-            </div>
+{/* ── Summary stat cards (screen only) ── */}
+<div className="flex flex-col items-center bg-slate-50 px-6 pt-3 pb-0 print:hidden">
+    <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+            icon={Users}
+            label="Total Employees"
+            value={String(summary.total_employees)}
+            sub={`Period #${period.payroll_period_id}`}
+        />
+        <StatCard
+            icon={TrendingUp}
+            label="Total Gross Pay"
+            value={peso(summary.total_gross)}
+            sub="Earnings before deductions"
+            accent="text-black-600"
+        />
+        <StatCard
+            icon={Landmark}
+            label="Total Deductions"
+            value={peso(summary.total_deductions)}
+            sub="All deduction types"
+            accent="text-black-600"
+        />
+        <StatCard
+            icon={Receipt}
+            label="Total Net Pay"
+            value={peso(summary.total_net_pay)}
+            sub={
+                summary.floor_issues > 0
+                    ? `⚠ ${summary.floor_issues} floor issue${summary.floor_issues > 1 ? 's' : ''}`
+                    : 'All employees passed floor check'
+            }
+            accent="text-black-600"
+        />
+    </div>
+</div>
 
-            {/* ── Paper wrapper ─────────────────────────────────────────────── */}
-            <div className="flex flex-1 flex-col items-center bg-slate-50 px-6 py-2 print:block print:overflow-visible print:bg-white print:p-0">
-                <div
-                    id="payroll-register-document"
-                    className="w-full bg-white px-6 py-8 shadow-sm ring-1 ring-slate-200 print:max-w-none print:px-6 print:py-4 print:shadow-none print:ring-0"
-                >
-                    {/* Rest of your document content */}
+{/* ── Paper wrapper ── unchanged ── */}
+<div className="flex flex-1 flex-col items-center bg-slate-50 px-6 pt-3 pb-6 print:block print:overflow-visible print:bg-white print:p-0">
+    
+    <div
+        id="payroll-register-document"
+        className="w-full bg-white px-6 py-4 shadow-sm ring-1 ring-slate-200 print:max-w-none print:px-6 print:py-4 print:shadow-none print:ring-0"
+    >
                     {/* ── Document header ───────────────────────────────────── */}
-                    <div className="mb-5 flex flex-col items-center text-center">
+                    <div className="mb-2 flex flex-col items-center text-center">
                         <div className="flex items-center gap-4">
                             <img
                                 src={Logo}
@@ -484,100 +484,69 @@ export default function Show({ period, records, summary }: Props) {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            {/*
-                             * We intentionally bypass shadcn's Table wrapper for the
-                             * inner <thead> rows because we need colspan + rowspan for
-                             * the grouped header design, which shadcn TableHead does
-                             * not expose. The outer chrome (border, overflow) still
-                             * comes from shadcn's rounded-md border wrapper.
-                             */}
                             <div className="overflow-hidden rounded-md border border-border/60">
                                 <table className="w-full border-collapse text-[8.5px]">
                                     <thead className="bg-muted/50 text-foreground">
-                                        {/* ── Group labels row ── */}
+                                        {/* ── Top alignment row ── */}
                                         <tr className="bg-slate-200">
-                                            <ColTh
-                                                rowSpan={2}
-                                                className="w-[2%] bg-muted/70"
-                                            >
-                                                #
-                                            </ColTh>
-                                            <ColTh
-                                                rowSpan={2}
-                                                className="w-[9%] bg-muted/70 pl-2 text-left"
-                                            >
-                                                Employee Name
-                                            </ColTh>
-                                            <ColTh
-                                                rowSpan={2}
-                                                className="w-[7%] bg-muted/70 pl-2 text-left"
-                                            >
-                                                Position
-                                            </ColTh>
-                                            <ColTh
-                                                rowSpan={2}
-                                                className="w-[2.5%] bg-muted/70"
-                                            >
-                                                SG
-                                            </ColTh>
-                                            <ColTh
-                                                rowSpan={2}
-                                                className="w-[2%] bg-muted/70"
-                                            >
-                                                Step
-                                            </ColTh>
-
-                                            {/* EARNINGS */}
                                             <GrpTh
                                                 colSpan={5}
                                                 className="bg-slate-300 text-foreground"
                                             >
+                                                Employee Information
+                                            </GrpTh>
+                                            <GrpTh
+                                                colSpan={5}
+                                                className="bg-slate-300 text-foreground border-l border-l-black"
+                                            >
                                                 Earnings
                                             </GrpTh>
-
-                                            {/* MANDATORY */}
                                             <GrpTh
                                                 colSpan={4}
-                                                className="bg-slate-300 text-foreground"
+                                                className="bg-slate-300 text-foreground border-l border-l-black"
                                             >
                                                 Mandatory Deductions
                                             </GrpTh>
-
-                                            {/* ATTENDANCE */}
                                             <GrpTh
                                                 colSpan={4}
-                                                className="bg-slate-300 text-foreground"
+                                                className="bg-slate-300 text-foreground border-l border-l-black"
                                             >
                                                 Attendance
                                             </GrpTh>
-
-                                            {/* OTHER */}
                                             <GrpTh
                                                 colSpan={7}
-                                                className="bg-slate-300 text-foreground"
+                                                className="bg-slate-300 text-foreground border-l border-l-black"
                                             >
                                                 Other Deductions
                                             </GrpTh>
-
-                                            {/* SUMMARY HEADERS */}
-                                            <ColTh
-                                                rowSpan={2}
-                                                className="w-[5%] bg-muted/70 text-foreground"
+                                            <GrpTh
+                                                colSpan={2}
+                                                className="bg-slate-300 text-foreground border-l border-l-black"
                                             >
-                                                Total Deductions
-                                            </ColTh>
-                                            <ColTh
-                                                rowSpan={2}
-                                                className="w-[5%] bg-slate-100 text-foreground"
-                                            >
-                                                Net Pay
-                                            </ColTh>
+                                                Totals
+                                            </GrpTh>
                                         </tr>
 
                                         {/* ── Sub-column labels row ── */}
-                                        <tr>
+                                        <tr className="bg-slate-50">
+                                            <ColTh className="w-[2%] bg-slate-50">
+                                                #
+                                            </ColTh>
+                                            <ColTh className="w-[9%] bg-slate-50 pl-2 text-left">
+                                                Employee Name
+                                            </ColTh>
+                                            <ColTh className="w-[7%] bg-slate-50 pl-2 text-left">
+                                                Position
+                                            </ColTh>
+                                            <ColTh className="w-[2.5%] bg-slate-50">
+                                                SG
+                                            </ColTh>
+                                            <ColTh className="w-[2%] bg-slate-50">
+                                                Step
+                                            </ColTh>
+
                                             {/* Earnings sub-cols */}
-                                            <ColTh className="w-[5%] bg-slate-50">
+                                            <ColTh className="w-[5%] bg-slate-50 border-l border-l-black">
                                                 Basic Pay
                                             </ColTh>
                                             <ColTh className="w-[3%] bg-slate-50">
@@ -594,7 +563,7 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
 
                                             {/* Mandatory sub-cols */}
-                                            <ColTh className="w-[4%] bg-slate-50">
+                                            <ColTh className="w-[4%] bg-slate-50 border-l border-l-black">
                                                 GSIS
                                             </ColTh>
                                             <ColTh className="w-[4%] bg-slate-50">
@@ -608,7 +577,7 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
 
                                             {/* Attendance sub-cols */}
-                                            <ColTh className="w-[2.5%] bg-slate-50">
+                                            <ColTh className="w-[2.5%] bg-slate-50 border-l border-l-black">
                                                 Abs.Days
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-slate-50">
@@ -622,7 +591,7 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
 
                                             {/* Other sub-cols */}
-                                            <ColTh className="w-[3.5%] bg-slate-50">
+                                            <ColTh className="w-[3.5%] bg-slate-50 border-l border-l-black">
                                                 GSIS MPL
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-slate-50">
@@ -642,6 +611,14 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-slate-50">
                                                 Water Bill
+                                            </ColTh>
+
+                                            {/* Summary sub-cols */}
+                                            <ColTh className="w-[5%] bg-slate-50 text-foreground border-l border-l-black">
+                                                Total Deductions
+                                            </ColTh>
+                                            <ColTh className="w-[5%] bg-slate-50 font-bold text-foreground">
+                                                Net Pay
                                             </ColTh>
                                         </tr>
                                     </thead>
@@ -984,24 +961,10 @@ export default function Show({ period, records, summary }: Props) {
                                 },
                             ].map(({ role, sub, name }) => (
                                 <div key={role} className="flex-1 text-center">
-                                    <svg
-                                        className="mx-auto mb-4 h-px w-full"
-                                        viewBox="0 0 100 1"
-                                        preserveAspectRatio="none"
-                                    >
-                                        <line
-                                            x1="0"
-                                            y1="0"
-                                            x2="100"
-                                            y2="0"
-                                            stroke="currentColor"
-                                            strokeWidth="1"
-                                        />
-                                    </svg>
-                                    <p className="text-[11px] font-semibold tracking-wide uppercase">
-                                        {name ||
-                                            '________________________________'}
+                                    <p className="mb-0.5 text-[11px] font-semibold tracking-wide uppercase min-h-[1rem]">
+                                        {name || ''}
                                     </p>
+                                    <div className="mx-auto mb-1 w-3/4" style={{ borderTop: '1.5px solid #000' }} />
                                     <p className="mt-0.5 text-[10px] text-muted-foreground">
                                         {role}: {sub}
                                     </p>
@@ -1013,7 +976,7 @@ export default function Show({ period, records, summary }: Props) {
                     {/* ── Document footer ──────────────────────────────────── */}
                     <div className="mt-5 border-t border-border/40 pt-2">
                         {/* Paper note — visible on screen, also prints */}
-                        <div className="mb-2 flex items-center justify-center gap-1.5 rounded border border-dashed border-amber-400 bg-amber-50/60 px-3 py-1 text-[10px] font-medium text-amber-700 dark:border-amber-600 dark:bg-amber-950/20 dark:text-amber-400 print:border-amber-300 print:bg-transparent">
+                        <div className="mb-2 flex items-center justify-center gap-1.5 rounded border border-dashed border-amber-400 bg-amber-50/60 px-3 py-1 text-[10px] font-medium text-amber-700 dark:border-amber-600 dark:bg-amber-950/20 dark:text-amber-400 print:hidden">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 className="h-3 w-3 shrink-0"
@@ -1052,24 +1015,37 @@ export default function Show({ period, records, summary }: Props) {
             <style>{`
                 @media print {
                     @page {
-                        size: legal landscape; /* Legal / Long Bond Paper (8.5" x 14") */
-                        margin: 0.8cm 1cm;
+                        size: legal landscape;
+                        margin: 0;
                     }
 
-                    /* Hide ALL chrome — sidebar, toolbar, breadcrumbs, stat cards */
-                    body > * { visibility: hidden; }
-                    #payroll-register-document,
-                    #payroll-register-document * { visibility: visible; }
+                    /* Hide AppLayout chrome: breadcrumb bar, sidebar, nav */
+                    header, nav, aside { display: none !important; }
 
-                    /* Let document flow naturally across pages — NOT fixed/absolute */
+                    /* Hide screen-only elements */
+                    .print\\:hidden { display: none !important; }
+
+                    /* Ensure all layout wrappers don't clip or constrain the document */
+                    html, body {
+                        overflow: visible !important;
+                        height: auto !important;
+                    }
+
+                    /* Remove any layout constraints from ancestor containers */
+                    body > * {
+                        overflow: visible !important;
+                        height: auto !important;
+                    }
+
+                    /* Document itself — use padding since @page margin is 0 */
                     #payroll-register-document {
-                        position: static !important;
                         width: 100% !important;
                         height: auto !important;
                         overflow: visible !important;
                         background: white !important;
                         box-shadow: none !important;
-                        padding: 8px !important;
+                        ring: none !important;
+                        padding: 0.8cm 1cm !important;
                         margin: 0 !important;
                         font-size: 7.5px !important;
                     }
@@ -1094,9 +1070,6 @@ export default function Show({ period, records, summary }: Props) {
                         font-size: 7px !important;
                         line-height: 1.2 !important;
                     }
-
-                    /* Hide screen-only wrappers */
-                    .print\:hidden { display: none !important; }
                 }
             `}</style>
         </AppLayout>
