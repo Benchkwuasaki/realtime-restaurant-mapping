@@ -704,6 +704,9 @@ export default function Index({
         setExtraDayOptions([]);
         setIsDuplicate(false);
         setValidationError('');
+        // Reset pay date — the cut-off end date will change, so any previously
+        // selected pay date may now be before the new minimum.
+        setPayDate(undefined);
     };
 
     const handleCutoffChange = (value: 'first' | 'second') => {
@@ -712,6 +715,9 @@ export default function Index({
         setExtraDayOptions([]);
         setIsDuplicate(false);
         setValidationError('');
+        // Reset pay date — switching cut-off changes the end date, so a
+        // previously selected pay date may now be before the new minimum.
+        setPayDate(undefined);
     };
 
     const handleWorkingDaysChange = (value: string) => {
@@ -1285,18 +1291,6 @@ export default function Index({
         { title: 'Post and Finalize', description: 'Step 5', icon: FileText },
     ];
 
-    // ── Step 5 columns ─────────────────────────────────────────────────────────
-    // Imported static export from ./components/columns — no local state deps.
-    // Use `finalizedColumns` directly in the DataTable below.
-
-    // ── Step 2 columns ─────────────────────────────────────────────────────────
-    // Built via factory: closes over includedEmployeeIds, attendance, and the
-    // three setter callbacks. useMemo ensures columns only rebuild when those
-    // slices actually change — avoids unnecessary DataTable re-renders.
-    //
-    // NOTE: We do NOT use DataTable's built-in TanStack row selection here
-    // because the "included" state is external and must survive filter changes.
-
     const loadEmployeeColumns = useMemo(
         () =>
             createLoadEmployeeColumns({
@@ -1494,9 +1488,7 @@ export default function Index({
                                 {/* Computed Payroll Period (read-only) */}
                                 <Field>
                                     <FieldLabel>Payroll Period</FieldLabel>
-                                    <FieldDescription>
-                                        Auto-computed from month &amp; cut-off
-                                    </FieldDescription>
+
                                     <Input
                                         readOnly
                                         value={payrollPeriodLabel}
@@ -1542,12 +1534,7 @@ export default function Index({
                                     <FieldLabel>
                                         Working days this period
                                     </FieldLabel>
-                                    {computedDays && (
-                                        <FieldDescription>
-                                            Maximum {computedDays} working days
-                                            in this range
-                                        </FieldDescription>
-                                    )}
+
                                     {isTypingCustom ? (
                                         <Input
                                             type="number"
@@ -1634,6 +1621,12 @@ export default function Index({
                                                     setPayDate(date);
                                                     setValidationError('');
                                                 }}
+                                                disabled={
+                                                    endDate
+                                                        ? { before: endDate }
+                                                        : undefined
+                                                }
+                                                defaultMonth={endDate}
                                                 initialFocus
                                             />
                                         </PopoverContent>
@@ -1642,9 +1635,7 @@ export default function Index({
 
                                 <Field>
                                     <FieldLabel>HR Officer Name</FieldLabel>
-                                    <FieldDescription>
-                                        Optional — appears on printed payslips
-                                    </FieldDescription>
+
                                     <InputGroup className="w-full">
                                         <InputGroupInput
                                             placeholder="e.g. Maria Santos"
