@@ -243,6 +243,7 @@ export default function Index({
                                     box-sizing: border-box;
                                     -webkit-print-color-adjust: exact !important;
                                     print-color-adjust: exact !important;
+                                    font-family: 'Courier New', Courier, monospace !important;
                                 }
                                 body { margin: 0; padding: 0; background: #fff; }
                                 .bulk-payslip-page {
@@ -555,20 +556,13 @@ export default function Index({
                                                     {payslip.period_label}
                                                 </p>
                                             </div>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="gap-1.5 print:hidden"
-                                                onClick={() => window.print()}
-                                            >
-                                                <Printer className="h-3.5 w-3.5" />
-                                                Print
-                                            </Button>
                                         </div>
-                                        <PayslipDocument
-                                            data={payslip}
-                                            printId="payslip-print-area"
-                                        />
+                                        <div style={{ fontFamily: "'Courier New', Courier, monospace" }} className="[&_*]:!font-mono">
+                                            <PayslipDocument
+                                                data={payslip}
+                                                printId="payslip-print-area"
+                                            />
+                                        </div>
                                     </>
                                 ) : (
                                     <EmptyPreview />
@@ -793,10 +787,12 @@ export default function Index({
                             width: 720px;
                             max-width: 100%;
                             box-shadow: none !important;
+                            font-family: 'Courier New', Courier, monospace !important;
                         }
 
                         #payslip-print-area * {
                             visibility: visible;
+                            font-family: 'Courier New', Courier, monospace !important;
                         }
 
                         * {
