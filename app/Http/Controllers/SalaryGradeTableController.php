@@ -18,7 +18,7 @@ class SalaryGradeTableController extends Controller
             'salaryGradeSteps',
             'salaryGradeSteps as filled_steps_count' => fn ($q) => $q->whereNotNull('monthly_salary'),
         ])
-            ->with('activatedBy:id,name')
+            ->with('activatedBy:id,first_name,last_name')
             ->orderByRaw("FIELD(status, 'active', 'draft', 'superseded')")
             ->orderByDesc('effectivity_date')
             ->get()
@@ -31,7 +31,9 @@ class SalaryGradeTableController extends Controller
                 'effectivity_date' => $t->effectivity_date->toDateString(),
                 'status' => $t->status,
                 'activated_at' => $t->activated_at?->toDateTimeString(),
-                'activated_by_name' => $t->activatedBy?->name,
+                'activated_by_name' => $t->activatedBy
+    ? trim($t->activatedBy->first_name.' '.$t->activatedBy->last_name)
+    : null,
                 'filled_cells' => (int) $t->filled_steps_count,
                 'total_cells' => 264, // 33 × 8
             ]);

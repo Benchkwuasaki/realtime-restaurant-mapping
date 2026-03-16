@@ -6,19 +6,23 @@ import {
     DataTableRowActions,
     editAction,
     deleteAction,
+    type RowActionButton,
 } from '@/components/shared/data-table/data-table-row-action';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Users } from 'lucide-react';
 import { type Allowance } from '../data/schema';
 
 interface UseAllowanceColumnsProps {
     onEdit: (allowance: Allowance) => void;
     onDelete: (allowance: Allowance) => void;
+    onAssign: (allowance: Allowance) => void;
 }
 
 export function useAllowanceColumns({
     onEdit,
     onDelete,
+    onAssign,
 }: UseAllowanceColumnsProps): ColumnDef<Allowance>[] {
     return [
         {
@@ -78,9 +82,7 @@ export function useAllowanceColumns({
                     ₱
                     {Number(row.getValue('monthly_salary')).toLocaleString(
                         'en-PH',
-                        {
-                            minimumFractionDigits: 2,
-                        },
+                        { minimumFractionDigits: 2 },
                     )}
                 </span>
             ),
@@ -94,15 +96,9 @@ export function useAllowanceColumns({
             cell: ({ row }) => {
                 const taxable = row.getValue<boolean>('taxable');
                 return taxable ? (
-                    <Badge className="gap-1.5 border border-amber-200 bg-amber-100 text-amber-700 hover:bg-amber-100">
-                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                        Taxable
-                    </Badge>
+                    <Badge variant="yellow">Taxable</Badge>
                 ) : (
-                    <Badge className="gap-1.5 border border-green-200 bg-green-100 text-green-700 hover:bg-green-100">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        Non-Taxable
-                    </Badge>
+                    <Badge variant="green">Non-Taxable</Badge>
                 );
             },
             filterFn: (row, id, value: boolean[]) =>
@@ -145,17 +141,18 @@ export function useAllowanceColumns({
 
         {
             id: 'actions',
-            header: () => (
-                <span className="text-xs text-muted-foreground">Actions</span>
-            ),
+            header: () => <span className="text-xs">Actions</span>,
             cell: ({ row }) => (
                 <DataTableRowActions
                     row={row}
                     actions={[
+                        {
+                            label: 'Assign Employees',
+                            icon: Users,
+                            onClick: onAssign,
+                        } satisfies RowActionButton<Allowance>,
                         editAction(onEdit),
-                        // deleteAction(onDelete, {
-                        //     getName: (a) => a.name,
-                        // }),
+                        // deleteAction(onDelete, { getName: (a) => a.name }),
                     ]}
                 />
             ),

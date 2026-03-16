@@ -233,10 +233,7 @@ function assignCuttability(items: PriorityOrderItem[]): PriorityOrderItem[] {
 function SaveButton({ onClick }: { onClick: () => void }) {
     return (
         <div className="flex justify-end">
-            <Button
-                onClick={onClick}
-                className="gap-2 bg-green-500 text-white hover:bg-green-600"
-            >
+            <Button onClick={onClick} variant="default">
                 <Save className="size-4" />
                 Save Settings
             </Button>
@@ -310,17 +307,13 @@ function GovernmentContributionRatesTab({
                     <CardTitle className="text-base font-semibold">
                         GSIS
                     </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                        For Regular and Casual employees only. Both rates are
-                        based on the employee's monthly basic salary.
-                    </p>
                 </CardHeader>
                 <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <ContributionField
                             label="Employee Share (%)"
-                            helper="The portion deducted from the employee's pay every cut-off"
+                            helper="The portion deducted from the employee's salary every 15."
                             fieldKey="gsis_employee_rate"
                             form={form}
                             step="0.1"
@@ -346,18 +339,13 @@ function GovernmentContributionRatesTab({
                     <CardTitle className="text-base font-semibold">
                         PhilHealth
                     </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                        The monthly premium is split equally between the
-                        employee and MKWD. A minimum and maximum deduction
-                        applies regardless of salary.
-                    </p>
                 </CardHeader>
                 <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                         <ContributionField
                             label="Monthly Rate (%)"
-                            helper="The employee's share of the monthly premium (e.g. enter 2.5 for 2.5%)"
+                            helper="The employee's share of the monthly premium"
                             fieldKey="philhealth_rate"
                             form={form}
                             step="0.01"
@@ -366,7 +354,7 @@ function GovernmentContributionRatesTab({
                         />
                         <ContributionField
                             label="Lowest Deduction (₱)"
-                            helper="Even for very low salaries, the deduction will not go below this amount"
+                            helper="For low salaries, the deduction will not go below this amount"
                             fieldKey="philhealth_min"
                             form={form}
                             step="0.01"
@@ -375,24 +363,13 @@ function GovernmentContributionRatesTab({
                         />
                         <ContributionField
                             label="Highest Deduction (₱)"
-                            helper="Even for very high salaries, the deduction will not exceed this amount"
+                            helper="For high salaries, the deduction will not exceed this amount"
                             fieldKey="philhealth_max"
                             form={form}
                             step="0.01"
                             placeholder="2500.00"
                             onChange={set}
                         />
-                    </div>
-
-                    {/* Live formula preview */}
-                    <div className="mt-4 rounded-md bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-                        <span className="font-semibold text-foreground">
-                            How it computes:{' '}
-                        </span>
-                        Monthly basic × {form.philhealth_rate}%, but never less
-                        than ₱{form.philhealth_min.toLocaleString()} or more
-                        than ₱{form.philhealth_max.toLocaleString()}. Half of
-                        that is deducted each cut-off.
                     </div>
                 </CardContent>
             </Card>
@@ -403,15 +380,9 @@ function GovernmentContributionRatesTab({
                     <CardTitle className="text-base font-semibold">
                         Pag-IBIG (HDMF)
                     </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                        The contribution rate depends on the employee's monthly
-                        salary. Employees earning below the cutoff pay a lower
-                        rate; those above pay a higher rate. The deduction will
-                        never exceed the monthly limit.
-                    </p>
                 </CardHeader>
                 <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
                         <ContributionField
                             label="Salary Cutoff (₱)"
@@ -442,26 +413,13 @@ function GovernmentContributionRatesTab({
                         />
                         <ContributionField
                             label="Monthly Limit (₱)"
-                            helper="The most any employee will be deducted per month, no matter how high the salary"
+                            helper="The amount to be deducted per month"
                             fieldKey="pagibig_cap"
                             form={form}
                             step="0.01"
                             placeholder="100.00"
                             onChange={set}
                         />
-                    </div>
-
-                    {/* Live formula preview */}
-                    <div className="mt-4 rounded-md bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-                        <span className="font-semibold text-foreground">
-                            How it computes:{' '}
-                        </span>
-                        Employees earning ₱
-                        {form.pagibig_lower_threshold.toLocaleString()} or less
-                        pay {form.pagibig_lower_rate}% of their salary. Those
-                        earning more pay {form.pagibig_upper_rate}%, but never
-                        more than ₱{form.pagibig_cap} per month. Half of that is
-                        deducted each cut-off.
                     </div>
                 </CardContent>
             </Card>
@@ -474,7 +432,7 @@ function GovernmentContributionRatesTab({
                     </CardTitle>
                 </CardHeader>
                 <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                     <div className="max-w-[220px]">
                         <ContributionField
                             label="Working Days Divisor"
@@ -731,7 +689,7 @@ function FloorRulesTab({ floorRules }: { floorRules: FloorRules }) {
 
                 <Separator />
 
-                <CardContent className="pt-6">
+                <CardContent>
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div className="flex flex-col gap-1.5">
                             <Label className="text-sm font-medium">

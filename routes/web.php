@@ -11,7 +11,9 @@ use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DivisionController;
-use App\Http\Controllers\DocumentTrackingController;
+use App\Http\Controllers\DocumentTrackingArchiveController;
+use App\Http\Controllers\DocumentTrackingIncomingController;
+use App\Http\Controllers\DocumentTrackingOutgoingController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeReportController;
 use App\Http\Controllers\EmploymentClassificationController;
@@ -27,31 +29,30 @@ use App\Http\Controllers\LeaveCalendarController;
 use App\Http\Controllers\LeaveEntitlementController;
 use App\Http\Controllers\LeaveReportController;
 use App\Http\Controllers\LeaveSettingsController;
+// Leave
 use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\LoanEntryController;
-// Leave
+use App\Http\Controllers\OrganizationalChartController;
 use App\Http\Controllers\OtherDeductionEntryController;
 use App\Http\Controllers\PayrollDeductionSettingsController;
 use App\Http\Controllers\PayrollProcessingController;
+// Leave
 use App\Http\Controllers\PayrollRegisterController;
 use App\Http\Controllers\PayrollReportController;
 use App\Http\Controllers\PaySlipGenerationController;
-// Leave
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
 use App\Http\Controllers\SalaryGradeTableController;
+// Leave
+use App\Http\Controllers\StepIncrementController;
+// reports and analytics
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WhereaboutSlipController;
-// Leave
 use Illuminate\Support\Facades\Route;
-// reports and analytics
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
-use App\Http\Controllers\DocumentTrackingArchiveController;
-use App\Http\Controllers\DocumentTrackingIncomingController;
-use App\Http\Controllers\DocumentTrackingOutgoingController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -233,8 +234,8 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     | Organization - Organizational Chart
     |--------------------------------------------------------------------------
     */
-    Route::get('/organization/organizational_chart', [\App\Http\Controllers\OrganizationalChartController::class, 'index'])->name('organization.chart');
-    Route::get('/organization/organizational_chart/{department}', [\App\Http\Controllers\OrganizationalChartController::class, 'show'])->name('organization.chart.show');
+    Route::get('/organization/organizational_chart', [OrganizationalChartController::class, 'index'])->name('organization.chart');
+    Route::get('/organization/organizational_chart/{department}', [OrganizationalChartController::class, 'show'])->name('organization.chart.show');
 
     /*
     |--------------------------------------------------------------------------
@@ -377,12 +378,9 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::get('/payslip-generation', [PaySlipGenerationController::class, 'index'])
             ->name('payslipgeneration.index');
 
-        // Processing API endpoints
         Route::post('/process-new', [PayrollProcessingController::class, 'processNew'])->name('payroll.process-new');
         Route::post('/finalize', [PayrollProcessingController::class, 'finalizePayroll'])->name('payroll.finalize');
         Route::get('/attendance-summary', [PayrollProcessingController::class, 'attendanceSummary'])->name('payroll.attendance-summary');
-
-        // Payroll Period Management
         Route::prefix('periods')->name('payroll.periods.')->group(function () {
             Route::post('/', [PayrollProcessingController::class, 'storePeriod'])->name('store');
             Route::delete('/{period}', [PayrollProcessingController::class, 'destroyPeriod'])->name('destroy');
@@ -399,6 +397,8 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
                 Route::post('/', [AllowanceManagementController::class, 'store'])->name('store');
                 Route::put('/{allowance}', [AllowanceManagementController::class, 'update'])->name('update');
                 Route::delete('/{allowance}', [AllowanceManagementController::class, 'destroy'])->name('destroy');
+                Route::post('/{allowance}/assign', [AllowanceManagementController::class, 'assign'])->name('assign');
+                Route::delete('/{allowance}/unassign', [AllowanceManagementController::class, 'unassign'])->name('unassign');
             });
 
             Route::prefix('loan-entry')->name('loanentry.')->group(function () {
@@ -443,6 +443,11 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
                 Route::delete('/{salaryGrade}', [SalaryGradeTableController::class, 'destroy'])->name('destroy');
                 Route::post('/{salaryGrade}/activate', [SalaryGradeTableController::class, 'activate'])->name('activate');
             });
+            Route::prefix('step-increment')->name('payroll.step-increment.')->group(function () {
+                Route::get('/', [StepIncrementController::class, 'index'])->name('index');
+                Route::post('/apply', [StepIncrementController::class, 'apply'])->name('apply');
+            });
+
         });
     });
 
@@ -455,9 +460,9 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     // Incoming
     Route::prefix('document-tracking/incoming')->name('document-tracking-incoming.')->group(function () {
         Route::get('/', [DocumentTrackingIncomingController::class, 'index'])->name('index');
-        Route::post('/{documentTracking}/receive',  [DocumentTrackingIncomingController::class, 'receive'])->name('receive');
-        Route::post('/{documentTracking}/forward',  [DocumentTrackingIncomingController::class, 'forward'])->name('forward');
-        Route::post('/{documentTracking}/return',   [DocumentTrackingIncomingController::class, 'return'])->name('return');
+        Route::post('/{documentTracking}/receive', [DocumentTrackingIncomingController::class, 'receive'])->name('receive');
+        Route::post('/{documentTracking}/forward', [DocumentTrackingIncomingController::class, 'forward'])->name('forward');
+        Route::post('/{documentTracking}/return', [DocumentTrackingIncomingController::class, 'return'])->name('return');
         Route::post('/{documentTracking}/complete', [DocumentTrackingIncomingController::class, 'complete'])->name('complete');
         // Route::post('/{documentTracking}/cancel',   [DocumentTrackingIncomingController::class, 'cancel'])->name('cancel');
     });
@@ -474,7 +479,6 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::prefix('document-tracking/archive')->name('document-tracking-archive.')->group(function () {
         Route::get('/', [DocumentTrackingArchiveController::class, 'index'])->name('index');
     });
-
 
     Route::get('/reports_and_analytics', [ReportsAndAnalyticsController::class, 'index'])->name('reports_and_analytics.index');
 
@@ -506,4 +510,4 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');
 });
 
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';
