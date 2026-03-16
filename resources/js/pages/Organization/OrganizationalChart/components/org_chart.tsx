@@ -633,22 +633,6 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
                     </div>
                 </div>
 
-                {/* Stats overlay */}
-                <div className="absolute top-3 left-3 z-20 flex flex-row sm:flex-col gap-1.5">
-                    <div className="bg-card/90 backdrop-blur-sm border border-border
-                    rounded-xl px-2.5 py-1.5 shadow-sm flex items-center gap-1.5">
-                        <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary shrink-0" />
-                        <span className="text-xs font-semibold text-foreground">{totalEmployees}</span>
-                        <span className="hidden sm:inline text-xs text-muted-foreground">employees</span>
-                    </div>
-                    <div className="bg-card/90 backdrop-blur-sm border border-border
-                    rounded-xl px-2.5 py-1.5 shadow-sm flex items-center gap-1.5">
-                        <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary shrink-0" />
-                        <span className="text-xs font-semibold text-foreground">{divisions.length}</span>
-                        <span className="hidden sm:inline text-xs text-muted-foreground">divisions</span>
-                    </div>
-                </div>
-
                 {/* Canvas */}
                 <div
                     ref={canvasRef}

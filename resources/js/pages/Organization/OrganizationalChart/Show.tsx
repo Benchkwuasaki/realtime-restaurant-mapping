@@ -144,7 +144,6 @@ export default function OrganizationalChartShow({ department }: Props) {
 
                     {/* ── Department header card ─────────────────────────────── */}
                     <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-sm">
-                        <div className="h-1 bg-primary rounded-t-2xl" />
                         <div className="p-4 sm:p-5">
 
                             {/* Avatar + info */}
@@ -183,15 +182,17 @@ export default function OrganizationalChartShow({ department }: Props) {
                             </div>
 
                             {/* ── Stats — full width stretched cards ─────────── */}
-                            <div className="grid grid-cols-2 gap-2 max-w-200 sm:gap-3 pt-3 border-t border-border">
+                            <div className="grid grid-cols-2 gap-2 max-w-full sm:gap-3 pt-3 border-t border-border">
                                 <StatCard
                                     title="Divisions"
                                     value={divCount}
+                                    description="Divisions with units"
                                     icon={<Layers className="h-4 w-4" />}
                                 />
                                 <StatCard
                                     title="Employees"
                                     value={empCount}
+                                    description='All registered employees'
                                     icon={<Users className="h-4 w-4" />}
                                 />
                             </div>
