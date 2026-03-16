@@ -45,6 +45,11 @@ class WhereaboutSlipController extends Controller
                 'minutes_gone'             => $slip->minutes_gone,
                 'status'                   => $slip->status,
                 'return_status'            => $slip->return_status,
+                'prov_code' => $slip->prov_code,
+                'city_code' => $slip->city_code,
+                'brgy_code' => $slip->brgy_code,
+                'latitude' => $slip->latitude,
+                'longitude' => $slip->longitude,
                 'employee'              => self::mapEmployee($slip->employee),
                 'reviewed_and_noted_by' => self::mapEmployee($slip->reviewedAndNotedBy),
                 'approved_by'           => self::mapEmployee($slip->approvedBy),
@@ -80,16 +85,22 @@ class WhereaboutSlipController extends Controller
             'purpose_type'             => ['required', 'string', 'in:official,personal'],
             'purpose_description'      => ['required', 'string', 'max:1000'],
             'time_out'                 => ['required', 'date_format:H:i:s'],
+            'latitude'                 => ['required', 'numeric'],
+            'longitude'                 => ['required', 'string'],
+            'prov_code'                 => ['required', 'string'],
+            'city_code'                 => ['required', 'string'],
+            'brgy_code'                 => ['required', 'string'],
         ]);
 
         $employee = Employee::findOrFail($validated['employee_id']);
+
 
         WhereaboutSlip::create($validated);
 
         $this->activityLogService->createLog([
             'user_id'     => Auth::id(),
             'module'      => 'attendance',
-            'description' => "Created whereabout slip for {$employee->basicInfo->full_name}",
+            'activity' => "Created whereabout slip for {$employee->basicInfo->full_name}",
         ]);
 
         return back()->with('success', 'Whereabout slip created successfully.');

@@ -45,6 +45,12 @@ import {
     getEmployeeName,
 } from "./data/data"
 import { type AttendanceRecord, type WhereaboutSlip, attendanceRecordSchema } from "./data/schema"
+import { type DateRange } from "react-day-picker"
+import { Calendar } from "@/components/ui/calendar"
+import {
+    Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover"
+import { CalendarDays } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -257,15 +263,18 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
 function HistoryDialog({ record, open, onClose }: {
     record: RecordWithHistory | null; open: boolean; onClose: () => void
 }) {
-    const toDateStr = (d: Date) => d.toISOString().slice(0, 10)
-    const getDefaultFrom = () => { const d = new Date(); d.setMonth(d.getMonth() - 1); return toDateStr(d) }
-    const getDefaultTo = () => toDateStr(new Date())
-
-    const [dateFrom, setDateFrom] = useState(getDefaultFrom)
-    const [dateTo, setDateTo] = useState(getDefaultTo)
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+        to: new Date(),
+    })
 
     useEffect(() => {
-        if (open) { setDateFrom(getDefaultFrom()); setDateTo(getDefaultTo()) }
+        if (open) {
+            setDateRange({
+                from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+                to: new Date(),
+            })
+        }
     }, [open])
 
     if (!record) return null
@@ -282,14 +291,20 @@ function HistoryDialog({ record, open, onClose }: {
         (r, i, arr) => arr.findIndex(x => toLocalDate(x.date).getTime() === toLocalDate(r.date).getTime()) === i
     )
 
-    const from = dateFrom ? toLocalDate(dateFrom) : null
-    const to = dateTo ? toLocalDate(dateTo) : null
+    const from = dateRange?.from ?? null
+    const to = dateRange?.to ?? null
     const filtered = allRecords.filter(r => {
         const d = toLocalDate(r.date)
         if (from && d < from) return false
         if (to && d > to) return false
         return true
     })
+
+    const dateLabel = dateRange?.from
+        ? dateRange.to
+            ? `${format(dateRange.from, "MMM d, yyyy")} – ${format(dateRange.to, "MMM d, yyyy")}`
+            : format(dateRange.from, "MMM d, yyyy")
+        : "Pick a date range"
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -313,20 +328,50 @@ function HistoryDialog({ record, open, onClose }: {
                     </DialogTitle>
                 </DialogHeader>
 
+                {/* ── Date Range Filter ── */}
                 <div className="flex items-center gap-3 px-5 py-3 border-b border-border bg-muted/20 shrink-0">
                     <span className="text-xs text-muted-foreground font-medium shrink-0">Filter by date</span>
-                    <div className="flex items-center gap-2">
-                        <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-7 text-xs w-36" />
-                        <span className="text-muted-foreground text-xs">—</span>
-                        <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-7 text-xs w-36" />
-                    </div>
-                    {(dateFrom || dateTo) && (
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => { setDateFrom(""); setDateTo("") }}>
+
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs gap-1.5 font-normal"
+                            >
+                                <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <span className={dateRange?.from ? "text-foreground" : "text-muted-foreground"}>
+                                    {dateLabel}
+                                </span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="range"
+                                defaultMonth={dateRange?.from}
+                                selected={dateRange}
+                                onSelect={setDateRange}
+                                numberOfMonths={2}
+                                disabled={(date) =>
+                                    date > new Date() || date < new Date("1900-01-01")
+                                }
+                            />
+                        </PopoverContent>
+                    </Popover>
+
+                    {dateRange && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-muted-foreground"
+                            onClick={() => setDateRange(undefined)}
+                        >
                             <X className="w-3 h-3 mr-1" /> Clear
                         </Button>
                     )}
                 </div>
 
+                {/* ── Table ── */}
                 <div className="overflow-auto flex-1 min-h-0">
                     {filtered.length === 0 ? (
                         <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
@@ -338,8 +383,12 @@ function HistoryDialog({ record, open, onClose }: {
                                 <tr className="border-b border-border">
                                     <th className="w-8 pl-3 py-2.5" />
                                     {[
-                                        { label: "Date" }, { label: "Status" }, { label: "Time In" },
-                                        { label: "Break (Out)" }, { label: "Break (In)" }, { label: "Time Out" },
+                                        { label: "Date" },
+                                        { label: "Status" },
+                                        { label: "Time In" },
+                                        { label: "Break (Out)" },
+                                        { label: "Break (In)" },
+                                        { label: "Time Out" },
                                         { label: "Work Hrs", icon: <Timer className="w-3 h-3" /> },
                                         { label: "Late", icon: <AlertTriangle className="w-3 h-3" /> },
                                         { label: "Slip Ded.", icon: <ClipboardList className="w-3 h-3" /> },

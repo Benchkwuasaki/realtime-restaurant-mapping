@@ -1,7 +1,7 @@
 import { Head, router } from "@inertiajs/react"
 import Cropper from "react-easy-crop"
 import {
-    Pencil, Mail, Phone, Calendar, MapPin, User, Heart, Home,
+    Pencil, Mail, Phone, MapPin, User, Heart, Home,
     Briefcase, Clock, FileText, Landmark, Camera, XCircle,
     Eye, EyeOff, Plus, Trash2, Save, ChevronDown, ChevronRight,
     Pen, Upload, Download, FolderOpen, AlertTriangle, Timer,
@@ -13,6 +13,10 @@ import { route } from "ziggy-js"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { type DateRange } from "react-day-picker"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarDays } from "lucide-react"
 import {
     useReactTable,
     getCoreRowModel,
@@ -26,7 +30,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
@@ -40,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { X } from "lucide-react"
 import AppLayout from "@/layouts/app-layout"
 import { type BreadcrumbItem } from "@/types"
+import { PhoneInput } from "@/components/phone-input"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -152,6 +156,7 @@ interface SeminarTraining {
     id: number
     seminar_name: string
     venue?: string
+    organizer?: string
     date_attended?: string
 }
 interface ServiceRecord {
@@ -366,7 +371,7 @@ function InfoRow({ icon: Icon, label, value, onEdit }: {
             </div>
             <div className="min-w-0 flex-1">
                 <p className="text-[10px]  text-muted-foreground uppercase tracking-widest leading-none mb-1">{label}</p>
-                <p className="text-sm text-foreground font-medium leading-snug break-words">
+                <p className="text-sm text-foreground font-medium leading-snug wrap-break-word">
                     {value || <span className="text-muted-foreground/40 font-normal italic text-xs">Not provided</span>}
                 </p>
             </div>
@@ -379,45 +384,6 @@ function InfoRow({ icon: Icon, label, value, onEdit }: {
     )
 }
 
-// ─── DetailCard ───────────────────────────────────────────────────────────────
-
-function DetailCard({ title, value, isStatus = false, statusValue, onToggleStatus, onEdit }: {
-    title: string; value?: string; isStatus?: boolean; statusValue?: boolean
-    onToggleStatus?: () => void; onEdit?: () => void
-}) {
-    return (
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200 group">
-            <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-semibold text-muted-foreground tracking-wide">{title}</span>
-                {isStatus ? (
-                    <Switch checked={statusValue} onCheckedChange={onToggleStatus} className="scale-90" />
-                ) : onEdit ? (
-                    <Button size={"icon-xs"} onClick={onEdit} variant={"ghost"}>
-                        <Pencil className="w-3 h-3" />
-                    </Button>
-                ) : null}
-            </div>
-            <div className="flex items-center gap-2">
-                {isStatus ? (
-                    <>
-                        <ActiveBadge active={statusValue ?? false} />
-                    </>
-                ) : value ? (
-                    <>
-                        <ValueBadge value={value} />
-                    </>
-                ) : (
-                    <>
-                        <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center shrink-0">
-                            <XCircle className="w-3.5 h-3.5 text-muted-foreground/40" />
-                        </div>
-                        <span className="text-sm text-muted-foreground/50 italic font-normal">Not set</span>
-                    </>
-                )}
-            </div>
-        </div>
-    )
-}
 
 // ─── Basic Info Edit Dialog ────────────────────────────────────────────────────
 
@@ -436,6 +402,7 @@ function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; 
         place_of_birth: basic?.place_of_birth ?? "",
         personal_email: basic?.personal_email ?? "",
         phone_number: basic?.phone_number ?? "",
+        work_id: employee.work_id ?? "",
         street_address: firstAddress?.street_address ?? "",
         city: firstAddress?.city ?? "",
         state: firstAddress?.state ?? "",
@@ -479,7 +446,15 @@ function BasicInfoEditDialog({ employee, open, onClose }: { employee: Employee; 
                     </div>
                     <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Place of Birth</Label><Input value={form.place_of_birth} onChange={e => set("place_of_birth", e.target.value)} /></div>
                     <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Personal Email</Label><Input type="email" value={form.personal_email} onChange={e => set("personal_email", e.target.value)} /></div>
-                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Phone Number</Label><Input value={form.phone_number} onChange={e => set("phone_number", e.target.value)} /></div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Phone Number</Label>
+                        <PhoneInput
+                            defaultCountry="PH"
+                            value={form.phone_number}
+                            onChange={v => set("phone_number", v ?? "")}
+                        />
+                    </div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Work ID</Label><Input value={form.work_id} onChange={e => set("work_id", e.target.value)} placeholder="e.g. EMP-2024-001" /></div>
                 </div>
                 <div className="border-t border-border pt-3 mt-1">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Address</p>
@@ -630,11 +605,11 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                                                         <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.positionName}</span>
                                                         {grp.totalSlots > 1 && (
                                                             isDisabled
-                                                                ? <Badge variant="outline" className="text-[10px] font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 shrink-0">Full</Badge>
+                                                                ? <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
                                                                 : <Badge variant="secondary" className="text-[10px] shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
                                                         )}
                                                         {grp.totalSlots === 1 && isDisabled && (
-                                                            <Badge variant="outline" className="text-[10px] font-bold text-rose-600 bg-rose-100 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 shrink-0">Full</Badge>
+                                                            <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
                                                         )}
                                                     </div>
                                                 </SelectItem>
@@ -824,7 +799,7 @@ function EmploymentDetailsTab({ employee, items }: { employee: Employee; items: 
                         <span className="text-xs text-muted-foreground w-44 shrink-0">{label}</span>
                         <div className="flex flex-1 items-center justify-between gap-2 min-w-0">
                             <span className="text-sm font-medium text-foreground truncate">
-                                {value ?? <span className="text-muted-foreground/40 italic font-normal text-xs">Not set</span>}
+                                {value ?? <span className="text-muted-foreground/40 italic font-normal text-xs">N/A</span>}
                             </span>
                             <Button
                                 size="icon-xs"
@@ -915,11 +890,11 @@ function CompensationTab({ employee }: { employee: Employee }) {
                             <div className="flex items-center gap-3">
                                 <div className="flex-1 rounded-lg bg-muted/50 border border-border px-4 py-3 text-center">
                                     <p className="text-xs text-muted-foreground mb-1">Salary Grade</p>
-                                    <p className="text-2xl font-bold text-foreground">{sgs.salary_grade}</p>
+                                    <p className="text-lg font-bold text-foreground">{sgs.salary_grade}</p>
                                 </div>
                                 <div className="flex-1 rounded-lg bg-muted/50 border border-border px-4 py-3 text-center">
                                     <p className="text-xs text-muted-foreground mb-1">Step</p>
-                                    <p className="text-2xl font-bold text-foreground">{sgs.step}</p>
+                                    <p className="text-lg font-bold text-foreground">{sgs.step}</p>
                                 </div>
                             </div>
                             <div className="rounded-lg border border-border px-4 py-3 flex items-center justify-between">
@@ -1051,7 +1026,7 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                         key={slip.whereabout_slip_id}
                         className={cn(
                             "rounded-lg border bg-background overflow-hidden",
-                            isDeducted ? "border-rose-300 dark:border-rose-800" : "border-border",
+                            isDeducted ? "border-destructive/40" : "border-border",
                         )}
                     >
                         <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/20">
@@ -1073,7 +1048,7 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                             ].map(({ label, value, highlight }) => (
                                 <div key={label} className="flex flex-col gap-0.5 px-3 py-2 bg-background">
                                     <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
-                                    <span className={cn("text-xs font-mono font-medium", highlight && "text-rose-600 dark:text-rose-400")}>{value}</span>
+                                    <span className={cn("text-xs font-mono font-medium", highlight && "text-destructive")}>{value}</span>
                                 </div>
                             ))}
                         </div>
@@ -1082,7 +1057,7 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                             <div className={cn(
                                 "flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold border-t",
                                 isDeducted
-                                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/60"
+                                    ? "bg-destructive/10 text-destructive border-destructive/20"
                                     : isPendingDeduct
                                         ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60"
                                         : "bg-muted/30 text-muted-foreground border-border/40",
@@ -1143,7 +1118,7 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
                 <td className="py-2.5 pr-4 text-xs font-medium whitespace-nowrap">{dateLabel}</td>
                 <td className="py-2.5 pr-4"><StatusBadge status={record.status} /></td>
                 <td className="py-2.5 pr-4">
-                    <span className={cn("text-xs font-mono", isLate && "text-rose-600 dark:text-rose-400 font-semibold")}>
+                    <span className={cn("text-xs font-mono", isLate && "text-destructive font-semibold")}>
                         {fmtTime(record.time_in)}
                     </span>
                 </td>
@@ -1153,12 +1128,12 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
                 <td className="py-2.5 pr-4 text-xs font-mono font-semibold">{fmtMinutes(record.work_minutes)}</td>
                 <td className="py-2.5 pr-4">
                     {isLate
-                        ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">{fmtMinutes(record.late_minutes)}</span>
+                        ? <span className="text-xs font-mono font-semibold text-destructive">{fmtMinutes(record.late_minutes)}</span>
                         : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
                 </td>
                 <td className="py-2.5 pr-3">
                     {personalDeductionMins > 0
-                        ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">-{fmtMinutes(personalDeductionMins)}</span>
+                        ? <span className="text-xs font-mono font-semibold text-destructive">-{fmtMinutes(personalDeductionMins)}</span>
                         : slips.some(s => s.purpose_type === "personal" && s.return_status === "returned" && !hasTimedOut)
                             ? <span className="text-[10px] text-amber-500 font-semibold">Pending</span>
                             : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
@@ -1183,16 +1158,14 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
 
 function AttendanceRecordTab({ employee }: { employee: Employee }) {
     const records = (employee.attendance_records ?? []) as AttendanceRecord[]
-    const today = new Date()
-    const oneMonthAgo = new Date(today)
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-    const toDateStr = (d: Date) => d.toISOString().slice(0, 10)
 
-    const [dateFrom, setDateFrom] = useState(toDateStr(oneMonthAgo))
-    const [dateTo, setDateTo] = useState(toDateStr(today))
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+        to: new Date(),
+    })
 
-    const from = dateFrom ? toLocalDate(dateFrom) : null
-    const to = dateTo ? toLocalDate(dateTo) : null
+    const from = dateRange?.from ?? null
+    const to = dateRange?.to ?? null
 
     const filtered = records.filter(r => {
         const d = toLocalDate(r.date)
@@ -1200,6 +1173,12 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
         if (to && d > to) return false
         return true
     })
+
+    const dateLabel = dateRange?.from
+        ? dateRange.to
+            ? `${format(dateRange.from, "MMM d, yyyy")} – ${format(dateRange.to, "MMM d, yyyy")}`
+            : format(dateRange.from, "MMM d, yyyy")
+        : "Pick a date range"
 
     const stats = [
         { label: "Present", count: records.filter(r => statusKey(r.status) === "PRESENT").length, cls: STATUS_CLASSES.PRESENT },
@@ -1231,14 +1210,45 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
                             </Badge>
                         )}
                     </div>
+
                     {records.length > 0 && (
                         <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
                             <span className="text-xs text-muted-foreground font-medium shrink-0">Filter</span>
-                            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-7 text-xs w-36" />
-                            <span className="text-muted-foreground text-xs">—</span>
-                            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-7 text-xs w-36" />
-                            {(dateFrom || dateTo) && (
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => { setDateFrom(""); setDateTo("") }}>
+
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs gap-1.5 font-normal"
+                                    >
+                                        <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <span className={dateRange?.from ? "text-foreground" : "text-muted-foreground"}>
+                                            {dateLabel}
+                                        </span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="range"
+                                        defaultMonth={dateRange?.from}
+                                        selected={dateRange}
+                                        onSelect={setDateRange}
+                                        numberOfMonths={2}
+                                        disabled={(date) =>
+                                            date > new Date() || date < new Date("1900-01-01")
+                                        }
+                                    />
+                                </PopoverContent>
+                            </Popover>
+
+                            {dateRange && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs text-muted-foreground"
+                                    onClick={() => setDateRange(undefined)}
+                                >
                                     <X className="w-3 h-3 mr-1" /> Clear
                                 </Button>
                             )}
@@ -1252,7 +1262,9 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
                         <p className="text-sm italic text-muted-foreground">No attendance records found.</p>
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">No records match the selected date range.</div>
+                    <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                        No records match the selected date range.
+                    </div>
                 ) : (
                     <div className="overflow-auto max-h-[590px]">
                         <table className="w-full text-sm border-collapse min-w-[760px]">
@@ -1412,14 +1424,14 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                                 {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                             </Button>
                                             <Button onClick={() => openEditGovDialog(type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
-                                            <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                            <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </>
                                     ) : (
                                         <Button
                                             onClick={() => setGovDialog({
                                                 open: true,
                                                 mode: "standard",
-                                                type,          // ← "GSIS", "PhilHealth", or "Pag-IBIG"
+                                                type,
                                                 id: undefined,
                                                 value: "",
                                                 customTypeName: ""
@@ -1448,7 +1460,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                     </Button>
                                     <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
-                                    <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
                         )
@@ -1478,7 +1490,7 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                         <Button onClick={() => openEligDialog(e)} variant="ghost" size="icon-xs">
                                             <Pencil className="w-3.5 h-3.5" />
                                         </Button>
-                                        <Button onClick={() => setDeleteEligId(e.eligibility_information_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">
+                                        <Button onClick={() => setDeleteEligId(e.eligibility_information_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
                                     </div>
@@ -1731,8 +1743,8 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     // ── Seminars ──────────────────────────────────────────────────────────────
 
     const [seminarDialog, setSeminarDialog] = useState<{
-        open: boolean; id?: number; seminar_name: string; venue: string; date_attended: string
-    }>({ open: false, seminar_name: "", venue: "", date_attended: "" })
+        open: boolean; id?: number; seminar_name: string; venue: string; organizer: string; date_attended: string
+    }>({ open: false, seminar_name: "", venue: "", organizer: "", date_attended: "" })
     const [deleteSeminarId, setDeleteSeminarId] = useState<number | null>(null)
 
     const openSeminarDialog = (s?: SeminarTraining) =>
@@ -1741,6 +1753,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             id: s?.id,
             seminar_name: s?.seminar_name ?? "",
             venue: s?.venue ?? "",
+            organizer: s?.organizer ?? "",
             date_attended: toInputDate(s?.date_attended),
         })
 
@@ -1748,6 +1761,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
         const data = {
             seminar_name: seminarDialog.seminar_name,
             venue: seminarDialog.venue,
+            organizer: seminarDialog.organizer,
             date_attended: seminarDialog.date_attended || null,
         }
         if (seminarDialog.id) {
@@ -1863,7 +1877,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}>
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteFamilyIndex(i)}>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}>
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
@@ -1917,7 +1931,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                                         <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}>
                                                             <Pencil className="w-3.5 h-3.5" />
                                                         </Button>
-                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteEducIndex(globalIndex)}>
+                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteEducIndex(globalIndex)}>
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </Button>
                                                     </div>
@@ -1947,25 +1961,27 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </div>
                 ) : (
                     <div className="overflow-x-auto overflow-y-auto max-h-64">
-                        <div className="min-w-[480px]">
+                        <div className="min-w-[700px]"> 
                             {/* Header */}
-                            <div className="grid grid-cols-[1fr_1fr_140px_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
-                                {["Seminar / Training", "Venue", "Date Attended", ""].map(h => (
+                            <div className="grid grid-cols-[2fr_1fr_1fr_140px_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                                {["Seminar / Training", "Venue", "Organizer", "Date Attended", ""].map(h => (
                                     <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Date Attended" && "text-right")}>{h}</span>
                                 ))}
                             </div>
+
                             {/* Rows */}
                             <div className="divide-y divide-border">
                                 {seminars.map(s => (
-                                    <div key={s.id} className="grid grid-cols-[1fr_1fr_140px_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                    <div key={s.id} className="grid grid-cols-[2fr_1fr_1fr_140px_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
                                         <span className="text-sm text-foreground font-medium truncate">{s.seminar_name}</span>
                                         <span className="text-sm text-muted-foreground truncate">{s.venue ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground truncate">{s.organizer ?? "—"}</span>
                                         <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
                                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}>
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteSeminarId(s.id)}>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}>
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
@@ -2010,7 +2026,7 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}>
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </Button>
-                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" onClick={() => setDeleteServiceId(s.id)}>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}>
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
@@ -2024,12 +2040,12 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
 
             {/* ── Family Dialog ── */}
             <Dialog open={familyDialog.open} onOpenChange={o => setFamilyDialog(p => ({ ...p, open: o }))}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader><DialogTitle>{familyDialog.index !== undefined ? "Edit" : "Add"} Family Member</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Full Name *</Label>
-                            <Input value={familyDialog.full_name} onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))} autoFocus />
+                            <Input value={familyDialog.full_name} onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))} autoFocus placeholder="e.g. Juan dela Cruz" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -2057,7 +2073,11 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             </div>
                             <div>
                                 <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Contact Number</Label>
-                                <Input value={familyDialog.contact_number} onChange={e => setFamilyDialog(p => ({ ...p, contact_number: e.target.value }))} placeholder="09XXXXXXXXXX" />
+                                <PhoneInput
+                                    defaultCountry="PH"
+                                    value={familyDialog.contact_number}
+                                    onChange={v => setFamilyDialog(p => ({ ...p, contact_number: v ?? "" }))}
+                                />
                             </div>
                         </div>
                         <div>
@@ -2090,16 +2110,16 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </div>
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Name *</Label>
-                            <Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus />
+                            <Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus placeholder="e.g. University of the Philippines" />
                         </div>
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label>
-                            <Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} />
+                            <Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} placeholder="e.g. Diliman, Quezon City" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label>
-                                <Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} />
+                                <Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} placeholder="e.g. BS Computer Science" />
                             </div>
                             <div>
                                 <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Graduation Date</Label>
@@ -2121,11 +2141,19 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     <div className="space-y-3 py-2">
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label>
-                            <Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus />
+                            <Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus placeholder="e.g. Leadership and Management Seminar" />
                         </div>
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Venue</Label>
-                            <Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, venue: e.target.value }))} />
+                            <Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, venue: e.target.value }))} placeholder="e.g. Makati City, Philippines" />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label>
+                            <Input
+                                value={seminarDialog.organizer}
+                                onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))}
+                                placeholder="e.g. Civil Service Commission"
+                            />
                         </div>
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label>
@@ -2146,11 +2174,11 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     <div className="space-y-3 py-2">
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position Name *</Label>
-                            <Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus />
+                            <Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus placeholder="e.g. Administrative Officer" />
                         </div>
                         <div>
                             <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Department</Label>
-                            <Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} />
+                            <Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} placeholder="e.g. Human Resources Department" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -2301,7 +2329,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 
                 {uploadedFiles.length === 0 ? (
                     <div className="px-5 py-14 text-center">
-                        <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                        <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center mx-auto mb-4">
                             <FolderOpen className="w-7 h-7 text-muted-foreground/30" />
                         </div>
                         <p className="text-sm font-medium text-foreground mb-1">No files uploaded yet</p>
@@ -2341,7 +2369,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                                 </Button>
                                             </a>
                                         )}
-                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 w-8 h-8 sm:w-7 sm:h-7" onClick={() => setDeleteFileId(file.id)} title="Delete">
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-8 h-8 sm:w-7 sm:h-7" onClick={() => setDeleteFileId(file.id)} title="Delete">
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
                                     </div>
@@ -2354,7 +2382,7 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 
             {/* Preview Dialog */}
             <Dialog open={!!viewFile} onOpenChange={o => !o && setViewFile(null)}>
-                <DialogContent className="sm:max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl">
+                <DialogContent className="sm:max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden rounded-lg">
                     <DialogHeader className="px-5 py-4 border-b border-border shrink-0 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-3 min-w-0">
                             {viewFile && (() => {
@@ -2412,8 +2440,8 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 function AvatarPreviewDialog({ src, name, open, onClose }: { src: string; name?: string; open: boolean; onClose: () => void }) {
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-xs p-0 overflow-hidden rounded-2xl border border-border shadow-2xl gap-0">
-                <div className="relative flex flex-col items-center bg-card rounded-2xl overflow-hidden">
+            <DialogContent className="sm:max-w-xs p-0 overflow-hidden rounded-lg border border-border shadow-lg gap-0">
+                <div className="relative flex flex-col items-center bg-card rounded-lg overflow-hidden">
                     <img src={src} alt={name} className="w-full aspect-square object-cover" />
                     {name && (
                         <div className="w-full px-5 py-3.5 border-t border-border bg-card">
@@ -2508,7 +2536,7 @@ function AvatarUploadDialog({ open, onClose, onFileSelected }: { open: boolean; 
 
     return (
         <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-            <DialogContent className="sm:max-w-sm rounded-2xl overflow-hidden p-0 gap-0">
+            <DialogContent className="sm:max-w-sm rounded-lg overflow-hidden p-0 gap-0">
                 <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
                     <DialogTitle className="text-base font-bold">
                         {mode === "camera" ? "Take a Photo" : mode === "crop" ? "Crop Photo" : "Update Profile Photo"}
@@ -2641,7 +2669,7 @@ export default function ShowEmployee({ employee, items }: Props) {
     const tabs = [
         { value: "employment", label: "Employment Details", icon: Briefcase },
         { value: "compensation", label: "Compensation", icon: FileText },
-        { value: "leave", label: "Leave Information", icon: Calendar },
+        { value: "leave", label: "Leave Information", icon: CalendarDays },
         { value: "time", label: "Attendance Record", icon: Clock },
         { value: "government", label: "Government Eligibility", icon: Landmark },
         { value: "background", label: "Background Information", icon: User },
@@ -2655,8 +2683,8 @@ export default function ShowEmployee({ employee, items }: Props) {
             <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 p-3 sm:p-5 bg-background">
 
                 {/* ── Left Panel ── */}
-                <div className="w-full lg:w-72 shrink-0 bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
-                    <div className="relative flex flex-col items-center pt-8 pb-5 px-5 bg-gradient-to-b from-accent/30 to-card border-b border-border">
+                <div className="w-full lg:w-72 shrink-0 bg-card rounded-lg border border-border shadow-sm overflow-hidden flex flex-col">
+                    <div className="relative flex flex-col items-center pt-8 pb-5 px-5 bg-linear-to-b from-accent/30 to-card border-b border-border">
                         <div className="absolute top-3 right-3">
                             <Button size={"icon-xs"} onClick={() => setBasicEditOpen(true)} variant={"ghost"}>
                                 <Pencil className="w-3.5 h-3.5" />
@@ -2694,7 +2722,7 @@ export default function ShowEmployee({ employee, items }: Props) {
                             <InfoRow icon={Mail} label="Personal Email" value={basic?.personal_email} />
                             <InfoRow icon={Briefcase} label="Work ID" value={employee.work_id} />
                             <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} />
-                            <InfoRow icon={Calendar} label="Date of Birth" value={fmt(basic?.birth_date)} />
+                            <InfoRow icon={CalendarDays} label="Date of Birth" value={fmt(basic?.birth_date)} />
                             <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} />
                             <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} />
                             <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} />
@@ -2704,10 +2732,10 @@ export default function ShowEmployee({ employee, items }: Props) {
                 </div>
 
                 {/* ── Right Panel ── */}
-                <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm min-w-0">
+                <div className="flex-1 bg-card rounded-lg border border-border shadow-sm overflow-hidden min-w-0">
                     <Tabs defaultValue="employment">
                         <div className="border-b border-border px-2 sm:px-4 pt-1 shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-                            <TabsList className="h-auto bg-transparent gap-0 p-0 flex flex-nowrap w-max min-w-full">
+                            <TabsList className="h-auto bg-transparent gap-0 p-0 flex flex-nowrap w-max ">
                                 {tabs.map(({ value, label, icon: Icon }) => (
                                     <TabsTrigger
                                         key={value}
@@ -2715,7 +2743,7 @@ export default function ShowEmployee({ employee, items }: Props) {
                                         className="relative flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap"
                                     >
                                         <Icon className="w-3.5 h-3.5 shrink-0" />
-                                        <span className="hidden xs:inline sm:inline">{label}</span>
+                                        <span>{label}</span>
                                     </TabsTrigger>
                                 ))}
                             </TabsList>

@@ -5,19 +5,24 @@ import {
     UserCheck, Coffee, UserX, AlertTriangle, Users,
     TrendingUp, TrendingDown, Minus,
     RefreshCw, Download, CalendarDays, Building2, Clock,
-    BarChart3, Activity,
+    BarChart3, ListFilter,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
     Area, ComposedChart, ReferenceLine, ResponsiveContainer, Line,
 } from "recharts"
 
+import { format } from "date-fns"
+import { type DateRange } from "react-day-picker"
+import { Calendar } from "@/components/ui/calendar"
+import {
+    Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover"
+
 import AppLayout from "@/layouts/app-layout"
 import { StatCard } from "@/components/shared/stat-card"
 import { DataTable } from "@/components/shared/data-table/data-table"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -70,11 +75,11 @@ const TOOLTIP_STYLE: React.CSSProperties = {
 
 const C = {
     present: "var(--color-chart-2)",   // teal-green
-    late:    "var(--color-chart-4)",   // amber-orange
-    absent:  "var(--color-destructive)",
+    late: "var(--color-chart-4)",   // amber-orange
+    absent: "var(--color-destructive)",
     halfDay: "var(--color-chart-1)",   // blue
-    rate:    "var(--color-primary)",
-    trend:   "var(--color-chart-5)",
+    rate: "var(--color-primary)",
+    trend: "var(--color-chart-5)",
 } as const
 
 // Semantic icon / dot colours via inline CSS vars
@@ -82,15 +87,15 @@ const C = {
 const COLOR = {
     present: { color: "var(--color-chart-2)" },
     halfDay: { color: "var(--color-chart-1)" },
-    late:    { color: "var(--color-chart-4)" },
-    absent:  { color: "var(--color-destructive)" },
+    late: { color: "var(--color-chart-4)" },
+    absent: { color: "var(--color-destructive)" },
 } as const
 
 const BG_COLOR = {
     present: { backgroundColor: "var(--color-chart-2)" },
     halfDay: { backgroundColor: "var(--color-chart-1)" },
-    late:    { backgroundColor: "var(--color-chart-4)" },
-    absent:  { backgroundColor: "var(--color-destructive)" },
+    late: { backgroundColor: "var(--color-chart-4)" },
+    absent: { backgroundColor: "var(--color-destructive)" },
 } as const
 
 // Delta chip
@@ -114,21 +119,43 @@ function DeltaChip({ delta, direction }: { delta: number; direction: "up" | "dow
 }
 
 // Filter Bar
-
 function FilterBar({ departments, filters, onApply }: {
     departments: string[]
     filters: Props["filters"]
     onApply: (f: Props["filters"]) => void
 }) {
     const [local, setLocal] = useState(filters)
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: filters.date_from ? new Date(filters.date_from) : undefined,
+        to: filters.date_to ? new Date(filters.date_to) : undefined,
+    })
+
     function set<K extends keyof Props["filters"]>(k: K, v: string) {
         setLocal(f => ({ ...f, [k]: v }))
     }
+
     const isDirty = local.department !== "All Departments" || !!local.date_from || !!local.date_to
+
+    function handleDateSelect(range: DateRange | undefined) {
+        setDateRange(range)
+        const from = range?.from ? format(range.from, "yyyy-MM-dd") : ""
+        const to = range?.to ? format(range.to, "yyyy-MM-dd") : ""
+        setLocal(f => ({ ...f, date_from: from, date_to: to }))
+    }
+
     function reset() {
         const cleared = { department: "All Departments", date_from: "", date_to: "" }
-        setLocal(cleared); onApply(cleared)
+        setLocal(cleared)
+        setDateRange(undefined)
+        onApply(cleared)
     }
+
+    const dateLabel = dateRange?.from
+        ? dateRange.to
+            ? `${format(dateRange.from, "MMM d, yyyy")} – ${format(dateRange.to, "MMM d, yyyy")}`
+            : format(dateRange.from, "MMM d, yyyy")
+        : "Pick a date range"
+
     return (
         <div className="flex flex-wrap items-center gap-2">
             <Select value={local.department} onValueChange={v => {
@@ -151,21 +178,43 @@ function FilterBar({ departments, filters, onApply }: {
                 </SelectContent>
             </Select>
 
-            <div className="flex items-center gap-1.5 h-8 rounded-md border border-input bg-background px-3 text-xs">
-                <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <Input type="date" value={local.date_from} onChange={e => set("date_from", e.target.value)}
-                    className="h-auto border-none shadow-none p-0 text-xs w-28 focus-visible:ring-0" />
-                <span className="text-muted-foreground">-</span>
-                <Input type="date" value={local.date_to} onChange={e => set("date_to", e.target.value)}
-                    className="h-auto border-none shadow-none p-0 text-xs w-28 focus-visible:ring-0" />
-            </div>
+            {/* ← Replace the old date inputs with this */}
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs gap-1.5 font-normal"
+                    >
+                        <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className={dateRange?.from ? "text-foreground" : "text-muted-foreground"}>
+                            {dateLabel}
+                        </span>
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={handleDateSelect}
+                        numberOfMonths={2}
+                        disabled={(date) =>
+                            date > new Date() || date < new Date("1900-01-01")
+                        }
+                    />
+                </PopoverContent>
+            </Popover>
 
             <Button size="sm" className="h-8 text-xs" onClick={() => onApply(local)}>
-                <Activity className="w-3.5 h-3.5 mr-1.5" /> Apply
+                <ListFilter className="w-3.5 h-3.5 mr-1.5" /> Apply
             </Button>
             {isDirty && (
-                <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={reset}>Reset</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={reset}>
+                    Reset
+                </Button>
             )}
+
             <div className="ml-auto flex items-center gap-2">
                 <Button
                     size="sm"
@@ -221,10 +270,10 @@ function DailyBreakdownChart({ data }: { data: DailyStat[] }) {
                         <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} width={28} />
                         <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "var(--color-muted)" }} />
                         <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                        <Bar dataKey="present"  name="Present"  fill={C.present}  radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="late"     name="Late"     fill={C.late}     radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="half_day" name="Half Day" fill={C.halfDay}  radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="absent"   name="Absent"   fill={C.absent}   radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="present" name="Present" fill={C.present} radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="late" name="Late" fill={C.late} radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="half_day" name="Half Day" fill={C.halfDay} radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="absent" name="Absent" fill={C.absent} radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </CardContent>
@@ -255,7 +304,7 @@ function WeeklyRateChart({ data }: { data: WeeklyStat[] }) {
                         <Tooltip contentStyle={TOOLTIP_STYLE} />
                         <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                         <Bar yAxisId="c" dataKey="present" name="Present" fill={C.present} radius={[3, 3, 0, 0]} opacity={0.45} />
-                        <Bar yAxisId="c" dataKey="absent"  name="Absent"  fill={C.absent}  radius={[3, 3, 0, 0]} opacity={0.45} />
+                        <Bar yAxisId="c" dataKey="absent" name="Absent" fill={C.absent} radius={[3, 3, 0, 0]} opacity={0.45} />
                         <Area yAxisId="r" type="monotone" dataKey="rate" name="Rate %"
                             fill="url(#rateGrad)" stroke="var(--color-primary)" strokeWidth={2.5}
                             dot={{ fill: "var(--color-primary)", r: 4, strokeWidth: 0 }} activeDot={{ r: 6 }} />
@@ -377,7 +426,7 @@ export default function AttendanceReportIndex({
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <StatCard title="Total Employees" value={s.total_employees} description="Active headcount"
-                        icon={<Users className="w-4 h-4 m-2 text-primary" />} />
+                        icon={<Users className="w-4 h-4 m-2 " />} />
                     <StatCard title="Present Today" value={s.present_today} description="Clocked in or active"
                         icon={<UserCheck className="w-4 h-4 m-2" style={COLOR.present} />} />
                     <StatCard title="Half Day" value={s.half_day_today} description="Left before time out"
@@ -399,10 +448,10 @@ export default function AttendanceReportIndex({
                         </div>
                         <div className="flex items-center gap-6 text-sm text-muted-foreground flex-wrap">
                             {[
-                                { bgStyle: BG_COLOR.present, label: "Present",  val: s.present_today },
+                                { bgStyle: BG_COLOR.present, label: "Present", val: s.present_today },
                                 { bgStyle: BG_COLOR.halfDay, label: "Half Day", val: s.half_day_today },
-                                { bgStyle: BG_COLOR.late,    label: "Late",     val: s.late_today },
-                                { bgStyle: BG_COLOR.absent,  label: "Absent",   val: s.absent_today },
+                                { bgStyle: BG_COLOR.late, label: "Late", val: s.late_today },
+                                { bgStyle: BG_COLOR.absent, label: "Absent", val: s.absent_today },
                             ].map(({ bgStyle, label, val }) => (
                                 <div key={label} className="flex items-center gap-1.5">
                                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={bgStyle} />

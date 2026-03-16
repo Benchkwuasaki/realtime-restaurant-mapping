@@ -1,7 +1,7 @@
 "use client"
 
 import { type Row } from "@tanstack/react-table"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Plus, Trash2 } from "lucide-react"
 import React from "react"
 
 import {
@@ -130,6 +130,16 @@ export function editAction<TData>(
   return {
     icon: Pencil,
     label: "Edit",
+    onClick,
+  }
+}
+
+export function addAction<TData>(
+  onClick: (row: TData) => void,
+): RowActionButton<TData>{
+  return {
+    icon: Plus,
+    label: "Add",
     onClick,
   }
 }

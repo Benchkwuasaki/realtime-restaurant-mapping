@@ -11,8 +11,6 @@ class LeaveReportController extends Controller
     public function index()
     {
         // ── Leave Requests ────────────────────────────────────────────────────
-        // Mirrors EmployeeController::index() — use Eloquent with() instead of
-        // raw joins so the relationship chain is guaranteed to resolve correctly.
         $requests = LeaveApplication::with([
             'employee.basicInfo',
             'employee.item.position.department',
@@ -34,31 +32,72 @@ class LeaveReportController extends Controller
                                 : 0,
             ])
             ->filter(fn ($r) => $r['start'] && $r['end'])
-            ->values();
+            ->values()
+            ->all();            // plain PHP array — no Collection object passed to Inertia
 
-        // ── Leave Balances ─────────────────────────────────────────────────────
-        // Group by employee so each row = one person with summed totals across
-        // all leave types for the current cycle year.
+        // ── Leave Balances ────────────────────────────────────────────────────
+        // Each employee gets one entry with their info + an array of per-leave-type
+        // rows. The React component uses the `leaves` array to populate the drawer.
         $currentYear = now()->year;
 
         $balances = EmployeeLeaveBalance::with([
             'employee.basicInfo',
             'employee.item.position.department',
+            'leaveType',
         ])
             ->where('cycle_year', $currentYear)
             ->get()
             ->groupBy(fn ($b) => $b->employee_id)
-            ->map(fn ($rows) => [
-                'name'      => ($bi = $rows->first()?->employee?->basicInfo)
-                                ? trim($bi->first_name . ' ' . $bi->last_name)
-                                : 'Unknown',
-                'dept'      => $rows->first()?->employee?->item?->position?->department?->department_name ?? 'Unassigned',
-                'total'     => (float) $rows->sum('total_days'),
-                'used'      => (float) $rows->sum('used_days'),
-                'remaining' => (float) $rows->sum('balance'),
-            ])
+            ->map(function ($rows) {
+                $first     = $rows->first();
+                $employee  = $first?->employee;
+                $basicInfo = $employee?->basicInfo;
+
+                $name = $basicInfo
+                    ? trim($basicInfo->first_name . ' ' . $basicInfo->last_name)
+                    : 'Unknown';
+
+                $department = $employee?->item?->position?->department?->department_name
+                           ?? 'Unassigned';
+
+                // Adapt division / unit to your actual basicInfo column names.
+                // Remove whichever fields your EmployeeBasicInfo doesn't have.
+                $division = $basicInfo?->division ?? null;
+                $unit     = $basicInfo?->unit     ?? null;
+
+                // Position title from the plantilla item chain.
+                $position = $employee?->item?->position?->position_title
+                         ?? $basicInfo?->position
+                         ?? 'N/A';
+
+                $leaves = $rows
+                    ->map(fn ($b) => [
+                        'leave_type_id'   => $b->leave_type_id,
+                        'leave_type_name' => $b->leaveType?->leave_type_name ?? 'Unknown',
+                        'is_paid'         => (bool) ($b->leaveType?->is_paid ?? false),
+                        'total_days'      => (float) $b->total_days,
+                        'used_days'       => (float) $b->used_days,
+                        'balance'         => (float) $b->balance,
+                    ])
+                    ->sortBy('leave_type_name')
+                    ->values()
+                    ->all();         // plain PHP array — no Collection object passed to Inertia
+
+                return [
+                    'employee_id' => $first->employee_id,
+                    'name'        => $name,
+                    'work_id'     => $employee?->work_id ?? '',
+                    'position'    => $position,
+                    'department'  => $department,
+                    'division'    => $division,
+                    'unit'        => $unit,
+                    'avatar_url'  => $employee?->avatar_url ?? null,
+                    'leaves'      => $leaves,
+                ];
+            })
             ->sortBy('name')
-            ->values();
+            ->values()
+            ->all();            // plain PHP array — no Collection object passed to Inertia
 
         return Inertia::render('ReportsAndAnalytics/Leave/Index', [
             'requests' => $requests,

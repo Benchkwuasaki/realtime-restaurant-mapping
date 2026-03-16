@@ -18,6 +18,17 @@ const breadcrumbs: BreadcrumbItem[] = [
   { title: "Internal Organizations", href: route("internal-organization.index") },
 ]
 
+const statusFilterOptions = [
+  { value: true, label: 'Active' },
+  { value: false, label: 'Inactive' },
+]
+
+const canBeDeductedFilterOptions = [
+  { value: true, label: 'Yes' },
+  { value: false, label: 'No' },
+]
+
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -82,6 +93,18 @@ export default function Index({
           defaultPageSize={10}
           searchColumnId="name"
           searchPlaceholder="Search organizations..."
+          filters={[
+            {
+              columnId: 'status',
+              title: 'Status',
+              options: statusFilterOptions,
+            },
+            {
+              columnId: 'payroll_deduction_linked',
+              title: 'Can be Deducted',
+              options: canBeDeductedFilterOptions,
+            },
+          ]}
           addButton={{
             label: "Add Organization",
             onClick: () => setDialogOrg(null),

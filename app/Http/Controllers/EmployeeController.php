@@ -368,6 +368,7 @@ class EmployeeController extends Controller
                     'id' => $s->employee_seminar_training_id,
                     'seminar_name' => $s->seminar_training_name,
                     'venue' => $s->venue,
+                    'organizer' => $s->organizer,
                     'date_attended' => $s->date_attended,
                 ]),
                 'serviceRecords' => $employee->serviceRecords->map(fn($s) => [
@@ -558,7 +559,7 @@ class EmployeeController extends Controller
         ];
     }
 
-   
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Government Accounts
@@ -817,6 +818,7 @@ class EmployeeController extends Controller
         $request->validate([
             'seminar_name' => ['required', 'string', 'max:255'],
             'venue' => ['nullable', 'string', 'max:255'],
+            'organizer' => ['nullable', 'string', 'max:255'],
             'date_attended' => ['nullable', 'date'],
         ]);
 
@@ -832,6 +834,7 @@ class EmployeeController extends Controller
         $request->validate([
             'seminar_name' => ['required', 'string', 'max:255'],
             'venue' => ['nullable', 'string', 'max:255'],
+            'organizer' => ['nullable', 'string', 'max:255'],
             'date_attended' => ['nullable', 'date'],
         ]);
 

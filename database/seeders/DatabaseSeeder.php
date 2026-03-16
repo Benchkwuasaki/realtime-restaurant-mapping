@@ -417,6 +417,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserSeeder::class,
             EmployeeSeeder::class,
+            DocumentTrackingSeeder::class,
             InternalOrganizationSeeder::class,
             HolidaySeeder::class,
             AttendanceSeeder::class,

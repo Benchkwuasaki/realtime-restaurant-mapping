@@ -68,8 +68,8 @@ interface CameraSource {
 }
 
 const DEFAULT_CAMERAS: CameraSource[] = [
-    { id: "cam1", label: "Entrance — CAM 01", src: "http://192.168.0.114:8889/cam1" },
-    { id: "cam2", label: "Entrance — CAM 02", src: "http://192.168.0.114:8889/cam2" },
+    { id: "cam1", label: "Entrance — CAM 01", src: "http://192.168.0.115:8889/cam1" },
+    { id: "cam2", label: "Entrance — CAM 02", src: "http://192.168.0.115:8889/cam2" },
 ]
 
 const CAMERAS_STORAGE_KEY = "attendance_cctv_cameras"
@@ -282,12 +282,33 @@ function CctvStream({ src, label = "Camera" }: { src: string; label?: string }) 
         try {
             const offer = await pc.createOffer()
             await pc.setLocalDescription(offer)
+
+            // ── Wait for ICE gathering to finish so all candidates are
+            //    included in the SDP before posting to the WHEP endpoint.
+            //    Without this, MediaMTX receives an offer with no candidates
+            //    and closes the session with "deadline exceeded". ──────────
+            await new Promise<void>((resolve, reject) => {
+                const timeout = setTimeout(
+                    () => reject(new Error("ICE gathering timeout")),
+                    10_000,
+                )
+                if (pc.iceGatheringState === "complete") {
+                    clearTimeout(timeout); resolve(); return
+                }
+                pc.onicegatheringstatechange = () => {
+                    if (pc.iceGatheringState === "complete") {
+                        clearTimeout(timeout); resolve()
+                    }
+                }
+            })
+
             const res = await fetch(`${src}/whep`, {
                 method: "POST",
                 headers: { "Content-Type": "application/sdp" },
-                body: offer.sdp,
+                // Use the fully-gathered local description, not the bare offer
+                body: pc.localDescription!.sdp,
             })
-            if (!res.ok) throw new Error("WHEP failed")
+            if (!res.ok) throw new Error(`WHEP ${res.status}`)
             await pc.setRemoteDescription({ type: "answer", sdp: await res.text() })
         } catch {
             if (!cancelled) setStatus("error")

@@ -2,17 +2,19 @@ import { Head, router } from '@inertiajs/react';
 import { Users, UserCheck, UserX } from 'lucide-react';
 import { route } from 'ziggy-js';
 import { DataTable } from '@/components/shared/data-table/data-table';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { StatCard } from '@/components/shared/stat-card';
 import AppLayout from '@/layouts/app-layout';
 import { columns } from '@/pages/Employee/components/columns';
 import { type Employee } from '@/pages/Employee/data/schema';
 import type { BreadcrumbItem } from '@/types';
+import { toast } from "sonner"
 
 interface Props {
     employees: Employee[];
     totalEmployees: number;
     activeEmployees: number;
     inactiveEmployees: number;
+
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -20,12 +22,12 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const statusFilterOptions = [
-    { value: true,  label: 'Active' },
+    { value: true, label: 'Active' },
     { value: false, label: 'Inactive' },
 ]
 
 const EmpClassFilterOptions = [
-    { value: 'Regular',  label: 'Regular' },
+    { value: 'Regular', label: 'Regular' },
     { value: 'Job Order', label: 'Job Order' },
     { value: 'Casual', label: 'Casual' },
 ]
@@ -38,36 +40,24 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
             <div className="flex h-full flex-1 flex-col gap-8 p-8">
                 {/* ── Summary Cards ── */}
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <Card className="p-4 gap-0">
-                        <div className="flex items-start justify-between mb-2">
-                            <CardTitle className="text-md font-thin">Total Employees</CardTitle>
-                            <div className="bg-blue-100 p-2 rounded-md">
-                                <Users className="size-5 text-blue-500" />
-                            </div>
-                        </div>
-                        <CardTitle className="text-2xl mb-1">{totalEmployees}</CardTitle>
-                        <CardDescription className="text-md font-thin">All registered employees</CardDescription>
-                    </Card>
-                    <Card className="p-4 gap-0">
-                        <div className="flex items-start justify-between mb-2">
-                            <CardTitle className="text-md font-thin">Active Employees</CardTitle>
-                            <div className="bg-green-100 p-2 rounded-md">
-                                <UserCheck className="size-5 text-green-500" />
-                            </div>
-                        </div>
-                        <CardTitle className="text-2xl mb-1">{activeEmployees}</CardTitle>
-                        <CardDescription className="text-md font-thin">Currently active employees</CardDescription>
-                    </Card>
-                    <Card className="p-4 gap-0">
-                        <div className="flex items-start justify-between mb-2">
-                            <CardTitle className="text-md font-thin">Inactive Employees</CardTitle>
-                            <div className="bg-red-100 p-2 rounded-md">
-                                <UserX className="size-5 text-red-500" />
-                            </div>
-                        </div>
-                        <CardTitle className="text-2xl mb-1">{inactiveEmployees}</CardTitle>
-                        <CardDescription className="text-md font-thin">On leave or inactive</CardDescription>
-                    </Card>
+                    <StatCard
+                        title="Total Employees"
+                        value={totalEmployees}
+                        description="All registered employees"
+                        icon={<Users className="size-5 m-2" />}
+                    />
+                    <StatCard
+                        title="Active Employees"
+                        value={activeEmployees}
+                        description="Currently active employees"
+                        icon={<UserCheck className="size-5 m-2 text-primary" />}
+                    />
+                    <StatCard
+                        title="Inactive Employees"
+                        value={inactiveEmployees}
+                        description="On leave or inactive"
+                        icon={<UserX className="size-5 m-2 text-destructive" />}
+                    />
                 </div>
 
                 {/* ── Table ── */}
@@ -98,6 +88,12 @@ export default function Index({ employees, totalEmployees, activeEmployees, inac
                         route: route('employee.bulk-destroy'),
                         entityName: 'Employee',
                         getId: (row) => (row as Employee).id,
+                        onSuccess: (count) => toast.success('Employees deleted', {        
+                            description: `${count} employee(s) removed successfully.`,
+                        }),
+                        onError: () => toast.error('Failed to delete employees', {        
+                            description: 'Please check your permissions and try again.',
+                        }),
                     }}
                 />
             </div>
