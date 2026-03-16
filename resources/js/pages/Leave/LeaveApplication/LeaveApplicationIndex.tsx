@@ -475,7 +475,7 @@ function InstructionsGate({ onAcknowledge }: { onAcknowledge: () => void }) {
                 </label>
                 <div className="mt-3 flex justify-end">
                     <Button size="sm" disabled={!checked} onClick={() => checked && onAcknowledge()}>
-                        Proceed to Application →
+                        Proceed to Application
                     </Button>
                 </div>
             </div>
@@ -708,6 +708,7 @@ function LeaveForm({
     processing, onSubmit, onClose, isEdit, auth_employee_id = null,
     hr_admin_employee_ids = [], singleHrAdmin = false,
     dto_employees_in_dept = [], singleDto = false,
+    dto_employee_ids = [],
 }: {
     data: FormData;
     setData: (keyOrData: keyof FormData | Partial<FormData>, value?: any) => void;
@@ -723,6 +724,7 @@ function LeaveForm({
     singleHrAdmin?: boolean;
     dto_employees_in_dept?: Employee[];
     singleDto?: boolean;
+    dto_employee_ids?: number[];
 }) {
     const isFormValid = useFormValid(data);
     const selectedEmp = employees.find(e => String(e.employee_id) === data.employee_id);
@@ -839,6 +841,16 @@ function LeaveForm({
         const shouldClear =
             (newIsMale && selectedEnt?.eligible_sex === 'Female') ||
             (newIsFemale && selectedEnt?.eligible_sex === 'Male');
+
+        // find the first DTO in the selected employee's department
+        // so the Authorized Officer field is auto-filled on employee change
+        const firstDtoInDept = emp?.department_name
+            ? employees.find(e =>
+                dto_employee_ids.includes(e.employee_id) &&
+                e.department_name === emp.department_name
+            )
+            : undefined;
+
         setData({
             ...data,
             employee_id: empId,
@@ -847,6 +859,10 @@ function LeaveForm({
             salary: emp?.monthly_salary ? emp.monthly_salary.replace(/,/g, '') : '',
             leave_type_id: shouldClear ? '' : data.leave_type_id,
             leave_type_availed: shouldClear ? '' : data.leave_type_availed,
+            // auto-fill with first DTO in dept, keep existing if none found
+            recommendation_officer: firstDtoInDept
+                ? String(firstDtoInDept.employee_id)
+                : data.recommendation_officer,
         });
     }
 
@@ -1407,10 +1423,15 @@ function LeaveModal({
     const filingEmp = defaultEmp
         ?? (editingApp ? employees.find(e => String(e.employee_id) === String(editingApp.employee_id)) : undefined)
 
+    const filingEmpDept = filingEmp?.department_name
+        ?? employees.find(e => String(e.employee_id) === String(auth_employee_id))?.department_name
+        ?? '';
+
+
     const dtoEmployeesInDept = employees.filter(e =>
         dto_employee_ids.includes(e.employee_id) &&
-        !!filingEmp?.department_name &&
-        e.department_name === filingEmp.department_name
+        !!filingEmpDept &&
+        e.department_name === filingEmpDept
     );
     const singleDto = dtoEmployeesInDept.length === 1;
 
@@ -1452,12 +1473,12 @@ function LeaveModal({
         is_with_pay: editingApp?.is_with_pay ?? true,
         recommendation_officer: editingApp?.recommendation_officer
             ? String(editingApp.recommendation_officer)
-            : singleDto ? String(dtoEmployeesInDept[0].employee_id) : '',
+            : dtoEmployeesInDept.length > 0 ? String(dtoEmployeesInDept[0].employee_id) : '',
         status: editingApp?.status ?? 'Pending',
         for_disapproval_reason: editingApp?.for_disapproval_reason ?? '',
         approval_officer: editingApp?.approval_officer
             ? String(editingApp.approval_officer)
-            : singleHrAdmin ? String(hr_admin_employee_ids[0]) : '',
+            : hr_admin_employee_ids.length > 0 ? String(hr_admin_employee_ids[0]) : '',
         approved_with_pay: editingApp ? String((editingApp as any).approved_with_pay ?? '') : '',
         approved_without_pay: editingApp ? String((editingApp as any).approved_without_pay ?? '') : '',
         approved_others: (editingApp as any)?.approved_others ?? '',
@@ -1566,6 +1587,7 @@ function LeaveModal({
                         singleHrAdmin={singleHrAdmin}
                         dto_employees_in_dept={dtoEmployeesInDept}
                         singleDto={singleDto}
+                        dto_employee_ids={dto_employee_ids}
                     />
                 )}
             </DialogContent>
@@ -2333,7 +2355,15 @@ export default function LeaveFilingIndex({
 
                 <section className="bg-card p-6 rounded-lg border border-secondary">
                     <DataTable
-                        columns={getColumns({ onEdit: openEdit, onAction: handleAction })}
+                        columns={getColumns({
+                            onEdit: openEdit,
+                            onAction: handleAction,
+                            authEmployeeId: auth_employee_id,
+                            hasOtherRoles: roles.some(r => r !== 'employee'),
+                            hasOwnApplications: sortedApplications.some(
+                                a => String(a.employee_id) === String(auth_employee_id)
+                            ),
+                        })}
                         // data={leave_applications}
                         data={sortedApplications}
                         getRowId={row => String(row.leave_application_id)}
