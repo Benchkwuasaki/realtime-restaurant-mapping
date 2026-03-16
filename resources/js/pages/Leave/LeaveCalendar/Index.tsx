@@ -201,7 +201,7 @@ function CalendarTab({ leaves }: { leaves: LeaveApplication[] }) {
                             <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     </button>
-                    <h2 className="text-lg lg:text-2xl font-semibold text-foreground">
+                    <h2 className="text-lg lg:text-lg font-semibold text-foreground">
                         {MONTHS[month]}{" "}
                         <span className="text-muted-foreground font-normal">{year}</span>
                     </h2>
@@ -395,19 +395,19 @@ export default function LeaveCalendarIndex({ leaves = DUMMY_LEAVES }: Props) {
                         title="On Leave Today"
                         value={onLeaveToday}
                         description="Total Employees on Leave Today"
-                        icon={<Users className="size-4" />}
+                        icon={<Users className="size-4 text-primary" />}
                     />
                     <StatCard
                         title="Pending Approval"
                         value={pendingCount}
                         description="Leave requests awaiting action"
-                        icon={<CalendarClock className="size-4" />}
+                        icon={<CalendarClock className="size-4 text-primary" />}
                     />
                     <StatCard
                         title="Approved This Month"
                         value={approvedCount}
                         description="Leaves approved"
-                        icon={<CalendarCheck className="size-4" />}
+                        icon={<CalendarCheck className="size-4 text-primary" />}
                     />
                 </div>
 

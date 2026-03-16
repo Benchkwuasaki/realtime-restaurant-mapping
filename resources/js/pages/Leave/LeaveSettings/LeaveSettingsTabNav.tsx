@@ -39,35 +39,35 @@ export default function LeaveSettingsTabNav({
             {/* page whole content section */}
             <section className="w-full p-6">
                 {/* stat card */}
-                <section className="max-w-300 mb-6 grid grid-cols-1 gap-5 lg:grid-cols-4">
+                <section className="mb-6 grid max-w-300 grid-cols-1 gap-5 lg:grid-cols-4">
                     <StatCard
                         title="Total Leave Types"
                         value={total_leave_types}
                         description="Total No. of Leave Types"
-                        icon={<CalendarDays className="size-4" />}
+                        icon={<CalendarDays className="size-4 text-primary" />}
                     />
                     <StatCard
                         title="Total Paid Leave"
                         value={total_paid}
                         description="Total No. of Paid Leave Types"
-                        icon={<HandCoins className="size-4" />}
+                        icon={<HandCoins className="size-4 text-primary" />}
                     />
                     <StatCard
                         title="Total Convertible Leave"
                         value={total_convertible}
                         description="Total No. of Convertible Leave Types"
-                        icon={<IterationCcw className="size-4" />}
+                        icon={<IterationCcw className="size-4 text-primary" />}
                     />
                     <StatCard
                         title="Total Cumulative Leave"
                         value={total_convertible}
                         description="Total No. of Cumulative Leave Types"
-                        icon={<PackagePlus className="size-4" />}
+                        icon={<PackagePlus className="size-4 text-primary" />}
                     />
                 </section>
 
                 {/* whole content area */}
-                <section className="bg-card border-secondary rounded-lg border p-6">
+                <section className="rounded-lg border border-secondary bg-card p-6">
                     {/* nav tab */}
                     <section className="">
                         <LeaveTabs

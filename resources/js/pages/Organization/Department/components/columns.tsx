@@ -292,6 +292,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Depart
                                 confirmLabel: "Delete Department",
                             }
                         ),
+                        
                     ]}
                 />
             ),

@@ -91,12 +91,12 @@ const DEFAULT_CAMERAS: CameraSource[] = [
     {
         id: 'cam1',
         label: 'Entrance — CAM 01',
-        src: 'http://192.168.0.114:8889/cam1',
+        src: 'http://192.168.0.115:8889/cam1',
     },
     {
         id: 'cam2',
         label: 'Entrance — CAM 02',
-        src: 'http://192.168.0.114:8889/cam2',
+        src: 'http://192.168.0.115:8889/cam2',
     },
 ];
 
@@ -358,12 +358,36 @@ function CctvStream({
         try {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
+
+            // ── Wait for ICE gathering to finish so all candidates are
+            //    included in the SDP before posting to the WHEP endpoint.
+            //    Without this, MediaMTX receives an offer with no candidates
+            //    and closes the session with "deadline exceeded". ──────────
+            await new Promise<void>((resolve, reject) => {
+                const timeout = setTimeout(
+                    () => reject(new Error('ICE gathering timeout')),
+                    10_000,
+                );
+                if (pc.iceGatheringState === 'complete') {
+                    clearTimeout(timeout);
+                    resolve();
+                    return;
+                }
+                pc.onicegatheringstatechange = () => {
+                    if (pc.iceGatheringState === 'complete') {
+                        clearTimeout(timeout);
+                        resolve();
+                    }
+                };
+            });
+
             const res = await fetch(`${src}/whep`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/sdp' },
-                body: offer.sdp,
+                // Use the fully-gathered local description, not the bare offer
+                body: pc.localDescription!.sdp,
             });
-            if (!res.ok) throw new Error('WHEP failed');
+            if (!res.ok) throw new Error(`WHEP ${res.status}`);
             await pc.setRemoteDescription({
                 type: 'answer',
                 sdp: await res.text(),
@@ -812,7 +836,7 @@ function EmployeeDetailDialog({
 
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-lg">
+            <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden rounded-lg p-0 sm:max-w-lg">
                 <div className="relative shrink-0">
                     <div className="absolute inset-0 overflow-hidden">
                         <SnapshotImage
@@ -821,7 +845,7 @@ function EmployeeDetailDialog({
                             name={name}
                             className="h-full w-full scale-110"
                         />
-                        <div className="absolute inset-0 bg-primary/85 backdrop-blur-2xl" />
+                        <div className="absolute inset-0 bg-primary/85 backdrop-blur-lg" />
                     </div>
                     <button
                         onClick={onClose}
@@ -830,7 +854,7 @@ function EmployeeDetailDialog({
                         <X className="h-3.5 w-3.5" />
                     </button>
                     <div className="relative z-10 flex items-end gap-4 px-5 pt-8 pb-5">
-                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-primary-foreground/20 shadow-xl">
+                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 border-primary-foreground/20 shadow-xl">
                             <SnapshotImage
                                 path={record.snapshot_path}
                                 avatarUrl={record.employee?.avatar_url}
@@ -1285,7 +1309,7 @@ export default function RecognitionLogIndex({
                                     )}
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-3">
+                                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-2">
                                     {filtered.map((record) => (
                                         <AttendanceCard
                                             key={record.id}

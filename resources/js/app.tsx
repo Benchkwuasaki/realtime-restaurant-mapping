@@ -7,6 +7,11 @@ import { initializeTheme } from './hooks/use-appearance';
 import { route } from 'ziggy-js';
 import { configureEcho } from '@laravel/echo-react';
 
+
+configureEcho({
+    broadcaster: 'reverb',
+});
+
 configureEcho({
     broadcaster: 'reverb',
 });

@@ -31,7 +31,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             {/* w-[calc(100vw-2rem)] keeps a 1rem margin on each side on mobile */}
-            <DialogContent className="w-[calc(100vw-2rem)] max-w-lg p-0 overflow-hidden gap-0 rounded-2xl">
+            <DialogContent className="w-[calc(100vw-2rem)] max-w-lg p-0 overflow-hidden gap-0 rounded-lg">
 
                 {/* Header */}
                 <DialogHeader className="px-4 sm:px-6 pt-5 pb-3 border-b border-border">

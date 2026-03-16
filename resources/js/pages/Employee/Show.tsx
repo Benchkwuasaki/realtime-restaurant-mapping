@@ -1,41 +1,22 @@
 import { Head, router } from '@inertiajs/react';
 import Cropper from 'react-easy-crop';
 import {
-    Pencil,
-    Mail,
-    Phone,
-    Calendar,
-    MapPin,
-    User,
-    Heart,
-    Home,
-    Briefcase,
-    Clock,
-    FileText,
-    Landmark,
-    Camera,
-    XCircle,
-    Eye,
-    EyeOff,
-    Plus,
-    Trash2,
-    Save,
-    ChevronDown,
-    ChevronRight,
-    Pen,
-    Upload,
-    Download,
-    FolderOpen,
-    AlertTriangle,
-    Timer,
+    Pencil, Mail, Phone, MapPin, User, Heart, Home,
+    Briefcase, Clock, FileText, Landmark, Camera, XCircle,
+    Eye, EyeOff, Plus, Trash2, Save, ChevronDown, ChevronRight,
+    Pen, Upload, Download, FolderOpen, AlertTriangle, Timer,
     ClipboardList,
-} from 'lucide-react';
-import { useState, useMemo, useRef, useEffect } from 'react';
-import React from 'react';
-import { route } from 'ziggy-js';
-import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+} from "lucide-react"
+import { useState, useMemo, useRef } from "react"
+import React from "react"
+import { route } from "ziggy-js"
+import { toast } from "sonner"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+import { type DateRange } from "react-day-picker"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarDays } from "lucide-react"
 import {
     useReactTable,
     getCoreRowModel,
@@ -44,18 +25,11 @@ import {
 import { leaveBalanceColumns } from './components/leave-balance-columns';
 import type { LeaveBalance as LeaveBalanceRow } from './data/leave-balance-schema';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
@@ -66,20 +40,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { X } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { PayslipDocument } from '@/pages/Payroll/Outputs/PaySlipGeneration/PayslipDocument';
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { X } from "lucide-react"
+import AppLayout from "@/layouts/app-layout"
+import { type BreadcrumbItem } from "@/types"
+import { PhoneInput } from "@/components/phone-input"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,10 +61,14 @@ interface Unit {
     unit_name: string;
 }
 interface Position {
-    position_name: string;
-    department?: Department;
-    division?: Division;
-    unit?: Unit;
+    position_name: string
+    position_type?: string
+    department_id?: number | null
+    division_id?: number | null
+    unit_id?: number | null
+    department?: Department
+    division?: Division
+    unit?: Unit
 }
 interface Item {
     item_id: number;
@@ -203,10 +175,11 @@ interface UploadedFile {
     file_url: string;
 }
 interface SeminarTraining {
-    id: number;
-    seminar_name: string;
-    venue?: string;
-    date_attended?: string;
+    id: number
+    seminar_name: string
+    venue?: string
+    organizer?: string
+    date_attended?: string
 }
 interface ServiceRecord {
     id: number;
@@ -293,23 +266,38 @@ interface Props {
 // ─── Position group ───────────────────────────────────────────────────────────
 
 interface PositionGroup {
-    positionName: string;
-    position: Position | undefined;
-    items: Item[];
-    totalSlots: number;
-    availableSlots: number;
-    isFull: boolean;
+    positionName: string
+    displayLabel: string
+    position: Position | undefined
+    items: Item[]
+    totalSlots: number
+    availableSlots: number
+    isFull: boolean
 }
 
 function buildPositionGroups(items: Item[]): PositionGroup[] {
     const map = new Map<string, PositionGroup>();
     for (const item of items) {
-        const key = item.position?.position_name ?? `__item_${item.item_id}`;
+        const pos = item.position
+        const key = pos
+            ? [pos.position_name, pos.department_id ?? "null", pos.division_id ?? "null", pos.unit_id ?? "null"].join("::")
+            : `__item_${item.item_id}`
+
         if (!map.has(key)) {
+            // Build the display label with org context — same as Create.tsx
+            const parts: string[] = []
+            if (pos?.department?.department_name) parts.push(pos.department.department_name)
+            if (pos?.division?.division_name) parts.push(pos.division.division_name)
+            if (pos?.unit?.unit_name) parts.push(pos.unit.unit_name)
+            const orgLabel = parts.join(" / ")
+            const displayLabel = orgLabel
+                ? `${pos?.position_name ?? `Item #${item.item_id}`} — ${orgLabel}`
+                : (pos?.position_name ?? `Item #${item.item_id}`)
+
             map.set(key, {
-                positionName:
-                    item.position?.position_name ?? `Item #${item.item_id}`,
-                position: item.position,
+                positionName: pos?.position_name ?? `Item #${item.item_id}`,
+                displayLabel,                    // ← add this
+                position: pos,
                 items: [],
                 totalSlots: 0,
                 availableSlots: 0,
@@ -321,13 +309,19 @@ function buildPositionGroups(items: Item[]): PositionGroup[] {
         grp.totalSlots++;
         if (!item.is_occupied) grp.availableSlots++;
     }
-    for (const grp of map.values()) grp.isFull = grp.availableSlots === 0;
-    return Array.from(map.values()).sort((a, b) =>
-        a.positionName.localeCompare(b.positionName),
-    );
+    for (const grp of map.values()) grp.isFull = grp.availableSlots === 0
+    return Array.from(map.values()).sort((a, b) => a.displayLabel.localeCompare(b.displayLabel))
+}
+
+const JOB_ORDER_CLASSIFICATION = "Job Order"
+
+// Match Create.tsx exactly — positions tagged with position_type "Job Order"
+function isJobOrderPosition(grp: PositionGroup): boolean {
+    return grp.position?.position_type === JOB_ORDER_CLASSIFICATION
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 function fmt(date?: string) {
     if (!date) return undefined;
@@ -478,12 +472,12 @@ function ValueBadge({ value }: { value: string }) {
 
 /** Active / Inactive */
 function ActiveBadge({ active }: { active: boolean }) {
-    return active ? (
-        <Badge variant="default">Active</Badge>
-    ) : (
-        <Badge variant="destructive">Inactive</Badge>
-    );
+    return active
+        ? <Badge variant="default" >Active</Badge>
+        : <Badge variant="destructive" >Inactive</Badge>
 }
+
+
 
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
 
@@ -504,15 +498,9 @@ function InfoRow({
                 <Icon className="h-4 w-4 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="mb-1 text-[10px] leading-none tracking-widest text-muted-foreground uppercase">
-                    {label}
-                </p>
-                <p className="text-sm leading-snug font-medium break-words text-foreground">
-                    {value || (
-                        <span className="text-xs font-normal text-muted-foreground/40 italic">
-                            Not provided
-                        </span>
-                    )}
+                <p className="text-[10px]  text-muted-foreground uppercase tracking-widest leading-none mb-1">{label}</p>
+                <p className="text-sm text-foreground font-medium leading-snug wrap-break-word">
+                    {value || <span className="text-muted-foreground/40 font-normal italic text-xs">Not provided</span>}
                 </p>
             </div>
             {onEdit && (
@@ -524,64 +512,6 @@ function InfoRow({
     );
 }
 
-// ─── DetailCard ───────────────────────────────────────────────────────────────
-
-function DetailCard({
-    title,
-    value,
-    isStatus = false,
-    statusValue,
-    onToggleStatus,
-    onEdit,
-}: {
-    title: string;
-    value?: string;
-    isStatus?: boolean;
-    statusValue?: boolean;
-    onToggleStatus?: () => void;
-    onEdit?: () => void;
-}) {
-    return (
-        <div className="group rounded-xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-primary/20 hover:shadow-md">
-            <div className="mb-4 flex items-center justify-between">
-                <span className="text-xs font-semibold tracking-wide text-muted-foreground">
-                    {title}
-                </span>
-                {isStatus ? (
-                    <Switch
-                        checked={statusValue}
-                        onCheckedChange={onToggleStatus}
-                        className="scale-90"
-                    />
-                ) : onEdit ? (
-                    <Button size={'icon-xs'} onClick={onEdit} variant={'ghost'}>
-                        <Pencil className="h-3 w-3" />
-                    </Button>
-                ) : null}
-            </div>
-            <div className="flex items-center gap-2">
-                {isStatus ? (
-                    <>
-                        <ActiveBadge active={statusValue ?? false} />
-                    </>
-                ) : value ? (
-                    <>
-                        <ValueBadge value={value} />
-                    </>
-                ) : (
-                    <>
-                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted">
-                            <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />
-                        </div>
-                        <span className="text-sm font-normal text-muted-foreground/50 italic">
-                            Not set
-                        </span>
-                    </>
-                )}
-            </div>
-        </div>
-    );
-}
 
 // ─── Basic Info Edit Dialog ────────────────────────────────────────────────────
 
@@ -603,29 +533,23 @@ function BasicInfoEditDialog({
         middle_name: basic?.middle_name ?? '',
         name_extension: basic?.name_extension ?? '',
         birth_date: toInputDate(basic?.birth_date),
-        sex: basic?.sex !== undefined ? String(Number(basic.sex)) : '',
-        civil_status: basic?.civil_status ?? '',
-        place_of_birth: basic?.place_of_birth ?? '',
-        personal_email: basic?.personal_email ?? '',
-        phone_number: basic?.phone_number ?? '',
-        street_address: firstAddress?.street_address ?? '',
-        city: firstAddress?.city ?? '',
-        state: firstAddress?.state ?? '',
-        zip_code: firstAddress?.zip_code ?? '',
-    });
-    const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
-    const save = () =>
-        router.put(route('employee.update', employee.employee_id), form, {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Basic information updated successfully.');
-                onClose();
-            },
-            onError: () =>
-                toast.error(
-                    'Failed to update basic information. Please try again.',
-                ),
-        });
+        sex: basic?.sex !== undefined ? String(Number(basic.sex)) : "",
+        civil_status: basic?.civil_status ?? "",
+        place_of_birth: basic?.place_of_birth ?? "",
+        personal_email: basic?.personal_email ?? "",
+        phone_number: basic?.phone_number ?? "",
+        work_id: employee.work_id ?? "",
+        street_address: firstAddress?.street_address ?? "",
+        city: firstAddress?.city ?? "",
+        state: firstAddress?.state ?? "",
+        zip_code: firstAddress?.zip_code ?? "",
+    })
+    const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+    const save = () => router.put(route("employee.update", employee.employee_id), form, {
+        preserveScroll: true,
+        onSuccess: () => { toast.success("Basic information updated successfully."); onClose() },
+        onError: () => toast.error("Failed to update basic information. Please try again."),
+    })
 
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -721,86 +645,25 @@ function BasicInfoEditDialog({
                             </SelectContent>
                         </Select>
                     </div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Place of Birth</Label><Input value={form.place_of_birth} onChange={e => set("place_of_birth", e.target.value)} /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Personal Email</Label><Input type="email" value={form.personal_email} onChange={e => set("personal_email", e.target.value)} /></div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Place of Birth
-                        </Label>
-                        <Input
-                            value={form.place_of_birth}
-                            onChange={(e) =>
-                                set('place_of_birth', e.target.value)
-                            }
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Personal Email
-                        </Label>
-                        <Input
-                            type="email"
-                            value={form.personal_email}
-                            onChange={(e) =>
-                                set('personal_email', e.target.value)
-                            }
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Phone Number
-                        </Label>
-                        <Input
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Phone Number</Label>
+                        <PhoneInput
+                            defaultCountry="PH"
                             value={form.phone_number}
-                            onChange={(e) =>
-                                set('phone_number', e.target.value)
-                            }
+                            onChange={v => set("phone_number", v ?? "")}
                         />
                     </div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Work ID</Label><Input value={form.work_id} onChange={e => set("work_id", e.target.value)} placeholder="e.g. EMP-2024-001" /></div>
                 </div>
-                <div className="mt-1 border-t border-border pt-3">
-                    <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                        Address
-                    </p>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="col-span-full">
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Street Address
-                            </Label>
-                            <Input
-                                value={form.street_address}
-                                onChange={(e) =>
-                                    set('street_address', e.target.value)
-                                }
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                City
-                            </Label>
-                            <Input
-                                value={form.city}
-                                onChange={(e) => set('city', e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Province / State
-                            </Label>
-                            <Input
-                                value={form.state}
-                                onChange={(e) => set('state', e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Zip Code
-                            </Label>
-                            <Input
-                                value={form.zip_code}
-                                onChange={(e) =>
-                                    set('zip_code', e.target.value)
-                                }
-                            />
-                        </div>
+                <div className="border-t border-border pt-3 mt-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Address</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="col-span-full"><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Street Address</Label><Input value={form.street_address} onChange={e => set("street_address", e.target.value)} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">City</Label><Input value={form.city} onChange={e => set("city", e.target.value)} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Province / State</Label><Input value={form.state} onChange={e => set("state", e.target.value)} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Zip Code</Label><Input value={form.zip_code} onChange={e => set("zip_code", e.target.value)} /></div>
                     </div>
                 </div>
                 <DialogFooter>
@@ -986,15 +849,12 @@ function EmploymentEditDialog({
     onClose: () => void;
     items: Item[];
 }) {
-    const open = field !== null;
-    const positionGroups = useMemo(() => buildPositionGroups(items), [items]);
-    const currentItemId = employee.item?.item_id?.toString() ?? '';
-    const currentPositionName = useMemo(
-        () =>
-            items.find((i) => i.item_id.toString() === currentItemId)?.position
-                ?.position_name ?? '',
-        [items, currentItemId],
-    );
+    const open = field !== null
+    const allPositionGroups = useMemo(() => buildPositionGroups(items), [items])
+    const currentItemId = employee.item?.item_id?.toString() ?? ""
+    const currentPositionName = useMemo(() =>
+        items.find(i => i.item_id.toString() === currentItemId)?.position?.position_name ?? "",
+        [items, currentItemId])
 
     const [form, setForm] = useState({
         item_id: currentItemId,
@@ -1009,54 +869,63 @@ function EmploymentEditDialog({
     });
     const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
-    const handlePositionSelect = (positionName: string) => {
-        const grp = positionGroups.find((g) => g.positionName === positionName);
-        if (!grp) return;
-        const ownSlot = grp.items.find(
-            (i) => i.item_id.toString() === currentItemId,
-        );
-        if (ownSlot) {
-            setForm((p) => ({
-                ...p,
-                selected_position_name: positionName,
-                item_id: ownSlot.item_id.toString(),
-            }));
-            return;
-        }
-        const firstAvailable = grp.items.find((i) => !i.is_occupied);
-        setForm((p) => ({
-            ...p,
-            selected_position_name: positionName,
-            item_id: firstAvailable ? firstAvailable.item_id.toString() : '',
-        }));
-    };
+    // ── Classification-aware position filtering (mirrors Create.tsx) ──────────
 
-    const selectedGroup = useMemo(
-        () =>
-            positionGroups.find(
-                (g) => g.positionName === form.selected_position_name,
-            ),
-        [positionGroups, form.selected_position_name],
-    );
+    /** Positions filtered by whichever classification is currently selected */
+    const filteredPositionGroups = useMemo(() => {
+        const cls = field === "employment_classification"
+            ? form.employment_classification
+            : employee.employment_classification
+
+        if (!cls) return allPositionGroups
+
+        const isJO = cls === JOB_ORDER_CLASSIFICATION
+        return allPositionGroups.filter(grp =>
+            isJO ? isJobOrderPosition(grp) : !isJobOrderPosition(grp)
+        )
+    }, [allPositionGroups, form.employment_classification, field, employee.employment_classification])
+
+    /** When the classification changes, reset the position so the user is forced to re-pick */
+    const handleClassificationChange = (value: string) => {
+        set("employment_classification", value)
+        set("selected_position_name", "")
+        set("item_id", "")
+    }
+
+    const handlePositionSelect = (displayLabel: string) => {
+        const grp = filteredPositionGroups.find(g => g.displayLabel === displayLabel)
+        if (!grp) return
+        const ownSlot = grp.items.find(i => i.item_id.toString() === currentItemId)
+        if (ownSlot) {
+            setForm(p => ({ ...p, selected_position_name: displayLabel, item_id: ownSlot.item_id.toString() }))
+            return
+        }
+        const firstAvailable = grp.items.find(i => !i.is_occupied)
+        setForm(p => ({
+            ...p,
+            selected_position_name: displayLabel,
+            item_id: firstAvailable ? firstAvailable.item_id.toString() : "",
+        }))
+    }
+
+    const selectedGroup = useMemo(() =>
+        filteredPositionGroups.find(g => g.displayLabel === form.selected_position_name),
+        [filteredPositionGroups, form.selected_position_name])
+
+    // ── Save ──────────────────────────────────────────────────────────────────
 
     const save = () => {
-        let data: Record<string, string> = {};
-        if (field === 'position') data = { item_id: form.item_id };
-        if (field === 'date_hired') data = { date_hired: form.date_hired };
-        if (field === 'date_applied')
-            data = { date_applied: form.date_applied };
-        if (field === 'employment_classification')
-            data = {
-                employment_classification: form.employment_classification,
-            };
-        if (field === 'work_schedule')
-            data = {
-                work_schedule_start: form.work_schedule_start,
-                work_schedule_end: form.work_schedule_end,
-            };
-        if (field === 'break_time')
-            data = { break_start: form.break_start, break_end: form.break_end };
-        router.put(route('employee.update', employee.employee_id), data, {
+        let data: Record<string, string> = {}
+        if (field === "position") data = { item_id: form.item_id }
+        if (field === "date_hired") data = { date_hired: form.date_hired }
+        if (field === "date_applied") data = { date_applied: form.date_applied }
+        if (field === "employment_classification") data = {
+            employment_classification: form.employment_classification,
+            item_id: form.item_id,           // always send the new position together
+        }
+        if (field === "work_schedule") data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
+        if (field === "break_time") data = { break_start: form.break_start, break_end: form.break_end }
+        router.put(route("employee.update", employee.employee_id), data, {
             preserveScroll: true,
             onSuccess: () => {
                 toast.success(
@@ -1081,148 +950,129 @@ function EmploymentEditDialog({
         break_time: 'Edit Break Time',
     };
 
-    return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                    <DialogTitle>{field ? titles[field] : ''}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3 py-2">
-                    {field === 'position' && (
-                        <div className="space-y-3">
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Position
-                                </Label>
-                                <Select
-                                    value={form.selected_position_name}
-                                    onValueChange={handlePositionSelect}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a position…" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-72">
-                                        {positionGroups.map((grp) => {
-                                            const employeeIsInGroup =
-                                                grp.items.some(
-                                                    (i) =>
-                                                        i.item_id.toString() ===
-                                                        currentItemId,
-                                                );
-                                            const isDisabled =
-                                                grp.isFull &&
-                                                !employeeIsInGroup;
-                                            return (
-                                                <SelectItem
-                                                    key={grp.positionName}
-                                                    value={grp.positionName}
-                                                    disabled={isDisabled}
-                                                    className="py-2.5"
-                                                >
-                                                    <div className="flex w-full items-center justify-between gap-3">
-                                                        <span
-                                                            className={
-                                                                isDisabled
-                                                                    ? 'text-muted-foreground/50'
-                                                                    : ''
-                                                            }
-                                                        >
-                                                            {grp.positionName}
-                                                        </span>
-                                                        {grp.totalSlots > 1 &&
-                                                            (isDisabled ? (
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className="shrink-0 border-rose-200 bg-rose-100 text-[10px] font-bold text-rose-600 dark:border-rose-800 dark:bg-rose-950/60"
-                                                                >
-                                                                    Full
-                                                                </Badge>
-                                                            ) : (
-                                                                <Badge
-                                                                    variant="secondary"
-                                                                    className="shrink-0 text-[10px]"
-                                                                >
-                                                                    {
-                                                                        grp.availableSlots
-                                                                    }
-                                                                    /
-                                                                    {
-                                                                        grp.totalSlots
-                                                                    }{' '}
-                                                                    open
-                                                                </Badge>
-                                                            ))}
-                                                        {grp.totalSlots === 1 &&
-                                                            isDisabled && (
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className="shrink-0 border-rose-200 bg-rose-100 text-[10px] font-bold text-rose-600 dark:border-rose-800 dark:bg-rose-950/60"
-                                                                >
-                                                                    Full
-                                                                </Badge>
-                                                            )}
-                                                    </div>
-                                                </SelectItem>
-                                            );
-                                        })}
-                                    </SelectContent>
-                                </Select>
-                                {selectedGroup &&
-                                    selectedGroup.totalSlots > 1 && (
-                                        <p className="mt-1.5 text-xs text-muted-foreground">
-                                            {selectedGroup.availableSlots === 0
-                                                ? 'All slots are currently occupied.'
-                                                : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slot${selectedGroup.totalSlots > 1 ? 's' : ''} available — a slot will be auto-assigned.`}
-                                        </p>
-                                    )}
-                            </div>
-                            {selectedGroup?.position && (
-                                <div className="divide-y divide-border rounded-lg border border-border bg-muted/20">
-                                    {selectedGroup.position.department && (
-                                        <div className="flex justify-between px-4 py-2">
-                                            <span className="text-xs text-muted-foreground">
-                                                Department
-                                            </span>
-                                            <span className="text-xs font-medium">
-                                                {
-                                                    selectedGroup.position
-                                                        .department
-                                                        .department_name
-                                                }
-                                            </span>
-                                        </div>
-                                    )}
-                                    {selectedGroup.position.division && (
-                                        <div className="flex justify-between px-4 py-2">
-                                            <span className="text-xs text-muted-foreground">
-                                                Division
-                                            </span>
-                                            <span className="text-xs font-medium">
-                                                {
-                                                    selectedGroup.position
-                                                        .division.division_name
-                                                }
-                                            </span>
-                                        </div>
-                                    )}
-                                    {selectedGroup.position.unit && (
-                                        <div className="flex justify-between px-4 py-2">
-                                            <span className="text-xs text-muted-foreground">
-                                                Unit
-                                            </span>
-                                            <span className="text-xs font-medium">
-                                                {
-                                                    selectedGroup.position.unit
-                                                        .unit_name
-                                                }
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+    // ── Whether the save button should be disabled ────────────────────────────
+    const saveDisabled = (() => {
+        if (field === "position") return !form.item_id
+        if (field === "employment_classification") return !form.employment_classification || !form.item_id
+        return false
+    })()
+
+    // ── Shared position picker JSX (used for both "position" and "employment_classification" fields) ──
+    const PositionPicker = (
+        <div className="space-y-3">
+            <div>
+                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position</Label>
+                <Select
+                    value={form.selected_position_name}
+                    onValueChange={handlePositionSelect}
+                    disabled={filteredPositionGroups.length === 0}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder={
+                            filteredPositionGroups.length === 0
+                                ? "No positions available"
+                                : "Select a position…"
+                        } />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                        {filteredPositionGroups.map(grp => {
+                            const employeeIsInGroup = grp.items.some(i => i.item_id.toString() === currentItemId)
+                            const isDisabled = grp.isFull && !employeeIsInGroup
+                            return (
+                                <SelectItem key={grp.displayLabel} value={grp.displayLabel} disabled={isDisabled} className="py-2.5">
+                                    <div className="flex items-center justify-between gap-3 w-full">
+                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.displayLabel}</span>
+                                        {grp.totalSlots > 1 && (
+                                            isDisabled
+                                                ? <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
+                                                : <Badge variant="secondary" className="text-[10px] shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
+                                        )}
+                                        {grp.totalSlots === 1 && isDisabled && (
+                                            <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
+                                        )}
+                                    </div>
+                                </SelectItem>
+                            )
+                        })}
+                    </SelectContent>
+                </Select>
+                {filteredPositionGroups.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic mt-1.5">
+                        No positions available for this classification.
+                    </p>
+                )}
+                {selectedGroup && selectedGroup.totalSlots > 1 && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                        {selectedGroup.availableSlots === 0
+                            ? "All slots are currently occupied."
+                            : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slots available — a slot will be auto-assigned.`}
+                    </p>
+                )}
+            </div>
+            {selectedGroup?.position && (
+                <div className="rounded-lg border border-border divide-y divide-border bg-muted/20">
+                    {selectedGroup.position.department && (
+                        <div className="flex justify-between px-4 py-2">
+                            <span className="text-xs text-muted-foreground">Department</span>
+                            <span className="text-xs font-medium">{selectedGroup.position.department.department_name}</span>
                         </div>
                     )}
-                    {field === 'date_hired' && (
+                    {selectedGroup.position.division && (
+                        <div className="flex justify-between px-4 py-2">
+                            <span className="text-xs text-muted-foreground">Division</span>
+                            <span className="text-xs font-medium">{selectedGroup.position.division.division_name}</span>
+                        </div>
+                    )}
+                    {selectedGroup.position.unit && (
+                        <div className="flex justify-between px-4 py-2">
+                            <span className="text-xs text-muted-foreground">Unit</span>
+                            <span className="text-xs font-medium">{selectedGroup.position.unit.unit_name}</span>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    )
+
+    return (
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+            <DialogContent className="sm:max-w-sm">
+                <DialogHeader><DialogTitle>{field ? titles[field] : ""}</DialogTitle></DialogHeader>
+                <div className="py-2 space-y-3">
+
+                    {/* ── Position only ── */}
+                    {field === "position" && PositionPicker}
+
+                    {/* ── Employment Classification + forced position re-pick ── */}
+                    {field === "employment_classification" && (
+                        <div className="space-y-3">
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">
+                                    Employment Classification
+                                </Label>
+                                <Select value={form.employment_classification} onValueChange={handleClassificationChange}>
+                                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Regular">Regular</SelectItem>
+                                        <SelectItem value="Job Order">Job Order</SelectItem>
+                                        <SelectItem value="Casual">Casual</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Always show position picker; hint text changes when classification changed */}
+                            <div className="space-y-1.5">
+                                {form.employment_classification !== employee.employment_classification && (
+                                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                                        Classification changed — please select a new position.
+                                    </p>
+                                )}
+                                {PositionPicker}
+                            </div>
+                        </div>
+                    )}
+
+                    {field === "date_hired" && (
                         <div>
                             <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Date Hired
@@ -1275,35 +1125,7 @@ function EmploymentEditDialog({
                             </div>
                         </div>
                     )}
-                    {field === 'employment_classification' && (
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Employment Classification
-                            </Label>
-                            <Select
-                                value={form.employment_classification}
-                                onValueChange={(v) =>
-                                    set('employment_classification', v)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select…" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Regular">
-                                        Regular
-                                    </SelectItem>
-                                    <SelectItem value="Job Order">
-                                        Job Order
-                                    </SelectItem>
-                                    <SelectItem value="Casual">
-                                        Casual
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-                    {field === 'date_applied' && (
+                    {field === "date_applied" && (
                         <div>
                             <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
                                 Date Applied
@@ -1381,16 +1203,10 @@ function EmploymentEditDialog({
                     )}
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>
-                        Cancel
-                    </Button>
-                    {field !== 'unit_division_department' && (
-                        <Button
-                            onClick={save}
-                            disabled={field === 'position' && !form.item_id}
-                        >
-                            <Save className="mr-1.5 h-3.5 w-3.5" />
-                            Save Changes
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    {field !== "unit_division_department" && (
+                        <Button onClick={save} disabled={saveDisabled}>
+                            <Save className="w-3.5 h-3.5 mr-1.5" />Save Changes
                         </Button>
                     )}
                 </DialogFooter>
@@ -1412,22 +1228,60 @@ function EmploymentDetailsTab({
     const [editField, setEditField] = useState<EditField>(null);
     const orgs = employee.internal_organizations ?? [];
 
-    const toggleStatus = () =>
-        router.patch(
-            route('employee.toggleStatus', employee.employee_id),
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () =>
-                    toast.success(
-                        `Employee marked as ${employee.status ? 'inactive' : 'active'}.`,
-                    ),
-                onError: () =>
-                    toast.error(
-                        'Failed to update employee status. Please try again.',
-                    ),
-            },
-        );
+    const toggleStatus = () => router.patch(route("employee.toggleStatus", employee.employee_id), {}, {
+        preserveScroll: true,
+        onSuccess: () => toast.success(`Employee marked as ${employee.status ? "inactive" : "active"}.`),
+        onError: () => toast.error("Failed to update employee status. Please try again."),
+    })
+
+    const fields = [
+        {
+            label: "Position",
+            value: position?.position_name,
+            onEdit: () => setEditField("position"),
+        },
+        {
+            label: "Department",
+            value: position?.department?.department_name,
+        },
+        {
+            label: "Division",
+            value: position?.division?.division_name,
+        },
+        {
+            label: "Unit",
+            value: position?.unit?.unit_name,
+        },
+        {
+            label: "Employment Classification",
+            value: employee.employment_classification,
+            onEdit: () => setEditField("employment_classification"),
+        },
+        {
+            label: "Date Applied",
+            value: fmt(employee.date_applied),
+            onEdit: () => setEditField("date_applied"),
+        },
+        {
+            label: "Date Hired",
+            value: fmt(employee.date_hired),
+            onEdit: () => setEditField("date_hired"),
+        },
+        {
+            label: "Work Schedule",
+            value: employee.work_schedule_start && employee.work_schedule_end
+                ? `${employee.work_schedule_start} – ${employee.work_schedule_end}`
+                : undefined,
+            onEdit: () => setEditField("work_schedule"),
+        },
+        {
+            label: "Break Time",
+            value: employee.break_start && employee.break_end
+                ? `${employee.break_start} – ${employee.break_end}`
+                : undefined,
+            onEdit: () => setEditField("break_time"),
+        },
+    ]
 
     return (
         <div className="space-y-4 p-3 sm:p-5">
@@ -1494,11 +1348,38 @@ function EmploymentDetailsTab({
                 />
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
-                        Internal Organizations
-                    </span>
+                {fields.map(({ label, value, onEdit }, i) => (
+                    <div
+                        key={label}
+                        className={cn(
+                            cn("flex items-center justify-between px-5 py-3", onEdit && "group"),
+                            i < fields.length - 1 && "border-b border-border"
+                        )}
+                    >
+                        <span className="text-xs text-muted-foreground w-44 shrink-0">{label}</span>
+                        <div className="flex flex-1 items-center justify-between gap-2 min-w-0">
+                            <span className="text-sm font-medium text-foreground truncate">
+                                {value ?? <span className="text-muted-foreground/40 italic font-normal text-xs">N/A</span>}
+                            </span>
+                            {onEdit && (
+                                <Button
+                                    size="icon-xs"
+                                    variant="ghost"
+                                    onClick={onEdit}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                >
+                                    <Pencil className="w-3 h-3" />
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Internal Organizations */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Internal Organizations</span>
                 </div>
                 {orgs.length === 0 ? (
                     <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">
@@ -1775,34 +1656,20 @@ function CompensationTab({
                         </Button>
                     </div>
                     {sgs ? (
-                        <div className="divide-y divide-border">
-                            <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-                                <span className="text-sm text-muted-foreground">
-                                    Salary Grade
-                                </span>
-                                <span className="text-sm font-bold">
-                                    SG-{sgs.salary_grade}
-                                </span>
+                        <div className="p-5 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 rounded-lg bg-muted/50 border border-border px-4 py-3 text-center">
+                                    <p className="text-xs text-muted-foreground mb-1">Salary Grade</p>
+                                    <p className="text-lg font-bold text-foreground">{sgs.salary_grade}</p>
+                                </div>
+                                <div className="flex-1 rounded-lg bg-muted/50 border border-border px-4 py-3 text-center">
+                                    <p className="text-xs text-muted-foreground mb-1">Step</p>
+                                    <p className="text-lg font-bold text-foreground">{sgs.step}</p>
+                                </div>
                             </div>
-                            <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-                                <span className="text-sm text-muted-foreground">
-                                    Step Number
-                                </span>
-                                <span className="text-sm font-bold">
-                                    Step {sgs.step}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-                                <span className="text-sm text-muted-foreground">
-                                    Amount
-                                </span>
-                                <span className="text-sm font-bold">
-                                    ₱
-                                    {Number(sgs.monthly_salary).toLocaleString(
-                                        'en-PH',
-                                        { minimumFractionDigits: 2 },
-                                    )}
-                                </span>
+                            <div className="rounded-lg border border-border px-4 py-3 flex items-center justify-between">
+                                <span className="text-sm text-muted-foreground">Monthly Basic Salary</span>
+                                <span className="text-base font-bold text-foreground">₱{fmt(baseSalary)}</span>
                             </div>
                         </div>
                     ) : (
@@ -2093,11 +1960,9 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                     )}
                 </div>
                 {data.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-14">
-                        <Calendar className="h-10 w-10 text-muted-foreground/30" />
-                        <p className="text-sm text-muted-foreground italic">
-                            No leave balances on file.
-                        </p>
+                    <div className="flex flex-col items-center justify-center py-14 gap-3">
+                        <CalendarDays className="w-10 h-10 text-muted-foreground/30" />
+                        <p className="text-sm italic text-muted-foreground">No leave balances on file.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -2184,10 +2049,8 @@ function WhereaboutSlipList({
                     <div
                         key={slip.whereabout_slip_id}
                         className={cn(
-                            'overflow-hidden rounded-lg border bg-background',
-                            isDeducted
-                                ? 'border-rose-300 dark:border-rose-800'
-                                : 'border-border',
+                            "rounded-lg border bg-background overflow-hidden",
+                            isDeducted ? "border-destructive/40" : "border-border",
                         )}
                     >
                         <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-3 py-2">
@@ -2224,38 +2087,23 @@ function WhereaboutSlipList({
                                     highlight: isDeducted,
                                 },
                             ].map(({ label, value, highlight }) => (
-                                <div
-                                    key={label}
-                                    className="flex flex-col gap-0.5 bg-background px-3 py-2"
-                                >
-                                    <span className="text-[9px] tracking-wide text-muted-foreground uppercase">
-                                        {label}
-                                    </span>
-                                    <span
-                                        className={cn(
-                                            'font-mono text-xs font-medium',
-                                            highlight &&
-                                                'text-rose-600 dark:text-rose-400',
-                                        )}
-                                    >
-                                        {value}
-                                    </span>
+                                <div key={label} className="flex flex-col gap-0.5 px-3 py-2 bg-background">
+                                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
+                                    <span className={cn("text-xs font-mono font-medium", highlight && "text-destructive")}>{value}</span>
                                 </div>
                             ))}
                         </div>
 
                         {isPersonal ? (
-                            <div
-                                className={cn(
-                                    'flex items-center gap-1.5 border-t px-3 py-1.5 text-[10px] font-semibold',
-                                    isDeducted
-                                        ? 'border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-800/60 dark:bg-rose-950/30 dark:text-rose-400'
-                                        : isPendingDeduct
-                                          ? 'border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-400'
-                                          : 'border-border/40 bg-muted/30 text-muted-foreground',
-                                )}
-                            >
-                                <AlertTriangle className="h-3 w-3 shrink-0" />
+                            <div className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold border-t",
+                                isDeducted
+                                    ? "bg-destructive/10 text-destructive border-destructive/20"
+                                    : isPendingDeduct
+                                        ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60"
+                                        : "bg-muted/30 text-muted-foreground border-border/40",
+                            )}>
+                                <AlertTriangle className="w-3 h-3 shrink-0" />
                                 {isDeducted
                                     ? `${fmtMinutes(slip.minutes_gone)} deducted from work hours`
                                     : isPendingDeduct
@@ -2330,16 +2178,7 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
                     {dateLabel}
                 </td>
                 <td className="py-2.5 pr-4">
-                    <StatusBadge status={record.status} />
-                </td>
-                <td className="py-2.5 pr-4">
-                    <span
-                        className={cn(
-                            'font-mono text-xs',
-                            isLate &&
-                                'font-semibold text-rose-600 dark:text-rose-400',
-                        )}
-                    >
+                    <span className={cn("text-xs font-mono", isLate && "text-destructive font-semibold")}>
                         {fmtTime(record.time_in)}
                     </span>
                 </td>
@@ -2356,35 +2195,16 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
                     {fmtMinutes(record.work_minutes)}
                 </td>
                 <td className="py-2.5 pr-4">
-                    {isLate ? (
-                        <span className="font-mono text-xs font-semibold text-rose-600 dark:text-rose-400">
-                            {fmtMinutes(record.late_minutes)}
-                        </span>
-                    ) : (
-                        <span className="font-mono text-xs text-muted-foreground/40">
-                            —
-                        </span>
-                    )}
+                    {isLate
+                        ? <span className="text-xs font-mono font-semibold text-destructive">{fmtMinutes(record.late_minutes)}</span>
+                        : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
                 </td>
                 <td className="py-2.5 pr-3">
-                    {personalDeductionMins > 0 ? (
-                        <span className="font-mono text-xs font-semibold text-rose-600 dark:text-rose-400">
-                            -{fmtMinutes(personalDeductionMins)}
-                        </span>
-                    ) : slips.some(
-                          (s) =>
-                              s.purpose_type === 'personal' &&
-                              s.return_status === 'returned' &&
-                              !hasTimedOut,
-                      ) ? (
-                        <span className="text-[10px] font-semibold text-amber-500">
-                            Pending
-                        </span>
-                    ) : (
-                        <span className="font-mono text-xs text-muted-foreground/40">
-                            —
-                        </span>
-                    )}
+                    {personalDeductionMins > 0
+                        ? <span className="text-xs font-mono font-semibold text-destructive">-{fmtMinutes(personalDeductionMins)}</span>
+                        : slips.some(s => s.purpose_type === "personal" && s.return_status === "returned" && !hasTimedOut)
+                            ? <span className="text-[10px] text-amber-500 font-semibold">Pending</span>
+                            : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
                 </td>
             </tr>
 
@@ -2409,24 +2229,28 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
 // ─── Attendance Record Tab ────────────────────────────────────────────────────
 
 function AttendanceRecordTab({ employee }: { employee: Employee }) {
-    const records = (employee.attendance_records ?? []) as AttendanceRecord[];
-    const today = new Date();
-    const oneMonthAgo = new Date(today);
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-    const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
+    const records = (employee.attendance_records ?? []) as AttendanceRecord[]
 
-    const [dateFrom, setDateFrom] = useState(toDateStr(oneMonthAgo));
-    const [dateTo, setDateTo] = useState(toDateStr(today));
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+        to: new Date(),
+    })
 
-    const from = dateFrom ? toLocalDate(dateFrom) : null;
-    const to = dateTo ? toLocalDate(dateTo) : null;
+    const from = dateRange?.from ?? null
+    const to = dateRange?.to ?? null
 
-    const filtered = records.filter((r) => {
-        const d = toLocalDate(r.date);
-        if (from && d < from) return false;
-        if (to && d > to) return false;
-        return true;
-    });
+    const filtered = records.filter(r => {
+        const d = toLocalDate(r.date)
+        if (from && d < from) return false
+        if (to && d > to) return false
+        return true
+    })
+
+    const dateLabel = dateRange?.from
+        ? dateRange.to
+            ? `${format(dateRange.from, "MMM d, yyyy")} – ${format(dateRange.to, "MMM d, yyyy")}`
+            : format(dateRange.from, "MMM d, yyyy")
+        : "Pick a date range"
 
     const stats = [
         {
@@ -2497,37 +2321,46 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
                             </Badge>
                         )}
                     </div>
+
                     {records.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-                            <span className="shrink-0 text-xs font-medium text-muted-foreground">
-                                Filter
-                            </span>
-                            <Input
-                                type="date"
-                                value={dateFrom}
-                                onChange={(e) => setDateFrom(e.target.value)}
-                                className="h-7 w-36 text-xs"
-                            />
-                            <span className="text-xs text-muted-foreground">
-                                —
-                            </span>
-                            <Input
-                                type="date"
-                                value={dateTo}
-                                onChange={(e) => setDateTo(e.target.value)}
-                                className="h-7 w-36 text-xs"
-                            />
-                            {(dateFrom || dateTo) && (
+                        <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
+                            <span className="text-xs text-muted-foreground font-medium shrink-0">Filter</span>
+
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs gap-1.5 font-normal"
+                                    >
+                                        <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <span className={dateRange?.from ? "text-foreground" : "text-muted-foreground"}>
+                                            {dateLabel}
+                                        </span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="range"
+                                        defaultMonth={dateRange?.from}
+                                        selected={dateRange}
+                                        onSelect={setDateRange}
+                                        numberOfMonths={2}
+                                        disabled={(date) =>
+                                            date > new Date() || date < new Date("1900-01-01")
+                                        }
+                                    />
+                                </PopoverContent>
+                            </Popover>
+
+                            {dateRange && (
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 px-2 text-xs text-muted-foreground"
-                                    onClick={() => {
-                                        setDateFrom('');
-                                        setDateTo('');
-                                    }}
+                                    onClick={() => setDateRange(undefined)}
                                 >
-                                    <X className="mr-1 h-3 w-3" /> Clear
+                                    <X className="w-3 h-3 mr-1" /> Clear
                                 </Button>
                             )}
                         </div>
@@ -2542,7 +2375,7 @@ function AttendanceRecordTab({ employee }: { employee: Employee }) {
                         </p>
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+                    <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
                         No records match the selected date range.
                     </div>
                 ) : (
@@ -2850,43 +2683,19 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                                     <Eye className="h-3.5 w-3.5" />
                                                 )}
                                             </Button>
-                                            <Button
-                                                onClick={() =>
-                                                    openEditGovDialog(
-                                                        type,
-                                                        account,
-                                                    )
-                                                }
-                                                variant="ghost"
-                                                size="icon-xs"
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                onClick={() =>
-                                                    setDeleteGovId(
-                                                        account.government_account_id,
-                                                    )
-                                                }
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
+                                            <Button onClick={() => openEditGovDialog(type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </>
                                     ) : (
                                         <Button
-                                            onClick={() =>
-                                                setGovDialog({
-                                                    open: true,
-                                                    mode: 'standard',
-                                                    type,
-                                                    id: undefined,
-                                                    value: '',
-                                                    customTypeName: '',
-                                                })
-                                            }
+                                            onClick={() => setGovDialog({
+                                                open: true,
+                                                mode: "standard",
+                                                type,
+                                                id: undefined,
+                                                value: "",
+                                                customTypeName: ""
+                                            })}
                                             variant="ghost"
                                             size="icon-xs"
                                         >
@@ -2925,30 +2734,8 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                                             <Eye className="h-3.5 w-3.5" />
                                         )}
                                     </Button>
-                                    <Button
-                                        onClick={() =>
-                                            openEditGovDialog(
-                                                account.account_type,
-                                                account,
-                                            )
-                                        }
-                                        variant="ghost"
-                                        size="icon-xs"
-                                    >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                        onClick={() =>
-                                            setDeleteGovId(
-                                                account.government_account_id,
-                                            )
-                                        }
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
+                                    <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                    <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
                         );
@@ -2988,32 +2775,18 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[480px] divide-y divide-border">
-                            {eligibilities.map((e) => (
-                                <div
-                                    key={e.eligibility_information_id}
-                                    className="flex items-center gap-4 px-5 py-3"
-                                >
-                                    <span className="flex-1 text-sm font-medium text-foreground">
-                                        {e.eligibility_name}
-                                    </span>
-                                    <span className="w-36 shrink-0 text-right text-sm text-muted-foreground">
-                                        {e.year_passed
-                                            ? fmt(e.year_passed)
-                                            : '—'}
-                                    </span>
-                                    <Badge
-                                        variant="outline"
-                                        className="shrink-0 border-emerald-200/60 bg-emerald-100 text-[10px] text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/60 dark:text-emerald-400"
-                                    >
-                                        ✓ Active
-                                    </Badge>
-                                    <Button
-                                        onClick={() => openEligDialog(e)}
-                                        variant="ghost"
-                                        size="icon-xs"
-                                    >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
+                            {eligibilities.map(e => (
+                                <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                    <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
+                                    <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button onClick={() => openEligDialog(e)} variant="ghost" size="icon-xs">
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button onClick={() => setDeleteEligId(e.eligibility_information_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -3410,26 +3183,24 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
     );
 
     const [seminarDialog, setSeminarDialog] = useState<{
-        open: boolean;
-        id?: number;
-        seminar_name: string;
-        venue: string;
-        date_attended: string;
-    }>({ open: false, seminar_name: '', venue: '', date_attended: '' });
-    const [deleteSeminarId, setDeleteSeminarId] = useState<number | null>(null);
+        open: boolean; id?: number; seminar_name: string; venue: string; organizer: string; date_attended: string
+    }>({ open: false, seminar_name: "", venue: "", organizer: "", date_attended: "" })
+    const [deleteSeminarId, setDeleteSeminarId] = useState<number | null>(null)
 
     const openSeminarDialog = (s?: SeminarTraining) =>
         setSeminarDialog({
             open: true,
             id: s?.id,
-            seminar_name: s?.seminar_name ?? '',
-            venue: s?.venue ?? '',
+            seminar_name: s?.seminar_name ?? "",
+            venue: s?.venue ?? "",
+            organizer: s?.organizer ?? "",
             date_attended: toInputDate(s?.date_attended),
         });
     const saveSeminar = () => {
         const data = {
             seminar_name: seminarDialog.seminar_name,
             venue: seminarDialog.venue,
+            organizer: seminarDialog.organizer,
             date_attended: seminarDialog.date_attended || null,
         };
         if (seminarDialog.id) {
@@ -3667,15 +3438,8 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             >
                                                 <Pencil className="h-3.5 w-3.5" />
                                             </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                                                onClick={() =>
-                                                    setDeleteFamilyIndex(i)
-                                                }
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}>
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
                                     </div>
@@ -3717,74 +3481,42 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 ) : (
                     <div className="overflow-x-auto">
                         <div className="min-w-[580px]">
-                            {Object.entries(educByLevel).map(
-                                ([level, edus]) => (
-                                    <div key={level}>
-                                        <div className="border-y border-border bg-muted/30 px-5 py-2">
-                                            <span className="text-xs font-semibold text-muted-foreground">
-                                                {level}
-                                            </span>
-                                        </div>
-                                        <div className="divide-y divide-border">
-                                            {edus.map((edu, i) => {
-                                                const globalIndex =
-                                                    educations.indexOf(edu);
-                                                return (
-                                                    <div
-                                                        key={i}
-                                                        className="grid grid-cols-[auto_1fr_1fr_1fr_80px_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
-                                                    >
-                                                        <Checkbox className="h-4 w-4" />
-                                                        <span className="text-sm font-medium text-foreground">
-                                                            {edu.school_name}
-                                                        </span>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {edu.school_address ??
-                                                                '—'}
-                                                        </span>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {edu.degree ?? '—'}
-                                                        </span>
-                                                        <span className="text-right text-sm text-muted-foreground">
-                                                            {edu.graduation_date
-                                                                ? new Date(
-                                                                      edu.graduation_date,
-                                                                  ).getFullYear()
-                                                                : '—'}
-                                                        </span>
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon-xs"
-                                                                onClick={() =>
-                                                                    openEducDialog(
-                                                                        edu,
-                                                                        globalIndex,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Pencil className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon-xs"
-                                                                className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                                                                onClick={() =>
-                                                                    setDeleteEducIndex(
-                                                                        globalIndex,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                            {Object.entries(educByLevel).map(([level, edus]) => (
+                                <div key={level}>
+                                    {/* Level group header */}
+                                    <div className="px-5 py-2 bg-muted/30 border-y border-border">
+                                        <span className="text-xs font-semibold text-muted-foreground">{level}</span>
                                     </div>
-                                ),
-                            )}
+                                    {/* Column header */}
+                                    <div className="grid grid-cols-[1fr_1fr_1fr_60px_72px] items-center gap-3 px-5 py-2 border-b border-border/50 bg-muted/10">
+                                        {["School Name", "Address", "Degree / Course", "Year", ""].map(h => (
+                                            <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Year" && "text-right")}>{h}</span>
+                                        ))}
+                                    </div>
+                                    {/* Rows */}
+                                    <div className="divide-y divide-border">
+                                        {edus.map((edu, i) => {
+                                            const globalIndex = educations.indexOf(edu)
+                                            return (
+                                                <div key={i} className="grid grid-cols-[1fr_1fr_1fr_60px_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                                    <span className="text-sm text-foreground font-medium truncate">{edu.school_name}</span>
+                                                    <span className="text-sm text-muted-foreground truncate">{edu.school_address ?? "—"}</span>
+                                                    <span className="text-sm text-muted-foreground truncate">{edu.degree ?? "—"}</span>
+                                                    <span className="text-sm text-muted-foreground text-right">{edu.graduation_date ? new Date(edu.graduation_date).getFullYear() : "—"}</span>
+                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}>
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteEducIndex(globalIndex)}>
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -3819,63 +3551,29 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <div className="min-w-[520px]">
-                            <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 border-b border-border bg-muted/30 px-5 py-2.5">
-                                <div className="w-4" />
-                                {[
-                                    'Seminar / Training',
-                                    'Organizer',
-                                    'Date Attended',
-                                    '',
-                                ].map((h) => (
-                                    <span
-                                        key={h}
-                                        className={cn(
-                                            'text-xs font-semibold text-muted-foreground',
-                                            h === 'Date Attended' &&
-                                                'text-right',
-                                        )}
-                                    >
-                                        {h}
-                                    </span>
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
+                        <div className="min-w-[700px]">
+                            {/* Header */}
+                            <div className="grid grid-cols-[2fr_1fr_1fr_140px_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                                {["Seminar / Training", "Venue", "Organizer", "Date Attended", ""].map(h => (
+                                    <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Date Attended" && "text-right")}>{h}</span>
                                 ))}
                             </div>
+
+                            {/* Rows */}
                             <div className="divide-y divide-border">
-                                {seminars.map((s) => (
-                                    <div
-                                        key={s.id}
-                                        className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
-                                    >
-                                        <Checkbox className="h-4 w-4" />
-                                        <span className="text-sm font-medium text-foreground">
-                                            {s.seminar_name}
-                                        </span>
-                                        <span className="text-sm text-muted-foreground">
-                                            {s.venue ?? '—'}
-                                        </span>
-                                        <span className="text-right text-sm text-muted-foreground">
-                                            {fmtShort(s.date_attended)}
-                                        </span>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                onClick={() =>
-                                                    openSeminarDialog(s)
-                                                }
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
+                                {seminars.map(s => (
+                                    <div key={s.id} className="grid grid-cols-[2fr_1fr_1fr_140px_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                        <span className="text-sm text-foreground font-medium truncate">{s.seminar_name}</span>
+                                        <span className="text-sm text-muted-foreground truncate">{s.venue ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground truncate">{s.organizer ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}>
+                                                <Pencil className="w-3.5 h-3.5" />
                                             </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                                                onClick={() =>
-                                                    setDeleteSeminarId(s.id)
-                                                }
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}>
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
                                     </div>
@@ -3962,15 +3660,8 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                             >
                                                 <Pencil className="h-3.5 w-3.5" />
                                             </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                className="text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                                                onClick={() =>
-                                                    setDeleteServiceId(s.id)
-                                                }
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}>
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
                                     </div>
@@ -3981,35 +3672,14 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* ── All dialogs ── */}
-            <Dialog
-                open={familyDialog.open}
-                onOpenChange={(o) =>
-                    setFamilyDialog((p) => ({ ...p, open: o }))
-                }
-            >
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {familyDialog.index !== undefined ? 'Edit' : 'Add'}{' '}
-                            Family Member
-                        </DialogTitle>
-                    </DialogHeader>
+            {/* ── Family Dialog ── */}
+            <Dialog open={familyDialog.open} onOpenChange={o => setFamilyDialog(p => ({ ...p, open: o }))}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader><DialogTitle>{familyDialog.index !== undefined ? "Edit" : "Add"} Family Member</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Full Name *
-                            </Label>
-                            <Input
-                                value={familyDialog.full_name}
-                                onChange={(e) =>
-                                    setFamilyDialog((p) => ({
-                                        ...p,
-                                        full_name: e.target.value,
-                                    }))
-                                }
-                                autoFocus
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Full Name *</Label>
+                            <Input value={familyDialog.full_name} onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))} autoFocus placeholder="e.g. Juan dela Cruz" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -4086,18 +3756,11 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                                 />
                             </div>
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Contact Number
-                                </Label>
-                                <Input
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Contact Number</Label>
+                                <PhoneInput
+                                    defaultCountry="PH"
                                     value={familyDialog.contact_number}
-                                    onChange={(e) =>
-                                        setFamilyDialog((p) => ({
-                                            ...p,
-                                            contact_number: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="09XXXXXXXXXX"
+                                    onChange={v => setFamilyDialog(p => ({ ...p, contact_number: v ?? "" }))}
                                 />
                             </div>
                         </div>
@@ -4180,48 +3843,17 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                             </Select>
                         </div>
                         <div>
-                            <Label className="tracking-widests mb-1.5 block text-xs text-muted-foreground uppercase">
-                                School Name *
-                            </Label>
-                            <Input
-                                value={educDialog.school_name}
-                                onChange={(e) =>
-                                    setEducDialog((p) => ({
-                                        ...p,
-                                        school_name: e.target.value,
-                                    }))
-                                }
-                                autoFocus
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Name *</Label>
+                            <Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus placeholder="e.g. University of the Philippines" />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                School Address
-                            </Label>
-                            <Input
-                                value={educDialog.school_address}
-                                onChange={(e) =>
-                                    setEducDialog((p) => ({
-                                        ...p,
-                                        school_address: e.target.value,
-                                    }))
-                                }
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label>
+                            <Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} placeholder="e.g. Diliman, Quezon City" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Degree / Course
-                                </Label>
-                                <Input
-                                    value={educDialog.degree}
-                                    onChange={(e) =>
-                                        setEducDialog((p) => ({
-                                            ...p,
-                                            degree: e.target.value,
-                                        }))
-                                    }
-                                />
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label>
+                                <Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} placeholder="e.g. BS Computer Science" />
                             </div>
                             <div>
                                 <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
@@ -4275,32 +3907,19 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Seminar / Training Name *
-                            </Label>
-                            <Input
-                                value={seminarDialog.seminar_name}
-                                onChange={(e) =>
-                                    setSeminarDialog((p) => ({
-                                        ...p,
-                                        seminar_name: e.target.value,
-                                    }))
-                                }
-                                autoFocus
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label>
+                            <Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus placeholder="e.g. Leadership and Management Seminar" />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Organizer
-                            </Label>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Venue</Label>
+                            <Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, venue: e.target.value }))} placeholder="e.g. Makati City, Philippines" />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label>
                             <Input
-                                value={seminarDialog.venue}
-                                onChange={(e) =>
-                                    setSeminarDialog((p) => ({
-                                        ...p,
-                                        venue: e.target.value,
-                                    }))
-                                }
+                                value={seminarDialog.organizer}
+                                onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))}
+                                placeholder="e.g. Civil Service Commission"
                             />
                         </div>
                         <div>
@@ -4353,33 +3972,12 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Position Name *
-                            </Label>
-                            <Input
-                                value={serviceDialog.position_name}
-                                onChange={(e) =>
-                                    setServiceDialog((p) => ({
-                                        ...p,
-                                        position_name: e.target.value,
-                                    }))
-                                }
-                                autoFocus
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position Name *</Label>
+                            <Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus placeholder="e.g. Administrative Officer" />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Department
-                            </Label>
-                            <Input
-                                value={serviceDialog.department_name}
-                                onChange={(e) =>
-                                    setServiceDialog((p) => ({
-                                        ...p,
-                                        department_name: e.target.value,
-                                    }))
-                                }
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Department</Label>
+                            <Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} placeholder="e.g. Human Resources Department" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -4696,8 +4294,8 @@ function DocumentsTab({ employee }: { employee: Employee }) {
 
                 {uploadedFiles.length === 0 ? (
                     <div className="px-5 py-14 text-center">
-                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-                            <FolderOpen className="h-7 w-7 text-muted-foreground/30" />
+                        <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center mx-auto mb-4">
+                            <FolderOpen className="w-7 h-7 text-muted-foreground/30" />
                         </div>
                         <p className="mb-1 text-sm font-medium text-foreground">
                             No files uploaded yet
@@ -4785,16 +4383,8 @@ function DocumentsTab({ employee }: { employee: Employee }) {
                                                 </Button>
                                             </a>
                                         )}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-xs"
-                                            className="h-8 w-8 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 sm:h-7 sm:w-7 dark:hover:bg-rose-950/40"
-                                            onClick={() =>
-                                                setDeleteFileId(file.id)
-                                            }
-                                            title="Delete"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-8 h-8 sm:w-7 sm:h-7" onClick={() => setDeleteFileId(file.id)} title="Delete">
+                                            <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
                                     </div>
                                 </div>
@@ -4805,31 +4395,18 @@ function DocumentsTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Preview Dialog */}
-            <Dialog
-                open={!!viewFile}
-                onOpenChange={(o) => !o && setViewFile(null)}
-            >
-                <DialogContent className="max-h-[90vh] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-3xl">
-                    <DialogHeader className="flex shrink-0 flex-row items-center justify-between border-b border-border px-5 py-4">
-                        <div className="flex min-w-0 items-center gap-3">
-                            {viewFile &&
-                                (() => {
-                                    const { icon, className } = getFileMeta(
-                                        viewFile.file_name,
-                                    );
-                                    return (
-                                        <div
-                                            className={cn(
-                                                'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                                                className,
-                                            )}
-                                        >
-                                            <span className="text-[9px] font-black">
-                                                {icon}
-                                            </span>
-                                        </div>
-                                    );
-                                })()}
+            <Dialog open={!!viewFile} onOpenChange={o => !o && setViewFile(null)}>
+                <DialogContent className="sm:max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden rounded-lg">
+                    <DialogHeader className="px-5 py-4 border-b border-border shrink-0 flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                            {viewFile && (() => {
+                                const { icon, className } = getFileMeta(viewFile.file_name)
+                                return (
+                                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", className)}>
+                                        <span className="text-[9px] font-black">{icon}</span>
+                                    </div>
+                                )
+                            })()}
                             <div className="min-w-0">
                                 <DialogTitle className="truncate text-sm font-bold">
                                     {viewFile?.file_name}
@@ -4927,14 +4504,10 @@ function AvatarPreviewDialog({
     onClose: () => void;
 }) {
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="gap-0 overflow-hidden rounded-2xl border border-border p-0 shadow-2xl sm:max-w-xs">
-                <div className="relative flex flex-col items-center overflow-hidden rounded-2xl bg-card">
-                    <img
-                        src={src}
-                        alt={name}
-                        className="aspect-square w-full object-cover"
-                    />
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+            <DialogContent className="sm:max-w-xs p-0 overflow-hidden rounded-lg border border-border shadow-lg gap-0">
+                <div className="relative flex flex-col items-center bg-card rounded-lg overflow-hidden">
+                    <img src={src} alt={name} className="w-full aspect-square object-cover" />
                     {name && (
                         <div className="w-full border-t border-border bg-card px-5 py-3.5">
                             <p className="text-center text-sm font-semibold text-foreground">
@@ -5100,9 +4673,9 @@ function AvatarUploadDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-            <DialogContent className="gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-sm">
-                <DialogHeader className="border-b border-border px-5 pt-5 pb-3">
+        <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+            <DialogContent className="sm:max-w-sm rounded-lg overflow-hidden p-0 gap-0">
+                <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
                     <DialogTitle className="text-base font-bold">
                         {mode === 'camera'
                             ? 'Take a Photo'
@@ -5338,18 +4911,14 @@ export default function ShowEmployee({
     ];
 
     const tabs = [
-        { value: 'employment', label: 'Employment Details', icon: Briefcase },
-        { value: 'compensation', label: 'Compensation', icon: FileText },
-        { value: 'leave', label: 'Leave Information', icon: Calendar },
-        { value: 'time', label: 'Attendance Record', icon: Clock },
-        {
-            value: 'government',
-            label: 'Government Eligibility',
-            icon: Landmark,
-        },
-        { value: 'background', label: 'Background Information', icon: User },
-        { value: 'documents', label: 'Documents', icon: FolderOpen },
-    ];
+        { value: "employment", label: "Employment Details", icon: Briefcase },
+        { value: "compensation", label: "Compensation", icon: FileText },
+        { value: "leave", label: "Leave Information", icon: CalendarDays },
+        { value: "time", label: "Attendance Record", icon: Clock },
+        { value: "government", label: "Government Eligibility", icon: Landmark },
+        { value: "background", label: "Background Information", icon: User },
+        { value: "documents", label: "Documents", icon: FolderOpen },
+    ]
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -5357,8 +4926,8 @@ export default function ShowEmployee({
 
             <div className="flex flex-col gap-4 bg-background p-3 sm:p-5 lg:flex-row lg:gap-5">
                 {/* ── Left Panel ── */}
-                <div className="flex w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:w-72">
-                    <div className="relative flex flex-col items-center border-b border-border bg-gradient-to-b from-accent/30 to-card px-5 pt-8 pb-5">
+                <div className="w-full lg:w-72 shrink-0 bg-card rounded-lg border border-border shadow-sm overflow-hidden flex flex-col">
+                    <div className="relative flex flex-col items-center pt-8 pb-5 px-5  ">
                         <div className="absolute top-3 right-3">
                             <Button
                                 size={'icon-xs'}
@@ -5403,80 +4972,34 @@ export default function ShowEmployee({
                     </div>
 
                     <div className="flex-1 px-4 py-3">
-                        <p className="mb-1 text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-                            Basic Information
-                        </p>
-                        <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 lg:grid-cols-1">
-                            <InfoRow
-                                icon={Mail}
-                                label="Work Email"
-                                value={employee.work_email}
-                            />
-                            <InfoRow
-                                icon={Mail}
-                                label="Personal Email"
-                                value={basic?.personal_email}
-                            />
-                            <InfoRow
-                                icon={Briefcase}
-                                label="Work ID"
-                                value={employee.work_id}
-                            />
-                            <InfoRow
-                                icon={Phone}
-                                label="Contact Number"
-                                value={basic?.phone_number}
-                            />
-                            <InfoRow
-                                icon={Calendar}
-                                label="Date of Birth"
-                                value={fmt(basic?.birth_date)}
-                            />
-                            <InfoRow
-                                icon={MapPin}
-                                label="Place of Birth"
-                                value={basic?.place_of_birth}
-                            />
-                            <InfoRow
-                                icon={User}
-                                label="Sex"
-                                value={
-                                    basic?.sex !== undefined
-                                        ? basic.sex
-                                            ? 'Male'
-                                            : 'Female'
-                                        : undefined
-                                }
-                            />
-                            <InfoRow
-                                icon={Heart}
-                                label="Civil Status"
-                                value={cap(basic?.civil_status)}
-                            />
-                            <InfoRow
-                                icon={Home}
-                                label="Address"
-                                value={addressStr}
-                            />
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Basic Information</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-0">
+                            <InfoRow icon={Mail} label="Work Email" value={employee.work_email} />
+                            <InfoRow icon={Mail} label="Personal Email" value={basic?.personal_email} />
+                            <InfoRow icon={Briefcase} label="Work ID" value={employee.work_id} />
+                            <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} />
+                            <InfoRow icon={CalendarDays} label="Date of Birth" value={fmt(basic?.birth_date)} />
+                            <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} />
+                            <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} />
+                            <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} />
+                            <InfoRow icon={Home} label="Address" value={addressStr} />
                         </div>
                     </div>
                 </div>
 
                 {/* ── Right Panel ── */}
-                <div className="min-w-0 flex-1 rounded-2xl border border-border bg-card shadow-sm">
+                <div className="flex-1 bg-card rounded-lg border border-border shadow-sm overflow-hidden min-w-0">
                     <Tabs defaultValue="employment">
-                        <div className="shrink-0 overflow-x-auto border-b border-border px-2 pt-1 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
-                            <TabsList className="flex h-auto w-max min-w-full flex-nowrap gap-0 bg-transparent p-0">
+                        <div className="border-b border-border px-2 sm:px-4 pt-1 shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+                            <TabsList className="h-auto bg-transparent gap-0 p-0 flex flex-nowrap w-max ">
                                 {tabs.map(({ value, label, icon: Icon }) => (
                                     <TabsTrigger
                                         key={value}
                                         value={value}
                                         className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
                                     >
-                                        <Icon className="h-3.5 w-3.5 shrink-0" />
-                                        <span className="xs:inline hidden sm:inline">
-                                            {label}
-                                        </span>
+                                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                                        <span>{label}</span>
                                     </TabsTrigger>
                                 ))}
                             </TabsList>

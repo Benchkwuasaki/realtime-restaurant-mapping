@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('positions', function (Blueprint $table) {
             $table->id('position_id');
-            $table->foreignId('department_id')->constrained('departments', 'department_id')->onDelete('cascade');
-            $table->foreignId('division_id')->nullable()->constrained('divisions', 'division_id')->onDelete('cascade');
-            $table->foreignId('unit_id')->nullable()->constrained('units', 'unit_id')->onDelete('cascade');
+            $table->foreignId('department_id')->nullable()->constrained('departments', 'department_id')->nullOnDelete();
+            $table->foreignId('division_id')->nullable()->constrained('divisions', 'division_id')->nullOnDelete();
+            $table->foreignId('unit_id')->nullable()->constrained('units', 'unit_id')->nullOnDelete();
             $table->string('position_name');
             $table->enum('position_type', ['Regular', 'Casual', 'Job Order'])->default('Regular');
             $table->timestamps();

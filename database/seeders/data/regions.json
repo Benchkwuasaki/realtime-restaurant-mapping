@@ -1,0 +1,573 @@
+{
+    "displayFieldName": "reg_name",
+    "fieldAliases": {
+        "objectid": "OBJECTID",
+        "gthcode": "Reg Theme Code",
+        "st_area(shape)": "st_area(shape)",
+        "reg_name": "Region Name",
+        "reg_code": "Region Code",
+        "psgc_10d": "PSGC 10 Digit",
+        "geographic_level": "Geographic Level",
+        "old_names": "Old Names",
+        "class": "Class",
+        "income_class": "Income Class",
+        "urban_rural2015": "Urban Rural 2015",
+        "st_perimeter(shape)": "st_perimeter(shape)",
+        "pop": "Population",
+        "pop_yr": "Population Year",
+        "psa_regarea_skm": "PSA - Reg Area (sqkm)",
+        "regarea_sqkm": "Reg Area (sqkm)",
+        "regarea_ha": "Reg Area (ha)",
+        "created_user": "created_user",
+        "created_date": "created_date",
+        "last_edited_user": "last_edited_user",
+        "last_edited_date": "last_edited_date"
+    },
+    "fields": [
+        {
+            "name": "objectid",
+            "type": "esriFieldTypeOID",
+            "alias": "OBJECTID"
+        },
+        {
+            "name": "gthcode",
+            "type": "esriFieldTypeString",
+            "alias": "Reg Theme Code",
+            "length": 16
+        },
+        {
+            "name": "st_area(shape)",
+            "type": "esriFieldTypeDouble",
+            "alias": "st_area(shape)"
+        },
+        {
+            "name": "reg_name",
+            "type": "esriFieldTypeString",
+            "alias": "Region Name",
+            "length": 100
+        },
+        {
+            "name": "reg_code",
+            "type": "esriFieldTypeString",
+            "alias": "Region Code",
+            "length": 12
+        },
+        {
+            "name": "psgc_10d",
+            "type": "esriFieldTypeString",
+            "alias": "PSGC 10 Digit",
+            "length": 255
+        },
+        {
+            "name": "geographic_level",
+            "type": "esriFieldTypeString",
+            "alias": "Geographic Level",
+            "length": 255
+        },
+        {
+            "name": "old_names",
+            "type": "esriFieldTypeString",
+            "alias": "Old Names",
+            "length": 255
+        },
+        {
+            "name": "class",
+            "type": "esriFieldTypeString",
+            "alias": "Class",
+            "length": 255
+        },
+        {
+            "name": "income_class",
+            "type": "esriFieldTypeString",
+            "alias": "Income Class",
+            "length": 255
+        },
+        {
+            "name": "urban_rural2015",
+            "type": "esriFieldTypeString",
+            "alias": "Urban Rural 2015",
+            "length": 255
+        },
+        {
+            "name": "st_perimeter(shape)",
+            "type": "esriFieldTypeDouble",
+            "alias": "st_perimeter(shape)"
+        },
+        {
+            "name": "pop",
+            "type": "esriFieldTypeInteger",
+            "alias": "Population"
+        },
+        {
+            "name": "pop_yr",
+            "type": "esriFieldTypeInteger",
+            "alias": "Population Year"
+        },
+        {
+            "name": "psa_regarea_skm",
+            "type": "esriFieldTypeDouble",
+            "alias": "PSA - Reg Area (sqkm)"
+        },
+        {
+            "name": "regarea_sqkm",
+            "type": "esriFieldTypeDouble",
+            "alias": "Reg Area (sqkm)"
+        },
+        {
+            "name": "regarea_ha",
+            "type": "esriFieldTypeDouble",
+            "alias": "Reg Area (ha)"
+        },
+        {
+            "name": "created_user",
+            "type": "esriFieldTypeString",
+            "alias": "created_user",
+            "length": 255
+        },
+        {
+            "name": "created_date",
+            "type": "esriFieldTypeDate",
+            "alias": "created_date",
+            "length": 8
+        },
+        {
+            "name": "last_edited_user",
+            "type": "esriFieldTypeString",
+            "alias": "last_edited_user",
+            "length": 255
+        },
+        {
+            "name": "last_edited_date",
+            "type": "esriFieldTypeDate",
+            "alias": "last_edited_date",
+            "length": 8
+        }
+    ],
+    "features": [
+        {
+            "attributes": {
+                "objectid": 1,
+                "gthcode": "8011500000000000",
+                "st_area(shape)": 1.0205063422433733,
+                "reg_name": "Bangsamoro Autonomous Region in Muslim Mindanao (BARMM)",
+                "reg_code": "150000000",
+                "psgc_10d": "1900000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 55.060706535894013,
+                "pop": 4404288,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 36650.95,
+                "regarea_sqkm": 12471.16819894,
+                "regarea_ha": 1247116.81989371,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 2,
+                "gthcode": "8011400000000000",
+                "st_area(shape)": 1.5467120983061251,
+                "reg_name": "Cordillera Administrative Region (CAR)",
+                "reg_code": "140000000",
+                "psgc_10d": "1400000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 8.0274543624678625,
+                "pop": 1797660,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 19818.12,
+                "regarea_sqkm": 18192.6440516,
+                "regarea_ha": 1819264.40515966,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 3,
+                "gthcode": "8011300000000000",
+                "st_area(shape)": 0.050216473566213976,
+                "reg_name": "National Capital Region (NCR)",
+                "reg_code": "130000000",
+                "psgc_10d": "1300000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 2.32023436863521,
+                "pop": 13484462,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 619.54,
+                "regarea_sqkm": 598.65010314,
+                "regarea_ha": 59865.01031376,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 4,
+                "gthcode": "8010100000000000",
+                "st_area(shape)": 1.0437126965243884,
+                "reg_name": "Region I (Ilocos Region)",
+                "reg_code": "010000000",
+                "psgc_10d": "0100000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 15.143995810254086,
+                "pop": 5301139,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 12964.62,
+                "regarea_sqkm": 12304.18269143,
+                "regarea_ha": 1230418.26914319,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 5,
+                "gthcode": "8010200000000000",
+                "st_area(shape)": 2.2418116848906604,
+                "reg_name": "Region II (Cagayan Valley)",
+                "reg_code": "020000000",
+                "psgc_10d": "0200000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 19.139048475649041,
+                "pop": 3685744,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 29836.88,
+                "regarea_sqkm": 26387.72955531,
+                "regarea_ha": 2638772.95553098,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 6,
+                "gthcode": "8010300000000000",
+                "st_area(shape)": 1.7870859842097229,
+                "reg_name": "Region III (Central Luzon)",
+                "reg_code": "030000000",
+                "psgc_10d": "0300000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 19.82014610973162,
+                "pop": 12422172,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 21906.19,
+                "regarea_sqkm": 21227.86527017,
+                "regarea_ha": 2122786.52701716,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 7,
+                "gthcode": "8010400000000000",
+                "st_area(shape)": 1.3056374186271988,
+                "reg_name": "Region IV-A (CALABARZON)",
+                "reg_code": "040000000",
+                "psgc_10d": "0400000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 30.486734475553376,
+                "pop": 16195042,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 16576.26,
+                "regarea_sqkm": 15594.65126629,
+                "regarea_ha": 1559465.12662945,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 8,
+                "gthcode": "8011700000000000",
+                "st_area(shape)": 2.2129027728798585,
+                "reg_name": "Region IV-B (MIMAROPA)",
+                "reg_code": "170000000",
+                "psgc_10d": "1700000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 79.647471433598724,
+                "pop": 3228558,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 29606.25,
+                "regarea_sqkm": 26708.15339352,
+                "regarea_ha": 2670815.33935191,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 9,
+                "gthcode": "8010900000000000",
+                "st_area(shape)": 1.1961702803750398,
+                "reg_name": "Region IX (Zamboanga Peninsula)",
+                "reg_code": "090000000",
+                "psgc_10d": "0900000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 23.295174087236447,
+                "pop": 3875576,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 16904.03,
+                "regarea_sqkm": 14589.87034006,
+                "regarea_ha": 1458987.03400633,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 10,
+                "gthcode": "8010500000000000",
+                "st_area(shape)": 1.4422658333018989,
+                "reg_name": "Region V (Bicol Region)",
+                "reg_code": "050000000",
+                "psgc_10d": "0500000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 45.529794606688533,
+                "pop": 6082165,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 18114.47,
+                "regarea_sqkm": 17289.74290882,
+                "regarea_ha": 1728974.29088217,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 11,
+                "gthcode": "8010600000000000",
+                "st_area(shape)": 1.6571353404286293,
+                "reg_name": "Region VI (Western Visayas)",
+                "reg_code": "060000000",
+                "psgc_10d": "0600000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 27.589382255220542,
+                "pop": 7954723,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 12773.46,
+                "regarea_sqkm": 20042.1194326,
+                "regarea_ha": 2004211.94326002,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 12,
+                "gthcode": "8010700000000000",
+                "st_area(shape)": 1.1777794654972873,
+                "reg_name": "Region VII (Central Visayas)",
+                "reg_code": "070000000",
+                "psgc_10d": "0700000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 29.437454582506032,
+                "pop": 8081988,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 10452.01,
+                "regarea_sqkm": 14285.76309043,
+                "regarea_ha": 1428576.30904286,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 13,
+                "gthcode": "8010800000000000",
+                "st_area(shape)": 1.7268041436573087,
+                "reg_name": "Region VIII (Eastern Visayas)",
+                "reg_code": "080000000",
+                "psgc_10d": "0800000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 42.021179220371025,
+                "pop": 4547150,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 23234.78,
+                "regarea_sqkm": 20835.67513112,
+                "regarea_ha": 2083567.51311203,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 14,
+                "gthcode": "8011000000000000",
+                "st_area(shape)": 1.4349180310498384,
+                "reg_name": "Region X (Northern Mindanao)",
+                "reg_code": "100000000",
+                "psgc_10d": "1000000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 15.088897368684158,
+                "pop": 5022768,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 20458.51,
+                "regarea_sqkm": 17486.88825291,
+                "regarea_ha": 1748688.82529106,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 15,
+                "gthcode": "8011100000000000",
+                "st_area(shape)": 1.5399714941393234,
+                "reg_name": "Region XI (Davao Region)",
+                "reg_code": "110000000",
+                "psgc_10d": "1100000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 17.934221908891864,
+                "pop": 5243536,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 20433.38,
+                "regarea_sqkm": 18808.87796822,
+                "regarea_ha": 1880887.79682168,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 16,
+                "gthcode": "8011200000000000",
+                "st_area(shape)": 1.4710675950087162,
+                "reg_name": "Region XII (SOCCSKSARGEN)",
+                "reg_code": "120000000",
+                "psgc_10d": "1200000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 13.229749147444,
+                "pop": 4901486,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 22786.08,
+                "regarea_sqkm": 17989.99141266,
+                "regarea_ha": 1798999.14126596,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        },
+        {
+            "attributes": {
+                "objectid": 17,
+                "gthcode": "8011600000000000",
+                "st_area(shape)": 1.529124336045063,
+                "reg_name": "Region XIII (Caraga)",
+                "reg_code": "160000000",
+                "psgc_10d": "1600000000",
+                "geographic_level": "Reg",
+                "old_names": "",
+                "class": "",
+                "income_class": "",
+                "urban_rural2015": "",
+                "st_perimeter(shape)": 28.844747763966158,
+                "pop": 2804788,
+                "pop_yr": 2020,
+                "psa_regarea_skm": 21120.56,
+                "regarea_sqkm": 18605.10281636,
+                "regarea_ha": 1860510.28163643,
+                "created_user": null,
+                "created_date": null,
+                "last_edited_user": null,
+                "last_edited_date": null
+            }
+        }
+    ]
+}

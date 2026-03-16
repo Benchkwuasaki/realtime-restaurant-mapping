@@ -15,6 +15,7 @@ class EmployeeSeminarAndTraining extends Model
         'seminar_training_name',
         'date_attended',
         'venue',
+        'organizer',
     ];
 
     protected $casts = ['date_attended' => 'date'];

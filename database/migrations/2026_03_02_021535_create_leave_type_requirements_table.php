@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('leave_type_requirements', function (Blueprint $table) {
             $table->id('leave_type_requirement_id');
-            $table->foreignId('leave_type_id')->constrained('leave_types', 'leave_type_id');
+            $table->foreignId('leave_type_id')->constrained('leave_types', 'leave_type_id')->cascadeOnDelete();
             $table->string('requirement_name');
             $table->timestamps();
         });

@@ -75,6 +75,8 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
         const [open, setOpen] = React.useState(false)
         const [country, setCountry] = React.useState<Country>(defaultCountry)
         const [localNumber, setLocalNumber] = React.useState('')
+        const [focused, setFocused] = React.useState(false)
+
 
         React.useEffect(() => {
             if (!value) {
@@ -109,8 +111,11 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
         }
 
         return (
-            <div className={cn('flex w-full', className)}>
-                {/* Country selector */}
+            <div className={cn(
+                'flex w-full rounded-md border border-input bg-transparent shadow-xs transition-[color,box-shadow]',
+                focused && 'border-ring ring-[3px] ring-ring/50',
+                className
+            )}>
                 <Popover open={open} onOpenChange={setOpen}>
                     <PopoverTrigger asChild>
                         <Button
@@ -119,7 +124,7 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
                             role="combobox"
                             aria-expanded={open}
                             disabled={disabled}
-                            className="flex items-center gap-1.5 px-2 h-9 border-r-0 rounded-r-none shrink-0 focus:z-10"
+                            className="flex items-center gap-1.5 px-2 h-9 rounded-r-none shrink-0 border-r-0 focus:ring-0 focus:ring-offset-0"
                         >
                             <FlagImg country={country} />
                             <span className="text-xs text-muted-foreground tabular-nums">
@@ -160,14 +165,17 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
                 </Popover>
 
                 {/* Phone number input */}
+                {/* Phone number input */}
                 <Input
                     ref={ref}
                     type="tel"
                     placeholder={placeholder}
                     value={localNumber}
                     onChange={handleNumberChange}
+                    onFocus={() => setFocused(true)}
+                    onBlur={() => setFocused(false)}
                     disabled={disabled}
-                    className="rounded-l-none border-l-0 focus-visible:z-10"
+                    className="rounded-l-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-input"
                 />
             </div>
         )

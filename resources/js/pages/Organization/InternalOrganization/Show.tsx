@@ -550,9 +550,9 @@ export default function Show({
 
             <div className="flex min-h-full gap-5 bg-background p-5">
                 {/* ── Left Sidebar ───────────────────────────────────────────────────── */}
-                <aside className="flex w-72 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <aside className="flex w-72 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card p-5 shadow-sm">
                     <div className="mb-4 flex flex-col items-center gap-3 text-center">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-primary/20 bg-primary/10">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-primary/20 bg-primary/10">
                             <Building2 className="h-10 w-10 text-primary" />
                         </div>
 
@@ -686,7 +686,7 @@ export default function Show({
                 </aside>
 
                 {/* ── Right Content ──────────────────────────────────────────────────── */}
-                <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card p-5 shadow-sm">
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-lg font-semibold text-foreground">
