@@ -448,7 +448,7 @@ export default function Page() {
                         <div className="flex items-center gap-1.5 pl-3.5 mt-0.5">
                             <span className="text-xs text-muted-foreground">{greeting},</span>
                             <span className="text-xs font-bold text-foreground">{displayName}</span>
-                            <span className="text-xs text-muted-foreground">— Welcome back 👋</span>
+                            <span className="text-xs text-muted-foreground">— Welcome back</span>
                         </div>
                     </div>
                     <div className="flex flex-col items-end gap-0.5 px-4 py-2.5 rounded-2xl bg-card border border-border shadow-sm">
