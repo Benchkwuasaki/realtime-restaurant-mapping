@@ -24,9 +24,9 @@ export const EDUC_LEVELS = ['Elementary', 'High School', 'Vocational', "Bachelor
 export const DEPT_COLOR_POOL = [blue, emerald, amber, violet, cyan, rose, indigo, slate] as const;
 
 export const TYPE_COLORS: Record<string, string> = {
-    Regular:     blue,
-    Casual:      violet,
-    'Job Order': cyan,
+    Regular:     'var(--primary)',
+    Casual:      'var(--chart-4)',
+    'Job Order': 'var(--chart-5)',
 };
 
 export const STATUS_CFG: Record<string, { color: string; bg: string; border: string; icon: string }> = {

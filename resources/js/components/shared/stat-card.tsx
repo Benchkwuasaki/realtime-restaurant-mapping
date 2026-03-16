@@ -11,9 +11,11 @@ interface StatCardProps {
 export function StatCard({ title, value, description, icon, color }: StatCardProps) {
     return (
         <Card className="flex flex-col gap-2" style={{ borderColor: color ? `${color}40` : "var(--border)" }}>
-            <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-                <div className="rounded-lg" style={{
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-1.5">
+                <CardTitle className="min-w-0 text-xs font-medium leading-tight text-muted-foreground">
+                    {title}
+                </CardTitle>
+                <div className="shrink-0 rounded-lg p-1.5" style={{
                     background: color ? `${color}18` : "var(--muted)",
                     color: color ?? "var(--muted-foreground)",
                 }}>
@@ -21,9 +23,11 @@ export function StatCard({ title, value, description, icon, color }: StatCardPro
                 </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-1">
-                <p className="text-2xl sm:text-3xl font-bold text-card-foreground">{value}</p>
+                <p className="text-2xl font-bold text-card-foreground sm:text-3xl">{value}</p>
                 {description && (
-                    <CardDescription className="text-xs sm:text-sm text-muted-foreground">{description}</CardDescription>
+                    <CardDescription className="truncate text-xs text-muted-foreground sm:text-sm">
+                        {description}
+                    </CardDescription>
                 )}
             </CardContent>
         </Card>
