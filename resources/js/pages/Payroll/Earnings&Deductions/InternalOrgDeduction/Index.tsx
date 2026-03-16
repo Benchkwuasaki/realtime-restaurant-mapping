@@ -503,38 +503,45 @@ export default function Index({
             <Head title="Internal Organization Deductions" />
 
             <div className="flex h-full flex-1 flex-col gap-4 p-8">
-                <Tabs value={activeTabKey} onValueChange={setActiveTabKey}>
-                    <div className="shrink-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        <TabsList className="flex h-auto flex-nowrap gap-0 bg-transparent p-0">
-                            {tabs.map((tab) => (
-                                <TabsTrigger
-                                    key={tab.key}
-                                    value={tab.key}
-                                    className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-                                >
-                                    {tab.label}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </div>
-                </Tabs>
-
-                <DataTable
-                    data={filtered}
-                    columns={columns}
-                    getRowId={(row) => String(row.id)}
-                    searchColumnId="employee_name"
-                    searchPlaceholder={`Search ${activeTab?.label ?? ''} entries...`}
-                    addButton={{
-                        label: 'Add New Entry',
-                        onClick: () => setDialogOpen(true),
-                    }}
-                    bulkDelete={{
-                        route: route('internal-org-deductions.bulk-destroy'),
-                        entityName: 'Deduction',
-                        getId: (row) => (row as InternalOrgDeduction).id,
-                    }}
-                />
+                <section className="rounded-lg border border-secondary bg-card p-6">
+                    <Tabs
+                        value={activeTabKey}
+                        onValueChange={setActiveTabKey}
+                        className="pb-6"
+                    >
+                        <div className="shrink-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <TabsList className="flex h-auto flex-nowrap gap-0 bg-transparent p-0">
+                                {tabs.map((tab) => (
+                                    <TabsTrigger
+                                        key={tab.key}
+                                        value={tab.key}
+                                        className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+                                    >
+                                        {tab.label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </div>
+                    </Tabs>
+                    <DataTable
+                        data={filtered}
+                        columns={columns}
+                        getRowId={(row) => String(row.id)}
+                        searchColumnId="employee_name"
+                        searchPlaceholder={`Search ${activeTab?.label ?? ''} entries...`}
+                        addButton={{
+                            label: 'Add New Entry',
+                            onClick: () => setDialogOpen(true),
+                        }}
+                        bulkDelete={{
+                            route: route(
+                                'internal-org-deductions.bulk-destroy',
+                            ),
+                            entityName: 'Deduction',
+                            getId: (row) => (row as InternalOrgDeduction).id,
+                        }}
+                    />
+                </section>
             </div>
 
             {activeTab && (

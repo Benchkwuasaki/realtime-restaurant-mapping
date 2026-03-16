@@ -37,9 +37,17 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import {
+    Check,
+    ChevronsUpDown,
+    CircleDollarSign,
+    PauseCircle,
+    CheckCircle2,
+    TrendingDown,
+} from 'lucide-react';
 import { useLoanColumns } from '@/components/Payroll/Earnings&Deductions/LoanEntry/components/columns';
 import { type Loan } from '@/components/Payroll/Earnings&Deductions/LoanEntry/data/schema';
+import { StatCard } from '@/components/shared/stat-card';
 import type { BreadcrumbItem } from '@/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -66,7 +74,7 @@ interface Props {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Payroll', href: '#' },
-    { title: 'Pay Adjustments', href: '#' },
+    { title: 'Earnings & Deductions', href: '#' },
     { title: 'Loan Entry', href: route('loanentry.index') },
 ];
 
@@ -697,6 +705,27 @@ export default function Index({
     );
     const displayedLoans = activeTabKey === 'govt' ? govtLoans : internalLoans;
 
+    // ── Stat computations ─────────────────────────────────────────────────────
+    const totalActive = useMemo(
+        () => loans.filter((l) => l.status === 'Active').length,
+        [loans],
+    );
+    const totalOutstandingBalance = useMemo(
+        () =>
+            loans
+                .filter((l) => l.status === 'Active')
+                .reduce((sum, l) => sum + l.balance, 0),
+        [loans],
+    );
+    const totalCompleted = useMemo(
+        () => loans.filter((l) => l.status === 'Completed').length,
+        [loans],
+    );
+    const totalSuspended = useMemo(
+        () => loans.filter((l) => l.status === 'Suspended').length,
+        [loans],
+    );
+
     const handleEdit = (loan: Loan) => {
         setEditTarget(loan);
         setDialogOpen(true);
@@ -723,81 +752,111 @@ export default function Index({
             <Head title="Loan Entry" />
 
             <div className="flex h-full flex-1 flex-col gap-4 p-8">
-                {/* ── Tab Navigation ──────────────────────────────────── */}
-                <Tabs
-                    value={activeTabKey}
-                    onValueChange={(v) => setActiveTabKey(v as LoanTab)}
-                >
-                    <div className="shrink-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        <TabsList className="flex h-auto flex-nowrap gap-0 bg-transparent p-0">
-                            {(
-                                [
-                                    { key: 'govt', label: "Gov't Loans" },
-                                    {
-                                        key: 'internal',
-                                        label: 'Internal Org Loans',
-                                    },
-                                ] as { key: LoanTab; label: string }[]
-                            ).map(({ key, label }) => (
-                                <TabsTrigger
-                                    key={key}
-                                    value={key}
-                                    className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-                                >
-                                    {label}
-                                    <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                                        {key === 'govt'
-                                            ? govtLoans.length
-                                            : internalLoans.length}
-                                    </span>
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </div>
-                </Tabs>
+                {/* ── Stat Cards ───────────────────────────────────────── */}
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    <StatCard
+                        title="Total Active Loans"
+                        value={totalActive}
+                        description="Currently being deducted"
+                        icon={<CircleDollarSign className="m-1.5 size-4" />}
+                    />
+                    <StatCard
+                        title="Outstanding Balance"
+                        value={totalOutstandingBalance}
+                        description={`₱${totalOutstandingBalance.toLocaleString('en-PH', { minimumFractionDigits: 2 })} remaining`}
+                        icon={<TrendingDown className="m-1.5 size-4" />}
+                    />
+                    <StatCard
+                        title="Completed Loans"
+                        value={totalCompleted}
+                        description="Fully paid off"
+                        icon={<CheckCircle2 className="m-1.5 size-4" />}
+                    />
+                    <StatCard
+                        title="Suspended Loans"
+                        value={totalSuspended}
+                        description="Flagged or on hold"
+                        icon={<PauseCircle className="m-1.5 size-4" />}
+                    />
+                </div>
 
-                {/* ── Table ───────────────────────────────────────────── */}
-                <DataTable
-                    data={displayedLoans}
-                    columns={columns}
-                    getRowId={(row) => String(row.id)}
-                    searchColumnId="employee_name"
-                    searchPlaceholder="Search by employee..."
-                    filters={
-                        activeTabKey === 'govt'
-                            ? [
-                                  {
-                                      columnId: 'source',
-                                      title: 'Source',
-                                      options: sourceFilterOptions,
-                                  },
-                                  {
-                                      columnId: 'status',
-                                      title: 'Status',
-                                      options: statusFilterOptions,
-                                  },
-                              ]
-                            : [
-                                  {
-                                      columnId: 'status',
-                                      title: 'Status',
-                                      options: statusFilterOptions,
-                                  },
-                              ]
-                    }
-                    addButton={{
-                        label: 'New Loan',
-                        onClick: () => {
-                            setEditTarget(null);
-                            setDialogOpen(true);
-                        },
-                    }}
-                    bulkDelete={{
-                        route: '',
-                        entityName: 'Loan',
-                        getId: (row) => (row as Loan).id,
-                    }}
-                />
+                {/* ── Tab Navigation ──────────────────────────────────── */}
+
+                <section className="rounded-lg border border-secondary bg-card p-6">
+                    <Tabs
+                        value={activeTabKey}
+                        onValueChange={(v) => setActiveTabKey(v as LoanTab)}
+                        className="pb-6"
+                    >
+                        <div className="shrink-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <TabsList className="flex h-auto flex-nowrap gap-0 bg-transparent p-0">
+                                {(
+                                    [
+                                        { key: 'govt', label: "Gov't Loans" },
+                                        {
+                                            key: 'internal',
+                                            label: 'Internal Org Loans',
+                                        },
+                                    ] as { key: LoanTab; label: string }[]
+                                ).map(({ key, label }) => (
+                                    <TabsTrigger
+                                        key={key}
+                                        value={key}
+                                        className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+                                    >
+                                        {label}
+                                        <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                            {key === 'govt'
+                                                ? govtLoans.length
+                                                : internalLoans.length}
+                                        </span>
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </div>
+                    </Tabs>
+                    <DataTable
+                        data={displayedLoans}
+                        columns={columns}
+                        getRowId={(row) => String(row.id)}
+                        searchColumnId="employee_name"
+                        searchPlaceholder="Search by employee..."
+                        filters={
+                            activeTabKey === 'govt'
+                                ? [
+                                      {
+                                          columnId: 'source',
+                                          title: 'Source',
+                                          options: sourceFilterOptions,
+                                      },
+                                      {
+                                          columnId: 'status',
+                                          title: 'Status',
+                                          options: statusFilterOptions,
+                                      },
+                                  ]
+                                : [
+                                      {
+                                          columnId: 'status',
+                                          title: 'Status',
+                                          options: statusFilterOptions,
+                                      },
+                                  ]
+                        }
+                        addButton={{
+                            label: 'New Loan',
+                            onClick: () => {
+                                setEditTarget(null);
+                                setDialogOpen(true);
+                            },
+                        }}
+                        bulkDelete={{
+                            route: '',
+                            entityName: 'Loan',
+                            getId: (row) => (row as Loan).id,
+                        }}
+                    />
+                </section>
             </div>
 
             <LoanDialog

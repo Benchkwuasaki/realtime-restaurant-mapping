@@ -66,7 +66,6 @@ export default function Index({ periods }: Props) {
             <Head title="Payroll Register" />
 
             <div className="flex h-full flex-1 flex-col gap-8 p-8">
-                {/* ── Header ───────────────────────────────────────────────── */}
                 <div>
                     <h1 className="text-2xl font-semibold">Payroll Register</h1>
                     <p className="mt-1 text-sm text-muted-foreground">
@@ -74,47 +73,47 @@ export default function Index({ periods }: Props) {
                         register.
                     </p>
                 </div>
-
-                {/* ── Data Table ───────────────────────────────────────────── */}
-                <DataTable
-                    columns={columns}
-                    data={periods ?? []}
-                    getRowId={(row) => String(row.payroll_period_id)}
-                    onRowClick={(row) =>
-                        router.visit(
-                            route(
-                                'payroll-register.show',
-                                row.original.payroll_period_id,
-                            ),
-                        )
-                    }
-                    searchColumnId="period"
-                    searchPlaceholder="Search period..."
-                    filters={[
-                        {
-                            columnId: 'cut_off',
-                            title: 'Cut-off',
-                            options: [
-                                { label: '1st Cut-off', value: '1st' },
-                                { label: '2nd Cut-off', value: '2nd' },
-                            ],
-                        },
-                        {
-                            columnId: 'employee_type',
-                            title: 'Employment Classification',
-                            options: employmentClassificationOptions,
-                        },
-                        {
-                            columnId: 'status',
-                            title: 'Status',
-                            options: [
-                                { label: 'Processed', value: 'Processed' },
-                                { label: 'Closed', value: 'Closed' },
-                            ],
-                        },
-                    ]}
-                    defaultPageSize={10}
-                />
+                <section className="rounded-lg border border-secondary bg-card p-6">
+                    <DataTable
+                        columns={columns}
+                        data={periods ?? []}
+                        getRowId={(row) => String(row.payroll_period_id)}
+                        onRowClick={(row) =>
+                            router.visit(
+                                route(
+                                    'payroll-register.show',
+                                    row.original.payroll_period_id,
+                                ),
+                            )
+                        }
+                        searchColumnId="period"
+                        searchPlaceholder="Search period..."
+                        filters={[
+                            {
+                                columnId: 'cut_off',
+                                title: 'Cut-off',
+                                options: [
+                                    { label: '1st Cut-off', value: '1st' },
+                                    { label: '2nd Cut-off', value: '2nd' },
+                                ],
+                            },
+                            {
+                                columnId: 'employee_type',
+                                title: 'Employment Classification',
+                                options: employmentClassificationOptions,
+                            },
+                            {
+                                columnId: 'status',
+                                title: 'Status',
+                                options: [
+                                    { label: 'Processed', value: 'Processed' },
+                                    { label: 'Closed', value: 'Closed' },
+                                ],
+                            },
+                        ]}
+                        defaultPageSize={10}
+                    />
+                </section>
             </div>
         </AppLayout>
     );
