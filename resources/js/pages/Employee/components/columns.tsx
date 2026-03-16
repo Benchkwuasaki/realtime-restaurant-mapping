@@ -3,7 +3,7 @@
 import { router } from '@inertiajs/react';
 import React from 'react';
 import { route } from 'ziggy-js';
-
+import { toast } from 'sonner';
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
 import {
     DataTableRowActions,
@@ -14,8 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 
 import { type Employee } from '../data/schema';
-
-// ─── Reusable mobile field row ─────────────────────────────────────────────────
 
 function CardField({
     label,
@@ -31,49 +29,6 @@ function CardField({
         </div>
     );
 }
-
-// ─── Clickable status badge ────────────────────────────────────────────────────
-
-function StatusBadge({ employee }: { employee: Employee }) {
-    const [isActive, setIsActive] = React.useState(employee.status);
-    const [isPending, setIsPending] = React.useState(false);
-
-    const handleClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (isPending) return;
-        const next = !isActive;
-        setIsActive(next);
-        setIsPending(true);
-        router.patch(
-            route('employee.toggleStatus', employee.id),
-            {},
-            {
-                preserveScroll: true,
-                onFinish: () => setIsPending(false),
-                onError: () => {
-                    setIsActive(!next);
-                    setIsPending(false);
-                },
-            },
-        );
-    };
-
-    return (
-        <Badge
-            variant={isActive ? 'default' : 'destructive'}
-            onClick={handleClick}
-            className={`min-w-[70px] justify-center transition-opacity ${
-                isPending
-                    ? 'cursor-not-allowed opacity-50'
-                    : 'cursor-pointer hover:opacity-80'
-            }`}
-        >
-            {isActive ? 'Active' : 'Inactive'}
-        </Badge>
-    );
-}
-
-// ─── Columns ───────────────────────────────────────────────────────────────────
 
 export const columns: DataTableColumnDef<Employee>[] = [
     {
@@ -205,7 +160,11 @@ export const columns: DataTableColumnDef<Employee>[] = [
         header: ({ column }) => (
             <DataTableColumnHeader column={column} title="Status" />
         ),
-        cell: ({ row }) => <StatusBadge employee={row.original} />,
+        cell: ({ row }) => (
+            <Badge variant={row.original.status ? 'default' : 'destructive'}>
+                {row.original.status ? 'Active' : 'Inactive'}
+            </Badge>
+        ),
         enableSorting: true,
         enableHiding: true,
         filterFn: (row, id, value: boolean[]) =>
@@ -215,7 +174,9 @@ export const columns: DataTableColumnDef<Employee>[] = [
                 <span className="ml-2 text-xs text-muted-foreground">
                     Status
                 </span>
-                <StatusBadge employee={row} />
+                <Badge variant={row.status ? 'default' : 'destructive'}>
+                    {row.status ? 'Active' : 'Inactive'}
+                </Badge>
             </div>
         ),
     },
@@ -227,14 +188,28 @@ export const columns: DataTableColumnDef<Employee>[] = [
                 row={row}
                 actions={[
                     deleteAction(
-                        (employee) =>
+                        (row) => {
+                            const employee = row as Employee;
                             router.delete(
                                 route('employee.destroy', employee.id),
                                 {
                                     preserveScroll: true,
+                                    onSuccess: () =>
+                                        toast.success('Employee deleted', {
+                                            description: `"${employee.name}" has been removed successfully.`,
+                                        }),
+                                    onError: () =>
+                                        toast.error(
+                                            'Failed to delete employee',
+                                            {
+                                                description:
+                                                    'Something went wrong. Please try again.',
+                                            },
+                                        ),
                                 },
-                            ),
-                        { getName: (e) => e.name },
+                            );
+                        },
+                        { getName: (e) => (e as Employee).name },
                     ),
                 ]}
             />

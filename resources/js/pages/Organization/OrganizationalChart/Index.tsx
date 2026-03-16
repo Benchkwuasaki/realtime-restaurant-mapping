@@ -69,23 +69,23 @@ export default function OrganizationalChartIndex({ organizationalChart }: Props)
                         <StatCard
                             title="Departments"
                             value={departments.length}
-                            icon={<Building2 className="h-4 w-4" />}
+                            icon={<Building2 className="h-4 w-4 text-primary" />}
                         />
                         <StatCard
                             title="Divisions"
                             value={totalDivisions}
-                            icon={<Layers className="h-4 w-4" />}
+                            icon={<Layers className="h-4 w-4 text-primary" />}
                         />
                         <StatCard
                             title="Employees"
                             value={totalEmployees}
-                            icon={<Users className="h-4 w-4" />}
+                            icon={<Users className="h-4 w-4 text-primary" />}
                         />
                     </div>
 
                     {/* Department grid */}
                     {departments.length === 0 ? (
-                        <div className="bg-card border border-border rounded-2xl shadow-sm
+                        <div className="bg-card border border-border rounded-lg shadow-sm
                             flex flex-col items-center justify-center py-16 sm:py-20">
                             <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/20 mb-3 sm:mb-4" />
                             <p className="text-sm font-medium text-muted-foreground">No departments found</p>
@@ -106,7 +106,7 @@ export default function OrganizationalChartIndex({ organizationalChart }: Props)
                                     <Link
                                         key={dept.id}
                                         href={`/organization/organizational_chart/${dept.id}`}
-                                        className="group block bg-card border border-border rounded-2xl
+                                        className="group block bg-card border border-border rounded-lg
                                             shadow-sm hover:shadow-md hover:border-primary/40
                                             active:scale-[0.98] transition-all duration-200 overflow-hidden"
                                     >

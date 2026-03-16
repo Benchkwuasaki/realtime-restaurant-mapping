@@ -278,13 +278,13 @@ export default function DepartmentIndex({ departments, totalDepartments, totalDi
                             title="Total Departments"
                             value={totalDepartments}
                             description="All registered departments"
-                            icon={<Building2 className="size-4" />}
+                            icon={<Building2 className="size-4 text-primary" />}
                         />
                         <StatCard
                             title="Total Divisions"
                             value={totalDivisions}
                             description="Divisions across all departments"
-                            icon={<LayoutGrid className="size-4" />}
+                            icon={<LayoutGrid className="size-4 text-primary" />}
                         />
                     </div>
                 </div>

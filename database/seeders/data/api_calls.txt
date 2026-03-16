@@ -1,0 +1,13 @@
+NO BOXES
+
+REGION
+https://ulap-nga.georisk.gov.ph/arcgis/rest/services/PSA/Regional_2020/MapServer/0/query?f=json&where=1%3D1&outFields=*&returnGeometry=false
+
+PROVINCE
+https://ulap-nga.georisk.gov.ph/arcgis/rest/services/PSA/Provincial/MapServer/0/query?f=json&where=1%3D1&outFields=*&returnGeometry=false
+
+MUNICIPALITY
+https://ulap-nga.georisk.gov.ph/arcgis/rest/services/PSA/Municipal/MapServer/0/query?f=json&where=1%3D1&outFields=*&returnGeometry=false
+
+BARANGAY
+https://portal.georisk.gov.ph/arcgis/rest/services/PSA/Barangay/MapServer/4/query?f=json&where=1%3D1&outFields=*&returnGeometry=false

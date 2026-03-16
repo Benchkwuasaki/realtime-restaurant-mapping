@@ -301,9 +301,9 @@ export default function UnitIndex({ units, divisions, totalUnits, totalDivisions
                 <div className="w-full max-w-300 h-fit">
                     {/* ── Stat Cards ── */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <StatCard title="Total Units" value={totalUnits} description="All registered units" icon={<Building2 className="size-4" />} />
-                        <StatCard title="Total Divisions" value={totalDivisions} description="Divisions with units" icon={<LayoutGrid className="size-4" />} />
-                        <StatCard title="Total Positions" value={totalPositions} description="Positions across all units" icon={<Puzzle className="size-4" />} />
+                        <StatCard title="Total Units" value={totalUnits} description="All registered units" icon={<Building2 className="size-4 text-primary" />} />
+                        <StatCard title="Total Divisions" value={totalDivisions} description="Divisions with units" icon={<LayoutGrid className="size-4 text-primary" />} />
+                        <StatCard title="Total Positions" value={totalPositions} description="Positions across all units" icon={<Puzzle className="size-4 text-primary" />} />
                     </div>
                 </div>
 

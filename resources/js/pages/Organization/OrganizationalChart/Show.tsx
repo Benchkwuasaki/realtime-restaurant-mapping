@@ -143,8 +143,7 @@ export default function OrganizationalChartShow({ department }: Props) {
                     </Link>
 
                     {/* ── Department header card ─────────────────────────────── */}
-                    <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-sm">
-                        <div className="h-1 bg-primary rounded-t-2xl" />
+                    <div className="bg-card text-card-foreground rounded-lg border border-border shadow-sm">
                         <div className="p-4 sm:p-5">
 
                             {/* Avatar + info */}
@@ -155,7 +154,7 @@ export default function OrganizationalChartShow({ department }: Props) {
                                         alt={headName ?? department.name}
                                         fallback={acronym}
                                         className="h-14 w-14 sm:h-20 sm:w-20 ring-2 sm:ring-4 ring-border
-                                            bg-accent text-accent-foreground font-bold text-xl sm:text-2xl"
+                                            bg-accent text-accent-foreground font-bold text-xl sm:text-lg"
                                     />
                                 </div>
 
@@ -183,16 +182,18 @@ export default function OrganizationalChartShow({ department }: Props) {
                             </div>
 
                             {/* ── Stats — full width stretched cards ─────────── */}
-                            <div className="grid grid-cols-2 gap-2 max-w-200 sm:gap-3 pt-3 border-t border-border">
+                            <div className="grid grid-cols-2 gap-2 max-w-full sm:gap-3 pt-3 border-t border-border">
                                 <StatCard
                                     title="Divisions"
                                     value={divCount}
-                                    icon={<Layers className="h-4 w-4" />}
+                                    description="Divisions with units"
+                                    icon={<Layers className="h-4 w-4 text-primary" />}
                                 />
                                 <StatCard
                                     title="Employees"
                                     value={empCount}
-                                    icon={<Users className="h-4 w-4" />}
+                                    description='All registered employees'
+                                    icon={<Users className="h-4 w-4 text-primary" />}
                                 />
                             </div>
 
@@ -229,7 +230,7 @@ export default function OrganizationalChartShow({ department }: Props) {
                     </div>
 
                     {/* ── Org chart canvas ───────────────────────────────────── */}
-                    <div className="bg-card text-card-foreground rounded-2xl border border-border
+                    <div className="bg-card text-card-foreground rounded-lg border border-border
                         shadow-sm overflow-hidden"
                         style={{ height: 'calc(100svh - 360px)', minHeight: '320px' }}
                     >
@@ -283,7 +284,7 @@ export default function OrganizationalChartShow({ department }: Props) {
                         width: dropdownRect.width,
                         zIndex: 9999,
                     }}
-                    className="bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden"
+                    className="bg-popover border border-border rounded-lg shadow-lg overflow-hidden"
                     onMouseDown={e => e.preventDefault()}
                 >
                     {results.length > 0 ? results.map((emp, i) => (

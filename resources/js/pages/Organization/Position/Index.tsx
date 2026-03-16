@@ -517,25 +517,25 @@ export default function PositionIndex({
                             title="Total Positions"
                             value={totalPositions}
                             description="All registered positions"
-                            icon={<Briefcase className="size-4" />}
+                            icon={<Briefcase className="size-4 text-primary" />}
                         />
                         <StatCard
                             title="Total Departments"
                             value={totalDepartments}
                             description="Departments with positions"
-                            icon={<Building2 className="size-4" />}
+                            icon={<Building2 className="size-4 text-primary" />}
                         />
                         <StatCard
                             title="Total Slots"
                             value={totalSlots}
                             description="Slots across all positions"
-                            icon={<LayoutGrid className="size-4" />}
+                            icon={<LayoutGrid className="size-4 text-primary" />}
                         />
                         <StatCard
                             title="Occupied Slots"
                             value={occupiedSlots}
                             description="Slots currently filled"
-                            icon={<Users className="size-4" />}
+                            icon={<Users className="size-4 text-primary" />}
                         />
                     </div>
                 </div>

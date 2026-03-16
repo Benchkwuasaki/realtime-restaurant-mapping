@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\LeaveApplication;
 use App\Models\LeaveEntitlement;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,18 +13,27 @@ use Inertia\Inertia;
 
 class LeaveApplicationController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $currentYear = now()->year;
+        $user = auth()->user();
 
-        // ── Leave entitlements (replaces leave_types) ─────────────────────────
-        // Each row has a leave_type_id, leave_type_name (via relation),
-        // years_of_service tier, and days_entitled.
-        // The frontend reads days_entitled to auto-fill approved_with_pay /
-        // approved_without_pay (VL/SL) or approved_others (all other types).
+        // id of employees with hr admin role
+        $hrAdminEmployeeIds = User::role('hr_admin')
+            ->get()
+            ->map(fn ($u) => $u->employee?->employee_id)
+            ->filter()
+            ->values()
+            ->toArray();
+
+        // id of employees with document tracking operator role
+        $dtoEmployeeIds = User::role('document_tracking_operator')
+            ->get()
+            ->map(fn ($u) => $u->employee?->employee_id)
+            ->filter()
+            ->values()
+            ->toArray();
+
         $leave_entitlements = LeaveEntitlement::with('leaveType')
             ->orderBy('leave_type_id')
             ->orderBy('years_of_service')
@@ -39,11 +49,9 @@ class LeaveApplicationController extends Controller
                 'eligible_sex' => $e->leaveType?->eligible_sex,
             ]);
 
-        // Resolve VL / SL type IDs for employee balance lookups
         $vacationTypeId = $leave_entitlements->firstWhere('leave_type_name', 'Vacation Leave')['leave_type_id'] ?? null;
         $sickTypeId = $leave_entitlements->firstWhere('leave_type_name', 'Sick Leave')['leave_type_id'] ?? null;
 
-        // ── Employees with leave balance data ─────────────────────────────────
         $employees = Employee::with([
             'basicInfo',
             'item.position.department',
@@ -74,10 +82,37 @@ class LeaveApplicationController extends Controller
                 'sl_balance' => (string) ($e->leaveBalances->firstWhere('leave_type_id', $sickTypeId)?->balance ?? 0),
             ]);
 
-        // ── Existing leave applications ───────────────────────────────────────
-        $leave_applications = LeaveApplication::with(['employee.basicInfo', 'leaveType', 'detail'])
-            ->orderByDesc('date_of_filing')
-            ->get()
+        // filter leave applications based on role
+        $query = LeaveApplication::with(['employee.basicInfo', 'leaveType', 'detail'])
+            ->orderByDesc('date_of_filing');
+
+        if (
+            $user->hasRole('document_tracking_operator') &&
+            ! $user->hasRole('hr_admin') &&
+            ! $user->hasRole('super_admin') &&
+            ! $user->hasRole('ogm')
+        ) {
+            // dto alone: only leaves from their department
+            $departmentId = $user->employee?->item?->position?->department_id;
+
+            $employeeIds = Employee::whereHas('item.position', function ($q) use ($departmentId) {
+                $q->where('department_id', $departmentId);
+            })->pluck('employee_id');
+
+            $query->whereIn('employee_id', $employeeIds);
+
+        } elseif (
+            $user->hasRole('employee') &&
+            ! $user->hasRole('hr_admin') &&
+            ! $user->hasRole('super_admin') &&
+            ! $user->hasRole('ogm')
+        ) {
+            // pure employee only: only their own leaves
+            $query->where('employee_id', optional($user->employee)->employee_id);
+        }
+        // ogm, hr_admin, super_admin: no filter — show all
+
+        $leave_applications = $query->get()
             ->map(fn (LeaveApplication $app) => [
                 'leave_application_id' => $app->leave_application_id,
                 'employee_id' => $app->employee_id,
@@ -135,15 +170,21 @@ class LeaveApplicationController extends Controller
         $total_pending = $leave_applications->where('status', 'Pending')->count();
         $total_approved = $leave_applications->where('status', 'Approved')->count();
         $total_disapproved = $leave_applications->where('status', 'Disapproved')->count();
+        $auth_employee_id = $user->hasRole('employee') ? $user->employee->employee_id : null;
+        $hr_admin_employee_ids = $hrAdminEmployeeIds;
+        $dto_employee_ids = $dtoEmployeeIds;
 
         return Inertia::render('Leave/LeaveApplication/LeaveApplicationIndex', compact(
             'leave_applications',
             'employees',
-            'leave_entitlements',   // ← replaces leave_types
+            'leave_entitlements',
             'total_applications',
             'total_pending',
             'total_approved',
             'total_disapproved',
+            'auth_employee_id',
+            'hr_admin_employee_ids',
+            'dto_employee_ids',
         ));
     }
 

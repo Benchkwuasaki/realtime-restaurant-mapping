@@ -114,34 +114,10 @@ interface DataTableProps<TData, TValue> {
      *   <td className="text-right">{peso(rows.reduce((s,r) => s + r.original.grossPay, 0))}</td>,
      * ]}
      */
-    footerRow?: (rows: Row<TData>[]) => React.ReactNode[];
-
-    /**
-     * When provided, renders an extra <tr> above the normal TanStack column
-     * headers. Use this for grouped / colour-banded headers (e.g. the payroll
-     * Earnings | Deductions | Net Pay bands).
-     *
-     * Each item maps to one <th>. Use `colSpan`, `rowSpan`, and `className` to
-     * position cells exactly as you would in plain HTML.
-     *
-     * Tables that do NOT pass this prop are completely unaffected.
-     */
-    headerGroups?: DataTableHeaderGroupCell[];
-
-    /**
-     * When provided, renders a <tfoot> row after the last body row.
-     * The callback receives the current *page* rows so totals are page-aware.
-     *
-     * Return an array of <td> / <th> elements — one per visible column.
-     * Tables that do NOT pass this prop get no <tfoot> at all.
-     *
-     * @example
-     * footerRow={(rows) => [
-     *   <td colSpan={2}>Page Totals ({rows.length})</td>,
-     *   <td className="text-right">{peso(rows.reduce((s,r) => s + r.original.grossPay, 0))}</td>,
-     * ]}
-     */
-    footerRow?: (rows: Row<TData>[]) => React.ReactNode[];
+    footerRow?: (
+        rows: Row<TData>[],
+        visibleColumnIds: string[],
+    ) => React.ReactNode[];
 
     /**
      * Zebra-stripe body rows (index % 2 === 0 → white, odd → slate-50/50).
@@ -737,7 +713,12 @@ export function DataTable<TData, TValue>({
                             {footerRow && pageRows?.length > 0 && (
                                 <tfoot>
                                     <tr className="border-t-2 border-border bg-muted/50 text-sm font-semibold text-foreground">
-                                        {footerRow(pageRows)}
+                                        {footerRow(
+                                            pageRows,
+                                            table
+                                                .getVisibleLeafColumns()
+                                                .map((col) => col.id),
+                                        )}
                                     </tr>
                                 </tfoot>
                             )}

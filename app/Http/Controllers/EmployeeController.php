@@ -10,12 +10,14 @@ use App\Models\EmployeeAllowance;
 use App\Models\EmployeeBasicInfo;
 use App\Models\EmployeeEducation;
 use App\Models\EmployeeUploadedFile;
+use App\Models\EmploymentClassification;
 use App\Models\FamilyInfo;
 use App\Models\GovernmentAccount;
 use App\Models\Item;
 use App\Models\SalaryGradeStep;
 use App\Models\User;
 use App\Services\ActivityLogService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -90,7 +92,7 @@ class EmployeeController extends Controller
                     ] : null,
                 ]),
             'salaryGradeSteps' => SalaryGradeStep::orderBy('salary_grade')->orderBy('step')->get(),
-            'employmentClassifications' => \App\Models\EmploymentClassification::orderBy('name')->get(['id', 'name', 'description']),
+            'employmentClassifications' => EmploymentClassification::orderBy('name')->get(['id', 'name', 'description']),
             'roles' => Role::orderBy('name')->get(['id', 'name']),
         ]);
     }
@@ -394,6 +396,7 @@ class EmployeeController extends Controller
                     'id' => $s->employee_seminar_training_id,
                     'seminar_name' => $s->seminar_training_name,
                     'venue' => $s->venue,
+                    'organizer' => $s->organizer,
                     'date_attended' => $s->date_attended,
                 ]),
 
@@ -447,7 +450,7 @@ class EmployeeController extends Controller
                         'water_bill' => $r->water_bill,
                         'floor_check_passed' => (bool) ($r->floor_check_passed ?? true),
                         'posted_date' => $r->posted_at
-                            ? \Carbon\Carbon::parse($r->posted_at)->format('M d, Y')
+                            ? Carbon::parse($r->posted_at)->format('M d, Y')
                             : '—',
                         'hr_officer' => $r->hr_officer_name ?? '—',
                     ]),
@@ -466,6 +469,10 @@ class EmployeeController extends Controller
                         && $item->employee->employee_id !== $employee->employee_id,
                     'position' => $item->position ? [
                         'position_name' => $item->position->position_name,
+                        'position_type' => $item->position->position_type,
+                        'department_id' => $item->position->department_id,
+                        'division_id' => $item->position->division_id,
+                        'unit_id' => $item->position->unit_id,
                         'department' => $item->position->department
                             ? ['department_name' => $item->position->department->department_name]
                             : null,
@@ -897,6 +904,7 @@ class EmployeeController extends Controller
         $request->validate([
             'seminar_name' => ['required', 'string', 'max:255'],
             'venue' => ['nullable', 'string', 'max:255'],
+            'organizer' => ['nullable', 'string', 'max:255'],
             'date_attended' => ['nullable', 'date'],
         ]);
 
@@ -912,6 +920,7 @@ class EmployeeController extends Controller
         $request->validate([
             'seminar_name' => ['required', 'string', 'max:255'],
             'venue' => ['nullable', 'string', 'max:255'],
+            'organizer' => ['nullable', 'string', 'max:255'],
             'date_attended' => ['nullable', 'date'],
         ]);
 

@@ -1,28 +1,51 @@
-import { router, usePage } from "@inertiajs/react"
-import { Plus, TrendingUp, CalendarDays, Hash, User, Briefcase } from "lucide-react"
-import React, { useMemo, useState } from "react"
+import { router, usePage } from '@inertiajs/react';
+import {
+    Plus,
+    TrendingUp,
+    CalendarDays,
+    Hash,
+    User,
+    Briefcase,
+} from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 
-import { route } from "ziggy-js"
-import { DataTable } from "@/components/shared/data-table/data-table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Stepper } from "@/components/ui/stepper"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import AppLayout from "@/layouts/app-layout"
-import { getHistoryColumns, CreditBadge, EmployeeAvatar } from "./components/history-columns"
+import { route } from 'ziggy-js';
+import { DataTable } from '@/components/shared/data-table/data-table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Stepper } from '@/components/ui/stepper';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AppLayout from '@/layouts/app-layout';
+import {
+    getHistoryColumns,
+    CreditBadge,
+    EmployeeAvatar,
+} from './components/history-columns';
 import {
     buildPreviewCreditRows,
     usePreviewCreditColumns,
     usePreviewCreditHeaderGroups,
     type PreviewCreditRow,
-} from "./components/preview-credits-columns"
+} from './components/preview-credits-columns';
 import {
     useLeaveBalanceColumns,
     type LeaveBalanceRow,
-} from "./components/leave-balances-columns"
+} from './components/leave-balances-columns';
 import {
     type LeaveType,
     type PreviewRow,
@@ -36,22 +59,22 @@ import {
 // ─── Page props ───────────────────────────────────────────────────────────────
 
 interface PageProps {
-    tab?: "posting" | "history"
-    step?: number
-    period?: { month: number; year: number }
-    previews?: PreviewRow[]
-    leave_types?: LeaveType[]
-    leave_type_ids?: number[]
-    available_leave_types?: LeaveType[]
-    summary?: Summary
-    post_details?: PostDetails
-    posting_meta?: PostingMeta
-    history?: HistoryRow[]
-    history_filter?: { year: number | null; month: number | null }
-    balances_data?: LeaveBalanceRow[]
-    balances_leave_types?: LeaveType[]
-    balances_cycle_year?: number
-    balances_cycle_years?: number[]
+    tab?: 'posting' | 'history';
+    step?: number;
+    period?: { month: number; year: number };
+    previews?: PreviewRow[];
+    leave_types?: LeaveType[];
+    leave_type_ids?: number[];
+    available_leave_types?: LeaveType[];
+    summary?: Summary;
+    post_details?: PostDetails;
+    posting_meta?: PostingMeta;
+    history?: HistoryRow[];
+    history_filter?: { year: number | null; month: number | null };
+    balances_data?: LeaveBalanceRow[];
+    balances_leave_types?: LeaveType[];
+    balances_cycle_year?: number;
+    balances_cycle_years?: number[];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -79,14 +102,12 @@ const breadcrumbs = [
 ];
 
 const WIZARD_STEPS = [
-    { title: "Select Period", description: "Step 1" },
-    { title: "Preview Credits", description: "Step 2" },
-    { title: "Confirm Posting", description: "Step 3" },
-    { title: "Posted", description: "Step 4" },
-]
+    { title: 'Select Period', description: 'Step 1' },
+    { title: 'Preview Credits', description: 'Step 2' },
+    { title: 'Confirm Posting', description: 'Step 3' },
+    { title: 'Posted', description: 'Step 4' },
+];
 
-=======
->>>>>>> a6822789afa3a397a92d3446098c7d0aa5a139b4
 // ─── Step 1 ───────────────────────────────────────────────────────────────────
 
 function StepSelectPeriod({
@@ -123,17 +144,17 @@ function StepSelectPeriod({
     return (
         <div className="flex flex-col gap-6 p-6">
             <div>
-                <h2 className="text-foreground mb-1 text-base font-semibold">
+                <h2 className="mb-1 text-base font-semibold text-foreground">
                     Select Posting Period
                 </h2>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                     Choose the month, year, and leave types to compute accruals
                     for.
                 </p>
             </div>
 
             {errors?.period && (
-                <div className="border-destructive/40 bg-destructive/10 text-destructive max-w-xl rounded-md border px-4 py-3 text-sm">
+                <div className="max-w-xl rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                     {errors.period}
                 </div>
             )}
@@ -180,17 +201,17 @@ function StepSelectPeriod({
             <div className="flex max-w-xl flex-col gap-3">
                 <div>
                     <p className="text-sm font-medium">Leave Types to Accrue</p>
-                    <p className="text-muted-foreground mt-0.5 text-xs">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                         All accrual-eligible types are selected. Deselect any
                         that should not be processed this period.
                     </p>
                 </div>
-                <div className="border-border divide-border divide-y rounded-md border">
+                <div className="divide-y divide-border rounded-md border border-border">
                     {availableLeaveTypes.length ? (
                         availableLeaveTypes.map((lt) => (
                             <label
                                 key={lt.leave_type_id}
-                                className="hover:bg-muted/40 flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors"
+                                className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
                             >
                                 <Checkbox
                                     checked={selectedIds.has(lt.leave_type_id)}
@@ -204,21 +225,25 @@ function StepSelectPeriod({
                             </label>
                         ))
                     ) : (
-                        <p className="text-muted-foreground px-4 py-3 text-sm">
+                        <p className="px-4 py-3 text-sm text-muted-foreground">
                             No accrual-eligible leave types configured.
                         </p>
                     )}
                 </div>
                 {selectedIds.size === 0 && (
-                    <p className="text-destructive text-xs">
+                    <p className="text-xs text-destructive">
                         Select at least one leave type to proceed.
                     </p>
                 )}
             </div>
 
             <div className="flex justify-end">
-                <Button onClick={handleNext} disabled={loading || selectedIds.size === 0} size="sm">
-                     {loading ? "Loading…" : "Next"}
+                <Button
+                    onClick={handleNext}
+                    disabled={loading || selectedIds.size === 0}
+                    size="sm"
+                >
+                    {loading ? 'Loading…' : 'Next'}
                 </Button>
             </div>
         </div>
@@ -238,18 +263,21 @@ function StepPreviewCredits({
     period: { month: number; year: number };
     leaveTypeIds: number[];
 }) {
-    const [loading, setLoading] = useState(false)
-    const employeeRows = useMemo(() => buildPreviewCreditRows(previews), [previews])
-    const columns      = usePreviewCreditColumns(leaveTypes)
-    const headerGroups = usePreviewCreditHeaderGroups(leaveTypes)
+    const [loading, setLoading] = useState(false);
+    const employeeRows = useMemo(
+        () => buildPreviewCreditRows(previews),
+        [previews],
+    );
+    const columns = usePreviewCreditColumns(leaveTypes);
+    const headerGroups = usePreviewCreditHeaderGroups(leaveTypes);
 
     return (
         <div className="flex flex-col gap-4 p-6">
             <div>
-                <h2 className="text-foreground text-base font-semibold">
+                <h2 className="text-base font-semibold text-foreground">
                     Preview Earned Leave Credits
                 </h2>
-                <p className="text-muted-foreground mt-0.5 text-sm">
+                <p className="mt-0.5 text-sm text-muted-foreground">
                     {MONTHS[period.month - 1]} {period.year} ·{' '}
                     {leaveTypes.length} leave type
                     {leaveTypes.length !== 1 ? 's' : ''}
@@ -291,7 +319,7 @@ function StepPreviewCredits({
                         );
                     }}
                 >
-                    {loading ? "Loading…" : "Next"}
+                    {loading ? 'Loading…' : 'Next'}
                 </Button>
             </div>
         </div>
@@ -336,38 +364,38 @@ function StepConfirmPosting({
     return (
         <div className="flex flex-col gap-6 p-6">
             <div>
-                <h2 className="text-foreground text-base font-semibold">
+                <h2 className="text-base font-semibold text-foreground">
                     Confirm Posting
                 </h2>
-                <p className="text-muted-foreground mt-0.5 text-sm">
+                <p className="mt-0.5 text-sm text-muted-foreground">
                     Review the summary before finalising.
                 </p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="border-border rounded-lg border p-5">
+                <div className="rounded-lg border border-border p-5">
                     <p className="mb-4 text-sm font-semibold">
                         Posting Summary
                     </p>
                     {summaryRows.map(([l, v]) => (
                         <div
                             key={l}
-                            className="border-border flex justify-between border-b py-2.5 last:border-0"
+                            className="flex justify-between border-b border-border py-2.5 last:border-0"
                         >
-                            <span className="text-muted-foreground text-sm">
+                            <span className="text-sm text-muted-foreground">
                                 {l}
                             </span>
                             <span className="text-sm font-semibold">{v}</span>
                         </div>
                     ))}
                 </div>
-                <div className="border-border rounded-lg border p-5">
+                <div className="rounded-lg border border-border p-5">
                     <p className="mb-4 text-sm font-semibold">Post Details</p>
                     {detailRows.map(([l, v]) => (
                         <div
                             key={l}
-                            className="border-border flex justify-between border-b py-2.5 last:border-0"
+                            className="flex justify-between border-b border-border py-2.5 last:border-0"
                         >
-                            <span className="text-muted-foreground text-sm">
+                            <span className="text-sm text-muted-foreground">
                                 {l}
                             </span>
                             <span className="text-sm font-semibold">{v}</span>
@@ -391,7 +419,7 @@ function StepConfirmPosting({
                 </Button>
                 <Button
                     size="sm"
-                    className="bg-green-600 text-white hover:bg-green-700"
+                    variant="default"
                     disabled={loading}
                     onClick={() => {
                         setLoading(true);
@@ -409,7 +437,7 @@ function StepConfirmPosting({
                         );
                     }}
                 >
-                   {loading ? "Posting…" : "Confirm & Post"}
+                    {loading ? 'Posting…' : 'Confirm & Post'}
                 </Button>
             </div>
         </div>
@@ -429,18 +457,21 @@ function StepPostedReview({
     period: { month: number; year: number };
     postingMeta: PostingMeta;
 }) {
-    const employeeRows = useMemo(() => buildPreviewCreditRows(previews), [previews])
-    const columns      = usePreviewCreditColumns(leaveTypes)
-    const headerGroups = usePreviewCreditHeaderGroups(leaveTypes)
+    const employeeRows = useMemo(
+        () => buildPreviewCreditRows(previews),
+        [previews],
+    );
+    const columns = usePreviewCreditColumns(leaveTypes);
+    const headerGroups = usePreviewCreditHeaderGroups(leaveTypes);
 
     return (
         <div className="flex flex-col gap-4 p-6">
             <div className="flex items-start justify-between">
                 <div>
-                    <h2 className="text-foreground text-base font-semibold">
+                    <h2 className="text-base font-semibold text-foreground">
                         Posted Credits
                     </h2>
-                    <p className="text-muted-foreground mt-0.5 text-sm">
+                    <p className="mt-0.5 text-sm text-muted-foreground">
                         {MONTHS[period.month - 1]} {period.year} · Ref:{' '}
                         {postingMeta.reference_no} · {postingMeta.posted_date}
                     </p>
@@ -598,9 +629,9 @@ function HistoryTab({
                 }}
             >
                 <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
-                    <DialogHeader className="border-border border-b px-5 py-4">
-                        <DialogTitle className="text-foreground flex items-center gap-2 text-sm font-semibold">
-                            <TrendingUp className="text-primary size-4 shrink-0" />
+                    <DialogHeader className="border-b border-border px-5 py-4">
+                        <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <TrendingUp className="size-4 shrink-0 text-primary" />
                             Accrual Transaction Detail
                         </DialogTitle>
                     </DialogHeader>
@@ -608,16 +639,16 @@ function HistoryTab({
                     {selectedRow && (
                         <div className="flex flex-col gap-5 px-5 py-5">
                             {/* Employee card */}
-                            <div className="border-border bg-muted/30 flex items-center gap-3 rounded-lg border px-4 py-3">
+                            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
                                 <EmployeeAvatar
                                     url={selectedRow.avatar_url}
                                     name={selectedRow.name}
                                 />
                                 <div className="flex min-w-0 flex-col">
-                                    <span className="text-foreground truncate text-sm font-semibold">
+                                    <span className="truncate text-sm font-semibold text-foreground">
                                         {selectedRow.name}
                                     </span>
-                                    <span className="text-muted-foreground truncate text-xs">
+                                    <span className="truncate text-xs text-muted-foreground">
                                         {selectedRow.department}
                                     </span>
                                 </div>
@@ -664,16 +695,16 @@ function HistoryTab({
                                 ).map(({ icon, label, value, mono }) => (
                                     <div
                                         key={label}
-                                        className="border-border flex flex-col gap-1 rounded-md border px-3 py-2.5"
+                                        className="flex flex-col gap-1 rounded-md border border-border px-3 py-2.5"
                                     >
-                                        <div className="text-muted-foreground flex items-center gap-1.5">
+                                        <div className="flex items-center gap-1.5 text-muted-foreground">
                                             {icon}
                                             <span className="text-xs">
                                                 {label}
                                             </span>
                                         </div>
                                         <span
-                                            className={`text-foreground truncate text-sm font-medium ${mono ? 'font-mono' : ''}`}
+                                            className={`truncate text-sm font-medium text-foreground ${mono ? 'font-mono' : ''}`}
                                         >
                                             {value}
                                         </span>
@@ -683,19 +714,19 @@ function HistoryTab({
 
                             {/* Leave credit breakdown */}
                             <div>
-                                <p className="text-foreground mb-2 text-xs font-semibold uppercase tracking-wide">
+                                <p className="mb-2 text-xs font-semibold tracking-wide text-foreground uppercase">
                                     Leave Credit Breakdown
                                 </p>
-                                <div className="border-border divide-border divide-y overflow-hidden rounded-lg border">
+                                <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
                                     {/* Column headers */}
-                                    <div className="bg-muted/40 grid grid-cols-4 px-4 py-2">
-                                        <span className="text-muted-foreground col-span-2 text-xs font-medium">
+                                    <div className="grid grid-cols-4 bg-muted/40 px-4 py-2">
+                                        <span className="col-span-2 text-xs font-medium text-muted-foreground">
                                             Leave Type
                                         </span>
-                                        <span className="text-muted-foreground text-right text-xs font-medium">
+                                        <span className="text-right text-xs font-medium text-muted-foreground">
                                             Credit Earned
                                         </span>
-                                        <span className="text-muted-foreground text-right text-xs font-medium">
+                                        <span className="text-right text-xs font-medium text-muted-foreground">
                                             New Balance
                                         </span>
                                     </div>
@@ -707,7 +738,7 @@ function HistoryTab({
                                                 key={lc.leave_type_id}
                                                 className="grid grid-cols-4 items-center px-4 py-3"
                                             >
-                                                <span className="text-foreground col-span-2 text-sm">
+                                                <span className="col-span-2 text-sm text-foreground">
                                                     {lc.leave_type_name}
                                                 </span>
                                                 <span className="text-right text-sm font-semibold text-green-600 dark:text-green-400">
@@ -716,7 +747,7 @@ function HistoryTab({
                                                         4,
                                                     )}
                                                 </span>
-                                                <span className="text-primary text-right text-sm font-semibold">
+                                                <span className="text-right text-sm font-semibold text-primary">
                                                     {lc.balance_after.toFixed(
                                                         4,
                                                     )}
@@ -730,13 +761,13 @@ function HistoryTab({
                                         (lc) => (
                                             <div
                                                 key={`before-${lc.leave_type_id}`}
-                                                className="bg-muted/20 grid grid-cols-4 items-center px-4 py-2.5"
+                                                className="grid grid-cols-4 items-center bg-muted/20 px-4 py-2.5"
                                             >
-                                                <span className="text-muted-foreground col-span-2 text-xs">
+                                                <span className="col-span-2 text-xs text-muted-foreground">
                                                     {lc.leave_type_name} —
                                                     before
                                                 </span>
-                                                <span className="text-muted-foreground col-span-2 text-right text-xs">
+                                                <span className="col-span-2 text-right text-xs text-muted-foreground">
                                                     {lc.balance_before.toFixed(
                                                         4,
                                                     )}
@@ -749,7 +780,7 @@ function HistoryTab({
 
                             {/* Contextual status note */}
                             {selectedRow.credit_status === 'ineligible' && (
-                                <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-xs">
+                                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
                                     This employee had no recorded attendance for
                                     this period and received no credit.
                                 </div>
@@ -765,7 +796,7 @@ function HistoryTab({
                     )}
 
                     <DialogFooter
-                        className="border-border bg-muted/30 border-t px-5 py-4"
+                        className="border-t border-border bg-muted/30 px-5 py-4"
                         showCloseButton
                     >
                         {selectedRow && (
@@ -790,48 +821,12 @@ function BalancesTab({
     leaveTypes,
     cycleYear: _cycleYear,
 }: {
-    data: LeaveBalanceRow[]
-    leaveTypes: LeaveType[]
-    cycleYear: number
-    cycleYears?: number[]
+    data: LeaveBalanceRow[];
+    leaveTypes: LeaveType[];
+    cycleYear: number;
+    cycleYears?: number[];
 }) {
-    const [search, setSearch] = useState('');
-    const [pagination, setPagination] = useState({
-        pageIndex: 0,
-        pageSize: 10,
-    });
-
-    const filtered = useMemo(() => {
-        const q = search.toLowerCase();
-        return data.filter(
-            (e) =>
-                e.name.toLowerCase().includes(q) ||
-                e.department.toLowerCase().includes(q) ||
-                e.employment_classification.toLowerCase().includes(q),
-        );
-    }, [data, search]);
-
-    const table = useReactTable({
-        data: filtered,
-        columns: [{ id: 'select', header: '', cell: () => null }],
-        getRowId: (row) => String(row.employee_id),
-        state: { pagination },
-        onPaginationChange: setPagination,
-        getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        manualFiltering: true,
-    });
-
-    const pageRows = filtered.slice(
-        pagination.pageIndex * pagination.pageSize,
-        (pagination.pageIndex + 1) * pagination.pageSize,
-    );
-    const pageCount = Math.max(
-        1,
-        Math.ceil(filtered.length / pagination.pageSize),
-    );
-    const colSpan = 3 + leaveTypes.length;
-    const columns = useLeaveBalanceColumns(leaveTypes)
+    const columns = useLeaveBalanceColumns(leaveTypes);
 
     return (
         <DataTable
@@ -842,7 +837,7 @@ function BalancesTab({
             searchPlaceholder="Search employee..."
             defaultPageSize={10}
         />
-    )
+    );
 }
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
@@ -864,7 +859,7 @@ export default function MonthlyEarnedLeave() {
         balances_data = [],
         balances_leave_types = [],
         balances_cycle_year = new Date().getFullYear(),
-    } = usePage<{ props: PageProps }>().props as unknown as PageProps
+    } = usePage<{ props: PageProps }>().props as unknown as PageProps;
 
     const activeTab =
         tab === 'history'
@@ -886,23 +881,23 @@ export default function MonthlyEarnedLeave() {
                         else router.get(route('leave.accrual.index'));
                     }}
                 >
-                    <div className="border-border max-w-100 overflow-x-auto border-b pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="max-w-100 overflow-x-auto border-b border-border pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <TabsList className="flex h-auto w-max min-w-full flex-nowrap gap-0 bg-transparent p-0">
                             <TabsTrigger
                                 value="posting"
-                                className="text-muted-foreground data-[state=active]:border-b-primary data-[state=active]:text-primary hover:text-foreground relative flex items-center gap-1.5 whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold transition-colors data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-4"
+                                className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
                             >
                                 Monthly Posting
                             </TabsTrigger>
                             <TabsTrigger
                                 value="history"
-                                className="text-muted-foreground data-[state=active]:border-b-primary data-[state=active]:text-primary hover:text-foreground relative flex items-center gap-1.5 whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold transition-colors data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-4"
+                                className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
                             >
                                 Transaction History
                             </TabsTrigger>
                             <TabsTrigger
                                 value="balances"
-                                className="text-muted-foreground data-[state=active]:border-b-primary data-[state=active]:text-primary hover:text-foreground relative flex items-center gap-1.5 whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold transition-colors data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-4"
+                                className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
                             >
                                 Leave Balances
                             </TabsTrigger>
@@ -913,14 +908,14 @@ export default function MonthlyEarnedLeave() {
                         value="posting"
                         className="mt-4 flex flex-col gap-4"
                     >
-                        <div className="border-border bg-card rounded-lg border px-6 pt-4 shadow-sm">
+                        <div className="rounded-lg border border-border bg-card px-6 pt-4 shadow-sm">
                             <Stepper
                                 steps={WIZARD_STEPS}
                                 currentStep={step - 1}
                                 onStepChange={() => {}}
                             />
                         </div>
-                        <div className="border-border bg-card rounded-lg border shadow-sm">
+                        <div className="rounded-lg border border-border bg-card shadow-sm">
                             {step === 1 && (
                                 <StepSelectPeriod
                                     availableLeaveTypes={available_leave_types}
@@ -957,12 +952,12 @@ export default function MonthlyEarnedLeave() {
                     </TabsContent>
 
                     <TabsContent value="history" className="mt-4">
-                        <div className="border-border bg-card rounded-lg border p-6 shadow-sm">
+                        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
                             <div className="mb-4">
-                                <h2 className="text-foreground text-base font-semibold">
+                                <h2 className="text-base font-semibold text-foreground">
                                     Transaction History
                                 </h2>
-                                <p className="text-muted-foreground mt-0.5 text-sm">
+                                <p className="mt-0.5 text-sm text-muted-foreground">
                                     All posted leave accrual credits across all
                                     periods.
                                 </p>
@@ -974,12 +969,12 @@ export default function MonthlyEarnedLeave() {
                         </div>
                     </TabsContent>
                     <TabsContent value="balances" className="mt-4">
-                        <div className="border-border bg-card rounded-lg border p-6 shadow-sm">
+                        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
                             <div className="mb-4">
-                                <h2 className="text-foreground text-base font-semibold">
+                                <h2 className="text-base font-semibold text-foreground">
                                     Leave Balances
                                 </h2>
-                                <p className="text-muted-foreground mt-0.5 text-sm">
+                                <p className="mt-0.5 text-sm text-muted-foreground">
                                     Current leave balances per employee for FY{' '}
                                     {balances_cycle_year}–
                                     {balances_cycle_year + 1}.

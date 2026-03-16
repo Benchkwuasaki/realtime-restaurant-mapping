@@ -6,6 +6,7 @@ import {
     AlertTriangle, BadgeCheck, Coffee, Timer, UserCheck,
     UserX, Settings, Plus, Trash2, Pencil,
     Check, X, ClipboardList, MapPin, ChevronDown, ChevronRight,
+    Archive,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -45,6 +46,12 @@ import {
     getEmployeeName,
 } from "./data/data"
 import { type AttendanceRecord, type WhereaboutSlip, attendanceRecordSchema } from "./data/schema"
+import { type DateRange } from "react-day-picker"
+import { Calendar } from "@/components/ui/calendar"
+import {
+    Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover"
+import { CalendarDays } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,6 +69,7 @@ interface AttendanceSetting {
 
 interface Props {
     records: RecordWithHistory[]
+    archived: RecordWithHistory[]
     settings: AttendanceSetting[]
 }
 
@@ -257,15 +265,18 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
 function HistoryDialog({ record, open, onClose }: {
     record: RecordWithHistory | null; open: boolean; onClose: () => void
 }) {
-    const toDateStr = (d: Date) => d.toISOString().slice(0, 10)
-    const getDefaultFrom = () => { const d = new Date(); d.setMonth(d.getMonth() - 1); return toDateStr(d) }
-    const getDefaultTo = () => toDateStr(new Date())
-
-    const [dateFrom, setDateFrom] = useState(getDefaultFrom)
-    const [dateTo, setDateTo] = useState(getDefaultTo)
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+        to: new Date(),
+    })
 
     useEffect(() => {
-        if (open) { setDateFrom(getDefaultFrom()); setDateTo(getDefaultTo()) }
+        if (open) {
+            setDateRange({
+                from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+                to: new Date(),
+            })
+        }
     }, [open])
 
     if (!record) return null
@@ -282,14 +293,20 @@ function HistoryDialog({ record, open, onClose }: {
         (r, i, arr) => arr.findIndex(x => toLocalDate(x.date).getTime() === toLocalDate(r.date).getTime()) === i
     )
 
-    const from = dateFrom ? toLocalDate(dateFrom) : null
-    const to = dateTo ? toLocalDate(dateTo) : null
+    const from = dateRange?.from ?? null
+    const to = dateRange?.to ?? null
     const filtered = allRecords.filter(r => {
         const d = toLocalDate(r.date)
         if (from && d < from) return false
         if (to && d > to) return false
         return true
     })
+
+    const dateLabel = dateRange?.from
+        ? dateRange.to
+            ? `${format(dateRange.from, "MMM d, yyyy")} – ${format(dateRange.to, "MMM d, yyyy")}`
+            : format(dateRange.from, "MMM d, yyyy")
+        : "Pick a date range"
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -313,20 +330,50 @@ function HistoryDialog({ record, open, onClose }: {
                     </DialogTitle>
                 </DialogHeader>
 
+                {/* ── Date Range Filter ── */}
                 <div className="flex items-center gap-3 px-5 py-3 border-b border-border bg-muted/20 shrink-0">
                     <span className="text-xs text-muted-foreground font-medium shrink-0">Filter by date</span>
-                    <div className="flex items-center gap-2">
-                        <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-7 text-xs w-36" />
-                        <span className="text-muted-foreground text-xs">—</span>
-                        <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-7 text-xs w-36" />
-                    </div>
-                    {(dateFrom || dateTo) && (
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => { setDateFrom(""); setDateTo("") }}>
+
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs gap-1.5 font-normal"
+                            >
+                                <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <span className={dateRange?.from ? "text-foreground" : "text-muted-foreground"}>
+                                    {dateLabel}
+                                </span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="range"
+                                defaultMonth={dateRange?.from}
+                                selected={dateRange}
+                                onSelect={setDateRange}
+                                numberOfMonths={2}
+                                disabled={(date) =>
+                                    date > new Date() || date < new Date("1900-01-01")
+                                }
+                            />
+                        </PopoverContent>
+                    </Popover>
+
+                    {dateRange && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-muted-foreground"
+                            onClick={() => setDateRange(undefined)}
+                        >
                             <X className="w-3 h-3 mr-1" /> Clear
                         </Button>
                     )}
                 </div>
 
+                {/* ── Table ── */}
                 <div className="overflow-auto flex-1 min-h-0">
                     {filtered.length === 0 ? (
                         <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
@@ -338,8 +385,12 @@ function HistoryDialog({ record, open, onClose }: {
                                 <tr className="border-b border-border">
                                     <th className="w-8 pl-3 py-2.5" />
                                     {[
-                                        { label: "Date" }, { label: "Status" }, { label: "Time In" },
-                                        { label: "Break (Out)" }, { label: "Break (In)" }, { label: "Time Out" },
+                                        { label: "Date" },
+                                        { label: "Status" },
+                                        { label: "Time In" },
+                                        { label: "Break (Out)" },
+                                        { label: "Break (In)" },
+                                        { label: "Time Out" },
                                         { label: "Work Hrs", icon: <Timer className="w-3 h-3" /> },
                                         { label: "Late", icon: <AlertTriangle className="w-3 h-3" /> },
                                         { label: "Slip Ded.", icon: <ClipboardList className="w-3 h-3" /> },
@@ -668,12 +719,126 @@ function SettingsDialog({ open, onClose, settings }: { open: boolean; onClose: (
     )
 }
 
+
+function ArchivesDialog({
+    open,
+    onClose,
+    archived,
+}: {
+    open: boolean
+    onClose: () => void
+    archived: RecordWithHistory[]
+}) {
+    const [selected, setSelected] = useState<RecordWithHistory | null>(null)
+
+    useEffect(() => { if (!open) setSelected(null) }, [open])
+
+    return (
+        <>
+            <Dialog open={open} onOpenChange={v => !v && onClose()}>
+                <DialogContent className="w-[95vw] !max-w-[1000px] h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+                    <DialogHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
+                        <DialogTitle className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center">
+                                <Archive className="w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold">Archived Records</p>
+                                <p className="text-xs text-muted-foreground font-normal">
+                                    Attendance history for deleted employees
+                                </p>
+                            </div>
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0">
+                        {archived.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+                                <Archive className="w-8 h-8 opacity-30" />
+                                <p className="text-sm">No archived records</p>
+                            </div>
+                        ) : (
+                            <table className="w-full text-sm border-collapse table-fixed">
+                                <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border">
+                                    <tr>
+                                        <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[40%]">
+                                            Employee
+                                        </th>
+                                        <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[20%]">
+                                            Last Date
+                                        </th>
+                                        <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[20%]">
+                                            Last Status
+                                        </th>
+                                        <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[15%]">
+                                            Records
+                                        </th>
+                                        <th className="w-[5%]" />
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {archived.map(r => {
+                                        const name = getEmployeeName(r)
+                                        const Icon = STATUS_ICON[r.status] ?? STATUS_ICON.ABSENT
+                                        const totalRecords = 1 + (r.history?.length ?? 0)
+                                        return (
+                                            <tr
+                                                key={r.employee_id}
+                                                className="border-b border-border/50 hover:bg-muted/30 cursor-pointer transition-colors group"
+                                                onClick={() => setSelected(r)}
+                                            >
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="w-8 h-8 rounded-full bg-muted border border-border overflow-hidden shrink-0 flex items-center justify-center opacity-60">
+                                                            {r.employee?.avatar_url ? (
+                                                                <img src={r.employee.avatar_url} alt={name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <span className="text-[10px] font-bold text-muted-foreground">{name.slice(0, 2).toUpperCase()}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-medium truncate text-muted-foreground">{name}</p>
+                                                            <p className="text-[10px] font-mono text-muted-foreground/60">{r.employee?.work_id ?? "—"}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-4 text-xs text-muted-foreground font-mono whitespace-nowrap">
+                                                    {format(parseISO(r.date), "MMM d, yyyy")}
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <Badge variant="outline" className={cn("text-[10px] gap-1 opacity-80", STATUS_PILL[r.status])}>
+                                                        <Icon className="w-2.5 h-2.5" />
+                                                        {STATUS_LABEL[r.status]}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-5 py-4 text-xs text-muted-foreground">
+                                                    {totalRecords} day{totalRecords !== 1 ? "s" : ""}
+                                                </td>
+                                                <td className="pr-5 py-4 text-right">
+                                                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors inline" />
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <HistoryDialog record={selected} open={!!selected} onClose={() => setSelected(null)} />
+        </>
+    )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function AttendanceRecordIndex({ records: initialRecords, settings }: Props) {
+export default function AttendanceRecordIndex({ records: initialRecords, archived, settings }: Props) {
     const [records, setRecords] = useState<RecordWithHistory[]>(initialRecords)
     const [selected, setSelected] = useState<RecordWithHistory | null>(null)
     const [settingsOpen, setSettingsOpen] = useState(false)
+    const [archivesOpen, setArchivesOpen] = useState(false)
     const channelRef = useRef<any>(null)
 
     const present = records.filter(r => r.status === "PRESENT").length
@@ -721,6 +886,7 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
             <Head title="Attendance Records" />
 
             <div className="flex flex-col gap-5 px-5 pt-5 pb-8">
+                {/* ── Header row ── */}
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
                         <h1 className="text-xl font-semibold tracking-tight">Attendance Records</h1>
@@ -730,19 +896,30 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
                         </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 relative"
+                            onClick={() => setArchivesOpen(true)}
+                            title="Archived Records"
+                        >
+                            <Archive className="w-3.5 h-3.5" />
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
                             <Settings className="w-3.5 h-3.5 mr-1.5" /> Settings
                         </Button>
                     </div>
                 </div>
 
+                {/* ── Stat cards ── */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <StatCard title="Present" value={present} description="Completed full day" icon={<UserCheck className="w-4 h-4 m-2 text-primary" />} />
-                    <StatCard title="Half Day" value={halfDay} description="Partial attendance" icon={<Coffee className="w-4 h-4 m-2 text-secondary-foreground" />} />
-                    <StatCard title="Absent" value={absent} description="No attendance recorded" icon={<UserX className="w-4 h-4 m-2 text-destructive" />} />
-                    <StatCard title="Late" value={lateCount} description="Arrived after scheduled time" icon={<AlertTriangle className="w-4 h-4 m-2 text-accent-foreground" />} />
+                    <StatCard title="Half Day" value={halfDay} description="Partial attendance" icon={<Coffee className="w-4 h-4 m-2 text-primary" />} />
+                    <StatCard title="Absent" value={absent} description="No attendance recorded" icon={<UserX className="w-4 h-4 m-2 text-primary" />} />
+                    <StatCard title="Late" value={lateCount} description="Arrived after scheduled time" icon={<AlertTriangle className="w-4 h-4 m-2 text-primary" />} />
                 </div>
 
+                {/* ── Table ── */}
                 <DataTable
                     columns={columns}
                     data={records}
@@ -756,6 +933,7 @@ export default function AttendanceRecordIndex({ records: initialRecords, setting
 
             <HistoryDialog record={selected} open={!!selected} onClose={() => setSelected(null)} />
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={settings} />
+            <ArchivesDialog open={archivesOpen} onClose={() => setArchivesOpen(false)} archived={archived} />
         </AppLayout>
     )
 }

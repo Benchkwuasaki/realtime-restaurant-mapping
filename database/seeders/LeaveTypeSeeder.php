@@ -141,11 +141,6 @@ class LeaveTypeSeeder extends Seeder
                         'days_entitled' => 105.0,
                         'leave_entitlement_description' => '105 days for live birth; additional 15 days if the female employee is a solo parent under RA 8972. No minimum service requirement.',
                     ],
-                    [
-                        'years_of_service' => 0,
-                        'days_entitled' => 60.0,
-                        'leave_entitlement_description' => '60 days for miscarriage or emergency termination of pregnancy. No minimum service requirement.',
-                    ],
                 ],
             ],
 

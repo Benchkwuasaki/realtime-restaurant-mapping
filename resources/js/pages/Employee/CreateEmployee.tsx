@@ -1,19 +1,5 @@
 import { useForm, router, Head } from '@inertiajs/react';
-import {
-    BadgeCheck,
-    BriefcaseBusiness,
-    User,
-    MapPin,
-    Users,
-    Landmark,
-    GraduationCap,
-    Award,
-    Plus,
-    Trash2,
-    List,
-    Save,
-    Pencil,
-} from 'lucide-react';
+import { Plus, Trash2, List, Save, Pencil, EyeOff, Eye } from 'lucide-react';
 import { type FormEventHandler, useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
@@ -926,6 +912,8 @@ function EmploymentStep({
         setData('roles', nextRoles);
     };
 
+    const [showPassword, setShowPassword] = useState(false);
+
     return (
         <>
             <div className="grid grid-cols-3 gap-5">
@@ -1222,13 +1210,30 @@ function EmploymentStep({
                     <FieldLabel htmlFor="password">
                         Password <Req />
                     </FieldLabel>
-                    <Input
-                        id="password"
-                        type="password"
-                        value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
-                        placeholder="Min. 8 characters"
-                    />
+                    <div className="relative">
+                        <Input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            value={data.password}
+                            onChange={(e) =>
+                                setData('password', e.target.value)
+                            }
+                            placeholder="Min. 8 characters"
+                            className="pr-10"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                            tabIndex={-1}
+                        >
+                            {showPassword ? (
+                                <EyeOff className="size-4" />
+                            ) : (
+                                <Eye className="size-4" />
+                            )}
+                        </button>
+                    </div>
                     <FieldError message={err('password')} />
                 </div>
 

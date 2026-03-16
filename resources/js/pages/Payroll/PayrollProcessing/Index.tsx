@@ -1641,10 +1641,10 @@ export default function Index({
                                 </Field>
 
                                 <Field>
-                                    <FieldLabel>HR Officer Name</FieldLabel>
-                                    <FieldDescription>
-                                        Optional — appears on printed payslips
-                                    </FieldDescription>
+                                    <FieldLabel>
+                                        HR Officer Name (optional)
+                                    </FieldLabel>
+
                                     <InputGroup className="w-full">
                                         <InputGroupInput
                                             placeholder="e.g. Maria Santos"

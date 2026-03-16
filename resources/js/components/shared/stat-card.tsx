@@ -8,24 +8,44 @@ import {
 
 interface StatCardProps {
     title: string;
-    value: number;
+    value: number | string;
     description?: string;
     icon: React.ReactNode;
+    color?: string;
 }
 
-export function StatCard({ title, value, description, icon }: StatCardProps) {
+export function StatCard({
+    title,
+    value,
+    description,
+    icon,
+    color,
+}: StatCardProps) {
     return (
-        <Card className="border-secondary flex flex-col gap-2 border">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                <div className="bg-muted text-muted-foreground rounded-lg">
+        <Card
+            className="flex flex-col gap-2 rounded-lg"
+            style={{ borderColor: color ? `${color}40` : 'var(--border)' }}
+        >
+            <CardHeader className="flex flex-row items-start justify-between gap-1.5 space-y-0">
+                <CardTitle className="min-w-0 text-xs leading-tight font-medium text-muted-foreground">
+                    {title}
+                </CardTitle>
+                <div
+                    className="shrink-0 rounded-lg p-1.5"
+                    style={{
+                        background: color ? `${color}18` : 'var(--muted)',
+                        color: color ?? 'var(--muted-foreground)',
+                    }}
+                >
                     {icon}
                 </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-1">
-                <p className="text-2xl font-bold sm:text-3xl">{value}</p>
+                <p className="text-lg font-bold text-card-foreground sm:text-3xl">
+                    {value}
+                </p>
                 {description && (
-                    <CardDescription className="text-xs sm:text-sm">
+                    <CardDescription className="truncate text-xs text-muted-foreground sm:text-sm">
                         {description}
                     </CardDescription>
                 )}

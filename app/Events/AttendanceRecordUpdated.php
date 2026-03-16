@@ -46,6 +46,7 @@ class AttendanceRecordUpdated implements ShouldBroadcast
 
         return [
             'id'                    => $r->id,
+            'is_new_record'         => $r->wasRecentlyCreated,
             'employee_id'           => $r->employee_id,
             'date'                  => $r->date?->toDateString(),
             'scheduled_time_in'     => $r->scheduled_time_in,
