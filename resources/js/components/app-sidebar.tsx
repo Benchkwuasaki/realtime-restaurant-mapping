@@ -120,7 +120,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Leave",
         url: "/leave",
         icon: Calendar,
-        show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin'),
+        show: hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin') || hasRole('document_tracking_operator'),
         items: [
           {
             title: "Leave Calendar",
@@ -141,8 +141,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {
             title: "Leave Settings",
             url: route("leave.leave-settings"),
-          }
-        ]
+          },
+        ] //.filter(item =>
+        //   // employees only see Leave Application
+        //   hasRole('employee') && !hasRole('super_admin')
+        //     ? item.title === 'Leave Application'
+        //     : true
+        // )
+      },
+      {
+        title: "Leave Application",
+        url: route('leave.leave-application.index'),
+        icon: Calendar,
+        show: hasRole('employee'),
       },
       {
         title: "Payroll",
@@ -208,33 +219,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ]
       },
       {
-          title: "Reports and Analytics",
-          url: "/reports_and_analytics",
-          icon: FileBarChart,
-          show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
-          items: [
-            {
-              title: "Employee Reports",
-              url: route('reports_and_analytics.employee-report.index'),
-            },
-            {
-              title: "Attendance Reports",
-              url: route('reports_and_analytics.attendance-report.index'),
-            },
-            {
-              title: "Leave Reports",
-              url: route('reports_and_analytics.leave-report.index'),
-            },
-            {
-              title: "Payroll Reports",
-              url: route('reports_and_analytics.payroll-report.index'),
-            },
-            {
-              title: "Government Reports",
-              url: route('reports_and_analytics.government-report.index'),
-            },
-          ],
-        },
+        title: "Reports and Analytics",
+        url: "/reports_and_analytics",
+        icon: FileBarChart,
+        show: hasRole("ogm") || hasRole("hr_admin") || hasRole("super_admin"),
+        items: [
+          {
+            title: "Employee Reports",
+            url: route('reports_and_analytics.employee-report.index'),
+          },
+          {
+            title: "Attendance Reports",
+            url: route('reports_and_analytics.attendance-report.index'),
+          },
+          {
+            title: "Leave Reports",
+            url: route('reports_and_analytics.leave-report.index'),
+          },
+          {
+            title: "Payroll Reports",
+            url: route('reports_and_analytics.payroll-report.index'),
+          },
+          {
+            title: "Government Reports",
+            url: route('reports_and_analytics.government-report.index'),
+          },
+        ],
+      },
       {
         title: "Announcements",
         url: route("announcement.index"),
