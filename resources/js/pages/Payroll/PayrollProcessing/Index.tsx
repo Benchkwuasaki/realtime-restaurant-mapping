@@ -2774,18 +2774,6 @@ export default function Index({
                                             </p>
                                         </div>
                                     )}
-
-                                    <p className="mt-3 text-xs text-muted-foreground">
-                                        <span className="font-medium">
-                                            Note:
-                                        </span>{' '}
-                                        Basic Pay shown is the semi-monthly
-                                        amount (half of the monthly salary
-                                        rate). GSIS, PhilHealth, Pag-IBIG, and
-                                        withholding tax are computed based on
-                                        the full monthly salary and are deducted
-                                        on both cut-offs.
-                                    </p>
                                 </>
                             )}
 
