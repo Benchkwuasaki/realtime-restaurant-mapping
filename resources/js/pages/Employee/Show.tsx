@@ -53,6 +53,9 @@ interface Unit { unit_name: string }
 interface Position {
     position_name: string
     position_type?: string
+    department_id?: number | null
+    division_id?: number | null
+    unit_id?: number | null
     department?: Department
     division?: Division
     unit?: Unit
@@ -208,6 +211,7 @@ interface Props {
 
 interface PositionGroup {
     positionName: string
+    displayLabel: string
     position: Position | undefined
     items: Item[]
     totalSlots: number
@@ -218,11 +222,26 @@ interface PositionGroup {
 function buildPositionGroups(items: Item[]): PositionGroup[] {
     const map = new Map<string, PositionGroup>()
     for (const item of items) {
-        const key = item.position?.position_name ?? `__item_${item.item_id}`
+        const pos = item.position
+        const key = pos
+            ? [pos.position_name, pos.department_id ?? "null", pos.division_id ?? "null", pos.unit_id ?? "null"].join("::")
+            : `__item_${item.item_id}`
+
         if (!map.has(key)) {
+            // Build the display label with org context — same as Create.tsx
+            const parts: string[] = []
+            if (pos?.department?.department_name) parts.push(pos.department.department_name)
+            if (pos?.division?.division_name) parts.push(pos.division.division_name)
+            if (pos?.unit?.unit_name) parts.push(pos.unit.unit_name)
+            const orgLabel = parts.join(" / ")
+            const displayLabel = orgLabel
+                ? `${pos?.position_name ?? `Item #${item.item_id}`} — ${orgLabel}`
+                : (pos?.position_name ?? `Item #${item.item_id}`)
+
             map.set(key, {
-                positionName: item.position?.position_name ?? `Item #${item.item_id}`,
-                position: item.position,
+                positionName: pos?.position_name ?? `Item #${item.item_id}`,
+                displayLabel,                    // ← add this
+                position: pos,
                 items: [],
                 totalSlots: 0,
                 availableSlots: 0,
@@ -235,13 +254,14 @@ function buildPositionGroups(items: Item[]): PositionGroup[] {
         if (!item.is_occupied) grp.availableSlots++
     }
     for (const grp of map.values()) grp.isFull = grp.availableSlots === 0
-    return Array.from(map.values()).sort((a, b) => a.positionName.localeCompare(b.positionName))
+    return Array.from(map.values()).sort((a, b) => a.displayLabel.localeCompare(b.displayLabel))
 }
 
 const JOB_ORDER_CLASSIFICATION = "Job Order"
 
+// Match Create.tsx exactly — positions tagged with position_type "Job Order"
 function isJobOrderPosition(grp: PositionGroup): boolean {
-    return grp.position?.position_type === "Job Order"
+    return grp.position?.position_type === JOB_ORDER_CLASSIFICATION
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -564,8 +584,8 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
     /** Positions filtered by whichever classification is currently selected */
     const filteredPositionGroups = useMemo(() => {
         const cls = field === "employment_classification"
-            ? form.employment_classification   // use the *new* value being chosen
-            : employee.employment_classification  // use the current value when only editing position
+            ? form.employment_classification
+            : employee.employment_classification
 
         if (!cls) return allPositionGroups
 
@@ -582,24 +602,24 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
         set("item_id", "")
     }
 
-    const handlePositionSelect = (positionName: string) => {
-        const grp = filteredPositionGroups.find(g => g.positionName === positionName)
+    const handlePositionSelect = (displayLabel: string) => {
+        const grp = filteredPositionGroups.find(g => g.displayLabel === displayLabel)
         if (!grp) return
         const ownSlot = grp.items.find(i => i.item_id.toString() === currentItemId)
         if (ownSlot) {
-            setForm(p => ({ ...p, selected_position_name: positionName, item_id: ownSlot.item_id.toString() }))
+            setForm(p => ({ ...p, selected_position_name: displayLabel, item_id: ownSlot.item_id.toString() }))
             return
         }
         const firstAvailable = grp.items.find(i => !i.is_occupied)
         setForm(p => ({
             ...p,
-            selected_position_name: positionName,
+            selected_position_name: displayLabel,
             item_id: firstAvailable ? firstAvailable.item_id.toString() : "",
         }))
     }
 
     const selectedGroup = useMemo(() =>
-        filteredPositionGroups.find(g => g.positionName === form.selected_position_name),
+        filteredPositionGroups.find(g => g.displayLabel === form.selected_position_name),
         [filteredPositionGroups, form.selected_position_name])
 
     // ── Save ──────────────────────────────────────────────────────────────────
@@ -658,9 +678,9 @@ function EmploymentEditDialog({ employee, field, onClose, items }: {
                             const employeeIsInGroup = grp.items.some(i => i.item_id.toString() === currentItemId)
                             const isDisabled = grp.isFull && !employeeIsInGroup
                             return (
-                                <SelectItem key={grp.positionName} value={grp.positionName} disabled={isDisabled} className="py-2.5">
+                                <SelectItem key={grp.displayLabel} value={grp.displayLabel} disabled={isDisabled} className="py-2.5">
                                     <div className="flex items-center justify-between gap-3 w-full">
-                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.positionName}</span>
+                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.displayLabel}</span>
                                         {grp.totalSlots > 1 && (
                                             isDisabled
                                                 ? <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
