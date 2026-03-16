@@ -67,7 +67,7 @@ interface Props {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Payroll', href: '#' },
-    { title: 'Earnings & Deductions', href: '#' },
+    { title: 'Pay Adjustments', href: '#' },
     { title: 'Allowance Management', href: route('allowancemanagement.index') },
 ];
 

@@ -389,7 +389,7 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
             Route::post('/{period}/lock', [PayrollProcessingController::class, 'lockPeriod'])->name('lock');
         });
 
-        // Earnings & Deductions
+        // Pay Adjustments
         Route::prefix('earnings-deductions')->group(function () {
 
             Route::prefix('allowance')->name('allowancemanagement.')->group(function () {
