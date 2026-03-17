@@ -17,7 +17,11 @@ import {
     FileText,
     Loader2,
     X,
+    TrendingUp,
+    TrendingDown,
+    Wallet,
 } from 'lucide-react';
+import { StatCard } from '@/components/shared/stat-card';
 import React, { useState, useEffect, useMemo } from 'react';
 import { route } from 'ziggy-js';
 import Heading from '@/components/heading';
@@ -3796,49 +3800,30 @@ export default function Index({
                                         </div>
                                     </div>
 
-                                    <div className="mb-6 grid grid-cols-4 gap-4">
-                                        <Card className="text-center">
-                                            <CardContent className="pt-4">
-                                                <p className="text-2xl font-bold">
-                                                    {employeesWithStatus.length}
-                                                </p>
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    Total Employees
-                                                </p>
-                                            </CardContent>
-                                        </Card>
-                                        <Card className="text-center">
-                                            <CardContent className="pt-4">
-                                                <p className="text-2xl font-bold text-primary">
-                                                    {peso(totalGross)}
-                                                </p>
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    Total Gross Pay
-                                                </p>
-                                            </CardContent>
-                                        </Card>
-                                        <Card className="text-center">
-                                            <CardContent className="pt-4">
-                                                <p className="text-2xl font-bold text-destructive">
-                                                    {peso(
-                                                        finalizedTotalDeductions,
-                                                    )}
-                                                </p>
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    Total Deductions
-                                                </p>
-                                            </CardContent>
-                                        </Card>
-                                        <Card className="border-green-200 bg-green-50 text-center dark:bg-green-950/20">
-                                            <CardContent className="pt-4">
-                                                <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                                                    {peso(finalizedTotalNetPay)}
-                                                </p>
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    Total Net Pay
-                                                </p>
-                                            </CardContent>
-                                        </Card>
+                                <div className="mb-6 grid grid-cols-4 gap-4">
+                                        <StatCard
+                                            title="Total Employees"
+                                            value={employeesWithStatus.length}
+                                            icon={<Users className="h-4 w-4" />}
+                                        />
+                                        <StatCard
+                                            title="Total Gross Pay"
+                                            value={peso(totalGross)}
+                                            icon={<TrendingUp className="h-4 w-4" />}
+                                            color="#2563eb"
+                                        />
+                                        <StatCard
+                                            title="Total Deductions"
+                                            value={peso(finalizedTotalDeductions)}
+                                            icon={<TrendingDown className="h-4 w-4" />}
+                                            color="#dc2626"
+                                        />
+                                        <StatCard
+                                            title="Total Net Pay"
+                                            value={peso(finalizedTotalNetPay)}
+                                            icon={<Wallet className="h-4 w-4" />}
+                                            color="#16a34a"
+                                        />
                                     </div>
 
                                     {/* Summary table */}
