@@ -14,26 +14,6 @@ export interface PayrollEmployee {
 /**
  * Per-employee attendance metrics held in Index.tsx state (Step 2).
  * Pre-filled by attendanceSummary() and forwarded to processNew() in Step 3.
- *
- * Sources
- * ───────
- * absent_days, half_days, late_minutes, undertime_minutes,
- * total_work_hours, total_work_days
- *   → attendance_records
- *     Confirmed columns (AttendanceRecord.php): work_minutes (INT), late_minutes (INT)
- *
- * personal_slip_minutes
- *   → whereabout_slips WHERE purpose_type = 'personal'
- *        AND return_status = 'returned' AND minutes_gone IS NOT NULL
- *   → CHARGEABLE: deducted from payroll at the per-minute rate
- *
- * official_slip_minutes
- *   → whereabout_slips WHERE purpose_type = 'official'
- *        AND return_status = 'returned' AND minutes_gone IS NOT NULL
- *   → AUTHORISED: shown for transparency only, never deducted from payroll
- *
- * total_overtime_hours
- *   → always 0 from server; editable by HR in Step 2
  */
 export interface AttendanceRecord {
     // ── Absence ──────────────────────────────────────────────────────────────
@@ -55,6 +35,117 @@ export interface AttendanceRecord {
 }
 
 /**
+ * One itemized deduction line returned by the compute endpoint and written
+ * to the payroll_deduction_items ledger on finalize.
+ *
+ * Replaces the opaque internal_org_items / other_deduction_items arrays
+ * that had inconsistent shapes across the two source tables.
+ */
+export interface DeductionLineItem {
+    id: number;
+    /** Matches PayrollDeductionPriorityOrder category constants */
+    category:
+        | 'government_loan'
+        | 'internal_org_savings'
+        | 'internal_org_loan'
+        | 'internal_org_dues'
+        | 'water_bill'
+        | 'other_miscellaneous';
+    /** Which DB table produced this item */
+    source_type:
+        | 'government_loan'
+        | 'internal_org_deduction'
+        | 'internal_org_loan'
+        | 'other_deduction'
+        | 'water_bill'
+        | 'miscellaneous';
+    /** Human-readable label, e.g. "GSIS MPL", "AMA Savings" */
+    label: string;
+    /** Organisation name for org items; null for statutory/misc */
+    org_name: string | null;
+    /** Description from the source record */
+    description: string;
+    amount: number;
+    /**
+     * Legacy type discriminator kept for backward compat with existing
+     * waiver UI. 'water_bill' routes to the water_bill column bucket;
+     * 'other' routes to other_deductions_total.
+     */
+    type: 'water_bill' | 'other';
+}
+
+/**
+ * The shape of each record returned by processNew() and sent to finalizePayroll().
+ * Replaces the previous ComputedRecord interface defined inline in Index.tsx.
+ */
+export interface ComputedRecord {
+    employee_id: number;
+    employee_name: string;
+
+    // ── Earnings ──────────────────────────────────────────────────────────────
+    basic_pay: number;
+    pera: number;
+    rice_allowance: number;
+    uniform_allowance: number;
+    overtime_pay: number;
+    gross_pay: number;
+
+    // ── Attendance ─────────────────────────────────────────────────────────────
+    half_days: number;
+    half_day_deduction: number;
+    absent_days: number;
+    absent_deduction: number;
+    late_minutes: number;
+    late_deduction: number;
+    undertime_minutes: number;
+    undertime_deduction: number;
+    personal_slip_minutes: number;
+    personal_slip_deduction: number;
+    official_slip_minutes: number;   // display only — no deduction
+    total_work_days: number;
+    total_hours_worked: number;
+    total_overtime_hours: number;
+
+    // ── Statutory deductions ──────────────────────────────────────────────────
+    gsis_premium: number;
+    philhealth: number;
+    pag_ibig: number;
+    withholding_tax: number;
+
+    // ── Gov't loan deductions ─────────────────────────────────────────────────
+    gsis_mpl: number;
+    gsis_emergency: number;
+    pag_ibig_mpl: number;
+
+    // ── Internal org deductions ───────────────────────────────────────────────
+    internal_org_savings: number;   // Savings + Share_Capital (both cut-offs)
+    internal_org_second: number;    // Dues (2nd cut-off, for display)
+    internal_org_loans: number;     // Loan repayments total (genuine loans)
+    internal_org_deductions: number; // savings + second + loans combined
+
+    // ── Other / miscellaneous deductions ──────────────────────────────────────
+    /**
+     * Renamed from ama_y2k_union.
+     * Aggregate of: internal org loans + dues + NS&ND + miscellaneous.
+     * Use deduction_items for per-line breakdown.
+     */
+    other_deductions_total: number;
+    water_bill: number;
+    other_deductions: number;       // non-water misc sub-total
+
+    // ── Itemized breakdown (for drill-down UI and ledger writes) ──────────────
+    internal_org_items: DeductionLineItem[];
+    other_deduction_items: DeductionLineItem[];
+
+    // ── Totals ────────────────────────────────────────────────────────────────
+    total_deductions: number;
+    net_pay: number;
+    floor_check_passed: boolean;
+    floor_cut_amount: number;
+    status: string;
+}
+
+/**
  * The shape of each row in the Step 5 finalized table.
  * Derived from employeesWithStatus / finalizedEmployeesWithStatus inside Index.tsx.
  */
@@ -72,7 +163,7 @@ export interface FinalizedEmployee {
     internalOrgDeductions: number;
     otherDeductionsMisc: number;
     // ── Attendance deductions ─────────────────────────────────────────────────
-    attendanceDeduction: number;    // absent + late + undertime + personal slip
+    attendanceDeduction: number;
     absentDays: number;
     absentDeduction: number;
     lateMinutes: number;
@@ -87,6 +178,17 @@ export interface FinalizedEmployee {
     netPay: number;
     floorPassed: boolean;
     floorCutAmount: number;
-    /** 'ok' | 'low' — kept as string to match the inferred return type of finalizedEmployeesWithStatus */
     status: string;
+}
+
+/**
+ * A single entry in the deductionPriorityOrder prop passed from the controller.
+ * Replaces the hardcoded WAIVABLE_DEDUCTIONS constant in Index.tsx.
+ */
+export interface DeductionPriorityEntry {
+    key: string;
+    label: string;
+    group: string;
+    cuttability: 'Never' | 'Rarely' | 'Yes' | 'First_to_Cut';
+    priority: number;
 }

@@ -7,8 +7,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Allowance extends Model
 {
+    // ── Allowance type constants ───────────────────────────────────────────────
+    const TYPE_PERA = 'pera';
+
+    const TYPE_RICE_SUBSIDY = 'rice_subsidy';
+
+    const TYPE_UNIFORM_CLOTHING = 'uniform_clothing';
+
+    const TYPE_TAXABLE_OTHER = 'taxable_other';
+
+    const TYPE_NON_TAXABLE_OTHER = 'non_taxable_other';
+
     protected $fillable = [
         'name',
+        'allowance_type',   // ← new typed classification column
         'description',
         'monthly_salary',
         'taxable',

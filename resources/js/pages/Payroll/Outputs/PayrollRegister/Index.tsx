@@ -77,7 +77,6 @@ export default function Index({ periods }: Props) {
                     <DataTable
                         columns={columns}
                         data={periods ?? []}
-                        getRowId={(row) => String(row.payroll_period_id)}
                         onRowClick={(row) =>
                             router.visit(
                                 route(

@@ -36,6 +36,8 @@ export interface ComputedEmployeeRow {
     philhealth: number;
     pagibig: number;
     tax: number;
+    /** gsis_mpl + gsis_emergency + pag_ibig_mpl — displayed in its own column */
+    govtLoans: number;
     absentDays: number;
     absentDeduction: number;
     lateMinutes: number;
@@ -73,7 +75,9 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         accessorKey: 'name',
         header: () => null,
         cell: ({ getValue }) => (
-            <span className="font-medium text-slate-800">{getValue<string>()}</span>
+            <span className="font-medium text-slate-800">
+                {getValue<string>()}
+            </span>
         ),
         enableHiding: false,
         meta: {
@@ -88,29 +92,51 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         header: () => (
             <div className="text-center">
                 <div>Basic Pay</div>
-                <div className="text-[10px] font-normal text-blue-400">semi-monthly</div>
+                <div className="text-[10px] font-normal text-blue-400">
+                    semi-monthly
+                </div>
             </div>
         ),
         cell: ({ getValue }) => (
-            <span className="tabular-nums text-slate-700">{peso(getValue<number>())}</span>
+            <span className="text-slate-700 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-blue-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-blue-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
     {
         accessorKey: 'allowances',
         header: () => <div className="text-center">Allowances</div>,
         cell: ({ getValue }) => (
-            <span className="tabular-nums text-slate-700">{peso(getValue<number>())}</span>
+            <span className="text-slate-700 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-blue-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-blue-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
     {
         accessorKey: 'grossPay',
-        header: () => <div className="text-center font-semibold">Gross Pay</div>,
-        cell: ({ getValue }) => (
-            <span className="font-semibold tabular-nums text-blue-700">{peso(getValue<number>())}</span>
+        header: () => (
+            <div className="text-center font-semibold">Gross Pay</div>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-blue-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        cell: ({ getValue }) => (
+            <span className="font-semibold text-blue-700 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
+        ),
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-blue-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
 
     // ── Deductions — Attendance ───────────────────────────────────────────────
@@ -120,7 +146,9 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         header: () => (
             <div className="text-center">
                 <div>Absent</div>
-                <div className="text-[10px] font-normal text-orange-400">days / amt</div>
+                <div className="text-[10px] font-normal text-orange-400">
+                    days / amt
+                </div>
             </div>
         ),
         cell: ({ row }) => {
@@ -130,13 +158,19 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
                     <div className="text-[11px] text-orange-500">
                         {absentDays} day{absentDays !== 1 ? 's' : ''}
                     </div>
-                    <div className="font-medium text-orange-600">{peso(absentDeduction)}</div>
+                    <div className="font-medium text-orange-600">
+                        {peso(absentDeduction)}
+                    </div>
                 </div>
             ) : (
                 <span className="text-slate-400">—</span>
             );
         },
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-orange-50/80 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-orange-50/80 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
     {
         id: 'tardy',
@@ -144,21 +178,31 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         header: () => (
             <div className="text-center">
                 <div>Tardy</div>
-                <div className="text-[10px] font-normal text-orange-400">mins / amt</div>
+                <div className="text-[10px] font-normal text-orange-400">
+                    mins / amt
+                </div>
             </div>
         ),
         cell: ({ row }) => {
             const { lateMinutes, lateDeduction } = row.original;
             return lateMinutes > 0 ? (
                 <div className="text-center">
-                    <div className="text-[11px] text-orange-500">{lateMinutes} min</div>
-                    <div className="font-medium text-orange-600">{peso(lateDeduction)}</div>
+                    <div className="text-[11px] text-orange-500">
+                        {lateMinutes} min
+                    </div>
+                    <div className="font-medium text-orange-600">
+                        {peso(lateDeduction)}
+                    </div>
                 </div>
             ) : (
                 <span className="text-slate-400">—</span>
             );
         },
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-orange-50/80 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-orange-50/80 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
 
     // ── Deductions — Statutory ────────────────────────────────────────────────
@@ -166,33 +210,85 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         accessorKey: 'gsis',
         header: () => <div className="text-center">GSIS</div>,
         cell: ({ getValue }) => (
-            <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
+            <span className="text-red-600 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
     {
         accessorKey: 'philhealth',
         header: () => <div className="text-center">PhilHealth</div>,
         cell: ({ getValue }) => (
-            <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
+            <span className="text-red-600 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
     {
         accessorKey: 'pagibig',
         header: () => <div className="text-center">Pag-IBIG</div>,
         cell: ({ getValue }) => (
-            <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
+            <span className="text-red-600 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
     {
         accessorKey: 'tax',
         header: () => <div className="text-center">Tax</div>,
         cell: ({ getValue }) => (
-            <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
+            <span className="text-red-600 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
+    },
+
+    // ── Deductions — Gov't Loans ──────────────────────────────────────────
+    // gsis_mpl + gsis_emergency + pag_ibig_mpl
+    // Previously invisible — included in total_deductions but had no display column.
+    {
+        accessorKey: 'govtLoans',
+        header: () => (
+            <div className="text-center">
+                <div>Gov&apos;t Loans</div>
+                <div className="text-[10px] font-normal text-red-400">
+                    mpl, emergency
+                </div>
+            </div>
+        ),
+        cell: ({ getValue }) => {
+            const val = getValue<number>();
+            return val > 0 ? (
+                <span className="text-red-600 tabular-nums">{peso(val)}</span>
+            ) : (
+                <span className="text-slate-400">—</span>
+            );
+        },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
 
     // ── Deductions — Org ──────────────────────────────────────────────────────
@@ -202,47 +298,79 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         header: () => (
             <div className="text-center">
                 <div>Org Savings</div>
-                <div className="text-[10px] font-normal text-red-400">&amp; Dues</div>
+                <div className="text-[10px] font-normal text-red-400">
+                    &amp; Dues
+                </div>
             </div>
         ),
         cell: ({ getValue }) => (
-            <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
+            <span className="text-red-600 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
     {
         accessorKey: 'internalOrgLoans',
         header: () => (
             <div className="text-center">
                 <div>Org Loans</div>
-                <div className="text-[10px] font-normal text-red-400">both cut-offs</div>
+                <div className="text-[10px] font-normal text-red-400">
+                    both cut-offs
+                </div>
             </div>
         ),
         cell: ({ getValue }) => (
-            <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
+            <span className="text-red-600 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
     {
         accessorKey: 'otherDeductionsMisc',
         header: () => (
             <div className="text-center">
                 <div>Other Ded.</div>
-                <div className="text-[10px] font-normal text-red-400">water, misc</div>
+                <div className="text-[10px] font-normal text-red-400">
+                    water, misc
+                </div>
             </div>
         ),
         cell: ({ getValue }) => (
-            <span className="tabular-nums text-red-600">{peso(getValue<number>())}</span>
+            <span className="text-red-600 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
     {
         accessorKey: 'totalDeductions',
-        header: () => <div className="text-center font-semibold">Total Ded.</div>,
-        cell: ({ getValue }) => (
-            <span className="font-semibold tabular-nums text-red-700">{peso(getValue<number>())}</span>
+        header: () => (
+            <div className="text-center font-semibold">Total Ded.</div>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        cell: ({ getValue }) => (
+            <span className="font-semibold text-red-700 tabular-nums">
+                {peso(getValue<number>())}
+            </span>
+        ),
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-red-50/60 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
 
     // ── Net Pay ───────────────────────────────────────────────────────────────
@@ -252,13 +380,19 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
         cell: ({ row }) => (
             <span
                 className={`font-bold tabular-nums ${
-                    row.original.status === 'low' ? 'text-red-600' : 'text-green-700'
+                    row.original.status === 'low'
+                        ? 'text-red-600'
+                        : 'text-green-700'
                 }`}
             >
                 {peso(row.original.netPay)}
             </span>
         ),
-        meta: { className: 'border-r px-3 py-2.5 text-center', headerClassName: 'border-r border-b bg-green-50 px-3 py-1.5 text-center text-[11px] font-medium text-green-700' },
+        meta: {
+            className: 'border-r px-3 py-2.5 text-center',
+            headerClassName:
+                'border-r border-b bg-green-50 px-3 py-1.5 text-center text-[11px] font-medium text-green-700',
+        },
     },
 
     // ── Remarks ───────────────────────────────────────────────────────────────
@@ -289,13 +423,21 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
                                         Cut
                                     </span>
                                 </TooltipTrigger>
-                                <TooltipContent side="left" className="max-w-xs">
+                                <TooltipContent
+                                    side="left"
+                                    className="max-w-xs"
+                                >
                                     <p className="text-xs">
                                         <span className="font-semibold">
-                                            ₱{floorCutAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                            ₱
+                                            {floorCutAmount.toLocaleString(
+                                                'en-PH',
+                                                { minimumFractionDigits: 2 },
+                                            )}
                                         </span>{' '}
-                                        in deductions were cut because applying them would bring net pay below
-                                        the minimum take-home threshold.
+                                        in deductions were cut because applying
+                                        them would bring net pay below the
+                                        minimum take-home threshold.
                                     </p>
                                 </TooltipContent>
                             </Tooltip>
@@ -305,7 +447,11 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
             );
         },
         enableSorting: false,
-        meta: { className: 'px-3 py-2.5 text-center', headerClassName: 'border-b bg-slate-100 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600' },
+        meta: {
+            className: 'px-3 py-2.5 text-center',
+            headerClassName:
+                'border-b bg-slate-100 px-3 py-1.5 text-center text-[11px] font-medium text-slate-600',
+        },
     },
 ];
 
@@ -318,41 +464,49 @@ export const computedHeaderGroups = [
     {
         label: '#',
         rowSpan: 2,
-        className: 'w-8 border-r border-b bg-slate-100 px-2 py-2 text-center text-xs font-semibold tracking-wide uppercase text-slate-500',
+        className:
+            'w-8 border-r border-b bg-slate-100 px-2 py-2 text-center text-xs font-semibold tracking-wide uppercase text-slate-500',
     },
     // Employee Name — spans both header rows
     {
         label: 'Employee Name',
         rowSpan: 2,
-        className: 'border-r border-b bg-slate-100 px-3 py-2 text-left text-xs font-semibold tracking-wide uppercase text-slate-600',
+        className:
+            'border-r border-b bg-slate-100 px-3 py-2 text-left text-xs font-semibold tracking-wide uppercase text-slate-600',
     },
     // Earnings — spans 3 sub-columns
     {
         label: 'Earnings',
         colSpan: 3,
-        className: 'border-r border-b bg-blue-50 px-3 py-1.5 text-center text-xs font-semibold tracking-wide uppercase text-blue-700',
+        className:
+            'border-r border-b bg-blue-50 px-3 py-1.5 text-center text-xs font-semibold tracking-wide uppercase text-blue-700',
     },
-    // Deductions — spans 10 sub-columns
+    // Deductions — spans 11 sub-columns (added Gov't Loans column)
     {
         label: (
             <>
                 Deductions{' '}
-                <span className="font-normal normal-case text-red-400">(based on monthly salary)</span>
+                <span className="font-normal text-red-400 normal-case">
+                    (based on monthly salary)
+                </span>
             </>
         ),
-        colSpan: 10,
-        className: 'border-r border-b bg-red-50 px-3 py-1.5 text-center text-xs font-semibold tracking-wide uppercase text-red-700',
+        colSpan: 11,
+        className:
+            'border-r border-b bg-red-50 px-3 py-1.5 text-center text-xs font-semibold tracking-wide uppercase text-red-700',
     },
     // Net Pay — spans both header rows
     {
         label: 'Net Pay',
         rowSpan: 2,
-        className: 'border-r border-b bg-green-50 px-3 py-2 text-center text-xs font-semibold tracking-wide uppercase text-green-700',
+        className:
+            'border-r border-b bg-green-50 px-3 py-2 text-center text-xs font-semibold tracking-wide uppercase text-green-700',
     },
     // Remarks — spans both header rows
     {
         label: 'Remarks',
         rowSpan: 2,
-        className: 'border-b bg-slate-100 px-3 py-2 text-center text-xs font-semibold tracking-wide uppercase text-slate-500',
+        className:
+            'border-b bg-slate-100 px-3 py-2 text-center text-xs font-semibold tracking-wide uppercase text-slate-500',
     },
 ];

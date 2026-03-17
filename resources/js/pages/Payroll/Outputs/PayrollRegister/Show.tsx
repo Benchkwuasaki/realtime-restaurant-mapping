@@ -3,7 +3,6 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import {
-    AlertTriangle,
     ArrowLeft,
     CheckCircle2,
     Printer,
@@ -60,7 +59,8 @@ interface PayrollRecord {
     gsis_mpl: number;
     gsis_emergency: number;
     pag_ibig_mpl: number;
-    ama_y2k_union: number;
+    /** Renamed from ama_y2k_union — org loans + dues + misc */
+    other_deductions_total: number;
     water_bill: number;
     internal_org_savings: number;
     internal_org_second: number;
@@ -95,10 +95,10 @@ interface Summary {
     total_gsis_mpl: number;
     total_gsis_emergency: number;
     total_pag_ibig_mpl: number;
-    total_ama_y2k_union: number;
-    total_water_bill: number;
     total_internal_org_savings: number;
-    total_internal_org_second: number;
+    /** Renamed from total_ama_y2k_union */
+    total_other_deductions: number;
+    total_water_bill: number;
     total_deductions: number;
     total_net_pay: number;
     floor_issues: number;
@@ -308,93 +308,59 @@ export default function Show({ period, records, summary }: Props) {
                     <Separator orientation="vertical" className="h-5" />
 
                     <div>
-                        <h1 className="text-base font-medium leading-none">
+                        <h1 className="text-base leading-none font-medium">
                             Payroll Register
                         </h1>
                         <div className="mt-0.5 flex items-center gap-2">
                             <p className="text-sm text-muted-foreground">
-                                {periodLabel} · Cut-off {period.cut_off ?? '—'}
+                                {periodLabel} · {period.cut_off ?? '—'} Cut-off
                             </p>
-                            <Badge
-                                variant={period.status === 'Closed' ? 'green' : 'blue'}
-                            >
-                                {period.status}
-                            </Badge>
-
-                            {summary.floor_issues > 0 && (
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Badge variant="yellow" className="gap-1">
-                                                <AlertTriangle className="h-3 w-3" />
-                                                {summary.floor_issues} issue
-                                                {summary.floor_issues > 1 ? 's' : ''}
-                                            </Badge>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>
-                                                {summary.floor_issues} employee
-                                                {summary.floor_issues > 1 ? 's have' : ' has'}{' '}
-                                                a net pay below the minimum take-home threshold.
-                                            </p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            )}
                         </div>
                     </div>
                 </div>
 
-                <Button
-                    onClick={() => window.print()}
-                    className="gap-2"
-                >
+                <Button onClick={() => window.print()} className="gap-2">
                     <Printer className="h-4 w-4" />
                     Print Register
                 </Button>
             </div>
 
-{/* ── Summary stat cards (screen only) ── */}
-<div className="flex flex-col items-center bg-slate-50 px-6 pt-3 pb-0 print:hidden">
-    <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-            icon={<Users className="h-4 w-4" />}
-            title="Total Employees"
-            value={summary.total_employees}
-            description={`Period #${period.payroll_period_id}`}
-        />
-        <StatCard
-            icon={<TrendingUp className="h-4 w-4" />}
-            title="Total Gross Pay"
-            value={peso(summary.total_gross)}
-            description="Earnings before deductions"
-        />
-        <StatCard
-            icon={<Landmark className="h-4 w-4" />}
-            title="Total Deductions"
-            value={peso(summary.total_deductions)}
-            description="All deduction types"
-        />
-        <StatCard
-            icon={<Receipt className="h-4 w-4" />}
-            title="Total Net Pay"
-            value={peso(summary.total_net_pay)}
-            description={
-                summary.floor_issues > 0
-                    ? `⚠ ${summary.floor_issues} floor issue${summary.floor_issues > 1 ? 's' : ''}`
-                    : 'All employees passed floor check'
-            }
-        />
-    </div>
-</div>
+            {/* ── Summary stat cards (screen only) ── */}
+            <div className="flex flex-col items-center bg-slate-50 px-6 pt-3 pb-0 print:hidden">
+                <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <StatCard
+                        icon={<Users className="h-4 w-4" />}
+                        title="Total Employees"
+                        value={summary.total_employees}
+                        description={`Period #${period.payroll_period_id}`}
+                    />
+                    <StatCard
+                        icon={<TrendingUp className="h-4 w-4" />}
+                        title="Total Gross Pay"
+                        value={peso(summary.total_gross)}
+                        description="Earnings before deductions"
+                    />
+                    <StatCard
+                        icon={<Landmark className="h-4 w-4" />}
+                        title="Total Deductions"
+                        value={peso(summary.total_deductions)}
+                        description="All deduction types"
+                    />
+                    <StatCard
+                        icon={<Receipt className="h-4 w-4" />}
+                        title="Total Net Pay"
+                        value={peso(summary.total_net_pay)}
+                        description="Final take-home pay"
+                    />
+                </div>
+            </div>
 
-{/* ── Paper wrapper ── unchanged ── */}
-<div className="flex flex-1 flex-col items-center bg-slate-50 px-6 pt-3 pb-6 print:block print:overflow-visible print:bg-white print:p-0">
-    
-    <div
-        id="payroll-register-document"
-        className="w-full bg-white px-6 py-4 shadow-sm ring-1 ring-slate-200 print:max-w-none print:px-6 print:py-4 print:shadow-none print:ring-0"
-    >
+            {/* ── Paper wrapper ── unchanged ── */}
+            <div className="flex flex-1 flex-col items-center bg-slate-50 px-6 pt-3 pb-6 print:block print:overflow-visible print:bg-white print:p-0">
+                <div
+                    id="payroll-register-document"
+                    className="w-full bg-white px-6 py-4 shadow-sm ring-1 ring-slate-200 print:max-w-none print:px-6 print:py-4 print:shadow-none print:ring-0"
+                >
                     {/* ── Document header ───────────────────────────────────── */}
                     <div className="mb-2 flex flex-col items-center text-center">
                         <div className="flex items-center gap-4">
@@ -418,7 +384,9 @@ export default function Show({ period, records, summary }: Props) {
                                 <p className="text-[11px] text-muted-foreground">
                                     {periodLabel}&emsp;·&emsp;Cut-off:{' '}
                                     {period.cut_off ?? '—'}&emsp;·&emsp;
-                                    <span className={`font-semibold ${period.status === 'Closed' ? 'text-green-700' : 'text-blue-600'}`}>
+                                    <span
+                                        className={`font-semibold ${period.status === 'Closed' ? 'text-green-700' : 'text-blue-600'}`}
+                                    >
                                         {period.status}
                                     </span>
                                 </p>
@@ -427,21 +395,6 @@ export default function Show({ period, records, summary }: Props) {
                     </div>
 
                     <div className="mb-4 h-[2px] border-b border-foreground/80 bg-foreground/80" />
-
-                    {/* ── Floor-check alert ─────────────────────────────────── */}
-                    {summary.floor_issues > 0 && (
-                        <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                            <span>
-                                <strong>Floor-check notice:</strong>{' '}
-                                {summary.floor_issues} employee
-                                {summary.floor_issues > 1 ? 's' : ''} (marked ⚠)
-                                ha{summary.floor_issues > 1 ? 've' : 's'} a net
-                                pay below the minimum take-home threshold.
-                                Please review before release.
-                            </span>
-                        </div>
-                    )}
 
                     {/* ── Register table ───────────────────────────────────── */}
                     {records.length === 0 ? (
@@ -455,22 +408,60 @@ export default function Show({ period, records, summary }: Props) {
                                     <thead className="bg-muted/50 text-foreground">
                                         {/* ── Top alignment row ── */}
                                         <tr className="bg-slate-200">
-                                            <GrpTh colSpan={5} className="bg-slate-300 text-foreground">
+                                            <GrpTh
+                                                colSpan={5}
+                                                className="bg-slate-300 text-foreground"
+                                            >
                                                 Employee Information
                                             </GrpTh>
-                                            <GrpTh colSpan={5} className="bg-slate-300 text-foreground" style={{ borderLeft: '1px solid #000' }}>
+                                            <GrpTh
+                                                colSpan={5}
+                                                className="bg-slate-300 text-foreground"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
                                                 Earnings
                                             </GrpTh>
-                                            <GrpTh colSpan={4} className="bg-slate-300 text-foreground" style={{ borderLeft: '1px solid #000' }}>
+                                            <GrpTh
+                                                colSpan={4}
+                                                className="bg-slate-300 text-foreground"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
                                                 Mandatory Deductions
                                             </GrpTh>
-                                            <GrpTh colSpan={4} className="bg-slate-300 text-foreground" style={{ borderLeft: '1px solid #000' }}>
+                                            <GrpTh
+                                                colSpan={4}
+                                                className="bg-slate-300 text-foreground"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
                                                 Attendance
                                             </GrpTh>
-                                            <GrpTh colSpan={7} className="bg-slate-300 text-foreground" style={{ borderLeft: '1px solid #000' }}>
+                                            <GrpTh
+                                                colSpan={6}
+                                                className="bg-slate-300 text-foreground"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
                                                 Other Deductions
                                             </GrpTh>
-                                            <GrpTh colSpan={2} className="bg-slate-300 text-foreground" style={{ borderLeft: '1px solid #000' }}>
+                                            <GrpTh
+                                                colSpan={2}
+                                                className="bg-slate-300 text-foreground"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
                                                 Summary
                                             </GrpTh>
                                         </tr>
@@ -494,7 +485,13 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
 
                                             {/* Earnings sub-cols */}
-                                            <ColTh className="w-[5%] bg-slate-50" style={{ borderLeft: '1px solid #000' }}>
+                                            <ColTh
+                                                className="w-[5%] bg-slate-50"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
                                                 Basic Pay
                                             </ColTh>
                                             <ColTh className="w-[3%] bg-slate-50">
@@ -511,7 +508,13 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
 
                                             {/* Mandatory sub-cols */}
-                                            <ColTh className="w-[4%] bg-slate-50" style={{ borderLeft: '1px solid #000' }}>
+                                            <ColTh
+                                                className="w-[4%] bg-slate-50"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
                                                 GSIS
                                             </ColTh>
                                             <ColTh className="w-[4%] bg-slate-50">
@@ -525,7 +528,13 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
 
                                             {/* Attendance sub-cols */}
-                                            <ColTh className="w-[2.5%] bg-slate-50" style={{ borderLeft: '1px solid #000' }}>
+                                            <ColTh
+                                                className="w-[2.5%] bg-slate-50"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
                                                 Abs.Days
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-slate-50">
@@ -539,7 +548,13 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
 
                                             {/* Other sub-cols */}
-                                            <ColTh className="w-[3.5%] bg-slate-50" style={{ borderLeft: '1px solid #000' }}>
+                                            <ColTh
+                                                className="w-[3.5%] bg-slate-50"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
                                                 GSIS MPL
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-slate-50">
@@ -551,18 +566,25 @@ export default function Show({ period, records, summary }: Props) {
                                             <ColTh className="w-[3.5%] bg-slate-50">
                                                 Org Savings
                                             </ColTh>
-                                            <ColTh className="w-[3.5%] bg-slate-50">
-                                                Org Dues &amp; Loans
-                                            </ColTh>
-                                            <ColTh className="w-[3.5%] bg-slate-50">
-                                                AMA/Union
+                                            <ColTh className="w-[5%] bg-slate-50">
+                                                Other Ded.
+                                                <br />
+                                                <span className="text-[8px] font-normal normal-case">
+                                                    loans, dues, misc
+                                                </span>
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-slate-50">
                                                 Water Bill
                                             </ColTh>
 
                                             {/* Summary sub-cols */}
-                                            <ColTh className="w-[5%] bg-slate-50 text-foreground" style={{ borderLeft: '1px solid #000' }}>
+                                            <ColTh
+                                                className="w-[5%] bg-slate-50 text-foreground"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
                                                 Total Deductions
                                             </ColTh>
                                             <ColTh className="w-[5%] bg-slate-50 font-bold text-foreground">
@@ -575,17 +597,7 @@ export default function Show({ period, records, summary }: Props) {
                                         {records.map((rec, idx) => (
                                             <tr
                                                 key={rec.payroll_record_id}
-                                                className={[
-                                                    'transition-colors',
-                                                    idx % 2 !== 0
-                                                        ? 'bg-muted/20'
-                                                        : '',
-                                                    !rec.floor_check_passed
-                                                        ? 'bg-amber-50/60 dark:bg-amber-950/20'
-                                                        : '',
-                                                ]
-                                                    .filter(Boolean)
-                                                    .join(' ')}
+                                                className={`transition-colors ${idx % 2 !== 0 ? 'bg-muted/20' : ''}`}
                                             >
                                                 <Td
                                                     center
@@ -595,11 +607,6 @@ export default function Show({ period, records, summary }: Props) {
                                                 </Td>
                                                 <Td className="pl-2 font-semibold">
                                                     {rec.employee_name}
-                                                    {!rec.floor_check_passed && (
-                                                        <span className="ml-1 text-amber-500">
-                                                            ⚠
-                                                        </span>
-                                                    )}
                                                 </Td>
                                                 <Td className="pl-2 text-muted-foreground">
                                                     {rec.position}
@@ -736,7 +743,10 @@ export default function Show({ period, records, summary }: Props) {
                                                     right
                                                     className="text-red-800 dark:text-red-400"
                                                 >
-                                                    {n(rec.ama_y2k_union)}
+                                                    {n(
+                                                        rec.other_deductions_total ??
+                                                            0,
+                                                    )}
                                                 </Td>
                                                 <Td
                                                     right
@@ -754,11 +764,7 @@ export default function Show({ period, records, summary }: Props) {
                                                 </Td>
                                                 <Td
                                                     right
-                                                    className={`font-bold ${
-                                                        rec.floor_check_passed
-                                                            ? 'text-green-800 dark:text-green-400'
-                                                            : 'text-amber-700 dark:text-amber-400'
-                                                    }`}
+                                                    className="font-bold text-green-800 dark:text-green-400"
                                                 >
                                                     {n(rec.net_pay)}
                                                 </Td>
@@ -850,13 +856,8 @@ export default function Show({ period, records, summary }: Props) {
                                             </TotTd>
                                             <TotTd className="text-red-800 dark:text-red-400">
                                                 {nf(
-                                                    summary.total_internal_org_second ??
+                                                    summary.total_other_deductions ??
                                                         0,
-                                                )}
-                                            </TotTd>
-                                            <TotTd className="text-red-800 dark:text-red-400">
-                                                {nf(
-                                                    summary.total_ama_y2k_union,
                                                 )}
                                             </TotTd>
                                             <TotTd className="text-red-800 dark:text-red-400">
@@ -909,10 +910,15 @@ export default function Show({ period, records, summary }: Props) {
                                 },
                             ].map(({ role, sub, name }) => (
                                 <div key={role} className="flex-1 text-center">
-                                    <p className="mb-0.5 text-[11px] font-semibold tracking-wide uppercase min-h-[1rem]">
+                                    <p className="mb-0.5 min-h-[1rem] text-[11px] font-semibold tracking-wide uppercase">
                                         {name || ''}
                                     </p>
-                                    <div className="mx-auto mb-1 w-3/4" style={{ borderTop: '1.5px solid #000' }} />
+                                    <div
+                                        className="mx-auto mb-1 w-3/4"
+                                        style={{
+                                            borderTop: '1.5px solid #000',
+                                        }}
+                                    />
                                     <p className="mt-0.5 text-[10px] text-muted-foreground">
                                         {role}: {sub}
                                     </p>

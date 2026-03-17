@@ -58,7 +58,12 @@ class PayrollRegisterController extends Controller
             'description' => "Viewed Payroll Register for Period #{$period->payroll_period_id}",
         ]);
 
-        $records = PayrollRecord::with(['employee.basicInfo', 'employee.item.position', 'employee.salaryGradeStep'])
+        $records = PayrollRecord::with([
+            'employee.basicInfo',
+            'employee.item.position',
+            'employee.salaryGradeStep',
+            'deductionItems',
+        ])
             ->where('payroll_period_id', $period->payroll_period_id)
             ->get()
             ->map(fn (PayrollRecord $r) => [
@@ -76,6 +81,7 @@ class PayrollRegisterController extends Controller
                 'pera' => (float) ($r->pera ?? 0),
                 'rice_allowance' => (float) ($r->rice_allowance ?? 0),
                 'uniform_allowance' => (float) ($r->uniform_allowance ?? 0),
+                'overtime_pay' => (float) ($r->overtime_pay ?? 0),
                 'gross_pay' => $r->gross_pay,
 
                 // Mandatory deductions
@@ -85,22 +91,54 @@ class PayrollRegisterController extends Controller
                 'withholding_tax' => (float) ($r->withholding_tax ?? 0),
 
                 // Attendance deductions
-                'absent_days' => (int) ($r->absent_days ?? 0),
+                'absent_days' => (float) ($r->absent_days ?? 0),
                 'absent_deduction' => (float) ($r->absent_deduction ?? 0),
+                'half_days' => (int) ($r->half_days ?? 0),
+                'half_day_deduction' => (float) ($r->half_day_deduction ?? 0),
                 'late_minutes' => (int) ($r->late_minutes ?? 0),
                 'late_deduction' => (float) ($r->late_deduction ?? 0),
+                'undertime_minutes' => (int) ($r->undertime_minutes ?? 0),
+                'undertime_deduction' => (float) ($r->undertime_deduction ?? 0),
+                'personal_slip_minutes' => (int) ($r->personal_slip_minutes ?? 0),
+                'personal_slip_deduction' => (float) ($r->personal_slip_deduction ?? 0),
+                'official_slip_minutes' => (int) ($r->official_slip_minutes ?? 0),
 
-                // Other deductions
+                // Work metrics
+                'total_work_days' => (float) ($r->total_work_days ?? 0),
+                'total_hours_worked' => (float) ($r->total_hours_worked ?? 0),
+
+                // Gov't loan deductions
                 'gsis_mpl' => (float) ($r->gsis_mpl ?? 0),
                 'gsis_emergency' => (float) ($r->gsis_emergency ?? 0),
                 'pag_ibig_mpl' => (float) ($r->pag_ibig_mpl ?? 0),
-                'ama_y2k_union' => (float) ($r->ama_y2k_union ?? 0),
-                'water_bill' => (float) ($r->water_bill ?? 0),
-                'total_deductions' => $r->total_deductions,
 
-                // Summary
+                // Internal org deductions
+                'internal_org_savings' => (float) ($r->internal_org_savings ?? 0),
+                'internal_org_second' => (float) ($r->internal_org_second ?? 0),
+
+                // Other / misc deductions (renamed from ama_y2k_union)
+                'other_deductions_total' => (float) ($r->other_deductions_total ?? 0),
+                'water_bill' => (float) ($r->water_bill ?? 0),
+
+                // Itemized ledger — enables per-line drill-down in the register view
+                'deduction_items' => $r->deductionItems->map(fn ($item) => [
+                    'id' => $item->id,
+                    'category' => $item->category,
+                    'source_type' => $item->source_type,
+                    'label' => $item->label,
+                    'org_name' => $item->org_name,
+                    'amount' => (float) $item->amount,
+                    'effective_amount' => (float) $item->effective_amount,
+                    'was_cut' => (bool) $item->was_cut,
+                    'cut_amount' => (float) $item->cut_amount,
+                    'waived' => (bool) $item->waived,
+                ])->values(),
+
+                // Totals
+                'total_deductions' => $r->total_deductions,
                 'net_pay' => (float) ($r->net_pay ?? 0),
                 'floor_check_passed' => (bool) ($r->floor_check_passed ?? true),
+                'floor_cut_amount' => (float) ($r->floor_cut_amount ?? 0),
                 'status' => $r->status,
                 'hr_officer_name' => $r->hr_officer_name ?? '—',
             ])
@@ -119,11 +157,15 @@ class PayrollRegisterController extends Controller
             'total_pag_ibig' => $records->sum('pag_ibig'),
             'total_withholding_tax' => $records->sum('withholding_tax'),
             'total_absent_deduction' => $records->sum('absent_deduction'),
+            'total_half_day_deduction' => $records->sum('half_day_deduction'),
             'total_late_deduction' => $records->sum('late_deduction'),
+            'total_undertime_deduction' => $records->sum('undertime_deduction'),
+            'total_personal_slip_deduction' => $records->sum('personal_slip_deduction'),
             'total_gsis_mpl' => $records->sum('gsis_mpl'),
             'total_gsis_emergency' => $records->sum('gsis_emergency'),
             'total_pag_ibig_mpl' => $records->sum('pag_ibig_mpl'),
-            'total_ama_y2k_union' => $records->sum('ama_y2k_union'),
+            'total_internal_org_savings' => $records->sum('internal_org_savings'),
+            'total_other_deductions' => $records->sum('other_deductions_total'),
             'total_water_bill' => $records->sum('water_bill'),
             'total_deductions' => $records->sum('total_deductions'),
             'total_net_pay' => $records->sum('net_pay'),

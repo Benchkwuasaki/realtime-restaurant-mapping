@@ -4,22 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Models\Allowance;
 use App\Models\Employee;
+use App\Models\EmploymentClassification;
 use App\Models\GovernmentAccType;
 use App\Models\InternalOrganizationService;
 use App\Models\InternalOrgDeduction;
 use App\Models\Loan;
 use App\Models\OtherDeduction;
+use App\Models\PayrollDeductionItem;
 use App\Models\PayrollDeductionPriorityOrder;
 use App\Models\PayrollDeductionSetting;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollRecord;
 use App\Services\ActivityLogService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,7 +57,7 @@ class PayrollProcessingController extends Controller
                 'payroll_records_count' => $p->payroll_records_count,
             ]);
 
-        $employmentClassifications = \App\Models\EmploymentClassification::orderBy('name')->get(['id', 'name']);
+        $employmentClassifications = EmploymentClassification::orderBy('name')->get(['id', 'name']);
 
         $employees = Employee::with(['basicInfo', 'salaryGradeStep', 'item.position'])
             ->where('status', true)
@@ -83,6 +87,18 @@ class PayrollProcessingController extends Controller
                 'minimum_take_home_pay' => (float) $settings->minimum_take_home_pay,
                 'salary_threshold' => (float) $settings->salary_threshold,
             ],
+            // Passed to the frontend so WAIVABLE_DEDUCTIONS is DB-driven, not hardcoded.
+            // Excludes Never-cuttable entries (statutory contributions are always applied).
+            'deductionPriorityOrder' => PayrollDeductionPriorityOrder::ordered()
+                ->filter(fn ($row) => $row->cuttability !== PayrollDeductionPriorityOrder::CUT_NEVER)
+                ->map(fn ($row) => [
+                    'key' => $row->deduction_category,
+                    'label' => $row->label ?? $row->deduction_category,
+                    'group' => "Priority {$row->priority} — {$row->label}",
+                    'cuttability' => $row->cuttability,
+                    'priority' => $row->priority,
+                ])
+                ->values(),
         ]);
     }
 
@@ -90,7 +106,7 @@ class PayrollProcessingController extends Controller
      * Step 3 — Pure in-memory compute. NO database writes whatsoever.
      * Returns JSON consumed by axios on the frontend.
      */
-    public function processNew(Request $request): \Illuminate\Http\JsonResponse
+    public function processNew(Request $request): JsonResponse
     {
         try {
             $validated = $request->validate([
@@ -161,13 +177,15 @@ class PayrollProcessingController extends Controller
                         + $data['pag_ibig']
                         + $data['withholding_tax']
                         + $data['absent_deduction']
+                        + ($data['half_day_deduction'] ?? 0)
                         + $data['late_deduction']
                         + ($data['undertime_deduction'] ?? 0)
                         + ($data['personal_slip_deduction'] ?? 0)
+                        + ($data['internal_org_savings'] ?? 0)
                         + $data['gsis_mpl']
                         + $data['gsis_emergency']
                         + $data['pag_ibig_mpl']
-                        + $data['ama_y2k_union']
+                        + $data['other_deductions_total']
                         + $data['water_bill'];
 
                     $computedRecords[] = array_merge($data, [
@@ -193,7 +211,7 @@ class PayrollProcessingController extends Controller
                 'processingErrors' => $errors,
             ]);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             Log::warning('Validation error in processNew:', $e->errors());
 
             return response()->json([
@@ -278,7 +296,7 @@ class PayrollProcessingController extends Controller
      * Step 1 — Early duplicate check.
      * TODO: A single employee must not have more than one payroll record for the same payroll period and payroll classification.
      */
-    public function checkDuplicate(Request $request): \Illuminate\Http\JsonResponse
+    public function checkDuplicate(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'start_date' => 'required|date',
@@ -341,7 +359,7 @@ class PayrollProcessingController extends Controller
      *   official_slip_minutes  — SUM of authorised slip minutes (display only)
      *   total_overtime_hours   — always 0 (not stored; editable in Step 2)
      */
-    public function attendanceSummary(Request $request): \Illuminate\Http\JsonResponse
+    public function attendanceSummary(Request $request): JsonResponse
     {
         try {
             $validated = $request->validate([
@@ -580,7 +598,7 @@ class PayrollProcessingController extends Controller
 
             return response()->json($result);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             Log::warning('Attendance summary validation error:', $e->errors());
 
             return response()->json([
@@ -853,17 +871,20 @@ class PayrollProcessingController extends Controller
         $pagibigType = $accTypes->get('PAGIBIG');
 
         $gsisRate = $gsisType?->employeeDeductionValue() ?? 9.0;
-        $philhealthRate = $philhealthType?->employeeDeductionValue() ?? 2.5;
-        $pagIbigCap = $pagibigType?->employeeDeductionValue() ?? 100.0;
 
         $monthlyGsisPremium = round($monthlyBasic * ($gsisRate / 100), 2);
 
-        $monthlyPhilhealthCalc = round($monthlyBasic * ($philhealthRate / 100), 2);
-        $monthlyPhilhealth = max(250.0, min(2500.0, $monthlyPhilhealthCalc));
+        // Use GovernmentAccType bracket/tier methods — removes the hardcoded
+        // max(250, min(2500, ...)) and <= 1500 tier logic from the controller.
+        $monthlyPhilhealth = $philhealthType
+            ? $philhealthType->computePhilHealth($monthlyBasic)
+            : max(250.0, min(2500.0, round($monthlyBasic * 0.025, 2)));
 
-        $monthlyPagIbig = $monthlyBasic <= 1500
-            ? round($monthlyBasic * 0.01, 2)
-            : min($pagIbigCap, round($monthlyBasic * 0.02, 2));
+        $monthlyPagIbig = $pagibigType
+            ? $pagibigType->computePagIbig($monthlyBasic)
+            : ($monthlyBasic <= 1500
+                ? round($monthlyBasic * 0.01, 2)
+                : min(100.0, round($monthlyBasic * 0.02, 2)));
 
         $monthlyWithholdingTax = $this->computeWithholdingTax(
             monthlyBasic: $monthlyBasic,
@@ -890,8 +911,8 @@ class PayrollProcessingController extends Controller
             'service',
         ])
             ->where('employee_id', $employee->employee_id)
-            ->where('period_start', '<=', $period->end_date)
-            ->where('period_end', '>=', $period->start_date)
+            ->where('period_start', '<=', Carbon::parse($period->end_date)->toDateString())
+            ->where('period_end', '>=', Carbon::parse($period->start_date)->toDateString())
             ->get();
 
         foreach ($internalOrgDeductions as $deduction) {
@@ -946,25 +967,34 @@ class PayrollProcessingController extends Controller
             ->get();
 
         foreach ($loans as $loan) {
-            $sourceLower = strtolower($loan->source);
-            $typeLower = strtolower($loan->loan_type);
+            $amt = (float) $loan->semi_monthly_deduction;
 
-            // Use semi_monthly_deduction directly — it is already the per-cut-off amount.
-            if ($sourceLower === 'gsis') {
-                if (str_contains($typeLower, 'emergency')) {
-                    $gsisEmergency += (float) $loan->semi_monthly_deduction;
-                } else {
-                    $gsisMpl += (float) $loan->semi_monthly_deduction;
-                }
-            } elseif (in_array($sourceLower, ['pag-ibig', 'pagibig', 'hdmf'])) {
-                $pagIbigMpl += (float) $loan->semi_monthly_deduction;
+            // Use the typed classification column instead of str_contains on
+            // free-text source / loan_type fields.  Falls back to the legacy
+            // logic for rows not yet classified (loan_classification IS NULL).
+            $classification = $loan->loan_classification;
+
+            if ($classification === Loan::CLASS_GSIS_REGULAR
+                || (is_null($classification) && strtolower($loan->source) === 'gsis' && ! str_contains(strtolower($loan->loan_type), 'emergency'))
+            ) {
+                $gsisMpl += $amt;
+
+            } elseif ($classification === Loan::CLASS_GSIS_EMERGENCY
+                || (is_null($classification) && strtolower($loan->source) === 'gsis' && str_contains(strtolower($loan->loan_type), 'emergency'))
+            ) {
+                $gsisEmergency += $amt;
+
+            } elseif ($classification === Loan::CLASS_PAGIBIG
+                || (is_null($classification) && in_array(strtolower($loan->source), ['pag-ibig', 'pagibig', 'hdmf']))
+            ) {
+                $pagIbigMpl += $amt;
+
             } elseif ($loan->isInternalOrg()) {
-                $amt = (float) $loan->semi_monthly_deduction;
                 $amaY2kUnion += $amt;
                 $internalOrgLoanTotal += $amt;
                 $otherDeductionItems[] = [
                     'id' => $loan->id,
-                    'category' => 'internal_org_loan',
+                    'category' => PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_LOAN,
                     'description' => $loan->loan_type.' — '.$loan->source,
                     'amount' => $amt,
                     'type' => 'other',
@@ -973,8 +1003,8 @@ class PayrollProcessingController extends Controller
         }
 
         $otherDeductions = OtherDeduction::where('employee_id', $employee->employee_id)
-            ->where('period_start', '<=', $period->end_date)
-            ->where('period_end', '>=', $period->start_date)
+            ->where('period_start', '<=', Carbon::parse($period->end_date)->toDateString())
+            ->where('period_end', '>=', Carbon::parse($period->start_date)->toDateString())
             ->get();
 
         foreach ($otherDeductions as $deduction) {
@@ -1015,238 +1045,16 @@ class PayrollProcessingController extends Controller
         // (they are attendance penalties, not optional deductions).
         // Statutory contributions (government_contribution) are Never cuttable.
 
-        $priorityRows = PayrollDeductionPriorityOrder::ordered();
+        // ── 7. Floor check — flag only, never cut ─────────────────────────────
+        //
+        // All deductions are applied in full regardless of net pay.
+        // If net pay falls below the minimum take-home threshold, the record is
+        // flagged (floor_check_passed = false) and surfaced in Step 4.
+        // Step 4 is where HR decides which deductions to waive based on the
+        // configured priority order. No automatic cutting happens here.
+
         $floor = (float) $settings->minimum_take_home_pay;
 
-        if ($priorityRows->isEmpty()) {
-            $rawNetPay = $gross - $absentDeduction - $lateDeduction
-                - $gsisPremium - $philhealth - $pagIbig - $withholdingTax
-                - $gsisMpl - $gsisEmergency - $pagIbigMpl
-                - $internalOrgSavings
-                - $amaY2kUnion - $waterBill;
-            $floorCheckPassed = $rawNetPay >= $floor;
-
-            $totalDeductions = $gsisPremium + $philhealth + $pagIbig + $withholdingTax
-                + $absentDeduction + $lateDeduction + $undertimeDeduction
-                + $personalSlipDeduction
-                + $internalOrgSavings
-                + $gsisMpl + $gsisEmergency + $pagIbigMpl
-                + $amaY2kUnion + $waterBill;
-
-            $netPay = round($gross - $totalDeductions, 2);
-            $floorCutAmount = 0.0;
-
-            return [
-                'basic_pay' => $basicPay,
-                'pera' => $pera,
-                'rice_allowance' => $riceAllowance,
-                'uniform_allowance' => $uniformAllowance,
-                'overtime_pay' => round($overtimePay, 2),
-                'gross_pay' => round($gross, 2),
-                'gsis_premium' => $gsisPremium,
-                'philhealth' => $philhealth,
-                'pag_ibig' => $pagIbig,
-                'withholding_tax' => $withholdingTax,
-                'absent_days' => $absentDays,
-                'absent_deduction' => $absentDeduction,
-                'half_days' => $halfDays,
-                'half_day_deduction' => $halfDayDeduction,
-                'late_minutes' => $lateMinutes,
-                'late_deduction' => $lateDeduction,
-                'undertime_minutes' => $undertimeMinutes,
-                'undertime_deduction' => $undertimeDeduction,
-                // ── Slip deductions ────────────────────────────────────────
-                'personal_slip_minutes' => $personalSlipMinutes,
-                'personal_slip_deduction' => $personalSlipDeduction,
-                'official_slip_minutes' => $officialSlipMinutes,  // display only — no deduction
-                // ── Work metrics ───────────────────────────────────────────
-                'total_work_days' => $totalWorkDays,
-                'total_hours_worked' => round($totalHoursWorked, 2),
-                'total_work_hours' => round($totalHoursWorked, 2),
-                'total_overtime_hours' => round($overtimeHours, 4),
-                'gsis_mpl' => round($gsisMpl, 2),
-                'gsis_emergency' => round($gsisEmergency, 2),
-                'pag_ibig_mpl' => round($pagIbigMpl, 2),
-                'ama_y2k_union' => round($amaY2kUnion, 2),
-                'water_bill' => round($waterBill, 2),
-                'internal_org_deductions' => round($internalOrgSavings + $internalOrgSecond + $internalOrgLoanTotal, 2),
-                'internal_org_savings' => round($internalOrgSavings, 2),
-                'internal_org_second' => round($internalOrgSecond, 2),
-                'internal_org_loans' => round($internalOrgLoanTotal, 2),
-                'other_deductions' => round(
-                    collect($otherDeductionItems)
-                        ->where('type', 'other')
-                        ->where('category', '!=', 'internal_org_loan')
-                        ->sum('amount'),
-                    2
-                ),
-                'internal_org_items' => $internalOrgItems,
-                'other_deduction_items' => $otherDeductionItems,
-                'net_pay' => $netPay,
-                'floor_check_passed' => $floorCheckPassed,
-                'floor_cut_amount' => $floorCutAmount,
-                'status' => 'draft',
-                'hr_officer_name' => $hrOfficerName,
-            ];
-        }
-
-        // Running balance starts from gross minus fixed attendance penalties
-        // and statutory contributions (Never cuttable — always deducted first).
-        // Undertime is treated the same as late: an attendance penalty always
-        // applied before the floor rule bucket pass.
-        // Personal slip deduction is also a fixed attendance penalty — always applied.
-        $runningBalance = $gross
-            - $absentDeduction
-            - $lateDeduction
-            - $undertimeDeduction
-            - $personalSlipDeduction
-            - $gsisPremium
-            - $philhealth
-            - $pagIbig
-            - $withholdingTax;
-
-        // Buckets — keyed by deduction_category, each holds [amount, cuttability]
-        // Government contributions are already deducted above (Never), so they
-        // are excluded from the loop.
-        $buckets = [];
-        foreach ($priorityRows as $row) {
-            $cat = $row->deduction_category;
-
-            if ($cat === PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_CONTRIBUTION) {
-                // Already applied above — skip.
-                continue;
-            }
-
-            $amount = match ($cat) {
-                PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_LOAN => $gsisMpl + $gsisEmergency + $pagIbigMpl,
-
-                PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_SAVINGS => $internalOrgSavings,
-
-                // Internal org loans live in ama_y2k_union; org dues are the
-                // $internalOrgSecond portion.  We separate them here so each
-                // category can have its own cuttability and priority.
-                PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_LOAN => $internalOrgLoanTotal,
-
-                PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_DUES => $internalOrgSecond,
-
-                PayrollDeductionPriorityOrder::CATEGORY_WATER_BILL => $waterBill,
-
-                PayrollDeductionPriorityOrder::CATEGORY_OTHER_MISCELLANEOUS => collect($otherDeductionItems)
-                    ->where('type', 'other')
-                    ->where('category', '!=', 'internal_org_loan')
-                    ->sum('amount'),
-
-                default => 0.0,
-            };
-
-            if ($amount <= 0) {
-                continue;
-            }
-
-            $buckets[] = [
-                'category' => $cat,
-                'amount' => $amount,
-                'cuttability' => $row->cuttability,
-                'effective' => $amount, // may be zeroed below
-            ];
-        }
-
-        // Separate into normal-priority and first-to-cut groups.
-        // First_to_Cut buckets are attempted last even if their DB priority
-        // would place them earlier — this is the defining behaviour.
-        $normalBuckets = array_filter($buckets, fn ($b) => $b['cuttability'] !== PayrollDeductionPriorityOrder::CUT_FIRST_TO_CUT);
-        $firstCutBuckets = array_filter($buckets, fn ($b) => $b['cuttability'] === PayrollDeductionPriorityOrder::CUT_FIRST_TO_CUT);
-
-        $floorCheckPassed = true;
-
-        $applyBucket = function (array &$bucket) use (&$runningBalance, $floor, &$floorCheckPassed): void {
-            $cut = $bucket['cuttability'];
-            $amt = $bucket['amount'];
-
-            if ($cut === PayrollDeductionPriorityOrder::CUT_NEVER) {
-                // Always apply — never zeroed.
-                $runningBalance -= $amt;
-                $bucket['effective'] = $amt;
-
-                return;
-            }
-
-            if ($cut === PayrollDeductionPriorityOrder::CUT_RARELY) {
-                // Only zero if the balance is already below floor without it.
-                if ($runningBalance < $floor) {
-                    $bucket['effective'] = 0.0;
-                    $floorCheckPassed = false;
-                } else {
-                    $runningBalance -= $amt;
-                    $bucket['effective'] = ($runningBalance >= $floor) ? $amt : (function () use (&$runningBalance, $floor): float {
-                        // Partial cut: apply only what keeps us at floor.
-                        $canApply = max(0.0, $runningBalance - $floor);
-                        $runningBalance -= $canApply;
-                        $floorCheckPassed = false;
-
-                        return $canApply;
-                    })();
-                }
-
-                return;
-            }
-
-            // Yes or First_to_Cut — zero if it would breach the floor.
-            if (($runningBalance - $amt) >= $floor) {
-                $runningBalance -= $amt;
-                $bucket['effective'] = $amt;
-            } else {
-                // Apply only what the remaining headroom allows.
-                $canApply = max(0.0, $runningBalance - $floor);
-                $bucket['effective'] = $canApply;
-                $runningBalance -= $canApply;
-                $floorCheckPassed = false;
-            }
-        };
-
-        foreach ($normalBuckets as &$bucket) {
-            $applyBucket($bucket);
-        }
-        unset($bucket);
-
-        foreach ($firstCutBuckets as &$bucket) {
-            $applyBucket($bucket);
-        }
-        unset($bucket);
-
-        // Merge effective amounts back into the named variables so the return
-        // array and downstream code stay unchanged.
-        $allBuckets = array_merge(array_values($normalBuckets), array_values($firstCutBuckets));
-
-        $effectiveByCategory = [];
-        foreach ($allBuckets as $b) {
-            $effectiveByCategory[$b['category']] = ($effectiveByCategory[$b['category']] ?? 0.0) + $b['effective'];
-        }
-
-        $govLoanEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_LOAN] ?? ($gsisMpl + $gsisEmergency + $pagIbigMpl);
-        $orgSavingsEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_SAVINGS] ?? $internalOrgSavings;
-        $orgLoanEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_LOAN] ?? $internalOrgLoanTotal;
-        $orgDuesEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_DUES] ?? $internalOrgSecond;
-        $waterBillEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_WATER_BILL] ?? $waterBill;
-        $otherMiscEffective = $effectiveByCategory[PayrollDeductionPriorityOrder::CATEGORY_OTHER_MISCELLANEOUS] ?? 0.0;
-
-        // Redistribute gov loan effective amount back to individual loan buckets
-        // proportionally (preserves per-loan column values in the return array).
-        $rawGovLoan = $gsisMpl + $gsisEmergency + $pagIbigMpl;
-        $govLoanRatio = $rawGovLoan > 0 ? $govLoanEffective / $rawGovLoan : 1.0;
-        $gsisMpl = round($gsisMpl * $govLoanRatio, 2);
-        $gsisEmergency = round($gsisEmergency * $govLoanRatio, 2);
-        $pagIbigMpl = round($pagIbigMpl * $govLoanRatio, 2);
-
-        $internalOrgSavings = round($orgSavingsEffective, 2);
-
-        // amaY2kUnion is rebuilt entirely from effective values — do NOT add
-        // $internalOrgSecond again here, it was already included in the raw
-        // $amaY2kUnion but the effective value comes from the bucket result.
-        $amaY2kUnion = round($orgLoanEffective + $orgDuesEffective + $otherMiscEffective, 2);
-        $waterBill = round($waterBillEffective, 2);
-
-        // ── 8. Net Pay ────────────────────────────────────────────────────────
         $totalDeductions = $gsisPremium + $philhealth + $pagIbig + $withholdingTax
             + $absentDeduction + $lateDeduction + $undertimeDeduction
             + $personalSlipDeduction
@@ -1256,13 +1064,8 @@ class PayrollProcessingController extends Controller
             + $waterBill;
 
         $netPay = round($gross - $totalDeductions, 2);
-
-        // Total amount cut by the floor rule = sum of (raw - effective) for each bucket
+        $floorCheckPassed = $netPay >= $floor;
         $floorCutAmount = 0.0;
-        foreach ($allBuckets as $b) {
-            $floorCutAmount += max(0.0, $b['amount'] - $b['effective']);
-        }
-        $floorCutAmount = round($floorCutAmount, 2);
 
         return [
             'basic_pay' => $basicPay,
@@ -1295,13 +1098,19 @@ class PayrollProcessingController extends Controller
             'gsis_mpl' => round($gsisMpl, 2),
             'gsis_emergency' => round($gsisEmergency, 2),
             'pag_ibig_mpl' => round($pagIbigMpl, 2),
-            'ama_y2k_union' => round($amaY2kUnion, 2),
+            'other_deductions_total' => round($amaY2kUnion, 2),
             'water_bill' => round($waterBill, 2),
-            'internal_org_deductions' => round($orgSavingsEffective + $orgDuesEffective + $orgLoanEffective, 2),
-            'internal_org_savings' => round($orgSavingsEffective, 2),
-            'internal_org_second' => round($orgDuesEffective, 2),
-            'internal_org_loans' => round($orgLoanEffective, 2),
-            'other_deductions' => round($otherMiscEffective, 2),
+            'internal_org_deductions' => round($internalOrgSavings + $internalOrgSecond + $internalOrgLoanTotal, 2),
+            'internal_org_savings' => round($internalOrgSavings, 2),
+            'internal_org_second' => round($internalOrgSecond, 2),
+            'internal_org_loans' => round($internalOrgLoanTotal, 2),
+            'other_deductions' => round(
+                collect($otherDeductionItems)
+                    ->where('type', 'other')
+                    ->where('category', '!=', 'internal_org_loan')
+                    ->sum('amount'),
+                2
+            ),
             'internal_org_items' => $internalOrgItems,
             'other_deduction_items' => $otherDeductionItems,
             'net_pay' => $netPay,
@@ -1330,19 +1139,31 @@ class PayrollProcessingController extends Controller
         $taxableAllowancesMonthly = 0.0;
 
         foreach ($employee->allowances as $ea) {
-            $nameLower = strtolower($ea->allowance_name);
             $semiAmount = round((float) $ea->allowance_amount / 2, 2);
 
-            // ── Identify the allowance type by name keyword ───────────────────
-            if (str_contains($nameLower, 'pera')) {
+            // Use the typed allowance_type column instead of keyword-matching
+            // on the allowance_name string. Falls back to name matching for any
+            // employee_allowances rows not yet back-filled with a type.
+            $type = $ea->allowance_type ?? null;
+
+            if ($type === Allowance::TYPE_PERA
+                || (is_null($type) && str_contains(strtolower($ea->allowance_name), 'pera'))
+            ) {
                 $pera = $semiAmount;
-            } elseif (str_contains($nameLower, 'rice')) {
+            } elseif ($type === Allowance::TYPE_RICE_SUBSIDY
+                || (is_null($type) && str_contains(strtolower($ea->allowance_name), 'rice'))
+            ) {
                 $riceAllowance = $semiAmount;
-            } elseif (str_contains($nameLower, 'uniform') || str_contains($nameLower, 'clothing')) {
+            } elseif ($type === Allowance::TYPE_UNIFORM_CLOTHING
+                || (is_null($type) && (
+                    str_contains(strtolower($ea->allowance_name), 'uniform')
+                    || str_contains(strtolower($ea->allowance_name), 'clothing')
+                ))
+            ) {
                 $uniformAllowance = $semiAmount;
             }
 
-            // ── Accumulate taxable allowances for withholding tax ─────────────
+            // Accumulate taxable allowances for withholding tax
             if ($ea->taxable) {
                 $taxableAllowancesMonthly += (float) $ea->allowance_amount;
             }
@@ -1412,6 +1233,7 @@ class PayrollProcessingController extends Controller
                 $adjusted[] = $amount;
                 $runningBalance -= $amount;
             } else {
+                // All-or-nothing: zero the entire deduction, never partially apply.
                 $adjusted[] = 0.0;
                 $totalCut += $amount;
                 $allPassed = false;
@@ -1448,25 +1270,30 @@ class PayrollProcessingController extends Controller
             ->where('end_period', '>=', $periodYearMonth)
             ->get()
             ->each(function (Loan $loan) use ($waived) {
+                $classification = $loan->loan_classification;
                 $sourceLower = strtolower($loan->source);
                 $typeLower = strtolower($loan->loan_type);
 
-                if ($sourceLower === 'gsis') {
-                    if (str_contains($typeLower, 'emergency') && in_array('gsis_emergency', $waived)) {
-                        return;
-                    }
-                    if (! str_contains($typeLower, 'emergency') && in_array('gsis_mpl', $waived)) {
-                        return;
-                    }
-                } elseif (in_array($sourceLower, ['pag-ibig', 'pagibig', 'hdmf'])) {
-                    if (in_array('pag_ibig_mpl', $waived)) {
-                        return;
-                    }
-                } elseif ($loan->isInternalOrg()) {
-                    // Internal org loans are grouped under ama_y2k_union for waiver purposes
-                    if (in_array('ama_y2k_union', $waived)) {
-                        return;
-                    }
+                $isGsisRegular = $classification === Loan::CLASS_GSIS_REGULAR
+                    || (is_null($classification) && $sourceLower === 'gsis' && ! str_contains($typeLower, 'emergency'));
+
+                $isGsisEmergency = $classification === Loan::CLASS_GSIS_EMERGENCY
+                    || (is_null($classification) && $sourceLower === 'gsis' && str_contains($typeLower, 'emergency'));
+
+                $isPagIbig = $classification === Loan::CLASS_PAGIBIG
+                    || (is_null($classification) && in_array($sourceLower, ['pag-ibig', 'pagibig', 'hdmf']));
+
+                if ($isGsisRegular && in_array('gsis_mpl', $waived)) {
+                    return;
+                }
+                if ($isGsisEmergency && in_array('gsis_emergency', $waived)) {
+                    return;
+                }
+                if ($isPagIbig && in_array('pag_ibig_mpl', $waived)) {
+                    return;
+                }
+                if ($loan->isInternalOrg() && in_array('other_deductions_total', $waived)) {
+                    return;
                 }
 
                 $loan->applyDeduction();
@@ -1478,7 +1305,7 @@ class PayrollProcessingController extends Controller
      */
     private function carryForwardWaivedDeductions(int $employeeId, PayrollPeriod $period, array $waived, array $waivedItemIds = []): void
     {
-        $orgGroupWaived = in_array('ama_y2k_union', $waived);
+        $orgGroupWaived = in_array('other_deductions_total', $waived);
         $waterGroupWaived = in_array('water_bill', $waived);
 
         if (! $orgGroupWaived && ! $waterGroupWaived && empty($waivedItemIds)) {
@@ -1489,8 +1316,8 @@ class PayrollProcessingController extends Controller
 
         if ($orgGroupWaived || $waterGroupWaived || ! empty($waivedItemIds)) {
             OtherDeduction::where('employee_id', $employeeId)
-                ->where('period_start', '<=', $period->end_date)
-                ->where('period_end', '>=', $period->start_date)
+                ->where('period_start', '<=', Carbon::parse($period->end_date)->toDateString())
+                ->where('period_end', '>=', Carbon::parse($period->start_date)->toDateString())
                 ->get()
                 ->each(function (OtherDeduction $deduction) use ($orgGroupWaived, $waterGroupWaived, $waivedItemIds, $nextEnd) {
                     $shouldCarry = false;
@@ -1511,14 +1338,14 @@ class PayrollProcessingController extends Controller
 
         if ($orgGroupWaived) {
             InternalOrgDeduction::where('employee_id', $employeeId)
-                ->where('period_start', '<=', $period->end_date)
-                ->where('period_end', '>=', $period->start_date)
+                ->where('period_start', '<=', Carbon::parse($period->end_date)->toDateString())
+                ->where('period_end', '>=', Carbon::parse($period->start_date)->toDateString())
                 ->each(fn (InternalOrgDeduction $d) => $d->update(['period_end' => $nextEnd]));
         } elseif (! empty($waivedItemIds)) {
             InternalOrgDeduction::whereIn('id', $waivedItemIds)
                 ->where('employee_id', $employeeId)
-                ->where('period_start', '<=', $period->end_date)
-                ->where('period_end', '>=', $period->start_date)
+                ->where('period_start', '<=', Carbon::parse($period->end_date)->toDateString())
+                ->where('period_end', '>=', Carbon::parse($period->start_date)->toDateString())
                 ->each(fn (InternalOrgDeduction $d) => $d->update(['period_end' => $nextEnd]));
         }
     }
@@ -1526,7 +1353,7 @@ class PayrollProcessingController extends Controller
     /**
      * Step 5 — Finalize payroll with HR floor-check adjustments.
      */
-    public function finalizePayroll(Request $request): \Illuminate\Http\JsonResponse
+    public function finalizePayroll(Request $request): JsonResponse
     {
         try {
             Log::info('Finalize payroll request received', [
@@ -1573,10 +1400,14 @@ class PayrollProcessingController extends Controller
                 'records.*.gsis_mpl' => 'required|numeric',
                 'records.*.gsis_emergency' => 'required|numeric',
                 'records.*.pag_ibig_mpl' => 'required|numeric',
-                'records.*.ama_y2k_union' => 'required|numeric',
+                'records.*.other_deductions_total' => 'required|numeric',
                 'records.*.water_bill' => 'required|numeric',
+                'records.*.internal_org_savings' => 'nullable|numeric|min:0',
+                'records.*.internal_org_second' => 'nullable|numeric|min:0',
+                'records.*.internal_org_items' => 'nullable|array',
+                'records.*.other_deduction_items' => 'nullable|array',
                 'records.*.waived' => 'nullable|array',
-                'records.*.waived.*' => 'string|in:gsis_mpl,gsis_emergency,pag_ibig_mpl,ama_y2k_union,water_bill',
+                'records.*.waived.*' => 'string|in:gsis_mpl,gsis_emergency,pag_ibig_mpl,internal_org_savings,other_deductions_total,water_bill',
                 'records.*.waived_item_ids' => 'nullable|array',
                 'records.*.waived_item_ids.*' => 'integer|min:1',
             ]);
@@ -1633,7 +1464,7 @@ class PayrollProcessingController extends Controller
                         $gsisEmergency = in_array('gsis_emergency', $waived) ? 0.0 : (float) $rec['gsis_emergency'];
                         $pagIbigMpl = in_array('pag_ibig_mpl', $waived) ? 0.0 : (float) $rec['pag_ibig_mpl'];
 
-                        if (in_array('ama_y2k_union', $waived)) {
+                        if (in_array('other_deductions_total', $waived)) {
                             $amaY2kUnion = 0.0;
                         } elseif (! empty($waivedItemIds)) {
                             $waivedInternalAmt = InternalOrgDeduction::whereIn('id', $waivedItemIds)
@@ -1643,9 +1474,9 @@ class PayrollProcessingController extends Controller
                                 ->where('employee_id', $rec['employee_id'])
                                 ->whereIn('category', [OtherDeduction::CATEGORY_NS_ND, OtherDeduction::CATEGORY_MISCELLANEOUS])
                                 ->sum('amount');
-                            $amaY2kUnion = max(0.0, (float) $rec['ama_y2k_union'] - (float) $waivedInternalAmt - (float) $waivedNsMiscAmt);
+                            $amaY2kUnion = max(0.0, (float) $rec['other_deductions_total'] - (float) $waivedInternalAmt - (float) $waivedNsMiscAmt);
                         } else {
-                            $amaY2kUnion = (float) $rec['ama_y2k_union'];
+                            $amaY2kUnion = (float) $rec['other_deductions_total'];
                         }
 
                         if (in_array('water_bill', $waived)) {
@@ -1675,9 +1506,11 @@ class PayrollProcessingController extends Controller
                             + (float) $rec['pag_ibig']
                             + (float) $rec['withholding_tax']
                             + (float) $rec['absent_deduction']
+                            + (float) ($rec['half_day_deduction'] ?? 0)
                             + (float) $rec['late_deduction']
                             + (float) ($rec['undertime_deduction'] ?? 0)
                             + $personalSlipDeduction
+                            + (float) ($rec['internal_org_savings'] ?? 0)
                             + $gsisMpl + $gsisEmergency + $pagIbigMpl
                             + $amaY2kUnion + $waterBill;
 
@@ -1701,32 +1534,134 @@ class PayrollProcessingController extends Controller
                                 'withholding_tax' => $rec['withholding_tax'],
                                 'absent_days' => $rec['absent_days'],
                                 'absent_deduction' => $rec['absent_deduction'],
+                                'half_days' => (int) ($rec['half_days'] ?? 0),
+                                'half_day_deduction' => (float) ($rec['half_day_deduction'] ?? 0),
                                 'late_minutes' => $rec['late_minutes'],
                                 'late_deduction' => $rec['late_deduction'],
                                 'undertime_minutes' => (int) ($rec['undertime_minutes'] ?? 0),
                                 'undertime_deduction' => (float) ($rec['undertime_deduction'] ?? 0),
-                                // ── Slip deductions ────────────────────────────────────
-                                // Requires migration: add personal_slip_minutes (INT),
-                                // personal_slip_deduction (DECIMAL 12,2), and
-                                // official_slip_minutes (INT) to payroll_records table.
                                 'personal_slip_minutes' => (int) ($rec['personal_slip_minutes'] ?? 0),
                                 'personal_slip_deduction' => $personalSlipDeduction,
                                 'official_slip_minutes' => (int) ($rec['official_slip_minutes'] ?? 0),
-                                // ── Work metrics ───────────────────────────────────────
-                                'total_work_days' => (int) ($rec['total_work_days'] ?? 0),
+                                'total_work_days' => (float) ($rec['total_work_days'] ?? 0),
                                 'total_hours_worked' => (float) ($rec['total_work_hours'] ?? $rec['total_hours_worked'] ?? 0),
                                 'total_overtime_hours' => (float) ($rec['total_overtime_hours'] ?? 0),
                                 'gsis_mpl' => $gsisMpl,
                                 'gsis_emergency' => $gsisEmergency,
                                 'pag_ibig_mpl' => $pagIbigMpl,
-                                'ama_y2k_union' => $amaY2kUnion,
+                                'internal_org_savings' => (float) ($rec['internal_org_savings'] ?? 0),
+                                'internal_org_second' => (float) ($rec['internal_org_second'] ?? 0),
+                                'other_deductions_total' => $amaY2kUnion,
                                 'water_bill' => $waterBill,
                                 'net_pay' => $netPay,
                                 'floor_check_passed' => $floorCheckPassed,
+                                'floor_cut_amount' => 0.0, // waiver-adjusted; no floor algo re-run here
                                 'hr_officer_name' => $validated['hr_officer_name'] ?? null,
                                 'status' => 'draft',
                             ]
                         );
+
+                        // ── Write itemized deduction ledger ────────────────────────
+                        // Fetch the just-upserted record to get its PK.
+                        $payrollRecord = PayrollRecord::where('employee_id', $rec['employee_id'])
+                            ->where('payroll_period_id', $period->payroll_period_id)
+                            ->first();
+
+                        if ($payrollRecord) {
+                            // Clear any previous items (idempotent on re-finalize)
+                            $payrollRecord->deductionItems()->delete();
+
+                            $waivedSet = collect($waived);
+                            $waivedItemSet = collect($waivedItemIds);
+
+                            // Government loans
+                            if ($gsisMpl > 0 || in_array('gsis_mpl', $waived)) {
+                                $payrollRecord->deductionItems()->create(
+                                    PayrollDeductionItem::fromGovernmentLoan(
+                                        $payrollRecord->payroll_record_id,
+                                        PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_LOAN,
+                                        'GSIS MPL',
+                                        (float) $rec['gsis_mpl'],
+                                        $gsisMpl,
+                                        in_array('gsis_mpl', $waived),
+                                    )
+                                );
+                            }
+                            if ($gsisEmergency > 0 || in_array('gsis_emergency', $waived)) {
+                                $payrollRecord->deductionItems()->create(
+                                    PayrollDeductionItem::fromGovernmentLoan(
+                                        $payrollRecord->payroll_record_id,
+                                        PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_LOAN,
+                                        'GSIS Emergency Loan',
+                                        (float) $rec['gsis_emergency'],
+                                        $gsisEmergency,
+                                        in_array('gsis_emergency', $waived),
+                                    )
+                                );
+                            }
+                            if ($pagIbigMpl > 0 || in_array('pag_ibig_mpl', $waived)) {
+                                $payrollRecord->deductionItems()->create(
+                                    PayrollDeductionItem::fromGovernmentLoan(
+                                        $payrollRecord->payroll_record_id,
+                                        PayrollDeductionPriorityOrder::CATEGORY_GOVERNMENT_LOAN,
+                                        'Pag-IBIG MPL',
+                                        (float) $rec['pag_ibig_mpl'],
+                                        $pagIbigMpl,
+                                        in_array('pag_ibig_mpl', $waived),
+                                    )
+                                );
+                            }
+
+                            // Internal org deduction items (savings, dues)
+                            foreach ($rec['internal_org_items'] ?? [] as $item) {
+                                $itemKey = 'org:'.$item['id'];
+                                $itemWaived = $waivedSet->contains('other_deductions_total')
+                                    || $waivedItemSet->contains((int) $item['id']);
+                                $payrollRecord->deductionItems()->create(
+                                    PayrollDeductionItem::fromOrgItem(
+                                        $payrollRecord->payroll_record_id,
+                                        $item['category'] === InternalOrganizationService::CATEGORY_SAVINGS
+                                        || $item['category'] === InternalOrganizationService::CATEGORY_SHARE_CAPITAL
+                                            ? PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_SAVINGS
+                                            : PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_DUES,
+                                        'internal_org_deduction',
+                                        (int) $item['id'],
+                                        $item['service'] ?? $item['org_name'] ?? '—',
+                                        $item['org_name'] ?? '—',
+                                        (float) $item['amount'],
+                                        $itemWaived,
+                                    )
+                                );
+                            }
+
+                            // Other deduction items (water bill, NS&ND, misc, org loans)
+                            foreach ($rec['other_deduction_items'] ?? [] as $item) {
+                                $itemWaived = match ($item['type']) {
+                                    'water_bill' => $waivedSet->contains('water_bill')
+                                        || $waivedItemSet->contains((int) $item['id']),
+                                    default => $waivedSet->contains('other_deductions_total')
+                                        || $waivedItemSet->contains((int) $item['id']),
+                                };
+
+                                $category = match ($item['category']) {
+                                    OtherDeduction::CATEGORY_WATER_BILL => PayrollDeductionPriorityOrder::CATEGORY_WATER_BILL,
+                                    'internal_org_loan' => PayrollDeductionPriorityOrder::CATEGORY_INTERNAL_ORG_LOAN,
+                                    default => PayrollDeductionPriorityOrder::CATEGORY_OTHER_MISCELLANEOUS,
+                                };
+
+                                $payrollRecord->deductionItems()->create(
+                                    PayrollDeductionItem::fromOtherDeduction(
+                                        $payrollRecord->payroll_record_id,
+                                        $category,
+                                        $item['type'] === 'water_bill' ? 'water_bill' : 'other_deduction',
+                                        (int) $item['id'],
+                                        $item['description'] ?: $item['category'],
+                                        (float) $item['amount'],
+                                        $itemWaived,
+                                    )
+                                );
+                            }
+                        }
 
                         if ($isSecondCutOff) {
                             $this->applyLoanDeductionsFiltered($rec['employee_id'], $period, $waived);
@@ -1770,7 +1705,7 @@ class PayrollProcessingController extends Controller
                 ]);
                 throw $e;
             }
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             Log::warning('Validation failed in finalizePayroll', $e->errors());
 
             return response()->json([

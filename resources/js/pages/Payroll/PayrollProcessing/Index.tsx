@@ -17,11 +17,7 @@ import {
     FileText,
     Loader2,
     X,
-    TrendingUp,
-    TrendingDown,
-    Wallet,
 } from 'lucide-react';
-import { StatCard } from '@/components/shared/stat-card';
 import React, { useState, useEffect, useMemo } from 'react';
 import { route } from 'ziggy-js';
 import Heading from '@/components/heading';
@@ -32,6 +28,8 @@ import {
 import {
     type PayrollEmployee,
     type FinalizedEmployee,
+    type ComputedRecord,
+    type DeductionPriorityEntry,
 } from '@/components/Payroll/PayrollProcessing/data/types';
 import { peso } from '@/components/Payroll/PayrollProcessing/data/utils';
 import { DataTable } from '@/components/shared/data-table/data-table';
@@ -87,62 +85,7 @@ import AppLayout from '@/layouts/app-layout';
 // Employee and FinalizedEmployee Classifications are imported from ./types
 // peso formatter is imported from ./utils
 
-interface ComputedRecord {
-    employee_id: number;
-    employee_name: string;
-    basic_pay: number;
-    pera: number;
-    rice_allowance: number;
-    uniform_allowance: number;
-    overtime_pay: number;
-    half_days: number;
-    half_day_deduction: number;
-    personal_slip_minutes: number;
-    personal_slip_deduction: number;
-    official_slip_minutes: number;
-    gross_pay: number;
-    gsis_premium: number;
-    philhealth: number;
-    pag_ibig: number;
-    withholding_tax: number;
-    absent_days: number;
-    absent_deduction: number;
-    late_minutes: number;
-    late_deduction: number;
-    undertime_minutes: number;
-    undertime_deduction: number;
-    total_work_days: number;
-    total_hours_worked: number;
-    total_overtime_hours: number;
-
-    gsis_mpl: number;
-    gsis_emergency: number;
-    pag_ibig_mpl: number;
-    ama_y2k_union: number;
-    water_bill: number;
-    internal_org_savings: number;
-    internal_org_second: number;
-    internal_org_deductions: number;
-    other_deductions: number;
-    internal_org_items: Array<{
-        id: number;
-        org_name: string;
-        description: string;
-        amount: number;
-    }>;
-    other_deduction_items: Array<{
-        id: number;
-        category: string;
-        description: string;
-        amount: number;
-        type: 'water_bill' | 'other';
-    }>;
-    total_deductions: number;
-    net_pay: number;
-    floor_check_passed: boolean;
-    floor_cut_amount: number;
-    status: string;
-}
+// ComputedRecord is imported from ./data/types — do not re-define here.
 
 interface FloorRules {
     minimum_take_home_pay: number;
@@ -158,6 +101,8 @@ interface Props {
     processedPeriodId?: number;
     processingErrors?: string[];
     floorRules?: FloorRules;
+    /** DB-driven priority order. Replaces the hardcoded WAIVABLE_DEDUCTIONS const. */
+    deductionPriorityOrder?: DeductionPriorityEntry[];
 }
 
 const breadcrumbs = [
@@ -185,6 +130,7 @@ export default function Index({
     processedPeriodId: incomingProcessedPeriodId,
     processingErrors: incomingProcessingErrors = [],
     floorRules,
+    deductionPriorityOrder = [],
 }: Props) {
     const NET_PAY_THRESHOLD = floorRules?.minimum_take_home_pay ?? 0;
     const [currentStep, setCurrentStep] = useState(1);
@@ -458,6 +404,10 @@ export default function Index({
                     philhealth: r.philhealth,
                     pagibig: r.pag_ibig,
                     tax: r.withholding_tax,
+                    govtLoans:
+                        (r.gsis_mpl ?? 0) +
+                        (r.gsis_emergency ?? 0) +
+                        (r.pag_ibig_mpl ?? 0),
                     overtimePay: r.overtime_pay ?? 0,
                     halfDays: r.half_days ?? 0,
                     halfDayDeduction: r.half_day_deduction ?? 0,
@@ -473,17 +423,11 @@ export default function Index({
                         r.gsis_mpl +
                         r.gsis_emergency +
                         r.pag_ibig_mpl +
-                        r.ama_y2k_union +
-                        r.water_bill +
-                        r.absent_deduction +
-                        (r.half_day_deduction ?? 0) +
-                        r.late_deduction +
-                        (r.undertime_deduction ?? 0) +
-                        (r.personal_slip_deduction ?? 0) +
-                        (r.internal_org_savings ?? 0),
+                        r.other_deductions_total +
+                        r.water_bill,
                     internalOrgSavings: r.internal_org_savings ?? 0,
                     internalOrgSecond: r.internal_org_second ?? 0,
-                    internalOrgLoans: r.internal_org_second ?? 0,
+                    internalOrgLoans: r.internal_org_loans ?? 0,
                     internalOrgDeductions: r.internal_org_deductions ?? 0,
                     otherDeductionsMisc:
                         (r.other_deductions ?? 0) + (r.water_bill ?? 0),
@@ -517,6 +461,7 @@ export default function Index({
                 philhealth: 0,
                 pagibig: 0,
                 tax: 0,
+                govtLoans: 0,
                 overtimePay: 0,
                 halfDays: 0,
                 halfDayDeduction: 0,
@@ -608,27 +553,30 @@ export default function Index({
                 0,
             );
 
-            const amaGroupWaived = waived.includes('ama_y2k_union');
+            const amaGroupWaived = waived.includes('other_deductions_total');
             const waterGroupWaived = waived.includes('water_bill');
 
             const allItems = [
                 ...(raw.internal_org_items ?? []).map((i) => ({
                     ...i,
-                    colKey: 'ama_y2k_union' as const,
+                    colKey: i.category as string,
                     itemKey: `org:${i.id}`,
                 })),
                 ...(raw.other_deduction_items ?? []).map((i) => ({
                     ...i,
                     colKey: (i.type === 'water_bill'
                         ? 'water_bill'
-                        : 'ama_y2k_union') as string,
+                        : 'other_deductions_total') as string,
                     itemKey: `${i.type === 'water_bill' ? 'water' : 'org'}:${i.id}`,
                 })),
             ];
 
             const itemWaivedAmt = allItems
                 .filter((item) => {
-                    if (item.colKey === 'ama_y2k_union' && amaGroupWaived)
+                    if (
+                        item.colKey !== 'water_bill' &&
+                        waived.includes('other_deductions_total')
+                    )
                         return false;
                     if (item.colKey === 'water_bill' && waterGroupWaived)
                         return false;
@@ -1077,39 +1025,13 @@ export default function Index({
         setCurrentStep(4);
     };
 
-    // Hardcoded. Please base it from the database and remove this later on.
-    const WAIVABLE_DEDUCTIONS = [
-        {
-            key: 'gsis_mpl',
-            label: 'GSIS MPL',
-            group: "Priority 2 — Gov't Loans",
-        },
-        {
-            key: 'gsis_emergency',
-            label: 'GSIS Emergency Loan',
-            group: "Priority 2 — Gov't Loans",
-        },
-        {
-            key: 'pag_ibig_mpl',
-            label: 'Pag-IBIG MPL',
-            group: "Priority 2 — Gov't Loans",
-        },
-        {
-            key: 'internal_org_savings',
-            label: 'Org Savings / Share Capital',
-            group: 'Priority 3 — Org Savings (both cut-offs)',
-        },
-        {
-            key: 'ama_y2k_union',
-            label: 'AMA / Y2K / Union / Org Dues & Loans',
-            group: 'Priority 4 — Org Dues & Loans',
-        },
-        {
-            key: 'water_bill',
-            label: 'Water Bill',
-            group: 'Priority 5 — Miscellaneous',
-        },
-    ] as const;
+    // DB-driven — loaded from payroll_deduction_priority_order via the controller.
+    // Replaces the previous hardcoded const that embedded "ama_y2k_union" and
+    // organisation names directly in frontend code.
+    // Filtered to exclude Never-cuttable entries (statutory contributions).
+    const WAIVABLE_DEDUCTIONS = deductionPriorityOrder.filter(
+        (d) => d.cuttability !== 'Never',
+    );
 
     const LOCKED_DEDUCTIONS = [
         { key: 'gsis_premium', label: "GSIS Premium (Gov't Contribution)" },
@@ -1153,27 +1075,27 @@ export default function Index({
             waived.includes(d.key),
         ).reduce((sum, d) => sum + ((raw as any)[d.key] ?? 0), 0);
 
-        const amaGroupWaived = waived.includes('ama_y2k_union');
+        const amaGroupWaived = waived.includes('other_deductions_total');
         const waterGroupWaived = waived.includes('water_bill');
 
         const allItems = [
             ...(raw.internal_org_items ?? []).map((i) => ({
                 ...i,
-                colKey: 'ama_y2k_union' as const,
+                colKey: i.category as string,
                 itemKey: `org:${i.id}`,
             })),
             ...(raw.other_deduction_items ?? []).map((i) => ({
                 ...i,
                 colKey: (i.type === 'water_bill'
                     ? 'water_bill'
-                    : 'ama_y2k_union') as string,
+                    : 'other_deductions_total') as string,
                 itemKey: `${i.type === 'water_bill' ? 'water' : 'org'}:${i.id}`,
             })),
         ];
 
         const itemWaivedAmt = allItems
             .filter((item) => {
-                if (item.colKey === 'ama_y2k_union' && amaGroupWaived)
+                if (item.colKey !== 'water_bill' && amaGroupWaived)
                     return false;
                 if (item.colKey === 'water_bill' && waterGroupWaived)
                     return false;
@@ -1241,11 +1163,13 @@ export default function Index({
                 gsis_mpl: r.gsis_mpl,
                 gsis_emergency: r.gsis_emergency,
                 pag_ibig_mpl: r.pag_ibig_mpl,
-                ama_y2k_union: r.ama_y2k_union,
+                other_deductions_total: r.other_deductions_total,
                 water_bill: r.water_bill,
                 internal_org_savings: r.internal_org_savings ?? 0,
                 internal_org_second: r.internal_org_second ?? 0,
-                internal_org_loans: r.internal_org_second ?? 0,
+                internal_org_loans: r.internal_org_loans ?? 0, // ← genuine loan total, not second/dues
+                internal_org_items: r.internal_org_items ?? [],
+                other_deduction_items: r.other_deduction_items ?? [],
                 waived: floorWaivers[r.employee_id] ?? [],
                 waived_item_ids: (itemWaivers[r.employee_id] ?? []).map((k) =>
                     parseInt(k.split(':')[1]),
@@ -2107,7 +2031,7 @@ export default function Index({
                                                         Mandatory
                                                     </th>
                                                     <th
-                                                        colSpan={3}
+                                                        colSpan={4}
                                                         className="border-r border-border bg-purple-50 px-3 py-2 text-center text-purple-700 dark:bg-purple-950/30 dark:text-purple-400"
                                                     >
                                                         Other Deductions
@@ -2181,6 +2105,14 @@ export default function Index({
                                                         W/Tax
                                                     </th>
                                                     {/* Other sub-cols */}
+                                                    <th className="border-r border-border bg-purple-50/60 px-3 py-2 text-center whitespace-nowrap dark:bg-purple-950/20">
+                                                        <div>
+                                                            Gov&apos;t Loans
+                                                        </div>
+                                                        <div className="text-[10px] font-normal">
+                                                            mpl, emergency
+                                                        </div>
+                                                    </th>
                                                     <th className="border-r border-border bg-purple-50/60 px-3 py-2 text-center whitespace-nowrap dark:bg-purple-950/20">
                                                         <div>Org Savings</div>
                                                         <div className="text-[10px] font-normal">
@@ -2363,6 +2295,20 @@ export default function Index({
                                                                 )}
                                                             </td>
                                                             {/* Other Deductions */}
+                                                            <td className="border-r border-border px-3 py-3 text-right tabular-nums">
+                                                                {employee.govtLoans >
+                                                                0 ? (
+                                                                    <span className="text-foreground">
+                                                                        {peso(
+                                                                            employee.govtLoans,
+                                                                        )}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-muted-foreground">
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td>
                                                             <td className="border-r border-border px-3 py-3 text-right text-foreground tabular-nums">
                                                                 {peso(
                                                                     employee.internalOrgSavings,
@@ -2586,6 +2532,16 @@ export default function Index({
                                                             currentEmployees.reduce(
                                                                 (s, e) =>
                                                                     s + e.tax,
+                                                                0,
+                                                            ),
+                                                        )}
+                                                    </td>
+                                                    <td className="border-r border-border px-3 py-2.5 text-right tabular-nums">
+                                                        {peso(
+                                                            currentEmployees.reduce(
+                                                                (s, e) =>
+                                                                    s +
+                                                                    e.govtLoans,
                                                                 0,
                                                             ),
                                                         )}
@@ -3031,10 +2987,10 @@ export default function Index({
                                                                             );
                                                                         }
 
-                                                                        // ── ama_y2k_union: group header + per-item sub-rows ──────────────────
+                                                                        // ── other_deductions_total: group header + per-item sub-rows ─────────
                                                                         if (
                                                                             d.key ===
-                                                                            'ama_y2k_union'
+                                                                            'other_deductions_total'
                                                                         ) {
                                                                             const orgItems =
                                                                                 raw.internal_org_items ??
@@ -3813,37 +3769,55 @@ export default function Index({
                                         </div>
                                     </div>
 
-                                <div className="mb-6 grid grid-cols-4 gap-4">
-                                        <StatCard
-                                            title="Total Employees"
-                                            value={employeesWithStatus.length}
-                                            icon={<Users className="h-4 w-4" />}
-                                        />
-                                        <StatCard
-                                            title="Total Gross Pay"
-                                            value={peso(totalGross)}
-                                            icon={<TrendingUp className="h-4 w-4" />}
-                                            color="#2563eb"
-                                        />
-                                        <StatCard
-                                            title="Total Deductions"
-                                            value={peso(finalizedTotalDeductions)}
-                                            icon={<TrendingDown className="h-4 w-4" />}
-                                            color="#dc2626"
-                                        />
-                                        <StatCard
-                                            title="Total Net Pay"
-                                            value={peso(finalizedTotalNetPay)}
-                                            icon={<Wallet className="h-4 w-4" />}
-                                            color="#16a34a"
-                                        />
+                                    <div className="mb-6 grid grid-cols-4 gap-4">
+                                        <Card className="text-center">
+                                            <CardContent className="pt-4">
+                                                <p className="text-2xl font-bold">
+                                                    {employeesWithStatus.length}
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    Total Employees
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                        <Card className="text-center">
+                                            <CardContent className="pt-4">
+                                                <p className="text-2xl font-bold text-primary">
+                                                    {peso(totalGross)}
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    Total Gross Pay
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                        <Card className="text-center">
+                                            <CardContent className="pt-4">
+                                                <p className="text-2xl font-bold text-destructive">
+                                                    {peso(
+                                                        finalizedTotalDeductions,
+                                                    )}
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    Total Deductions
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                        <Card className="border-green-200 bg-green-50 text-center dark:bg-green-950/20">
+                                            <CardContent className="pt-4">
+                                                <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                                    {peso(finalizedTotalNetPay)}
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    Total Net Pay
+                                                </p>
+                                            </CardContent>
+                                        </Card>
                                     </div>
 
                                     {/* Summary table */}
                                     <DataTable
                                         columns={finalizedColumns}
                                         data={finalizedEmployeesWithStatus}
-                                        getRowId={(row) => String(row.id)}
                                         onRowClick={(row) =>
                                             setSelectedBreakdownId(
                                                 row.original.id,
@@ -3949,8 +3923,10 @@ export default function Index({
                 const waivedItems = itemWaivers[raw.employee_id] ?? [];
 
                 // Build the effective (post-waiver) deduction amounts
-                // For ama_y2k_union: group waiver zeros everything; otherwise subtract individual items
-                const amaGroupWaived = waived.includes('ama_y2k_union');
+                // For other_deductions_total: group waiver zeros everything; otherwise subtract individual items
+                const amaGroupWaived = waived.includes(
+                    'other_deductions_total',
+                );
                 const waterGroupWaived = waived.includes('water_bill');
 
                 const allOrgItems = [
