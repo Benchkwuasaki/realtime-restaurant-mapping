@@ -258,9 +258,42 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         system: [
             {
                 title: 'Reports and Analytics',
-                url: route('reports_and_analytics.index'),
+                url: '/reports_and_analytics',
                 icon: FileBarChart,
-                show: isAdminOrHR,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin'),
+                items: [
+                    {
+                        title: 'Employee Reports',
+                        url: route(
+                            'reports_and_analytics.employee-report.index',
+                        ),
+                    },
+                    {
+                        title: 'Attendance Reports',
+                        url: route(
+                            'reports_and_analytics.attendance-report.index',
+                        ),
+                    },
+                    {
+                        title: 'Leave Reports',
+                        url: route('reports_and_analytics.leave-report.index'),
+                    },
+                    {
+                        title: 'Payroll Reports',
+                        url: route(
+                            'reports_and_analytics.payroll-report.index',
+                        ),
+                    },
+                    {
+                        title: 'Government Reports',
+                        url: route(
+                            'reports_and_analytics.government-report.index',
+                        ),
+                    },
+                ],
             },
             {
                 title: 'Activity Logs',
