@@ -379,23 +379,24 @@ export default function Index({ deductions = [], employees = [] }: Props) {
                         </TabsList>
                     </div>
                 </Tabs>
-
-                <DataTable
-                    data={filtered}
-                    columns={columns}
-                    getRowId={(row) => String(row.id)}
-                    searchColumnId="employee_name"
-                    searchPlaceholder={`Search ${activeTab?.label ?? ''} entries...`}
-                    addButton={{
-                        label: 'Add New Entry',
-                        onClick: () => setDialogOpen(true),
-                    }}
-                    bulkDelete={{
-                        route: route('otherdeductions.bulk-destroy'),
-                        entityName: 'Deduction',
-                        getId: (row) => (row as OtherDeduction).id,
-                    }}
-                />
+                <section className="rounded-lg border border-secondary bg-card p-6">
+                    <DataTable
+                        data={filtered}
+                        columns={columns}
+                        getRowId={(row) => String(row.id)}
+                        searchColumnId="employee_name"
+                        searchPlaceholder={`Search ${activeTab?.label ?? ''} entries...`}
+                        addButton={{
+                            label: 'Add New Entry',
+                            onClick: () => setDialogOpen(true),
+                        }}
+                        bulkDelete={{
+                            route: route('otherdeductions.bulk-destroy'),
+                            entityName: 'Deduction',
+                            getId: (row) => (row as OtherDeduction).id,
+                        }}
+                    />
+                </section>
             </div>
 
             {activeTab && (

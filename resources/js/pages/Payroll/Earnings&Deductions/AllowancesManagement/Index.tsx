@@ -29,6 +29,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Trash2, Users } from 'lucide-react';
+import { toast } from 'sonner';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -67,7 +68,7 @@ interface Props {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Payroll', href: '#' },
-    { title: 'Pay Adjustments', href: '#' },
+    { title: 'Earnings & Deductions', href: '#' },
     { title: 'Allowance Management', href: route('allowancemanagement.index') },
 ];
 
@@ -148,14 +149,22 @@ function AllowanceDialog({
             router.put(
                 route('allowancemanagement.update', allowance!.id),
                 payload,
-                { onSuccess: () => onOpenChange(false) },
+                {
+                    onSuccess: () => {
+                        onOpenChange(false);
+                        toast.success('Allowance updated successfully.');
+                    },
+                    onError: () => toast.error('Failed to update allowance.'),
+                },
             );
         } else {
             router.post(route('allowancemanagement.store'), payload, {
                 onSuccess: () => {
                     onOpenChange(false);
                     setForm(emptyForm);
+                    toast.success('Allowance added successfully.');
                 },
+                onError: () => toast.error('Failed to add allowance.'),
             });
         }
     };
@@ -251,7 +260,7 @@ function AllowanceDialog({
 
                     <div className="grid gap-2">
                         <Label>Applicable To</Label>
-                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border border-input px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border border-secondary px-4 py-3">
                             {classifications.length === 0 ? (
                                 <span className="text-sm text-muted-foreground">
                                     No classifications available.
@@ -428,7 +437,15 @@ function AssignEmployeesDialog({
         router.post(
             route('allowancemanagement.assign', allowance.id),
             { employee_ids: toAdd },
-            { onSuccess: () => onOpenChange(false) },
+            {
+                onSuccess: () => {
+                    onOpenChange(false);
+                    toast.success(
+                        `${toAdd.length} employee(s) assigned to ${allowance.name}.`,
+                    );
+                },
+                onError: () => toast.error('Failed to assign employees.'),
+            },
         );
     };
 
@@ -440,7 +457,11 @@ function AssignEmployeesDialog({
             onSuccess: () => {
                 setToRemove([]);
                 setConfirmRemoveOpen(false);
+                toast.success(
+                    `${toRemove.length} employee(s) removed from ${allowance.name}.`,
+                );
             },
+            onError: () => toast.error('Failed to remove employees.'),
         });
     };
 
@@ -515,9 +536,8 @@ function AssignEmployeesDialog({
                                 />
                             </div>
 
-                            <div className="rounded-md border border-input">
-                                {/* Select-all + Remove button header */}
-                                <div className="flex items-center justify-between border-b px-3 py-2">
+                            <div className="rounded-md border border-secondary">
+                                <div className="flex items-center justify-between border border-secondary px-3 py-2">
                                     <div className="flex items-center gap-2">
                                         <Checkbox
                                             checked={
@@ -565,7 +585,7 @@ function AssignEmployeesDialog({
                                         filteredBeneficiaries.map((e) => (
                                             <div
                                                 key={e.employee_id}
-                                                className="flex cursor-pointer items-center gap-3 border-b px-3 py-2.5 transition-colors last:border-0 hover:bg-muted/50"
+                                                className="flex cursor-pointer items-center gap-3 border border-secondary px-3 py-2.5 transition-colors last:border-0 hover:bg-muted/50"
                                                 onClick={() =>
                                                     toggleRemove(e.employee_id)
                                                 }
@@ -656,8 +676,8 @@ function AssignEmployeesDialog({
                             </div>
 
                             {/* List */}
-                            <div className="rounded-md border border-input">
-                                <div className="flex items-center gap-3 border-b px-3 py-2">
+                            <div className="rounded-md border border-secondary">
+                                <div className="flex items-center gap-3 border border-secondary px-3 py-2">
                                     <Checkbox
                                         checked={
                                             allVisibleSelected ||
@@ -829,33 +849,34 @@ export default function Index({
                     title="Allowance Management"
                     description="Manage allowances for employees here"
                 />
-
-                <DataTable
-                    data={allowances}
-                    columns={columns}
-                    getRowId={(row) => String(row.id)}
-                    searchColumnId="name"
-                    searchPlaceholder="Search allowances..."
-                    filters={[
-                        {
-                            columnId: 'taxable',
-                            title: 'Taxable',
-                            options: taxableFilterOptions,
-                        },
-                    ]}
-                    addButton={{
-                        label: 'Add Allowance',
-                        onClick: () => {
-                            setEditTarget(null);
-                            setDialogOpen(true);
-                        },
-                    }}
-                    bulkDelete={{
-                        route: '',
-                        entityName: 'Allowance',
-                        getId: (row) => (row as Allowance).id,
-                    }}
-                />
+                <section className="rounded-lg border border-secondary bg-card p-6">
+                    <DataTable
+                        data={allowances}
+                        columns={columns}
+                        getRowId={(row) => String(row.id)}
+                        searchColumnId="name"
+                        searchPlaceholder="Search allowances..."
+                        filters={[
+                            {
+                                columnId: 'taxable',
+                                title: 'Taxable',
+                                options: taxableFilterOptions,
+                            },
+                        ]}
+                        addButton={{
+                            label: 'Add Allowance',
+                            onClick: () => {
+                                setEditTarget(null);
+                                setDialogOpen(true);
+                            },
+                        }}
+                        bulkDelete={{
+                            route: '',
+                            entityName: 'Allowance',
+                            getId: (row) => (row as Allowance).id,
+                        }}
+                    />
+                </section>
             </div>
 
             <AllowanceDialog

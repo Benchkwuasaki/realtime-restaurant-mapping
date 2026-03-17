@@ -1285,11 +1285,11 @@ export default function Index({
     };
 
     const steps = [
-        { title: 'Selected Period', description: 'Step 1', icon: CalendarIcon },
-        { title: 'Load Employees', description: 'Step 2', icon: Users },
-        { title: 'Compute', description: 'Step 3', icon: PlayCircle },
-        { title: 'Floor Check', description: 'Step 4', icon: AlertTriangle },
-        { title: 'Post and Finalize', description: 'Step 5', icon: FileText },
+        { title: 'Selected Period' },
+        { title: 'Load Employees' },
+        { title: 'Compute' },
+        { title: 'Floor Check' },
+        { title: 'Post and Finalize' },
     ];
 
     // ── Step 5 columns ─────────────────────────────────────────────────────────
@@ -1362,7 +1362,6 @@ export default function Index({
                             />
 
                             <div className="grid grid-cols-1 items-end gap-x-6 gap-y-8 md:grid-cols-4">
-                                {/* Payroll Month */}
                                 <Field>
                                     <FieldLabel>Payroll Month</FieldLabel>
                                     <Popover
@@ -1387,7 +1386,6 @@ export default function Index({
                                             className="w-72 p-3"
                                             align="start"
                                         >
-                                            {/* Year navigation */}
                                             <div className="mb-3 flex items-center justify-between">
                                                 <Button
                                                     variant="ghost"
@@ -1415,7 +1413,6 @@ export default function Index({
                                                     <ChevronRight className="h-4 w-4" />
                                                 </Button>
                                             </div>
-                                            {/* Month grid */}
                                             <div className="grid grid-cols-3 gap-1.5">
                                                 {[
                                                     'Jan',
