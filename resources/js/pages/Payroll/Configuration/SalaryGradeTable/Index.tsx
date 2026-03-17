@@ -222,7 +222,6 @@ export default function Index({ tables, activeTable }: Props) {
             <Head title="Salary Grade Table" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-8">
-                {/* Header */}
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h1 className="text-xl font-semibold">
@@ -236,7 +235,6 @@ export default function Index({ tables, activeTable }: Props) {
                     <CreateDraftDialog />
                 </div>
 
-                {/* Active SSL Table banner */}
                 {activeTable ? (
                     <Card
                         className="cursor-pointer border-green-200 bg-green-50/50 transition-colors hover:bg-green-50 dark:border-green-900 dark:bg-green-950/20"
@@ -289,29 +287,30 @@ export default function Index({ tables, activeTable }: Props) {
                     </Card>
                 )}
 
-                {/* All Tables */}
-                <DataTable
-                    data={tables}
-                    columns={sslTableColumns}
-                    getRowId={(row) => String(row.ssl_table_id)}
-                    onRowClick={(row) =>
-                        router.visit(
-                            route(
-                                'payroll.salary-grade.show',
-                                row.original.ssl_table_id,
-                            ),
-                        )
-                    }
-                    searchColumnId="ssl_version"
-                    searchPlaceholder="Search SSL version..."
-                    filters={[
-                        {
-                            columnId: 'status',
-                            title: 'Status',
-                            options: STATUS_FILTER_OPTIONS,
-                        },
-                    ]}
-                />
+                <section className="rounded-lg border border-secondary bg-card p-6">
+                    <DataTable
+                        data={tables}
+                        columns={sslTableColumns}
+                        getRowId={(row) => String(row.ssl_table_id)}
+                        onRowClick={(row) =>
+                            router.visit(
+                                route(
+                                    'payroll.salary-grade.show',
+                                    row.original.ssl_table_id,
+                                ),
+                            )
+                        }
+                        searchColumnId="ssl_version"
+                        searchPlaceholder="Search SSL version..."
+                        filters={[
+                            {
+                                columnId: 'status',
+                                title: 'Status',
+                                options: STATUS_FILTER_OPTIONS,
+                            },
+                        ]}
+                    />
+                </section>
             </div>
         </AppLayout>
     );

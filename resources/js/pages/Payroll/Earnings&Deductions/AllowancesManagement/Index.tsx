@@ -383,7 +383,6 @@ function AssignEmployeesDialog({
         );
     }, [employees, allowance]);
 
-    // Reset on open
     useEffect(() => {
         if (!open) return;
         setToAdd([]);
@@ -394,7 +393,6 @@ function AssignEmployeesDialog({
         setShowAll(false);
     }, [open]);
 
-    // Filtered unassigned list for right panel
     const visibleUnassigned = useMemo(() => {
         let list = unassignedEmployees;
         if (!showAll && applicableClassifications.length > 0) {

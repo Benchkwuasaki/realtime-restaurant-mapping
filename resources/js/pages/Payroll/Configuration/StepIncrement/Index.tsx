@@ -228,21 +228,22 @@ export default function Index({
                         Apply Increment ({selectedIds.length})
                     </Button>
                 </div>
-
-                <DataTable
-                    data={employees}
-                    columns={columns}
-                    getRowId={(row) => String(row.employee_id)}
-                    searchColumnId="name"
-                    searchPlaceholder="Search employees..."
-                    filters={[
-                        {
-                            columnId: 'employment_classification',
-                            title: 'Classification',
-                            options: CLASSIFICATION_FILTER_OPTIONS,
-                        },
-                    ]}
-                />
+                <section className="rounded-lg border border-secondary bg-card p-6">
+                    <DataTable
+                        data={employees}
+                        columns={columns}
+                        getRowId={(row) => String(row.employee_id)}
+                        searchColumnId="name"
+                        searchPlaceholder="Search employees..."
+                        filters={[
+                            {
+                                columnId: 'employment_classification',
+                                title: 'Classification',
+                                options: CLASSIFICATION_FILTER_OPTIONS,
+                            },
+                        ]}
+                    />
+                </section>
             </div>
 
             {/* Confirm dialog */}

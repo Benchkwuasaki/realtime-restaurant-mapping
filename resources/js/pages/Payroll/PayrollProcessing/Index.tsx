@@ -390,8 +390,6 @@ export default function Index({
             return;
         }
 
-        // Use a direct URL instead of Ziggy so this never fails due to a stale
-        // Ziggy route manifest. The path must match web.php:
         //   Route::get('/payroll/check-duplicate', ...) ->name('payroll.check-duplicate')
         const checkUrl = '/payroll/check-duplicate';
 
@@ -423,8 +421,7 @@ export default function Index({
                         errMsg =
                             'Duplicate check endpoint not found (404). Run: php artisan route:clear && php artisan optimize';
                     }
-                    // Do NOT set isDuplicate=true — that would show a false
-                    // "Duplicate Payroll Detected" banner. Use a separate error state.
+
                     setDuplicateCheckError(errMsg);
                 }
             })
@@ -796,11 +793,9 @@ export default function Index({
                     userMsg = `Duplicate check error: ${err.message}. Cannot proceed.`;
                 }
 
-                // Do NOT set isDuplicate=true on errors — that shows a false
-                // "Duplicate Payroll Detected" banner. Use a distinct error state.
                 setDuplicateCheckError(userMsg);
                 setIsDuplicateChecking(false);
-                return; // Hard stop — do NOT advance to Step 2.
+                return;
             } finally {
                 setIsDuplicateChecking(false);
             }
@@ -1456,7 +1451,6 @@ export default function Index({
                                     </Popover>
                                 </Field>
 
-                                {/* Cut-off Type */}
                                 <Field>
                                     <FieldLabel>Cut-off</FieldLabel>
                                     <Select
@@ -1491,7 +1485,6 @@ export default function Index({
                                     </Select>
                                 </Field>
 
-                                {/* Computed Payroll Period (read-only) */}
                                 <Field>
                                     <FieldLabel>Payroll Period</FieldLabel>
                                     <Input
@@ -1502,7 +1495,6 @@ export default function Index({
                                     />
                                 </Field>
 
-                                {/* Employee Classification */}
                                 <Field>
                                     <FieldLabel>
                                         Employee Classification
@@ -1534,7 +1526,6 @@ export default function Index({
                                     </Select>
                                 </Field>
 
-                                {/* Working Days */}
                                 <Field>
                                     <FieldLabel>
                                         Working days this period
@@ -1656,13 +1647,11 @@ export default function Index({
                                 </Field>
                             </div>
 
-                            {/* Summary card. Need adjusting*/}
                             {canProceedStep1 && (
                                 <div className="mt-8 animate-in duration-300 fade-in slide-in-from-bottom-2">
                                     <Card>
                                         <CardContent className="px-6 py-4">
                                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                                {/* Left — period + type */}
                                                 <div className="flex items-center gap-3">
                                                     <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                                                     <div>
@@ -1682,7 +1671,6 @@ export default function Index({
                                                     className="hidden h-8 sm:block"
                                                 />
 
-                                                {/* Right — stats row */}
                                                 <div className="flex items-center gap-6 text-sm">
                                                     <div>
                                                         <p className="text-xs text-muted-foreground">
@@ -1728,7 +1716,6 @@ export default function Index({
                                 </div>
                             )}
 
-                            {/* Duplicate payroll alert */}
                             {isDuplicateChecking && (
                                 <div className="mt-6">
                                     <Alert>
@@ -1771,6 +1758,35 @@ export default function Index({
                                         </div>
                                     </div>
                                 )}
+
+                            {/* TODO: Change the Alert Component. Its variant of destructive is white. */}
+                            {/* {isDuplicate &&
+                                !isDuplicateChecking &&
+                                !duplicateCheckError && (
+                                    <Alert
+                                        variant="default"
+                                        className="mt-6"
+                                    >
+                                        <AlertCircle className="h-5 w-5" />
+                                        <AlertTitle>
+                                            Duplicate Payroll Detected
+                                        </AlertTitle>
+                                        <AlertDescription>
+                                            A payroll run for{' '}
+                                            <span className="font-semibold">
+                                                &ldquo;{employeeClassification}
+                                                &rdquo;
+                                            </span>{' '}
+                                            already exists for the period{' '}
+                                            <span className="font-semibold">
+                                                {payrollPeriodLabel}
+                                            </span>
+                                            . Please select a different
+                                            Employment Type or review the
+                                            existing payroll record.
+                                        </AlertDescription>
+                                    </Alert>
+                                )} */}
 
                             {duplicateCheckError && !isDuplicateChecking && (
                                 <div className="mt-6 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
