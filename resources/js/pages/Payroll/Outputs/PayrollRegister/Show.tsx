@@ -1283,15 +1283,15 @@ export default function Show({ period, records, summary }: Props) {
 
                     /* Document itself — use padding since @page margin is 0 */
                     #payroll-register-document {
-                        width: 100% !important;
-                        height: auto !important;
-                        overflow: visible !important;
-                        background: white !important;
-                        box-shadow: none !important;
-                        ring: none !important;
-                        padding: 0.8cm 1cm !important;
-                        margin: 0 !important;
-                        font-size: 7.5px !important;
+                     width: 100% !important;
+                     height: auto !important;
+                     overflow: visible !important;
+                     background: white !important;
+                     box-shadow: none !important;
+                     ring: none !important;
+                     padding: 1cm 1.5cm !important;
+                     margin: 0 !important;
+                     font-size: 7.5px !important;
                     }
 
                     /* Preserve coloured cell backgrounds */

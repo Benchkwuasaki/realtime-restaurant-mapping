@@ -51,9 +51,18 @@ const printStyles = `
 
   @media print {
     @page {
-      size: landscape;
-      margin: 1.5cm;
-    }
+  size: landscape;
+  margin: 0 0 1.2cm 0;
+}
+
+@page {
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-size: 9px;
+    color: #666;
+    padding-right: 1.5cm;
+  }
+}
 
     html, body, #app, main, [data-page],
     [class*="overflow"], [style*="overflow"] {
@@ -80,11 +89,12 @@ const printStyles = `
     }
 
     .print-only {
-      display: block !important;
-      visibility: visible !important;
-      overflow: visible !important;
-      height: auto !important;
-    }
+  display: block !important;
+  visibility: visible !important;
+  overflow: visible !important;
+  height: auto !important;
+  padding: 1cm 1.5cm;
+}
 
     .report-main-header {
       text-align: center;
@@ -100,35 +110,42 @@ const printStyles = `
     }
 
     .report-logo {
-      width: 64px;
-      height: 64px;
-      object-fit: contain;
-      flex-shrink: 0;
-    }
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
 
     .report-header-text { text-align: left; }
 
-    .report-main-header h1 {
-      font-size: 18px;
-      font-weight: bold;
-      margin: 0 0 4px 0;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
+ .report-main-header h1 {
+  font-size: 9px;
+  font-weight: bold;
+  margin: 0 0 2px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
 
-    .report-main-header h2 {
-      font-size: 15px;
-      font-weight: bold;
-      margin: 0 0 4px 0;
-      text-transform: uppercase;
-    }
+.report-main-header h2 {
+  font-size: 8px;
+  font-weight: bold;
+  margin: 0 0 2px 0;
+  text-transform: uppercase;
+}
 
-    .report-main-header .period {
-      font-size: 13px;
-      font-weight: normal;
-      margin: 0;
-      color: #333;
-    }
+.report-main-header .period {
+  font-size: 8px;
+  font-weight: normal;
+  margin: 0;
+  color: #333;
+}
+
+.report-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
 
     .agency-header {
       display: flex;
@@ -249,9 +266,21 @@ const printStyles = `
 
     .signature-field + p { font-size: 10px; color: #666; }
     .date-field { margin-top: 10px; font-size: 11px; }
+    html, body {
+      height: auto !important;
+      overflow: visible !important;
+    }
+
+    .print-agency-section:last-of-type {
+      page-break-after: avoid !important;
+    }
+
+    .print-signature {
+      page-break-after: avoid !important;
+      page-break-inside: avoid !important;
+    }
   }
 `;
-
 interface Props {
     auth: { user: any };
     periods: Array<{
@@ -473,37 +502,17 @@ function AgencyTable({
                     <tbody>
                         {regularEmployees.length > 0 && (
                             <>
-                                <tr style={{ backgroundColor: '#e5f6e5' }}>
-                                    <td
-                                        colSpan={8}
-                                        style={{
-                                            textAlign: 'left',
-                                            fontWeight: 'bold',
-                                            padding: '8px',
-                                            borderBottom: '2px solid #2e7d32',
-                                        }}
-                                    >
-                                        REGULAR EMPLOYEES (
-                                        {regularEmployees.length})
-                                    </td>
-                                </tr>
+<tr>
+    <td colSpan={8} style={{ textAlign: 'left', fontWeight: 'bold', padding: '8px', borderBottom: '1px solid #999' }}>
+        REGULAR EMPLOYEES ({regularEmployees.length})
+    </td>
+</tr>
                                 {regularEmployees.map((row, index) => (
                                     <tr key={row.id}>
                                         <td>{index + 1}</td>
                                         <td>{row.name}</td>
                                         <td>{row.position}</td>
-                                        <td>
-                                            <span
-                                                style={{
-                                                    backgroundColor: '#e5f6e5',
-                                                    padding: '2px 6px',
-                                                    borderRadius: '4px',
-                                                    fontWeight: 'bold',
-                                                }}
-                                            >
-                                                {row.classification}
-                                            </span>
-                                        </td>
+                                        <td style={{ fontWeight: 'bold' }}>{row.classification}</td>
                                         <td>{formatCurrency(row.basic_pay)}</td>
                                         <td>
                                             {formatCurrency(row.employee_share)}
@@ -519,21 +528,11 @@ function AgencyTable({
 
                         {casualEmployees.length > 0 && (
                             <>
-                                <tr style={{ backgroundColor: '#fff3e0' }}>
-                                    <td
-                                        colSpan={8}
-                                        style={{
-                                            textAlign: 'left',
-                                            fontWeight: 'bold',
-                                            padding: '8px',
-                                            borderTop: '2px solid #999',
-                                            borderBottom: '2px solid #ed6c02',
-                                        }}
-                                    >
-                                        CASUAL EMPLOYEES (
-                                        {casualEmployees.length})
-                                    </td>
-                                </tr>
+                                <tr>
+    <td colSpan={8} style={{ textAlign: 'left', fontWeight: 'bold', padding: '8px', borderTop: '1px solid #999', borderBottom: '1px solid #999' }}>
+        CASUAL EMPLOYEES ({casualEmployees.length})
+    </td>
+</tr>
                                 {casualEmployees.map((row, index) => (
                                     <tr key={row.id}>
                                         <td>
@@ -543,18 +542,7 @@ function AgencyTable({
                                         </td>
                                         <td>{row.name}</td>
                                         <td>{row.position}</td>
-                                        <td>
-                                            <span
-                                                style={{
-                                                    backgroundColor: '#fff3e0',
-                                                    padding: '2px 6px',
-                                                    borderRadius: '4px',
-                                                    fontWeight: 'bold',
-                                                }}
-                                            >
-                                                {row.classification}
-                                            </span>
-                                        </td>
+                                        <td style={{ fontWeight: 'bold' }}>{row.classification}</td>
                                         <td>{formatCurrency(row.basic_pay)}</td>
                                         <td>
                                             {formatCurrency(row.employee_share)}
@@ -679,6 +667,7 @@ function AgencyTable({
                         {filteredEmployees.length === 0 ? (
                             <TableRow>
                                 <TableCell
+
                                     colSpan={8}
                                     className="py-8 text-center text-muted-foreground"
                                 >
@@ -701,23 +690,18 @@ function AgencyTable({
                                         {row.name}
                                     </TableCell>
                                     <TableCell>{row.position}</TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant="outline"
-                                            className={
-                                                (row as any).employee_type ===
-                                                'regular'
-                                                    ? 'border-green-200 bg-green-50 text-green-700'
-                                                    : (row as any)
-                                                            .employee_type ===
-                                                        'casual'
-                                                      ? 'border-amber-200 bg-amber-50 text-amber-700'
-                                                      : 'border-blue-200 bg-blue-50 text-blue-700'
-                                            }
-                                        >
-                                            {row.classification}
-                                        </Badge>
-                                    </TableCell>
+<TableCell>
+    <Badge
+        variant={
+            (row as any).employee_type === 'regular'
+                ? 'default'
+                : 'secondary'
+        }
+        className="min-w-[60px] justify-center"
+    >
+        {(row as any).employee_type === 'regular' ? 'Regular' : 'Casual'}
+    </Badge>
+</TableCell>
                                     <TableCell className="text-right tabular-nums">
                                         {formatCurrency(row.basic_pay)}
                                     </TableCell>
@@ -959,20 +943,9 @@ export default function GovernmentRemittanceReport({
         }
     };
 
-    const handleTabChange = (value: string) => {
-        setActiveTab(value);
-        if (selectedPeriod) {
-            router.get(
-                route('governmentremittancereport.index', {
-                    period_id: selectedPeriod.id,
-                    agency: value,
-                    employee_type: employeeTypeFilter,
-                }),
-                {},
-                { preserveState: true, preserveScroll: true, replace: true },
-            );
-        }
-    };
+   const handleTabChange = (value: string) => {
+    setActiveTab(value);
+};
 
     const handleEmployeeTypeFilter = (type: string) => {
         setEmployeeTypeFilter(type);
@@ -1175,438 +1148,279 @@ export default function GovernmentRemittanceReport({
                     </div>
                 </div>
 
-                <Card className="no-print border border-secondary">
-                    <CardContent className="pt-4">
-                        <div className="flex items-start justify-between">
-                            <div className="flex gap-4">
-                                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg">
-                                    <img
-                                        src="/images/logo.svg"
-                                        alt="Metro Kidapawan Water District Logo"
-                                        className="h-full w-full object-contain"
-                                        onError={(e) => {
-                                            e.currentTarget.style.display =
-                                                'none';
-                                        }}
-                                    />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-semibold">
-                                        Metro Kidapawan Water District
-                                    </h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        Government Contribution Remittance
-                                        Report
-                                    </p>
-                                    <p className="mt-1 text-sm">
-                                        Payroll Period:{' '}
-                                        <span className="font-medium">
-                                            {monthLabel || 'No period selected'}
-                                        </span>
-                                    </p>
-                                    {hasSelectedPeriod &&
-                                        employeeTypeFilter !== 'all' && (
+                <Tabs
+                    value={activeTab}
+                    onValueChange={handleTabChange}
+                    className="no-print tabs-container w-full"
+                >
+                    <div className="shrink-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <TabsList className="flex h-auto flex-nowrap gap-0 bg-transparent p-0">
+                            {(
+                                [
+                                    { value: 'all', label: 'All Agencies' },
+                                    { value: 'gsis', label: 'GSIS' },
+                                    { value: 'philhealth', label: 'PhilHealth' },
+                                    { value: 'pagibig', label: 'Pag-IBIG' },
+                                    { value: 'bir', label: 'BIR' },
+                                ] as const
+                            ).map(({ value, label }) => (
+                                <TabsTrigger
+                                    key={value}
+                                    value={value}
+                                    className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+                                >
+                                    {label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </div>
+
+                    <Card className="no-print mt-4 border border-secondary">
+                        <CardContent className="pt-4">
+                            <div className="flex items-start justify-between">
+                                <div className="flex gap-4">
+                                    <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg">
+                                        <img
+                                            src="/images/logo.svg"
+                                            alt="Metro Kidapawan Water District Logo"
+                                            className="h-full w-full object-contain"
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                            }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-semibold">
+                                            Metro Kidapawan Water District
+                                        </h2>
+                                        <p className="text-sm text-muted-foreground">
+                                            Government Contribution Remittance Report
+                                        </p>
+                                        <p className="mt-1 text-sm">
+                                            Payroll Period:{' '}
+                                            <span className="font-medium">
+                                                {monthLabel || 'No period selected'}
+                                            </span>
+                                        </p>
+                                        {hasSelectedPeriod && employeeTypeFilter !== 'all' && (
                                             <p className="mt-1 text-sm">
                                                 Employee Type:{' '}
                                                 <Badge
                                                     variant="outline"
                                                     className={
-                                                        employeeTypeFilter ===
-                                                        'regular'
+                                                        employeeTypeFilter === 'regular'
                                                             ? 'border-green-200 bg-green-50 text-green-700'
                                                             : 'border-amber-200 bg-amber-50 text-amber-700'
                                                     }
                                                 >
-                                                    {employeeTypeFilter ===
-                                                    'regular'
+                                                    {employeeTypeFilter === 'regular'
                                                         ? 'Regular Only'
                                                         : 'Casual Only'}
                                                 </Badge>
                                             </p>
                                         )}
+                                    </div>
+                                </div>
+                                <div className="text-right text-sm text-muted-foreground">
+                                    <p>Date Generated: {dateGenerated}</p>
+                                    <p>Generated by: {auth.user?.name || 'Admin User'}</p>
+                                    <p>Document Reference No. GR-{selectedPeriod?.id || '0000'}</p>
                                 </div>
                             </div>
-                            <div className="text-right text-sm text-muted-foreground">
-                                <p>Date Generated: {dateGenerated}</p>
-                                <p>
-                                    Generated by:{' '}
-                                    {auth.user?.name || 'Admin User'}
-                                </p>
-                                <p>
-                                    Document Reference No. GR-
-                                    {selectedPeriod?.id || '0000'}
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {!hasSelectedPeriod ? (
-                    <Card className="no-print border border-dashed py-16">
-                        <CardContent className="text-center">
-                            <Calendar className="mx-auto mb-4 h-10 w-10 text-muted-foreground/50" />
-                            <p className="mb-2 text-xl font-medium text-muted-foreground">
-                                No Payroll Period Selected
-                            </p>
-                            <p className="mb-6 text-muted-foreground">
-                                Please select a payroll period from the dropdown
-                                above to view remittance data.
-                            </p>
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    const btn = document.querySelector(
-                                        'button[role="combobox"]',
-                                    );
-                                    if (btn) (btn as HTMLButtonElement).click();
-                                }}
-                                className="gap-2"
-                            >
-                                <Calendar className="h-4 w-4" />
-                                Select Period
-                            </Button>
                         </CardContent>
                     </Card>
-                ) : (
-                    <>
-                        <div className="no-print grid grid-cols-1 gap-4 md:grid-cols-4">
-                            <StatCard
-                                icon={<TrendingDown className="h-4 w-4" />}
-                                title={
-                                    activeTab === 'all'
-                                        ? 'Total Employee Deductions'
-                                        : `${remittances[activeTab]?.agency_name} Employee Share`
-                                }
-                                value={formatCurrency(
-                                    currentSummary.employee_deductions,
-                                )}
-                                description={`Monthly — ${monthLabel}`}
-                            />
-                            <StatCard
-                                icon={<TrendingUp className="h-4 w-4" />}
-                                title={
-                                    activeTab === 'all'
-                                        ? 'Total Employer Payment'
-                                        : `${remittances[activeTab]?.agency_name} Employer Share`
-                                }
-                                value={formatCurrency(
-                                    currentSummary.employer_payment,
-                                )}
-                                description={`Monthly — ${monthLabel}`}
-                            />
-                            <StatCard
-                                icon={<Receipt className="h-4 w-4" />}
-                                title={
-                                    activeTab === 'all'
-                                        ? 'Total Remittance'
-                                        : `${remittances[activeTab]?.agency_name} Total`
-                                }
-                                value={formatCurrency(
-                                    currentSummary.total_remit,
-                                )}
-                                description={`Monthly — ${monthLabel}`}
-                            />
-                            <StatCard
-                                icon={<Users className="h-4 w-4" />}
-                                title="Employees Covered"
-                                value={currentSummary.employees_covered}
-                                description={monthLabel}
-                            />
-                        </div>
 
-                        <Tabs
-                            value={activeTab}
-                            onValueChange={handleTabChange}
-                            className="no-print tabs-container w-full"
-                        >
-                            <TabsList className="grid w-full grid-cols-5">
-                                <TabsTrigger value="all">
-                                    All Agencies
-                                </TabsTrigger>
-                                <TabsTrigger value="gsis">GSIS</TabsTrigger>
-                                <TabsTrigger value="philhealth">
-                                    PhilHealth
-                                </TabsTrigger>
-                                <TabsTrigger value="pagibig">
-                                    Pag-IBIG
-                                </TabsTrigger>
-                                <TabsTrigger value="bir">BIR</TabsTrigger>
-                            </TabsList>
+                    {!hasSelectedPeriod ? (
+                        <Card className="no-print mt-4 border border-dashed py-16">
+                            <CardContent className="text-center">
+                                <Calendar className="mx-auto mb-4 h-10 w-10 text-muted-foreground/50" />
+                                <p className="mb-2 text-xl font-medium text-muted-foreground">
+                                    No Payroll Period Selected
+                                </p>
+                                <p className="mb-6 text-muted-foreground">
+                                    Please select a payroll period from the dropdown above to view remittance data.
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        const btn = document.querySelector('button[role="combobox"]');
+                                        if (btn) (btn as HTMLButtonElement).click();
+                                    }}
+                                    className="gap-2"
+                                >
+                                    <Calendar className="h-4 w-4" />
+                                    Select Period
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <>
+                            <div className="no-print mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+                                <StatCard
+                                    icon={<TrendingDown className="h-4 w-4" />}
+                                    title={
+                                        activeTab === 'all'
+                                            ? 'Total Employee Deductions'
+                                            : `${remittances[activeTab]?.agency_name} Employee Share`
+                                    }
+                                    value={formatCurrency(currentSummary.employee_deductions)}
+                                    description={`Monthly — ${monthLabel}`}
+                                />
+                                <StatCard
+                                    icon={<TrendingUp className="h-4 w-4" />}
+                                    title={
+                                        activeTab === 'all'
+                                            ? 'Total Employer Payment'
+                                            : `${remittances[activeTab]?.agency_name} Employer Share`
+                                    }
+                                    value={formatCurrency(currentSummary.employer_payment)}
+                                    description={`Monthly — ${monthLabel}`}
+                                />
+                                <StatCard
+                                    icon={<Receipt className="h-4 w-4" />}
+                                    title={
+                                        activeTab === 'all'
+                                            ? 'Total Remittance'
+                                            : `${remittances[activeTab]?.agency_name} Total`
+                                    }
+                                    value={formatCurrency(currentSummary.total_remit)}
+                                    description={`Monthly — ${monthLabel}`}
+                                />
+                                <StatCard
+                                    icon={<Users className="h-4 w-4" />}
+                                    title="Employees Covered"
+                                    value={currentSummary.employees_covered}
+                                    description={monthLabel}
+                                />
+                            </div>
 
                             <TabsContent value="all" className="mt-6">
                                 {remittances.gsis?.employees?.length > 0 && (
-                                    <AgencyTable
-                                        agencyId="gsis"
-                                        agencyData={remittances.gsis}
-                                        onEmployeeClick={handleEmployeeClick}
-                                        employeeTypeFilter={employeeTypeFilter}
-                                    />
+                                    <AgencyTable agencyId="gsis" agencyData={remittances.gsis} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
                                 )}
-                                {remittances.philhealth?.employees?.length >
-                                    0 && (
-                                    <AgencyTable
-                                        agencyId="philhealth"
-                                        agencyData={remittances.philhealth}
-                                        onEmployeeClick={handleEmployeeClick}
-                                        employeeTypeFilter={employeeTypeFilter}
-                                    />
+                                {remittances.philhealth?.employees?.length > 0 && (
+                                    <AgencyTable agencyId="philhealth" agencyData={remittances.philhealth} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
                                 )}
                                 {remittances.pagibig?.employees?.length > 0 && (
-                                    <AgencyTable
-                                        agencyId="pagibig"
-                                        agencyData={remittances.pagibig}
-                                        onEmployeeClick={handleEmployeeClick}
-                                        employeeTypeFilter={employeeTypeFilter}
-                                    />
+                                    <AgencyTable agencyId="pagibig" agencyData={remittances.pagibig} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
                                 )}
-                                {!remittances.gsis?.employees?.length &&
-                                    !remittances.philhealth?.employees
-                                        ?.length &&
-                                    !remittances.pagibig?.employees?.length && (
-                                        <Card>
-                                            <CardContent className="py-12 pt-6 text-center text-muted-foreground">
-                                                <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
-                                                <p className="text-lg font-medium">
-                                                    No remittance data available
-                                                </p>
-                                                <p className="text-sm">
-                                                    There are no government
-                                                    contribution records for
-                                                    this period.
-                                                </p>
-                                            </CardContent>
-                                        </Card>
-                                    )}
-                                <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'}
-                                    preparedDate={preparedDate}
-                                />
+                                {!remittances.gsis?.employees?.length && !remittances.philhealth?.employees?.length && !remittances.pagibig?.employees?.length && (
+                                    <Card>
+                                        <CardContent className="py-12 pt-6 text-center text-muted-foreground">
+                                            <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
+                                            <p className="text-lg font-medium">No remittance data available</p>
+                                            <p className="text-sm">There are no government contribution records for this period.</p>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                                <SignatureSection userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate} />
                             </TabsContent>
 
                             <TabsContent value="gsis" className="mt-6">
                                 {remittances.gsis?.employees?.length > 0 ? (
-                                    <AgencyTable
-                                        agencyId="gsis"
-                                        agencyData={remittances.gsis}
-                                        onEmployeeClick={handleEmployeeClick}
-                                        employeeTypeFilter={employeeTypeFilter}
-                                    />
+                                    <AgencyTable agencyId="gsis" agencyData={remittances.gsis} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
                                 ) : (
                                     <Card>
                                         <CardContent className="py-12 pt-6 text-center text-muted-foreground">
                                             <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
-                                            <p className="text-lg font-medium">
-                                                No GSIS Data
-                                            </p>
-                                            <p className="text-sm">
-                                                There are no GSIS contribution
-                                                records for this period.
-                                            </p>
+                                            <p className="text-lg font-medium">No GSIS Data</p>
+                                            <p className="text-sm">There are no GSIS contribution records for this period.</p>
                                         </CardContent>
                                     </Card>
                                 )}
-                                <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'}
-                                    preparedDate={preparedDate}
-                                />
+                                <SignatureSection userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate} />
                             </TabsContent>
 
                             <TabsContent value="philhealth" className="mt-6">
-                                {remittances.philhealth?.employees?.length >
-                                0 ? (
-                                    <AgencyTable
-                                        agencyId="philhealth"
-                                        agencyData={remittances.philhealth}
-                                        onEmployeeClick={handleEmployeeClick}
-                                        employeeTypeFilter={employeeTypeFilter}
-                                    />
+                                {remittances.philhealth?.employees?.length > 0 ? (
+                                    <AgencyTable agencyId="philhealth" agencyData={remittances.philhealth} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
                                 ) : (
                                     <Card>
                                         <CardContent className="py-12 pt-6 text-center text-muted-foreground">
                                             <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
-                                            <p className="text-lg font-medium">
-                                                No PhilHealth Data
-                                            </p>
-                                            <p className="text-sm">
-                                                There are no PhilHealth
-                                                contribution records for this
-                                                period.
-                                            </p>
+                                            <p className="text-lg font-medium">No PhilHealth Data</p>
+                                            <p className="text-sm">There are no PhilHealth contribution records for this period.</p>
                                         </CardContent>
                                     </Card>
                                 )}
-                                <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'}
-                                    preparedDate={preparedDate}
-                                />
+                                <SignatureSection userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate} />
                             </TabsContent>
 
                             <TabsContent value="pagibig" className="mt-6">
                                 {remittances.pagibig?.employees?.length > 0 ? (
-                                    <AgencyTable
-                                        agencyId="pagibig"
-                                        agencyData={remittances.pagibig}
-                                        onEmployeeClick={handleEmployeeClick}
-                                        employeeTypeFilter={employeeTypeFilter}
-                                    />
+                                    <AgencyTable agencyId="pagibig" agencyData={remittances.pagibig} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
                                 ) : (
                                     <Card>
                                         <CardContent className="py-12 pt-6 text-center text-muted-foreground">
                                             <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
-                                            <p className="text-lg font-medium">
-                                                No Pag-IBIG Data
-                                            </p>
-                                            <p className="text-sm">
-                                                There are no Pag-IBIG
-                                                contribution records for this
-                                                period.
-                                            </p>
+                                            <p className="text-lg font-medium">No Pag-IBIG Data</p>
+                                            <p className="text-sm">There are no Pag-IBIG contribution records for this period.</p>
                                         </CardContent>
                                     </Card>
                                 )}
-                                <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'}
-                                    preparedDate={preparedDate}
-                                />
+                                <SignatureSection userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate} />
                             </TabsContent>
 
                             <TabsContent value="bir" className="mt-6">
                                 {remittances.bir?.employees?.length > 0 ? (
-                                    <AgencyTable
-                                        agencyId="bir"
-                                        agencyData={remittances.bir}
-                                        onEmployeeClick={handleEmployeeClick}
-                                        employeeTypeFilter={employeeTypeFilter}
-                                    />
+                                    <AgencyTable agencyId="bir" agencyData={remittances.bir} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
                                 ) : (
                                     <Card className="border-purple-200 bg-purple-50/30">
                                         <CardContent className="py-12 pt-12 text-center">
                                             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-purple-100">
                                                 <Landmark className="h-10 w-10 text-purple-600" />
                                             </div>
-                                            <p className="mb-2 text-2xl font-semibold text-purple-800">
-                                                BIR (Tax) Remittance
-                                            </p>
-                                            <p className="mb-4 text-purple-600">
-                                                Coming Soon
-                                            </p>
+                                            <p className="mb-2 text-2xl font-semibold text-purple-800">BIR (Tax) Remittance</p>
+                                            <p className="mb-4 text-purple-600">Coming Soon</p>
                                             <p className="mx-auto max-w-md rounded-lg border border-purple-200 bg-white/50 p-4 text-sm text-muted-foreground">
-                                                The BIR withholding tax
-                                                remittance module is currently
-                                                under development. This feature
-                                                will allow you to generate and
-                                                manage tax remittance reports
-                                                for all employees.
+                                                The BIR withholding tax remittance module is currently under development.
                                             </p>
-                                            <Badge
-                                                variant="outline"
-                                                className="mt-6 border-purple-300 bg-purple-100 px-4 py-1 text-purple-700"
-                                            >
+                                            <Badge variant="outline" className="mt-6 border-purple-300 bg-purple-100 px-4 py-1 text-purple-700">
                                                 Expected Release: Q2 2026
                                             </Badge>
                                         </CardContent>
                                     </Card>
                                 )}
-                                <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'}
-                                    preparedDate={preparedDate}
-                                />
+                                <SignatureSection userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate} />
                             </TabsContent>
-                        </Tabs>
 
-                        <div className="print-only">
-                            <div className="report-main-header">
-                                <div className="report-header-inner">
-                                    <img
-                                        src="/images/logo.svg"
-                                        alt="Metro Kidapawan Water District"
-                                        className="report-logo"
-                                        onError={(e) => {
-                                            e.currentTarget.style.display =
-                                                'none';
-                                        }}
-                                    />
-                                    <div className="report-header-text">
-                                        <h1>METRO KIDAPAWAN WATER DISTRICT</h1>
-                                        <h2>
-                                            GOVERNMENT CONTRIBUTION REMITTANCE
-                                            REPORT
-                                        </h2>
-                                        <p className="period">
-                                            {selectedPeriod?.label || ''} —{' '}
-                                            {activeTab === 'all'
-                                                ? 'All Agencies'
-                                                : getAgencyDisplayName(
-                                                      activeTab,
-                                                  )}
-                                        </p>
-                                        <p
-                                            className="period"
-                                            style={{
-                                                fontSize: '11px',
-                                                marginTop: '4px',
-                                                color: '#555',
-                                            }}
-                                        >
-                                            Monthly contributions for{' '}
-                                            {monthLabel} (1st &amp; 2nd cut-off
-                                            combined)
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+                        </>
+                    )}
+               </Tabs>
 
-                            {activeTab !== 'all' && remittances[activeTab] && (
-                                <>
-                                    <AgencyTable
-                                        agencyId={activeTab}
-                                        agencyData={remittances[activeTab]}
-                                        isPrintView={true}
-                                    />
-                                    <SignatureSection
-                                        isPrintView={true}
-                                        preparedDate={preparedDate}
-                                        userName={
-                                            auth.user?.name || 'Admin User'
-                                        }
-                                    />
-                                </>
-                            )}
+<div className="print-only">
+    <div className="report-main-header">
+        <div className="report-header-inner">
+            <img src="/images/logo.svg" alt="Metro Kidapawan Water District" className="report-logo" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <div className="report-header-text">
+                <h1>METRO KIDAPAWAN WATER DISTRICT</h1>
+                <h2>GOVERNMENT CONTRIBUTION REMITTANCE REPORT</h2>
+                <p className="period">{selectedPeriod?.label || ''} — {activeTab === 'all' ? 'All Agencies' : getAgencyDisplayName(activeTab)}</p>
+                <p className="period" style={{ fontSize: '11px', marginTop: '4px', color: '#555' }}>
+                    Monthly contributions for {monthLabel} (1st &amp; 2nd cut-off combined)
+                </p>
+            </div>
+        </div>
+    </div>
 
-                            {activeTab === 'all' && (
-                                <>
-                                    {activeAgenciesForPrint.map((id, i) => (
-                                        <div
-                                            key={id}
-                                            style={
-                                                i > 0
-                                                    ? {
-                                                          pageBreakBefore:
-                                                              'always',
-                                                          breakBefore: 'always',
-                                                      }
-                                                    : undefined
-                                            }
-                                        >
-                                            <AgencyTable
-                                                agencyId={id}
-                                                agencyData={remittances[id]}
-                                                isPrintView={true}
-                                            />
-                                        </div>
-                                    ))}
-                                    <SignatureSection
-                                        isPrintView={true}
-                                        preparedDate={preparedDate}
-                                        userName={
-                                            auth.user?.name || 'Admin User'
-                                        }
-                                    />
-                                </>
-                            )}
-                        </div>
-                    </>
-                )}
+    {activeTab !== 'all' && remittances[activeTab] && (
+        <>
+            <AgencyTable agencyId={activeTab} agencyData={remittances[activeTab]} isPrintView={true} />
+            <SignatureSection isPrintView={true} preparedDate={preparedDate} userName={auth.user?.name || 'Admin User'} />
+        </>
+    )}
+
+    {activeTab === 'all' && (
+        <>
+            {activeAgenciesForPrint.map((id, i) => (
+                <div key={id} style={i > 0 ? { pageBreakBefore: 'always', breakBefore: 'always' } : undefined}>
+                    <AgencyTable agencyId={id} agencyData={remittances[id]} isPrintView={true} />
+                </div>
+            ))}
+            <SignatureSection isPrintView={true} preparedDate={preparedDate} userName={auth.user?.name || 'Admin User'} />
+        </>
+    )}
+</div>
 
                 {selectedEmployee && (
                     <Dialog
@@ -1621,17 +1435,15 @@ export default function GovernmentRemittanceReport({
                                         {selectedEmployee.name}
                                     </DialogTitle>
                                     <Badge
-                                        variant="outline"
-                                        className={
-                                            selectedEmployee.employee_type ===
-                                            'regular'
-                                                ? 'border-green-200 bg-green-50 text-green-700'
-                                                : 'border-amber-200 bg-amber-50 text-amber-700'
-                                        }
-                                    >
-                                        {selectedEmployee.employee_type ??
-                                            selectedEmployee.classification}
-                                    </Badge>
+                                            variant={
+        selectedEmployee.employee_type === 'regular'
+            ? 'default'
+            : 'secondary'
+    }
+    className="min-w-[60px] justify-center"
+>
+    {selectedEmployee.employee_type ?? selectedEmployee.classification}
+</Badge>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
                                     {selectedEmployee.position}
