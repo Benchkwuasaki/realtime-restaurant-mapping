@@ -92,7 +92,7 @@ export const columns: DataTableColumnDef<Period>[] = [
             const val = getValue() as string | null;
             return val ? (
                 <Badge
-                    variant="secondary"
+                    variant="default"
                     className="min-w-[80px] justify-center"
                 >
                     {val}
@@ -153,9 +153,7 @@ export const columns: DataTableColumnDef<Period>[] = [
         cell: ({ getValue }) => {
             const status = getValue() as string;
             return (
-                <Badge
-                    variant={status === 'Closed' ? 'green' : 'blue'}
-                >
+                <Badge variant={status === 'Closed' ? 'green' : 'blue'}>
                     {status}
                 </Badge>
             );

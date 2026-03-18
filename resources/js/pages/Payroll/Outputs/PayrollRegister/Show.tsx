@@ -52,10 +52,17 @@ interface PayrollRecord {
     philhealth: number;
     pag_ibig: number;
     withholding_tax: number;
+    overtime_pay: number;
     absent_days: number;
     absent_deduction: number;
+    half_days: number;
+    half_day_deduction: number;
     late_minutes: number;
     late_deduction: number;
+    undertime_minutes: number;
+    undertime_deduction: number;
+    personal_slip_minutes: number;
+    personal_slip_deduction: number;
     gsis_mpl: number;
     gsis_emergency: number;
     pag_ibig_mpl: number;
@@ -91,11 +98,15 @@ interface Summary {
     total_pag_ibig: number;
     total_withholding_tax: number;
     total_absent_deduction: number;
+    total_half_day_deduction: number;
     total_late_deduction: number;
+    total_undertime_deduction: number;
+    total_personal_slip_deduction: number;
     total_gsis_mpl: number;
     total_gsis_emergency: number;
     total_pag_ibig_mpl: number;
     total_internal_org_savings: number;
+    total_internal_org_second: number;
     /** Renamed from total_ama_y2k_union */
     total_other_deductions: number;
     total_water_bill: number;
@@ -295,8 +306,7 @@ export default function Show({ period, records, summary }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Payroll Register – ${periodLabel}`} />
 
-            {/* ── Screen toolbar (hidden on print) ────────────────────────── */}
-            <div className="flex items-center justify-between border-b px-6 py-3 print:hidden">
+            <div className="flex items-center justify-between gap-8 p-8 print:hidden">
                 <div className="flex items-center gap-3">
                     <Link href={route('payroll-register.index')}>
                         <Button variant="outline" size="sm" className="gap-1.5">
@@ -325,7 +335,6 @@ export default function Show({ period, records, summary }: Props) {
                 </Button>
             </div>
 
-            {/* ── Summary stat cards (screen only) ── */}
             <div className="flex flex-col items-center bg-slate-50 px-6 pt-3 pb-0 print:hidden">
                 <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard
@@ -435,7 +444,7 @@ export default function Show({ period, records, summary }: Props) {
                                                 Mandatory Deductions
                                             </GrpTh>
                                             <GrpTh
-                                                colSpan={4}
+                                                colSpan={10}
                                                 className="bg-slate-300 text-foreground"
                                                 style={{
                                                     borderLeft:
@@ -445,7 +454,7 @@ export default function Show({ period, records, summary }: Props) {
                                                 Attendance
                                             </GrpTh>
                                             <GrpTh
-                                                colSpan={6}
+                                                colSpan={7}
                                                 className="bg-slate-300 text-foreground"
                                                 style={{
                                                     borderLeft:
@@ -540,11 +549,29 @@ export default function Show({ period, records, summary }: Props) {
                                             <ColTh className="w-[3.5%] bg-slate-50">
                                                 Abs.Amt
                                             </ColTh>
+                                            <ColTh className="w-[2%] bg-slate-50">
+                                                Half Days
+                                            </ColTh>
+                                            <ColTh className="w-[3.5%] bg-slate-50">
+                                                Half Amt
+                                            </ColTh>
                                             <ColTh className="w-[2.5%] bg-slate-50">
                                                 Late Min
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-slate-50">
                                                 Late Amt
+                                            </ColTh>
+                                            <ColTh className="w-[2%] bg-slate-50">
+                                                UT Min
+                                            </ColTh>
+                                            <ColTh className="w-[3.5%] bg-slate-50">
+                                                UT Amt
+                                            </ColTh>
+                                            <ColTh className="w-[2%] bg-slate-50">
+                                                Slip Min
+                                            </ColTh>
+                                            <ColTh className="w-[3.5%] bg-slate-50">
+                                                Slip Amt
                                             </ColTh>
 
                                             {/* Other sub-cols */}
@@ -565,6 +592,9 @@ export default function Show({ period, records, summary }: Props) {
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-slate-50">
                                                 Org Savings
+                                            </ColTh>
+                                            <ColTh className="w-[3.5%] bg-slate-50">
+                                                Org Dues
                                             </ColTh>
                                             <ColTh className="w-[5%] bg-slate-50">
                                                 Other Ded.
@@ -693,6 +723,18 @@ export default function Show({ period, records, summary }: Props) {
                                                     center
                                                     className="text-purple-800 dark:text-purple-300"
                                                 >
+                                                    {rec.half_days || '—'}
+                                                </Td>
+                                                <Td
+                                                    right
+                                                    className="text-purple-800 dark:text-purple-300"
+                                                >
+                                                    {n(rec.half_day_deduction)}
+                                                </Td>
+                                                <Td
+                                                    center
+                                                    className="text-purple-800 dark:text-purple-300"
+                                                >
                                                     {rec.late_minutes || '—'}
                                                 </Td>
                                                 <Td
@@ -700,6 +742,34 @@ export default function Show({ period, records, summary }: Props) {
                                                     className="text-purple-800 dark:text-purple-300"
                                                 >
                                                     {n(rec.late_deduction)}
+                                                </Td>
+                                                <Td
+                                                    center
+                                                    className="text-purple-800 dark:text-purple-300"
+                                                >
+                                                    {rec.undertime_minutes ||
+                                                        '—'}
+                                                </Td>
+                                                <Td
+                                                    right
+                                                    className="text-purple-800 dark:text-purple-300"
+                                                >
+                                                    {n(rec.undertime_deduction)}
+                                                </Td>
+                                                <Td
+                                                    center
+                                                    className="text-purple-800 dark:text-purple-300"
+                                                >
+                                                    {rec.personal_slip_minutes ||
+                                                        '—'}
+                                                </Td>
+                                                <Td
+                                                    right
+                                                    className="text-purple-800 dark:text-purple-300"
+                                                >
+                                                    {n(
+                                                        rec.personal_slip_deduction,
+                                                    )}
                                                 </Td>
 
                                                 {/* Other */}
@@ -832,7 +902,34 @@ export default function Show({ period, records, summary }: Props) {
                                             </TotTd>
                                             <TotTd className="text-purple-800 dark:text-purple-300">
                                                 {nf(
+                                                    summary.total_half_day_deduction ??
+                                                        0,
+                                                )}
+                                            </TotTd>
+                                            <TotTd className="text-purple-800 dark:text-purple-300">
+                                                —
+                                            </TotTd>
+                                            <TotTd className="text-purple-800 dark:text-purple-300">
+                                                {nf(
                                                     summary.total_late_deduction,
+                                                )}
+                                            </TotTd>
+                                            <TotTd className="text-purple-800 dark:text-purple-300">
+                                                —
+                                            </TotTd>
+                                            <TotTd className="text-purple-800 dark:text-purple-300">
+                                                {nf(
+                                                    summary.total_undertime_deduction ??
+                                                        0,
+                                                )}
+                                            </TotTd>
+                                            <TotTd className="text-purple-800 dark:text-purple-300">
+                                                —
+                                            </TotTd>
+                                            <TotTd className="text-purple-800 dark:text-purple-300">
+                                                {nf(
+                                                    summary.total_personal_slip_deduction ??
+                                                        0,
                                                 )}
                                             </TotTd>
 
@@ -851,6 +948,12 @@ export default function Show({ period, records, summary }: Props) {
                                             <TotTd className="text-red-800 dark:text-red-400">
                                                 {nf(
                                                     summary.total_internal_org_savings ??
+                                                        0,
+                                                )}
+                                            </TotTd>
+                                            <TotTd className="text-red-800 dark:text-red-400">
+                                                {nf(
+                                                    summary.total_internal_org_second ??
                                                         0,
                                                 )}
                                             </TotTd>
@@ -880,17 +983,6 @@ export default function Show({ period, records, summary }: Props) {
 
                     {/* ── Certification text ───────────────────────────────── */}
                     <div className="mt-8 border-t border-border pt-5">
-                        <p className="mb-6 text-[10px] leading-relaxed text-muted-foreground">
-                            We hereby certify on our official oaths that the
-                            services and the corresponding compensations of the
-                            employees listed above have been rendered and that
-                            the payrolls are correct and just, that the services
-                            were actually rendered, and that the disbursements
-                            made conform with existing government accounting and
-                            auditing rules and regulations.
-                        </p>
-
-                        {/* ── Signature blocks ──────────────────────────────── */}
                         <div className="flex justify-between gap-8">
                             {[
                                 {
@@ -929,36 +1021,13 @@ export default function Show({ period, records, summary }: Props) {
 
                     {/* ── Document footer ──────────────────────────────────── */}
                     <div className="mt-5 border-t border-border/40 pt-2">
-                        {/* Paper note — visible on screen, also prints */}
-                        <div className="mb-2 flex items-center justify-center gap-1.5 rounded border border-dashed border-amber-400 bg-amber-50/60 px-3 py-1 text-[10px] font-medium text-amber-700 dark:border-amber-600 dark:bg-amber-950/20 dark:text-amber-400 print:hidden">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-3 w-3 shrink-0"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            >
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                <polyline points="14 2 14 8 20 8" />
-                            </svg>
-                            <span>
-                                Please print on{' '}
-                                <strong>
-                                    Legal / Long Bond Paper (8.5" × 14")
-                                </strong>{' '}
-                                — Landscape orientation
-                            </span>
-                        </div>
                         <div className="flex items-center justify-between text-[9px] text-muted-foreground">
                             <span>Period ID: #{period.payroll_period_id}</span>
                             <span>
                                 Metro Kidapawan Water District — Payroll System
                             </span>
                             <span>
-                                Printed: {format(new Date(), 'MMM d, yyyy')}
+                                Print Date: {format(new Date(), 'MMM d, yyyy')}
                             </span>
                         </div>
                     </div>

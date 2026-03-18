@@ -511,16 +511,12 @@ export const finalizedColumns: DataTableColumnDef<FinalizedEmployee>[] = [
         cell: ({ row }) => (
             <div className="flex justify-center">
                 <Badge
-                    variant={
-                        row.original.status === 'ok'
-                            ? 'secondary'
-                            : 'destructive'
-                    }
-                    className={
-                        row.original.status === 'ok'
-                            ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300'
-                            : ''
-                    }
+                    variant={row.original.status === 'ok' ? 'green' : 'red'}
+                    // className={
+                    //     row.original.status === 'ok'
+                    //         ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300'
+                    //         : ''
+                    // }
                 >
                     {row.original.status === 'ok' ? 'OK' : 'Low'}
                 </Badge>

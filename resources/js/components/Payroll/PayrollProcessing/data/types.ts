@@ -72,6 +72,10 @@ export interface DeductionLineItem {
      * 'other' routes to other_deductions_total.
      */
     type: 'water_bill' | 'other';
+    /** ISO date string — the record's original period_start in the DB. */
+    period_start?: string;
+    /** ISO date string — current period_end (may be extended by carry-forward). */
+    period_end?: string;
 }
 
 /**

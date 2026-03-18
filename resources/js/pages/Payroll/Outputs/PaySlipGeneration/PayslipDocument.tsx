@@ -57,13 +57,20 @@ export function PayslipDocument({
         data.pag_ibig +
         data.withholding_tax;
 
-    const totalAttendance = data.absent_deduction + data.late_deduction;
+    const totalAttendance =
+        data.absent_deduction +
+        data.half_day_deduction +
+        data.late_deduction +
+        data.undertime_deduction +
+        data.personal_slip_deduction;
 
     const totalLoans =
         data.gsis_mpl +
         data.gsis_emergency +
         data.pag_ibig_mpl +
-        data.ama_y2k_union +
+        data.internal_org_savings +
+        data.internal_org_second +
+        data.other_deductions_total +
         data.water_bill;
 
     const totalDeductions = totalMandatory + totalAttendance + totalLoans;
@@ -138,7 +145,7 @@ export function PayslipDocument({
                                 lineHeight: 1,
                             }}
                         >
-                            Pay Slip
+                            PAYSLIP
                         </p>
                         <p style={{ fontSize: 10, margin: '4px 0 0' }}>
                             {data.period_label}
@@ -214,7 +221,28 @@ export function PayslipDocument({
                             negative
                         />
                     )}
-                    {data.absent_days === 0 && data.late_minutes === 0 && (
+                    {data.half_days > 0 && (
+                        <Row
+                            label={`Half Day (${data.half_days} day${data.half_days !== 1 ? 's' : ''})`}
+                            value={data.half_day_deduction}
+                            negative
+                        />
+                    )}
+                    {data.undertime_minutes > 0 && (
+                        <Row
+                            label={`Undertime (${data.undertime_minutes} min${data.undertime_minutes !== 1 ? 's' : ''})`}
+                            value={data.undertime_deduction}
+                            negative
+                        />
+                    )}
+                    {data.personal_slip_minutes > 0 && (
+                        <Row
+                            label={`Personal Slip (${data.personal_slip_minutes} min${data.personal_slip_minutes !== 1 ? 's' : ''})`}
+                            value={data.personal_slip_deduction}
+                            negative
+                        />
+                    )}
+                    {totalAttendance === 0 && (
                         <p
                             style={{
                                 fontSize: 10,
@@ -225,7 +253,7 @@ export function PayslipDocument({
                             No attendance deductions
                         </p>
                     )}
-                    {(data.absent_days > 0 || data.late_minutes > 0) && (
+                    {totalAttendance > 0 && (
                         <div style={subtotalRow}>
                             <span style={{ fontSize: 10, fontWeight: 'bold' }}>
                                 Subtotal
@@ -293,10 +321,24 @@ export function PayslipDocument({
                             negative
                         />
                     )}
-                    {data.ama_y2k_union > 0 && (
+                    {data.internal_org_savings > 0 && (
                         <Row
-                            label="AMA / Y2K / Union"
-                            value={data.ama_y2k_union}
+                            label="Org Savings & Share Capital"
+                            value={data.internal_org_savings}
+                            negative
+                        />
+                    )}
+                    {data.internal_org_second > 0 && (
+                        <Row
+                            label="Org Dues"
+                            value={data.internal_org_second}
+                            negative
+                        />
+                    )}
+                    {data.other_deductions_total > 0 && (
+                        <Row
+                            label="Org Loans / Other Deductions"
+                            value={data.other_deductions_total}
                             negative
                         />
                     )}

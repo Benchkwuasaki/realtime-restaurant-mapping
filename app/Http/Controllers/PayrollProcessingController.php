@@ -943,6 +943,8 @@ class PayrollProcessingController extends Controller
                 'category' => $category ?? 'unknown',
                 'description' => $deduction->description,
                 'amount' => $fullAmt,
+                'period_start' => Carbon::parse($deduction->period_start)->toDateString(),
+                'period_end' => Carbon::parse($deduction->period_end)->toDateString(),
             ];
         }
 
@@ -1008,12 +1010,18 @@ class PayrollProcessingController extends Controller
             ->get();
 
         foreach ($otherDeductions as $deduction) {
-            // OtherDeduction stores the full monthly amount — halve it per cut-off.
-            $amt = round((float) $deduction->amount / 2, 2);
             if ($deduction->isWaterBill()) {
+                // Water bills are deducted once on the 2nd cut-off only, full amount.
+                // They are NOT halved and NOT applied on the 1st cut-off.
+                if (! $isSecondCutOff) {
+                    continue;
+                }
+                $amt = round((float) $deduction->amount, 2);
                 $waterBill += $amt;
                 $type = 'water_bill';
             } else {
+                // NS&ND and miscellaneous deductions are halved per cut-off (both cut-offs).
+                $amt = round((float) $deduction->amount / 2, 2);
                 $amaY2kUnion += $amt;
                 $type = 'other';
             }
@@ -1023,6 +1031,8 @@ class PayrollProcessingController extends Controller
                 'description' => $deduction->description,
                 'amount' => $amt,
                 'type' => $type,
+                'period_start' => Carbon::parse($deduction->period_start)->toDateString(),
+                'period_end' => Carbon::parse($deduction->period_end)->toDateString(),
             ];
         }
 
@@ -1306,14 +1316,19 @@ class PayrollProcessingController extends Controller
     private function carryForwardWaivedDeductions(int $employeeId, PayrollPeriod $period, array $waived, array $waivedItemIds = []): void
     {
         $orgGroupWaived = in_array('other_deductions_total', $waived);
+        $savingsWaived = in_array('internal_org_savings', $waived);
         $waterGroupWaived = in_array('water_bill', $waived);
 
-        if (! $orgGroupWaived && ! $waterGroupWaived && empty($waivedItemIds)) {
+        if (! $orgGroupWaived && ! $savingsWaived && ! $waterGroupWaived && empty($waivedItemIds)) {
             return;
         }
 
+        // addDays(16) from the period end always lands on the start of the next
+        // 2nd cut-off (end of month + 16 = 16th of next month), so water bills
+        // (2nd cut-off only) carry forward exactly one period.
         $nextEnd = Carbon::parse($period->end_date)->addDays(16);
 
+        // ── Carry forward OtherDeduction rows (water bill, NS&ND, misc) ──────
         if ($orgGroupWaived || $waterGroupWaived || ! empty($waivedItemIds)) {
             OtherDeduction::where('employee_id', $employeeId)
                 ->where('period_start', '<=', Carbon::parse($period->end_date)->toDateString())
@@ -1336,7 +1351,10 @@ class PayrollProcessingController extends Controller
                 });
         }
 
-        if ($orgGroupWaived) {
+        // ── Carry forward InternalOrgDeduction rows (savings, dues, share capital) ─
+        // Triggered by: group waiver of other_deductions_total, group waiver of
+        // internal_org_savings, or per-item waiver via waivedItemIds.
+        if ($orgGroupWaived || $savingsWaived) {
             InternalOrgDeduction::where('employee_id', $employeeId)
                 ->where('period_start', '<=', Carbon::parse($period->end_date)->toDateString())
                 ->where('period_end', '>=', Carbon::parse($period->start_date)->toDateString())
@@ -1464,6 +1482,10 @@ class PayrollProcessingController extends Controller
                         $gsisEmergency = in_array('gsis_emergency', $waived) ? 0.0 : (float) $rec['gsis_emergency'];
                         $pagIbigMpl = in_array('pag_ibig_mpl', $waived) ? 0.0 : (float) $rec['pag_ibig_mpl'];
 
+                        // Apply internal_org_savings waiver — mirrors the logic used for gsis_mpl etc.
+                        // When waived, the amount carries forward to the next period via carryForwardWaivedDeductions().
+                        $internalOrgSavings = in_array('internal_org_savings', $waived) ? 0.0 : (float) ($rec['internal_org_savings'] ?? 0);
+
                         if (in_array('other_deductions_total', $waived)) {
                             $amaY2kUnion = 0.0;
                         } elseif (! empty($waivedItemIds)) {
@@ -1510,7 +1532,7 @@ class PayrollProcessingController extends Controller
                             + (float) $rec['late_deduction']
                             + (float) ($rec['undertime_deduction'] ?? 0)
                             + $personalSlipDeduction
-                            + (float) ($rec['internal_org_savings'] ?? 0)
+                            + $internalOrgSavings
                             + $gsisMpl + $gsisEmergency + $pagIbigMpl
                             + $amaY2kUnion + $waterBill;
 
@@ -1549,7 +1571,7 @@ class PayrollProcessingController extends Controller
                                 'gsis_mpl' => $gsisMpl,
                                 'gsis_emergency' => $gsisEmergency,
                                 'pag_ibig_mpl' => $pagIbigMpl,
-                                'internal_org_savings' => (float) ($rec['internal_org_savings'] ?? 0),
+                                'internal_org_savings' => $internalOrgSavings,
                                 'internal_org_second' => (float) ($rec['internal_org_second'] ?? 0),
                                 'other_deductions_total' => $amaY2kUnion,
                                 'water_bill' => $waterBill,
@@ -1615,7 +1637,12 @@ class PayrollProcessingController extends Controller
                             // Internal org deduction items (savings, dues)
                             foreach ($rec['internal_org_items'] ?? [] as $item) {
                                 $itemKey = 'org:'.$item['id'];
+                                $isSavingsItem = in_array(
+                                    $item['category'] ?? '',
+                                    [InternalOrganizationService::CATEGORY_SAVINGS, InternalOrganizationService::CATEGORY_SHARE_CAPITAL]
+                                );
                                 $itemWaived = $waivedSet->contains('other_deductions_total')
+                                    || ($isSavingsItem && $waivedSet->contains('internal_org_savings'))
                                     || $waivedItemSet->contains((int) $item['id']);
                                 $payrollRecord->deductionItems()->create(
                                     PayrollDeductionItem::fromOrgItem(

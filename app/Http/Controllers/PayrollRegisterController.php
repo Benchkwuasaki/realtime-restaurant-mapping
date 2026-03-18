@@ -165,6 +165,7 @@ class PayrollRegisterController extends Controller
             'total_gsis_emergency' => $records->sum('gsis_emergency'),
             'total_pag_ibig_mpl' => $records->sum('pag_ibig_mpl'),
             'total_internal_org_savings' => $records->sum('internal_org_savings'),
+            'total_internal_org_second' => $records->sum('internal_org_second'),
             'total_other_deductions' => $records->sum('other_deductions_total'),
             'total_water_bill' => $records->sum('water_bill'),
             'total_deductions' => $records->sum('total_deductions'),

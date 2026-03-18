@@ -206,15 +206,29 @@ class PaySlipGenerationController extends Controller
             'pag_ibig' => (float) ($record->pag_ibig ?? 0),
             'withholding_tax' => (float) ($record->withholding_tax ?? 0),
 
-            'absent_days' => (int) ($record->absent_days ?? 0),
+            // Attendance deductions
+            'absent_days' => (float) ($record->absent_days ?? 0),
             'absent_deduction' => (float) ($record->absent_deduction ?? 0),
+            'half_days' => (int) ($record->half_days ?? 0),
+            'half_day_deduction' => (float) ($record->half_day_deduction ?? 0),
             'late_minutes' => (int) ($record->late_minutes ?? 0),
             'late_deduction' => (float) ($record->late_deduction ?? 0),
+            'undertime_minutes' => (int) ($record->undertime_minutes ?? 0),
+            'undertime_deduction' => (float) ($record->undertime_deduction ?? 0),
+            'personal_slip_minutes' => (int) ($record->personal_slip_minutes ?? 0),
+            'personal_slip_deduction' => (float) ($record->personal_slip_deduction ?? 0),
 
+            // Gov't loan deductions
             'gsis_mpl' => (float) ($record->gsis_mpl ?? 0),
             'gsis_emergency' => (float) ($record->gsis_emergency ?? 0),
             'pag_ibig_mpl' => (float) ($record->pag_ibig_mpl ?? 0),
-            'ama_y2k_union' => (float) ($record->ama_y2k_union ?? 0),
+
+            // Internal org deductions
+            'internal_org_savings' => (float) ($record->internal_org_savings ?? 0),
+            'internal_org_second' => (float) ($record->internal_org_second ?? 0),
+
+            // Other / misc deductions (renamed from ama_y2k_union)
+            'other_deductions_total' => (float) ($record->other_deductions_total ?? 0),
             'water_bill' => (float) ($record->water_bill ?? 0),
 
             'net_pay' => (float) ($record->net_pay ?? 0),
