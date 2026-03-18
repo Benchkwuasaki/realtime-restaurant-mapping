@@ -55,26 +55,27 @@ function nf(val: number): string {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-/** Individual bordered digit boxes for PhilHealth No. / TIN */
+/** Individual bordered digit boxes */
 function DigitBoxes({ value = '', count }: { value?: string; count: number }) {
     const raw = (value ?? '').replace(/\D/g, '');
     const digits = raw.padEnd(count, ' ').slice(0, count).split('');
 
     return (
-        <div style={{ display: 'inline-flex', gap: '1px', marginLeft: '4px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center' }}>
             {digits.map((d, i) => (
                 <span
                     key={i}
                     style={{
                         display: 'inline-block',
-                        width: '13px',
-                        height: '15px',
-                        border: '1px solid #444',
+                        width: '16px',
+                        height: '18px',
+                        border: '1px solid #555',
                         textAlign: 'center',
-                        fontSize: '8px',
-                        lineHeight: '15px',
+                        fontSize: '8.5px',
+                        lineHeight: '18px',
                         fontFamily: 'monospace',
                         backgroundColor: '#fff',
+                        marginRight: '1px',
                     }}
                 >
                     {d.trim()}
@@ -242,230 +243,478 @@ function RF1Page({
                 width: '100%',
             }}
         >
-            {/* ── Document header ─────────────────────────────────────────── */}
-            <div style={{ display: 'flex', ...outerBox, marginBottom: '-1px' }}>
-                {/* Branding block */}
-                <div
-                    style={{
-                        flex: '0 0 auto',
-                        width: '220px',
-                        borderRight: '1px solid #333',
-                        padding: '5px 8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                    }}
-                >
+            <div
+                style={{
+                    textAlign: 'right',
+                    fontSize: '6.5px',
+                    color: '#333',
+                    marginBottom: '2px',
+                    paddingRight: '2px',
+                }}
+            >
+                This form may be reproduced and is not for sale
+            </div>
+
+            {/* ══════════════════════════════════════════════════════════════
+                 HEADER + SECTION 1
+                 The OUTER dashed border IS the "FOR PHILHEALTH USE" box wall.
+                 Structure:
+                   [outer dashed border]
+                     [left solid panel  |  right space (uses outer dashed as border)]
+                     [─────────────────   ─────── dotted separator ──────────────────]
+                     [left solid panel  |  Date Received / Action Taken / By        ]
+                   [/outer dashed border]
+            ══════════════════════════════════════════════════════════════ */}
+            <div
+                style={{
+                    border: '1.5px dashed #777',
+                    marginBottom: '-1px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                }}
+            >
+                {/* ── TOP ROW: header logo area  +  FOR PHILHEALTH USE ───────── */}
+                <div style={{ display: 'flex', minHeight: '64px' }}>
+                    {/* Left panel — logo + RF-1 + org info + title */}
                     <div
                         style={{
-                            width: '36px',
-                            height: '36px',
-                            border: '2px solid #00703c',
-                            borderRadius: '50%',
+                            flex: 1,
+                            borderRight: '1px solid #555',
+                            display: 'flex',
+                        }}
+                    >
+                        {/* PhilHealth logo + RF-1 */}
+                        <div
+                            style={{
+                                flex: '0 0 auto',
+                                width: '200px',
+                                borderRight: '1px solid #555',
+                                padding: '4px 8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                            }}
+                        >
+                            <div style={{ flexShrink: 0 }}>
+                                <img
+                                    src="/images/philhealth.png"
+                                    alt="PhilHealth"
+                                    style={{
+                                        width: '56px',
+                                        height: '56px',
+                                        objectFit: 'contain',
+                                        display: 'block',
+                                    }}
+                                    onError={(e) => {
+                                        const el =
+                                            e.currentTarget as HTMLImageElement;
+                                        el.style.display = 'none';
+                                        const fb =
+                                            el.nextElementSibling as HTMLElement;
+                                        if (fb) fb.style.display = 'flex';
+                                    }}
+                                />
+                                <div
+                                    style={{
+                                        display: 'none',
+                                        width: '56px',
+                                        height: '56px',
+                                        border: '2px solid #00703c',
+                                        borderRadius: '50%',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexDirection: 'column',
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            fontSize: '8px',
+                                            fontWeight: 'bold',
+                                            color: '#00703c',
+                                            textAlign: 'center',
+                                            lineHeight: 1.1,
+                                        }}
+                                    >
+                                        Phil
+                                        <br />
+                                        Health
+                                    </span>
+                                </div>
+                            </div>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-start',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        fontSize: '36px',
+                                        fontWeight: 'bold',
+                                        fontFamily:
+                                            'Georgia, "Times New Roman", Times, serif',
+                                        color: '#111',
+                                        lineHeight: 1,
+                                    }}
+                                >
+                                    RF-1
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '7px',
+                                        color: '#222',
+                                        marginTop: '3px',
+                                        fontFamily:
+                                            'Georgia, "Times New Roman", Times, serif',
+                                    }}
+                                >
+                                    Revised February 2014
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Org info + title */}
+                        <div
+                            style={{
+                                flex: 1,
+                                padding: '5px 10px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <div
+                                style={{
+                                    fontSize: '6.5px',
+                                    fontStyle: 'italic',
+                                    color: '#333',
+                                    marginBottom: '1px',
+                                    fontFamily:
+                                        'Georgia, "Times New Roman", Times, serif',
+                                }}
+                            >
+                                Republic of the Philippines
+                            </div>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '8px',
+                                }}
+                            >
+                                <div>
+                                    <div
+                                        style={{
+                                            fontSize: '9.5px',
+                                            fontWeight: 'bold',
+                                            lineHeight: 1.2,
+                                            fontFamily:
+                                                'Georgia, "Times New Roman", Times, serif',
+                                        }}
+                                    >
+                                        PHILIPPINE HEALTH INSURANCE CORPORATION
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontSize: '6px',
+                                            color: '#555',
+                                            marginTop: '2px',
+                                            lineHeight: 1.3,
+                                            fontFamily:
+                                                'Georgia, "Times New Roman", Times, serif',
+                                        }}
+                                    >
+                                        Healthline 441-7444 &nbsp;&nbsp;
+                                        www.philhealth.gov.ph
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontSize: '6px',
+                                            color: '#555',
+                                            lineHeight: 1.3,
+                                            fontFamily:
+                                                'Georgia, "Times New Roman", Times, serif',
+                                        }}
+                                    >
+                                        actioncenter@philhealth.gov.ph
+                                    </div>
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '13px',
+                                        fontWeight: 'bold',
+                                        textTransform: 'uppercase',
+                                        whiteSpace: 'nowrap',
+                                        letterSpacing: '0.3px',
+                                        paddingLeft: '8px',
+                                    }}
+                                >
+                                    EMPLOYER'S REMITTANCE REPORT
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {/* end left top panel */}
+
+                    {/* Right top panel — FOR PHILHEALTH USE (bounded by outer dashed border) */}
+                    <div
+                        style={{
+                            flex: '0 0 auto',
+                            width: '170px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            flexShrink: 0,
                         }}
                     >
                         <span
                             style={{
-                                fontSize: '7px',
+                                fontSize: '9px',
                                 fontWeight: 'bold',
-                                color: '#00703c',
                                 textAlign: 'center',
-                                lineHeight: 1.1,
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase',
                             }}
                         >
-                            Phil
-                            <br />
-                            Health
+                            FOR PHILHEALTH USE
                         </span>
                     </div>
-                    <div>
+                </div>
+                {/* end top row */}
+
+                {/* ── DOTTED SEPARATOR — runs full width ──────────────────────── */}
+                <div
+                    style={{ borderTop: '1.5px dotted #777', width: '100%' }}
+                />
+
+                {/* ── BOTTOM ROW: Section 1 (PhilHealth No / TIN)  +  Date fields */}
+                <div style={{ display: 'flex' }}>
+                    {/* Left bottom panel — Section 1 digit fields */}
+                    <div
+                        style={{
+                            flex: 1,
+                            borderRight: '1px solid #555',
+                            borderTop: '1px solid #555',
+                            padding: '4px 8px',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '10px',
+                        }}
+                    >
+                        {/* Badge "1" top-left */}
                         <div
                             style={{
-                                fontSize: '28px',
-                                fontWeight: 'bold',
-                                fontStyle: 'italic',
-                                color: '#1a1a1a',
-                                lineHeight: 1,
+                                alignSelf: 'flex-start',
+                                marginTop: '1px',
                             }}
                         >
-                            RF-1
+                            <SectionBadge num={1} />
                         </div>
+
+                        {/* Two stacked digit rows */}
                         <div
                             style={{
-                                fontSize: '6px',
-                                color: '#555',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '2px',
+                            }}
+                        >
+                            {/* PHILHEALTH NO. */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontSize: '9.5px',
+                                        fontWeight: 'bold',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.3px',
+                                        width: '100px',
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    PhilHealth No.
+                                </span>
+                                <DigitBoxes
+                                    value={(
+                                        employerInfo.philhealth_number ?? ''
+                                    ).slice(0, 2)}
+                                    count={2}
+                                />
+                                <span
+                                    style={{
+                                        display: 'inline-block',
+                                        width: '8px',
+                                    }}
+                                />
+                                <DigitBoxes
+                                    value={(
+                                        employerInfo.philhealth_number ?? ''
+                                    ).slice(2, 11)}
+                                    count={9}
+                                />
+                                <span
+                                    style={{
+                                        display: 'inline-block',
+                                        width: '8px',
+                                    }}
+                                />
+                                <DigitBoxes
+                                    value={(
+                                        employerInfo.philhealth_number ?? ''
+                                    ).slice(11, 12)}
+                                    count={1}
+                                />
+                            </div>
+
+                            {/* EMPLOYER TIN */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontSize: '9.5px',
+                                        fontWeight: 'bold',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.3px',
+                                        width: '100px',
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    Employer TIN
+                                </span>
+                                <DigitBoxes
+                                    value={(
+                                        employerInfo.employer_tin ?? ''
+                                    ).slice(0, 3)}
+                                    count={3}
+                                />
+                                <span
+                                    style={{
+                                        display: 'inline-block',
+                                        width: '8px',
+                                    }}
+                                />
+                                <DigitBoxes
+                                    value={(
+                                        employerInfo.employer_tin ?? ''
+                                    ).slice(3, 6)}
+                                    count={3}
+                                />
+                                <span
+                                    style={{
+                                        display: 'inline-block',
+                                        width: '8px',
+                                    }}
+                                />
+                                <DigitBoxes
+                                    value={(
+                                        employerInfo.employer_tin ?? ''
+                                    ).slice(6, 9)}
+                                    count={3}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    {/* end left bottom panel */}
+
+                    {/* Right bottom panel — Date Received / Action Taken / By */}
+                    <div
+                        style={{
+                            flex: '0 0 auto',
+                            width: '170px',
+                            padding: '8px 10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
+                            fontSize: '7px',
+                        }}
+                    >
+                        {/* Row 1: Date Received + underline   Action Taken: */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                justifyContent: 'space-between',
+                                gap: '6px',
+                            }}
+                        >
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '2px',
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontSize: '7.5px',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    Date Received:
+                                </span>
+                                <span
+                                    style={{
+                                        display: 'block',
+                                        width: '80px',
+                                        borderBottom: '1px solid #333',
+                                    }}
+                                />
+                            </div>
+                            <span
+                                style={{
+                                    fontSize: '7.5px',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                Action Taken:
+                            </span>
+                        </div>
+
+                        {/* Row 2: By + underline */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '2px',
                                 marginTop: '2px',
                             }}
                         >
-                            Revised February 2014
+                            <span style={{ fontSize: '7.5px' }}>By:</span>
+                            <span
+                                style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    borderBottom: '1px solid #333',
+                                }}
+                            />
+                        </div>
+
+                        {/* Row 3: Signature caption */}
+                        <div
+                            style={{
+                                fontSize: '6.5px',
+                                color: '#555',
+                                textAlign: 'center',
+                                marginTop: '1px',
+                            }}
+                        >
+                            Signature Over Printed Name
                         </div>
                     </div>
+                    {/* end right bottom panel */}
                 </div>
-
-                {/* Center: title */}
-                <div
-                    style={{
-                        flex: 2,
-                        borderRight: '1px solid #333',
-                        padding: '5px 10px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                    }}
-                >
-                    <div
-                        style={{
-                            fontSize: '7px',
-                            color: '#555',
-                            marginBottom: '1px',
-                        }}
-                    >
-                        Republic of the Philippines
-                    </div>
-                    <div style={{ fontSize: '9px', fontWeight: 'bold' }}>
-                        PHILIPPINE HEALTH INSURANCE CORPORATION
-                    </div>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            margin: '2px 0',
-                        }}
-                    >
-                        Employer's Remittance Report
-                    </div>
-                    <div style={{ fontSize: '6.5px', color: '#555' }}>
-                        Healthline 441-7444 &nbsp;·&nbsp; www.philhealth.gov.ph
-                        &nbsp;·&nbsp; actioncenter@philhealth.gov.ph
-                    </div>
-                </div>
-
-                {/* Right: FOR PHILHEALTH USE */}
-                <div
-                    style={{
-                        flex: '0 0 auto',
-                        width: '180px',
-                        padding: '5px 8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                    }}
-                >
-                    <div
-                        style={{
-                            fontSize: '8px',
-                            fontWeight: 'bold',
-                            textAlign: 'center',
-                            borderBottom: '1px solid #999',
-                            paddingBottom: '3px',
-                            marginBottom: '4px',
-                        }}
-                    >
-                        FOR PHILHEALTH USE
-                    </div>
-                    <div
-                        style={{
-                            fontSize: '6.5px',
-                            color: '#555',
-                            marginBottom: '2px',
-                        }}
-                    >
-                        Date Received:{' '}
-                        <span
-                            style={{
-                                borderBottom: '1px solid #aaa',
-                                display: 'inline-block',
-                                minWidth: '70px',
-                            }}
-                        >
-                            &nbsp;
-                        </span>
-                    </div>
-                    <div
-                        style={{
-                            fontSize: '6.5px',
-                            color: '#555',
-                            marginBottom: '2px',
-                        }}
-                    >
-                        Action Taken:{' '}
-                        <span
-                            style={{
-                                borderBottom: '1px solid #aaa',
-                                display: 'inline-block',
-                                minWidth: '70px',
-                            }}
-                        >
-                            &nbsp;
-                        </span>
-                    </div>
-                    <div style={{ fontSize: '6.5px', color: '#555' }}>
-                        By:{' '}
-                        <span
-                            style={{
-                                borderBottom: '1px solid #aaa',
-                                display: 'inline-block',
-                                minWidth: '100px',
-                            }}
-                        >
-                            &nbsp;
-                        </span>
-                    </div>
-                    <div
-                        style={{
-                            fontSize: '6px',
-                            color: '#888',
-                            textAlign: 'right',
-                            marginTop: '1px',
-                        }}
-                    >
-                        Signature Over Printed Name
-                    </div>
-                </div>
+                {/* end bottom row */}
             </div>
-
-            {/* ── Section 1: PhilHealth No. + TIN ─────────────────────────── */}
-            <div
-                style={{
-                    ...outerBox,
-                    ...sectionRow,
-                    borderTop: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px',
-                    flexWrap: 'wrap',
-                }}
-            >
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                    }}
-                >
-                    <SectionBadge num={1} />
-                    <span style={labelSm}>PhilHealth No.</span>
-                    <DigitBoxes
-                        value={employerInfo.philhealth_number}
-                        count={12}
-                    />
-                </div>
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                    }}
-                >
-                    <span style={labelSm}>Employer TIN</span>
-                    <DigitBoxes value={employerInfo.employer_tin} count={9} />
-                </div>
-            </div>
+            {/* end outer dashed border */}
 
             {/* ── Section 2: Employer Details ──────────────────────────────── */}
             <div style={{ ...outerBox, borderTop: 'none', padding: '4px 6px' }}>

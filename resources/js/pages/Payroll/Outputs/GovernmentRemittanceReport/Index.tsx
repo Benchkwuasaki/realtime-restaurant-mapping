@@ -41,15 +41,37 @@ import {
     useRemittanceColumns,
     type RemittanceEmployee,
 } from '@/components/Payroll/Outputs/GovernmentRemittance/components/columns';
+import RF1PrintView, {
+    type RF1Employee,
+    type RF1EmployerInfo,
+} from './RF1PrintView';
 
 // ── Print Styles ──────────────────────────────────────────────────────────────
 
 const printStyles = `
   @media screen {
     .print-only { display: none !important; }
+    .rf1-print-only { display: none !important; }
   }
 
   @media print {
+    /* ── Mode: remittance (default) ── */
+    body[data-print-mode="remittance"] .print-only,
+    body:not([data-print-mode="rf1"]) .print-only {
+      display: block !important;
+      visibility: visible !important;
+    }
+    body[data-print-mode="rf1"] .print-only { display: none !important; }
+
+    /* ── Mode: RF-1 ── */
+    body[data-print-mode="rf1"] .rf1-print-only {
+      display: block !important;
+      visibility: visible !important;
+      overflow: visible !important;
+      height: auto !important;
+    }
+    body:not([data-print-mode="rf1"]) .rf1-print-only { display: none !important; }
+
     @page {
   size: landscape;
   margin: 0 0 1.2cm 0;
@@ -239,6 +261,7 @@ const printStyles = `
       justify-content: space-between;
       page-break-inside: avoid;
       width: 100%;
+      border-top: 1px dashed #ccc;
       padding-top: 30px;
     }
 
@@ -350,6 +373,14 @@ interface AgencyData {
         employer_share: number;
         subtotal: number;
         employee_type?: string;
+        // RF-1 fields — already returned by the backend
+        last_name?: string;
+        first_name?: string;
+        middle_name?: string;
+        name_ext?: string;
+        date_of_birth?: string;
+        sex?: string;
+        philhealth_number?: string;
     }>;
     employee_count?: number;
     regular_count?: number;
@@ -876,6 +907,9 @@ export default function GovernmentRemittanceReport({
 }: Props) {
     const [activeTab, setActiveTab] = useState(currentAgency || 'all');
     const [exportError, setExportError] = useState('');
+    const [printMode, setPrintMode] = useState<'remittance' | 'rf1'>(
+        'remittance',
+    );
     const [selectedEmployee, setSelectedEmployee] = useState<{
         id: number;
         name: string;
@@ -980,7 +1014,30 @@ export default function GovernmentRemittanceReport({
             setTimeout(() => setExportError(''), 3000);
             return;
         }
-        window.print();
+        document.body.setAttribute('data-print-mode', 'remittance');
+        setPrintMode('remittance');
+        const cleanup = () => {
+            document.body.removeAttribute('data-print-mode');
+            window.removeEventListener('afterprint', cleanup);
+        };
+        window.addEventListener('afterprint', cleanup);
+        setTimeout(() => window.print(), 50);
+    };
+
+    const handlePrintRF1 = () => {
+        if (!selectedPeriod) {
+            setExportError('Please select a payroll period before printing.');
+            setTimeout(() => setExportError(''), 3000);
+            return;
+        }
+        document.body.setAttribute('data-print-mode', 'rf1');
+        setPrintMode('rf1');
+        const cleanup = () => {
+            document.body.removeAttribute('data-print-mode');
+            window.removeEventListener('afterprint', cleanup);
+        };
+        window.addEventListener('afterprint', cleanup);
+        setTimeout(() => window.print(), 50);
     };
 
     // ── Derived values ────────────────────────────────────────────────────────
@@ -1050,6 +1107,32 @@ export default function GovernmentRemittanceReport({
     const hasBothEmployeeTypes =
         (employeeTypeCounts?.regular || 0) > 0 &&
         (employeeTypeCounts?.casual || 0) > 0;
+
+    // ── RF-1 derived data (PhilHealth only) ───────────────────────────────────
+
+    const rf1Employees = useMemo((): RF1Employee[] => {
+        const phEmployees = remittances.philhealth?.employees ?? [];
+        return phEmployees.map((emp) => ({
+            id: emp.id,
+            philhealth_number: emp.philhealth_number,
+            last_name: emp.last_name ?? emp.name.split(',')[0]?.trim() ?? '',
+            first_name: emp.first_name ?? emp.name.split(',')[1]?.trim() ?? '',
+            middle_name: emp.middle_name,
+            name_ext: emp.name_ext,
+            date_of_birth: emp.date_of_birth,
+            sex: emp.sex,
+            monthly_salary_bracket: emp.basic_pay,
+            employee_share: emp.employee_share,
+            employer_share: emp.employer_share,
+            employee_status: undefined,
+        }));
+    }, [remittances.philhealth]);
+
+    const rf1EmployerInfo: RF1EmployerInfo = {
+        employer_name: 'METRO KIDAPAWAN WATER DISTRICT',
+        mailing_address: 'Kidapawan City, North Cotabato',
+        employer_type: 'government',
+    };
 
     const agencyTabItems = [
         { value: 'all', label: 'All Agencies' },
@@ -1192,6 +1275,18 @@ export default function GovernmentRemittanceReport({
                                 <Printer className="mr-2 h-4 w-4" />
                                 Print
                             </Button>
+
+                            {activeTab === 'philhealth' && (
+                                <Button
+                                    variant="outline"
+                                    onClick={handlePrintRF1}
+                                    disabled={!hasSelectedPeriod}
+                                    className="border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800"
+                                >
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Print RF-1
+                                </Button>
+                            )}
                         </div>
                     </div>
 
@@ -1557,6 +1652,18 @@ export default function GovernmentRemittanceReport({
                         </>
                     )}
                 </div>
+            </div>
+
+            {/* ── RF-1 Print-Only Section ─────────────────────────────────── */}
+            <div className="rf1-print-only">
+                <RF1PrintView
+                    employees={rf1Employees}
+                    employerInfo={rf1EmployerInfo}
+                    applicablePeriod={monthLabel}
+                    reportType="regular"
+                    preparedBy={auth.user?.name || 'Admin User'}
+                    preparedDate={preparedDate}
+                />
             </div>
 
             {/* ── Employee Detail Dialog (unchanged) ─────────────────────── */}
