@@ -40,7 +40,7 @@ class PayrollRecord extends Model
         // ── Slip Deductions ───────────────────────────────────────────────────
         'personal_slip_minutes',
         'personal_slip_deduction',
-        'official_slip_minutes',   // stored for audit, never deducted
+        'official_slip_minutes',
 
         // ── Work Metrics ──────────────────────────────────────────────────────
         'total_work_days',
@@ -54,7 +54,8 @@ class PayrollRecord extends Model
 
         // ── Internal Org Deductions ───────────────────────────────────────────
         'internal_org_savings',    // Savings + Share_Capital (both cut-offs)
-        'internal_org_second',     // Dues only (2nd cut-off; stored for display)
+        'internal_org_second',     // Dues only (2nd cut-off)
+        'internal_org_loans',      // Internal org loans (both cut-offs)
 
         // ── Other / Misc Deductions ───────────────────────────────────────────
         // Renamed from ama_y2k_union.
@@ -100,6 +101,7 @@ class PayrollRecord extends Model
         'pag_ibig_mpl' => 'float',
         'internal_org_savings' => 'float',
         'internal_org_second' => 'float',
+        'internal_org_loans' => 'float',
         'other_deductions_total' => 'float',
         'water_bill' => 'float',
         'net_pay' => 'float',
@@ -130,11 +132,13 @@ class PayrollRecord extends Model
             + (float) $this->late_deduction
             + (float) ($this->undertime_deduction ?? 0)
             + (float) ($this->personal_slip_deduction ?? 0)
-            + (float) $this->internal_org_savings   // both cut-offs
+            + (float) $this->internal_org_savings
+            + (float) ($this->internal_org_second ?? 0)
+            + (float) ($this->internal_org_loans ?? 0)
             + (float) $this->gsis_mpl
             + (float) $this->gsis_emergency
             + (float) $this->pag_ibig_mpl
-            + (float) $this->other_deductions_total // org loans + dues + misc
+            + (float) $this->other_deductions_total
             + (float) $this->water_bill;
     }
 

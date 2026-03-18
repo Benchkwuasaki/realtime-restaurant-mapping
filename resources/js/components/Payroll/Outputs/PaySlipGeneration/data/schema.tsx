@@ -55,6 +55,7 @@ export const payslipDataSchema = z.object({
     // ── Internal org deductions ───────────────────────────────────────────────
     internal_org_savings: z.number(),
     internal_org_second: z.number(),
+    internal_org_loans: z.number(),
 
     // ── Other / misc deductions (renamed from ama_y2k_union) ─────────────────
     other_deductions_total: z.number(),

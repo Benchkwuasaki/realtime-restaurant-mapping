@@ -226,6 +226,7 @@ class PaySlipGenerationController extends Controller
             // Internal org deductions
             'internal_org_savings' => (float) ($record->internal_org_savings ?? 0),
             'internal_org_second' => (float) ($record->internal_org_second ?? 0),
+            'internal_org_loans' => (float) ($record->internal_org_loans ?? 0),
 
             // Other / misc deductions (renamed from ama_y2k_union)
             'other_deductions_total' => (float) ($record->other_deductions_total ?? 0),
