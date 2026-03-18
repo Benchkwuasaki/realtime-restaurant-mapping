@@ -172,31 +172,14 @@ class PayrollProcessingController extends Controller
                         + $data['uniform_allowance']
                         + ($data['overtime_pay'] ?? 0);
 
-                    $totalDeductions = $data['gsis_premium']
-                        + $data['philhealth']
-                        + $data['pag_ibig']
-                        + $data['withholding_tax']
-                        + $data['absent_deduction']
-                        + ($data['half_day_deduction'] ?? 0)
-                        + $data['late_deduction']
-                        + ($data['undertime_deduction'] ?? 0)
-                        + ($data['personal_slip_deduction'] ?? 0)
-                        + ($data['internal_org_savings'] ?? 0)
-                        + $data['gsis_mpl']
-                        + $data['gsis_emergency']
-                        + $data['pag_ibig_mpl']
-                        + $data['other_deductions_total']
-                        + $data['water_bill'];
-
                     $computedRecords[] = array_merge($data, [
                         'employee_id' => $employee->employee_id,
                         'employee_name' => $employee->basicInfo
                             ? $employee->basicInfo->last_name.', '.$employee->basicInfo->first_name
                             : '—',
                         'gross_pay' => round($grossPay, 2),
-                        // Derive total_deductions from gross - net_pay (which computeForEmployee
-                        // already computed correctly) rather than re-summing fields independently.
-                        // A separate re-sum can drift when new deduction fields are added.
+                        // Derive from gross − net_pay (computed in computeForEmployee) so that
+                        // Step 3 Total Ded. always matches net_pay regardless of new columns added.
                         'total_deductions' => round($grossPay - $data['net_pay'], 2),
                     ]);
                 } catch (\Throwable $e) {
@@ -851,7 +834,12 @@ class PayrollProcessingController extends Controller
 
         // ── Attendance-based deductions ───────────────────────────────────────
         $absentDeduction = round($absentDays * $dailyRate, 2);
-        $halfDayDeduction = round($halfDays * $dailyRate * 0.5, 2);
+        // halfDayDeduction is intentionally 0. The attendanceSummary endpoint
+        // already folds each HALF_DAY record into absent_days as +0.5, so
+        // absent_days=0.5 → absentDeduction covers the half-day penalty in full.
+        // Applying halfDays separately would double-count it (once via absentDays
+        // and again here), producing a full-day deduction for a half-day absence.
+        $halfDayDeduction = 0.0;
         $lateDeduction = round($lateMinutes * $minuteRate, 2);
         $undertimeDeduction = round($undertimeMinutes * $minuteRate, 2);
 
@@ -995,7 +983,7 @@ class PayrollProcessingController extends Controller
                 $pagIbigMpl += $amt;
 
             } elseif ($loan->isInternalOrg()) {
-                $amaY2kUnion += $amt;
+
                 $internalOrgLoanTotal += $amt;
                 $otherDeductionItems[] = [
                     'id' => $loan->id,
@@ -1039,7 +1027,7 @@ class PayrollProcessingController extends Controller
             ];
         }
 
-        $amaY2kUnion += $internalOrgSecond; // ← org dues (halved above)
+        // internal_org_second (org dues) has its own column — not added to amaY2kUnion.
 
         // ── 7. Priority-order floor rule ──────────────────────────────────────
         //
@@ -1069,11 +1057,12 @@ class PayrollProcessingController extends Controller
         $floor = (float) $settings->minimum_take_home_pay;
 
         $totalDeductions = $gsisPremium + $philhealth + $pagIbig + $withholdingTax
-            + $absentDeduction + $lateDeduction + $undertimeDeduction
-            + $personalSlipDeduction
-            + $internalOrgSavings
+            + $absentDeduction + $lateDeduction
+            + $undertimeDeduction + $personalSlipDeduction
+            + $internalOrgSavings + $internalOrgSecond
             + $gsisMpl + $gsisEmergency + $pagIbigMpl
-            + $amaY2kUnion
+            + $internalOrgLoanTotal
+            + $amaY2kUnion          // NS&ND + misc only (org loans and dues no longer here)
             + $waterBill;
 
         $netPay = round($gross - $totalDeductions, 2);
@@ -1094,7 +1083,7 @@ class PayrollProcessingController extends Controller
             'absent_days' => $absentDays,
             'absent_deduction' => $absentDeduction,
             'half_days' => $halfDays,
-            'half_day_deduction' => $halfDayDeduction,
+            'half_day_deduction' => 0.0, // always 0 — absent_days encodes 0.5 per HALF_DAY; no separate deduction applied
             'late_minutes' => $lateMinutes,
             'late_deduction' => $lateDeduction,
             'undertime_minutes' => $undertimeMinutes,
@@ -1425,6 +1414,7 @@ class PayrollProcessingController extends Controller
                 'records.*.water_bill' => 'required|numeric',
                 'records.*.internal_org_savings' => 'nullable|numeric|min:0',
                 'records.*.internal_org_second' => 'nullable|numeric|min:0',
+                'records.*.internal_org_loans' => 'nullable|numeric|min:0',
                 'records.*.internal_org_items' => 'nullable|array',
                 'records.*.other_deduction_items' => 'nullable|array',
                 'records.*.waived' => 'nullable|array',
@@ -1526,17 +1516,22 @@ class PayrollProcessingController extends Controller
                         // Official slip minutes are stored for audit but NOT deducted.
                         $personalSlipDeduction = (float) ($rec['personal_slip_deduction'] ?? 0);
 
+                        $internalOrgSecondEff = (float) ($rec['internal_org_second'] ?? 0);
+                        $internalOrgLoansEff = (float) ($rec['internal_org_loans'] ?? 0);
+
                         $totalDeductions = (float) $rec['gsis_premium']
                             + (float) $rec['philhealth']
                             + (float) $rec['pag_ibig']
                             + (float) $rec['withholding_tax']
                             + (float) $rec['absent_deduction']
-                            + (float) ($rec['half_day_deduction'] ?? 0)
+                            // half_day_deduction is always 0.0 — absent_deduction already covers it
                             + (float) $rec['late_deduction']
                             + (float) ($rec['undertime_deduction'] ?? 0)
                             + $personalSlipDeduction
                             + $internalOrgSavings
+                            + $internalOrgSecondEff
                             + $gsisMpl + $gsisEmergency + $pagIbigMpl
+                            + $internalOrgLoansEff
                             + $amaY2kUnion + $waterBill;
 
                         $netPay = round($gross - $totalDeductions, 2);
@@ -1575,7 +1570,8 @@ class PayrollProcessingController extends Controller
                                 'gsis_emergency' => $gsisEmergency,
                                 'pag_ibig_mpl' => $pagIbigMpl,
                                 'internal_org_savings' => $internalOrgSavings,
-                                'internal_org_second' => (float) ($rec['internal_org_second'] ?? 0),
+                                'internal_org_second' => $internalOrgSecondEff,
+                                'internal_org_loans' => $internalOrgLoansEff,
                                 'other_deductions_total' => $amaY2kUnion,
                                 'water_bill' => $waterBill,
                                 'net_pay' => $netPay,

@@ -215,6 +215,7 @@ export function createLoadEmployeeColumns(
                             type="number"
                             min={0}
                             max={31}
+                            step={0.5}
                             value={
                                 attendance[row.original.id]?.absent_days ?? 0
                             }
@@ -350,50 +351,50 @@ export function createLoadEmployeeColumns(
             enableSorting: false,
         },
 
-        // ── Official Slip minutes (AUTHORISED — no deduction) ────────────────
-        // Official slips are authorised absences. They are pre-filled from the
-        // whereabout_slips table and shown for transparency, but they do NOT
-        // produce any payroll deduction.
-        {
-            id: 'official_slip_minutes',
-            header: () => (
-                <span className="text-blue-700">
-                    Official Slip{' '}
-                    <span className="text-[10px] font-normal text-blue-400">
-                        (no deduction)
-                    </span>
-                </span>
-            ),
-            cell: ({ row }) => {
-                const included = includedEmployeeIds.includes(row.original.id);
-                const val =
-                    attendance[row.original.id]?.official_slip_minutes ?? 0;
-                return (
-                    <InputGroup
-                        className={`mx-auto w-28 ${val > 0 ? 'ring-1 ring-blue-200' : ''}`}
-                    >
-                        <InputGroupInput
-                            type="number"
-                            min={0}
-                            value={val}
-                            onChange={(e) =>
-                                updateAttendance(
-                                    row.original.id,
-                                    'official_slip_minutes',
-                                    e.target.value,
-                                )
-                            }
-                            disabled={!included}
-                            className="text-center text-blue-700"
-                        />
-                        <InputGroupAddon align="inline-end">
-                            <InputGroupText>min</InputGroupText>
-                        </InputGroupAddon>
-                    </InputGroup>
-                );
-            },
-            enableSorting: false,
-        },
+        // // ── Official Slip minutes (AUTHORISED — no deduction) ────────────────
+        // // Official slips are authorised absences. They are pre-filled from the
+        // // whereabout_slips table and shown for transparency, but they do NOT
+        // // produce any payroll deduction.
+        // {
+        //     id: 'official_slip_minutes',
+        //     header: () => (
+        //         <span className="text-blue-700">
+        //             Official Slip{' '}
+        //             <span className="text-[10px] font-normal text-blue-400">
+        //                 (no deduction)
+        //             </span>
+        //         </span>
+        //     ),
+        //     cell: ({ row }) => {
+        //         const included = includedEmployeeIds.includes(row.original.id);
+        //         const val =
+        //             attendance[row.original.id]?.official_slip_minutes ?? 0;
+        //         return (
+        //             <InputGroup
+        //                 className={`mx-auto w-28 ${val > 0 ? 'ring-1 ring-blue-200' : ''}`}
+        //             >
+        //                 <InputGroupInput
+        //                     type="number"
+        //                     min={0}
+        //                     value={val}
+        //                     onChange={(e) =>
+        //                         updateAttendance(
+        //                             row.original.id,
+        //                             'official_slip_minutes',
+        //                             e.target.value,
+        //                         )
+        //                     }
+        //                     disabled={!included}
+        //                     className="text-center text-blue-700"
+        //                 />
+        //                 <InputGroupAddon align="inline-end">
+        //                     <InputGroupText>min</InputGroupText>
+        //                 </InputGroupAddon>
+        //             </InputGroup>
+        //         );
+        //     },
+        //     enableSorting: false,
+        // },
 
         // ── Total Work Hours (read-only display) ──────────────────────────────
         // SUM(work_minutes) / 60 across attended days, computed server-side.

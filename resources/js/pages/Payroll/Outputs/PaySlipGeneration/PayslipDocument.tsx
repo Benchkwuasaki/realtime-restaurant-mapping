@@ -70,6 +70,7 @@ export function PayslipDocument({
         data.pag_ibig_mpl +
         data.internal_org_savings +
         data.internal_org_second +
+        (data.internal_org_loans ?? 0) +
         data.other_deductions_total +
         data.water_bill;
 
@@ -332,6 +333,13 @@ export function PayslipDocument({
                         <Row
                             label="Org Dues"
                             value={data.internal_org_second}
+                            negative
+                        />
+                    )}
+                    {(data.internal_org_loans ?? 0) > 0 && (
+                        <Row
+                            label="Org Loan"
+                            value={data.internal_org_loans}
                             negative
                         />
                     )}

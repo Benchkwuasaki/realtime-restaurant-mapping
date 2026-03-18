@@ -903,11 +903,19 @@ export default function Index({
             | 'total_overtime_hours',
         value: string,
     ) => {
+        const parsed =
+            field === 'absent_days'
+                ? Math.max(0, parseFloat(value) || 0)
+                : Math.max(0, parseInt(value) || 0);
+
+        const extra = field === 'absent_days' ? { half_days: 0 } : {};
+
         setAttendance((prev) => ({
             ...prev,
             [employeeId]: {
                 ...prev[employeeId],
-                [field]: Math.max(0, parseInt(value) || 0),
+                [field]: parsed,
+                ...extra,
             },
         }));
     };
@@ -1161,11 +1169,16 @@ export default function Index({
                 gsis_mpl: r.gsis_mpl,
                 gsis_emergency: r.gsis_emergency,
                 pag_ibig_mpl: r.pag_ibig_mpl,
+                gsis_salary_loan: r.gsis_salary_loan ?? 0,
+                gsis_policy_loan: r.gsis_policy_loan ?? 0,
+                pag_ibig_housing: r.pag_ibig_housing ?? 0,
+                pag_ibig_calamity: r.pag_ibig_calamity ?? 0,
+
                 other_deductions_total: r.other_deductions_total,
                 water_bill: r.water_bill,
                 internal_org_savings: r.internal_org_savings ?? 0,
                 internal_org_second: r.internal_org_second ?? 0,
-                internal_org_loans: r.internal_org_loans ?? 0, // ← genuine loan total, not second/dues
+                internal_org_loans: r.internal_org_loans ?? 0,
                 internal_org_items: r.internal_org_items ?? [],
                 other_deduction_items: r.other_deduction_items ?? [],
                 waived: floorWaivers[r.employee_id] ?? [],
@@ -2104,7 +2117,7 @@ export default function Index({
                                                             Gov&apos;t Loans
                                                         </div>
                                                         <div className="text-[10px] font-normal">
-                                                            mpl, emergency
+                                                            GSIS &amp; Pag-IBIG
                                                         </div>
                                                     </th>
                                                     <th className="border-r border-border bg-purple-50/60 px-3 py-2 text-center whitespace-nowrap dark:bg-purple-950/20">
@@ -2170,7 +2183,9 @@ export default function Index({
                                                             {/* Attendance */}
                                                             <td className="border-r border-border px-3 py-3 text-center tabular-nums">
                                                                 {employee.absentDays >
-                                                                0 ? (
+                                                                    0 ||
+                                                                (employee.halfDays ??
+                                                                    0) > 0 ? (
                                                                     <div>
                                                                         <div className="text-[11px] text-muted-foreground">
                                                                             {(() => {
@@ -2198,14 +2213,19 @@ export default function Index({
                                                                                     parts.push(
                                                                                         `${halfDays}hd`,
                                                                                     );
-                                                                                return parts.join(
-                                                                                    '+',
-                                                                                );
+                                                                                return parts.length >
+                                                                                    0
+                                                                                    ? parts.join(
+                                                                                          '+',
+                                                                                      )
+                                                                                    : `${halfDays}hd`;
                                                                             })()}
                                                                         </div>
                                                                         <div className="font-medium text-foreground">
                                                                             {peso(
-                                                                                employee.absentDeduction,
+                                                                                employee.absentDeduction +
+                                                                                    (employee.halfDayDeduction ??
+                                                                                        0),
                                                                             )}
                                                                         </div>
                                                                     </div>
@@ -2440,7 +2460,8 @@ export default function Index({
                                                             ),
                                                         )}
                                                     </td>
-                                                    <td className="border-r border-border px-3 py-2.5 text-right font-bold tabular-nums">
+
+                                                    <td className="border-r border-border px-3 py-2.5 text-right tabular-nums">
                                                         {peso(
                                                             currentEmployees.reduce(
                                                                 (s, e) =>
@@ -2450,6 +2471,7 @@ export default function Index({
                                                             ),
                                                         )}
                                                     </td>
+
                                                     <td className="border-r border-border px-3 py-2.5 text-right tabular-nums">
                                                         {peso(
                                                             currentEmployees.reduce(
@@ -4200,7 +4222,11 @@ export default function Index({
                                     {/* Gov't Loans */}
                                     {(raw.gsis_mpl > 0 ||
                                         raw.gsis_emergency > 0 ||
-                                        raw.pag_ibig_mpl > 0) && (
+                                        (raw.gsis_salary_loan ?? 0) > 0 ||
+                                        (raw.gsis_policy_loan ?? 0) > 0 ||
+                                        raw.pag_ibig_mpl > 0 ||
+                                        (raw.pag_ibig_housing ?? 0) > 0 ||
+                                        (raw.pag_ibig_calamity ?? 0) > 0) && (
                                         <>
                                             <p className="mt-3 mb-1 text-[10px] font-medium tracking-wide text-muted-foreground/70 uppercase">
                                                 Gov't Loans
@@ -4229,6 +4255,58 @@ export default function Index({
                                                     amount={raw.pag_ibig_mpl}
                                                     waived={waived.includes(
                                                         'pag_ibig_mpl',
+                                                    )}
+                                                />
+                                            )}
+                                            {(raw.gsis_salary_loan ?? 0) >
+                                                0 && (
+                                                <RowLine
+                                                    label="GSIS Salary Loan"
+                                                    amount={
+                                                        raw.gsis_salary_loan ??
+                                                        0
+                                                    }
+                                                    waived={waived.includes(
+                                                        'gsis_salary_loan',
+                                                    )}
+                                                />
+                                            )}
+                                            {(raw.gsis_policy_loan ?? 0) >
+                                                0 && (
+                                                <RowLine
+                                                    label="GSIS Policy Loan"
+                                                    amount={
+                                                        raw.gsis_policy_loan ??
+                                                        0
+                                                    }
+                                                    waived={waived.includes(
+                                                        'gsis_policy_loan',
+                                                    )}
+                                                />
+                                            )}
+                                            {(raw.pag_ibig_housing ?? 0) >
+                                                0 && (
+                                                <RowLine
+                                                    label="Pag-IBIG Housing Loan"
+                                                    amount={
+                                                        raw.pag_ibig_housing ??
+                                                        0
+                                                    }
+                                                    waived={waived.includes(
+                                                        'pag_ibig_housing',
+                                                    )}
+                                                />
+                                            )}
+                                            {(raw.pag_ibig_calamity ?? 0) >
+                                                0 && (
+                                                <RowLine
+                                                    label="Pag-IBIG Calamity Loan"
+                                                    amount={
+                                                        raw.pag_ibig_calamity ??
+                                                        0
+                                                    }
+                                                    waived={waived.includes(
+                                                        'pag_ibig_calamity',
                                                     )}
                                                 />
                                             )}
