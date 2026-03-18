@@ -205,7 +205,6 @@ export default function Index({
         setEmployeeOpen(false);
     }
 
-    // CHANGE 5 — new handler that also resets bulk period when no longer valid
     function handleBulkClassificationChange(value: string) {
         setBulkClassification(value);
         const stillValid = payroll_periods.some((p) => {
@@ -218,7 +217,6 @@ export default function Index({
         if (!stillValid) setBulkPeriodId('');
     }
 
-    // ── FIX: Open a clean popup window for bulk printing ──────────────────────
     useEffect(() => {
         if (is_bulk && bulk_payslips.length > 0) {
             const timer = setTimeout(() => {
@@ -326,7 +324,7 @@ export default function Index({
 
                     <TabsContent value="generate" className="mt-6">
                         <div className="flex items-start gap-6">
-                            <Card className="w-72 shrink-0">
+                            <Card className="w-72 shrink-0 border border-secondary">
                                 <CardHeader className="pb-3">
                                     <CardTitle className="flex items-center gap-2 text-base">
                                         <User className="h-4 w-4 text-muted-foreground" />
@@ -362,7 +360,6 @@ export default function Index({
                                         </Select>
                                     </div>
 
-                                    {/* CHANGE 6 — use filteredPeriods instead of payroll_periods */}
                                     <div className="space-y-1.5">
                                         <label className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                                             Payroll Period
@@ -428,7 +425,7 @@ export default function Index({
                                                         filteredEmployeesForPeriod.length ===
                                                             0
                                                     }
-                                                    className="w-full justify-between font-normal"
+                                                    className="w-full justify-between border border-secondary font-normal"
                                                 >
                                                     <span className="truncate">
                                                         {employeeId
@@ -530,7 +527,7 @@ export default function Index({
 
                                     {payslip && (
                                         <Button
-                                            variant="outline"
+                                            variant="secondary"
                                             className="w-full gap-2"
                                             onClick={() => window.print()}
                                         >
@@ -557,7 +554,13 @@ export default function Index({
                                                 </p>
                                             </div>
                                         </div>
-                                        <div style={{ fontFamily: "'Courier New', Courier, monospace" }} className="[&_*]:!font-mono">
+                                        <div
+                                            style={{
+                                                fontFamily:
+                                                    "'Courier New', Courier, monospace",
+                                            }}
+                                            className="[&_*]:!font-mono"
+                                        >
                                             <PayslipDocument
                                                 data={payslip}
                                                 printId="payslip-print-area"
@@ -573,7 +576,7 @@ export default function Index({
 
                     <TabsContent value="bulk" className="mt-6">
                         <div className="flex items-start gap-6">
-                            <Card className="w-72 shrink-0">
+                            <Card className="w-72 shrink-0 border border-secondary">
                                 <CardHeader className="pb-3">
                                     <CardTitle className="flex items-center gap-2 text-base">
                                         <Printer className="h-4 w-4 text-muted-foreground" />

@@ -412,7 +412,11 @@ export default function Index({
                     govtLoans:
                         (r.gsis_mpl ?? 0) +
                         (r.gsis_emergency ?? 0) +
-                        (r.pag_ibig_mpl ?? 0),
+                        (r.gsis_salary_loan ?? 0) +
+                        (r.gsis_policy_loan ?? 0) +
+                        (r.pag_ibig_mpl ?? 0) +
+                        (r.pag_ibig_housing ?? 0) +
+                        (r.pag_ibig_calamity ?? 0),
                     overtimePay: r.overtime_pay ?? 0,
                     halfDays: r.half_days ?? 0,
                     halfDayDeduction: r.half_day_deduction ?? 0,
@@ -424,12 +428,7 @@ export default function Index({
                     totalWorkDays: r.total_work_days ?? 0,
                     totalHoursWorked: r.total_hours_worked ?? 0,
                     totalOvertimeHours: r.total_overtime_hours ?? 0,
-                    otherDeductions:
-                        r.gsis_mpl +
-                        r.gsis_emergency +
-                        r.pag_ibig_mpl +
-                        r.other_deductions_total +
-                        r.water_bill,
+                    otherDeductions: r.other_deductions_total + r.water_bill,
                     internalOrgSavings: r.internal_org_savings ?? 0,
                     internalOrgSecond: r.internal_org_second ?? 0,
                     internalOrgLoans: r.internal_org_loans ?? 0,

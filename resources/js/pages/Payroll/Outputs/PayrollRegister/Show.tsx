@@ -63,14 +63,21 @@ interface PayrollRecord {
     undertime_deduction: number;
     personal_slip_minutes: number;
     personal_slip_deduction: number;
+    // Gov't loan breakdown
     gsis_mpl: number;
     gsis_emergency: number;
+    gsis_salary_loan: number;
+    gsis_policy_loan: number;
     pag_ibig_mpl: number;
-    /** Renamed from ama_y2k_union — org loans + dues + misc */
-    other_deductions_total: number;
-    water_bill: number;
+    pag_ibig_housing: number;
+    pag_ibig_calamity: number;
+    // Internal org breakdown
     internal_org_savings: number;
     internal_org_second: number;
+    internal_org_loans: number;
+    /** NS&ND, misc, org loans aggregate */
+    other_deductions_total: number;
+    water_bill: number;
     total_deductions: number;
     net_pay: number;
     floor_check_passed: boolean;
@@ -104,9 +111,14 @@ interface Summary {
     total_personal_slip_deduction: number;
     total_gsis_mpl: number;
     total_gsis_emergency: number;
+    total_gsis_salary_loan: number;
+    total_gsis_policy_loan: number;
     total_pag_ibig_mpl: number;
+    total_pag_ibig_housing: number;
+    total_pag_ibig_calamity: number;
     total_internal_org_savings: number;
     total_internal_org_second: number;
+    total_internal_org_loans: number;
     /** Renamed from total_ama_y2k_union */
     total_other_deductions: number;
     total_water_bill: number;
@@ -454,7 +466,7 @@ export default function Show({ period, records, summary }: Props) {
                                                 Attendance
                                             </GrpTh>
                                             <GrpTh
-                                                colSpan={7}
+                                                colSpan={12}
                                                 className="bg-slate-300 text-foreground"
                                                 style={{
                                                     borderLeft:
@@ -473,6 +485,89 @@ export default function Show({ period, records, summary }: Props) {
                                             >
                                                 Summary
                                             </GrpTh>
+                                        </tr>
+
+                                        {/* ── Source group row (2nd header tier) ── */}
+                                        <tr className="bg-slate-200/60">
+                                            {/* Employee Info + Earnings + Mandatory + Attendance — empty cells spanning those columns */}
+                                            <th
+                                                colSpan={5}
+                                                className="border border-border/40 bg-slate-100"
+                                            />
+                                            <th
+                                                colSpan={5}
+                                                className="border border-border/40 bg-slate-100"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            />
+                                            <th
+                                                colSpan={4}
+                                                className="border border-border/40 bg-slate-100"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            />
+                                            <th
+                                                colSpan={10}
+                                                className="border border-border/40 bg-slate-100"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            />
+                                            {/* Other Deductions source groupings */}
+                                            <th
+                                                colSpan={4}
+                                                className="border border-border/60 bg-blue-100/70 px-1 py-0.5 text-center text-[8px] font-bold tracking-wider text-blue-800 uppercase"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            >
+                                                GSIS
+                                            </th>
+                                            <th
+                                                colSpan={3}
+                                                className="border border-border/60 bg-cyan-100/70 px-1 py-0.5 text-center text-[8px] font-bold tracking-wider text-cyan-800 uppercase"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #aaa',
+                                                }}
+                                            >
+                                                Pag-IBIG
+                                            </th>
+                                            <th
+                                                colSpan={3}
+                                                className="border border-border/60 bg-violet-100/70 px-1 py-0.5 text-center text-[8px] font-bold tracking-wider text-violet-800 uppercase"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #aaa',
+                                                }}
+                                            >
+                                                Internal Org
+                                            </th>
+                                            <th
+                                                colSpan={2}
+                                                className="border border-border/60 bg-slate-100 px-1 py-0.5 text-center text-[8px] font-bold tracking-wider text-slate-500 uppercase"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #aaa',
+                                                }}
+                                            >
+                                                Other
+                                            </th>
+                                            {/* Summary — empty */}
+                                            <th
+                                                colSpan={2}
+                                                className="border border-border/40 bg-slate-100"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #000',
+                                                }}
+                                            />
                                         </tr>
 
                                         {/* ── Sub-column labels row ── */}
@@ -574,33 +669,72 @@ export default function Show({ period, records, summary }: Props) {
                                                 Slip Amt
                                             </ColTh>
 
-                                            {/* Other sub-cols */}
+                                            {/* Other sub-cols — GSIS */}
                                             <ColTh
-                                                className="w-[3.5%] bg-slate-50"
+                                                className="w-[3%] bg-blue-50/60"
                                                 style={{
                                                     borderLeft:
                                                         '1px solid #000',
                                                 }}
                                             >
-                                                GSIS MPL
+                                                MPL
                                             </ColTh>
-                                            <ColTh className="w-[3.5%] bg-slate-50">
-                                                GSIS Emg
+                                            <ColTh className="w-[3%] bg-blue-50/60">
+                                                Emg
                                             </ColTh>
-                                            <ColTh className="w-[3.5%] bg-slate-50">
-                                                PagIBIG MPL
+                                            <ColTh className="w-[3%] bg-blue-50/60">
+                                                Salary
                                             </ColTh>
-                                            <ColTh className="w-[3.5%] bg-slate-50">
-                                                Org Savings
+                                            <ColTh className="w-[3%] bg-blue-50/60">
+                                                Policy
                                             </ColTh>
-                                            <ColTh className="w-[3.5%] bg-slate-50">
-                                                Org Dues
+
+                                            {/* Other sub-cols — Pag-IBIG */}
+                                            <ColTh
+                                                className="w-[3%] bg-cyan-50/60"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #aaa',
+                                                }}
+                                            >
+                                                MPL
                                             </ColTh>
-                                            <ColTh className="w-[5%] bg-slate-50">
-                                                Other Ded.
+                                            <ColTh className="w-[3%] bg-cyan-50/60">
+                                                Housing
+                                            </ColTh>
+                                            <ColTh className="w-[3%] bg-cyan-50/60">
+                                                Calamity
+                                            </ColTh>
+
+                                            {/* Other sub-cols — Internal Org */}
+                                            <ColTh
+                                                className="w-[3.5%] bg-violet-50/60"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #aaa',
+                                                }}
+                                            >
+                                                Savings
+                                            </ColTh>
+                                            <ColTh className="w-[3%] bg-violet-50/60">
+                                                Dues
+                                            </ColTh>
+                                            <ColTh className="w-[3.5%] bg-violet-50/60">
+                                                Loans
+                                            </ColTh>
+
+                                            {/* Other sub-cols — Misc & Water */}
+                                            <ColTh
+                                                className="w-[3.5%] bg-slate-50"
+                                                style={{
+                                                    borderLeft:
+                                                        '1px solid #aaa',
+                                                }}
+                                            >
+                                                NS&amp;ND
                                                 <br />
-                                                <span className="text-[8px] font-normal normal-case">
-                                                    loans, dues, misc
+                                                <span className="text-[7px] font-normal normal-case">
+                                                    misc
                                                 </span>
                                             </ColTh>
                                             <ColTh className="w-[3.5%] bg-slate-50">
@@ -772,28 +906,68 @@ export default function Show({ period, records, summary }: Props) {
                                                     )}
                                                 </Td>
 
-                                                {/* Other */}
+                                                {/* GSIS Loans */}
                                                 <Td
                                                     right
-                                                    className="text-red-800 dark:text-red-400"
+                                                    className="text-blue-800 dark:text-blue-300"
                                                 >
                                                     {n(rec.gsis_mpl)}
                                                 </Td>
                                                 <Td
                                                     right
-                                                    className="text-red-800 dark:text-red-400"
+                                                    className="text-blue-800 dark:text-blue-300"
                                                 >
                                                     {n(rec.gsis_emergency)}
                                                 </Td>
                                                 <Td
                                                     right
-                                                    className="text-red-800 dark:text-red-400"
+                                                    className="text-blue-800 dark:text-blue-300"
+                                                >
+                                                    {n(
+                                                        rec.gsis_salary_loan ??
+                                                            0,
+                                                    )}
+                                                </Td>
+                                                <Td
+                                                    right
+                                                    className="text-blue-800 dark:text-blue-300"
+                                                >
+                                                    {n(
+                                                        rec.gsis_policy_loan ??
+                                                            0,
+                                                    )}
+                                                </Td>
+
+                                                {/* Pag-IBIG Loans */}
+                                                <Td
+                                                    right
+                                                    className="text-cyan-800 dark:text-cyan-300"
                                                 >
                                                     {n(rec.pag_ibig_mpl)}
                                                 </Td>
                                                 <Td
                                                     right
-                                                    className="text-red-800 dark:text-red-400"
+                                                    className="text-cyan-800 dark:text-cyan-300"
+                                                >
+                                                    {n(
+                                                        rec.pag_ibig_housing ??
+                                                            0,
+                                                    )}
+                                                </Td>
+                                                <Td
+                                                    right
+                                                    className="text-cyan-800 dark:text-cyan-300"
+                                                >
+                                                    {n(
+                                                        rec.pag_ibig_calamity ??
+                                                            0,
+                                                    )}
+                                                </Td>
+
+                                                {/* Internal Org */}
+                                                <Td
+                                                    right
+                                                    className="text-violet-800 dark:text-violet-300"
                                                 >
                                                     {n(
                                                         rec.internal_org_savings ??
@@ -802,13 +976,24 @@ export default function Show({ period, records, summary }: Props) {
                                                 </Td>
                                                 <Td
                                                     right
-                                                    className="text-red-800 dark:text-red-400"
+                                                    className="text-violet-800 dark:text-violet-300"
                                                 >
                                                     {n(
                                                         rec.internal_org_second ??
                                                             0,
                                                     )}
                                                 </Td>
+                                                <Td
+                                                    right
+                                                    className="text-violet-800 dark:text-violet-300"
+                                                >
+                                                    {n(
+                                                        rec.internal_org_loans ??
+                                                            0,
+                                                    )}
+                                                </Td>
+
+                                                {/* NS&ND/Misc + Water Bill */}
                                                 <Td
                                                     right
                                                     className="text-red-800 dark:text-red-400"
@@ -933,30 +1118,66 @@ export default function Show({ period, records, summary }: Props) {
                                                 )}
                                             </TotTd>
 
-                                            {/* Other */}
-                                            <TotTd className="text-red-800 dark:text-red-400">
+                                            {/* GSIS Loans totals */}
+                                            <TotTd className="text-blue-800 dark:text-blue-300">
                                                 {nf(summary.total_gsis_mpl)}
                                             </TotTd>
-                                            <TotTd className="text-red-800 dark:text-red-400">
+                                            <TotTd className="text-blue-800 dark:text-blue-300">
                                                 {nf(
                                                     summary.total_gsis_emergency,
                                                 )}
                                             </TotTd>
-                                            <TotTd className="text-red-800 dark:text-red-400">
+                                            <TotTd className="text-blue-800 dark:text-blue-300">
+                                                {nf(
+                                                    summary.total_gsis_salary_loan ??
+                                                        0,
+                                                )}
+                                            </TotTd>
+                                            <TotTd className="text-blue-800 dark:text-blue-300">
+                                                {nf(
+                                                    summary.total_gsis_policy_loan ??
+                                                        0,
+                                                )}
+                                            </TotTd>
+
+                                            {/* Pag-IBIG Loans totals */}
+                                            <TotTd className="text-cyan-800 dark:text-cyan-300">
                                                 {nf(summary.total_pag_ibig_mpl)}
                                             </TotTd>
-                                            <TotTd className="text-red-800 dark:text-red-400">
+                                            <TotTd className="text-cyan-800 dark:text-cyan-300">
+                                                {nf(
+                                                    summary.total_pag_ibig_housing ??
+                                                        0,
+                                                )}
+                                            </TotTd>
+                                            <TotTd className="text-cyan-800 dark:text-cyan-300">
+                                                {nf(
+                                                    summary.total_pag_ibig_calamity ??
+                                                        0,
+                                                )}
+                                            </TotTd>
+
+                                            {/* Internal Org totals */}
+                                            <TotTd className="text-violet-800 dark:text-violet-300">
                                                 {nf(
                                                     summary.total_internal_org_savings ??
                                                         0,
                                                 )}
                                             </TotTd>
-                                            <TotTd className="text-red-800 dark:text-red-400">
+                                            <TotTd className="text-violet-800 dark:text-violet-300">
                                                 {nf(
                                                     summary.total_internal_org_second ??
                                                         0,
                                                 )}
                                             </TotTd>
+                                            <TotTd className="text-violet-800 dark:text-violet-300">
+                                                {nf(
+                                                    summary.total_internal_org_loans ??
+                                                        0,
+                                                )}
+                                            </TotTd>
+
+                                            {/* NS&ND/Misc + Water Bill totals */}
                                             <TotTd className="text-red-800 dark:text-red-400">
                                                 {nf(
                                                     summary.total_other_deductions ??

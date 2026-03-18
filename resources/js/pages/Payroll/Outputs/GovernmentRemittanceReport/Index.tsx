@@ -22,7 +22,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import {
     Printer,
@@ -590,7 +596,7 @@ function AgencyTable({
     }
 
     return (
-        <Card className="card mb-6">
+        <Card className="card mb-6 border border-secondary">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -599,13 +605,13 @@ function AgencyTable({
                                 agencyId === 'philhealth'
                                     ? 'h-16 w-16'
                                     : 'h-14 w-14'
-                            } flex items-center justify-center overflow-hidden rounded-lg border bg-muted`}
+                            } flex items-center justify-center`}
                         >
                             {logo ? (
                                 <img
                                     src={logo}
                                     alt={agencyData.agency_name}
-                                    className="h-full w-full object-contain p-1"
+                                    className="h-full w-full object-contain"
                                     onError={(e) => {
                                         e.currentTarget.style.display = 'none';
                                     }}
@@ -771,23 +777,71 @@ function SignatureSection({
             <div className="print-signature">
                 <div className="signature-block">
                     <p className="signature-label">PREPARED BY:</p>
-                    <p style={{ fontSize: '12px', fontWeight: '600', margin: '30px 0 0 0' }}>{userName}</p>
-                    <div style={{ borderTop: '1px solid #000', width: '100%', margin: '2px 0 5px 0' }} />
-                    <p style={{ fontSize: '10px', color: '#666' }}>Signature over Printed Name</p>
+                    <p
+                        style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            margin: '30px 0 0 0',
+                        }}
+                    >
+                        {userName}
+                    </p>
+                    <div
+                        style={{
+                            borderTop: '1px solid #000',
+                            width: '100%',
+                            margin: '2px 0 5px 0',
+                        }}
+                    />
+                    <p style={{ fontSize: '10px', color: '#666' }}>
+                        Signature over Printed Name
+                    </p>
                     <p className="date-field">Date: {preparedDate}</p>
                 </div>
                 <div className="signature-block">
                     <p className="signature-label">REVIEWED BY:</p>
-                    <p style={{ fontSize: '12px', margin: '30px 0 0 0', visibility: 'hidden' }}>placeholder</p>
-                    <div style={{ borderTop: '1px solid #000', width: '100%', margin: '2px 0 5px 0' }} />
-                    <p style={{ fontSize: '10px', color: '#666' }}>Signature over Printed Name</p>
+                    <p
+                        style={{
+                            fontSize: '12px',
+                            margin: '30px 0 0 0',
+                            visibility: 'hidden',
+                        }}
+                    >
+                        placeholder
+                    </p>
+                    <div
+                        style={{
+                            borderTop: '1px solid #000',
+                            width: '100%',
+                            margin: '2px 0 5px 0',
+                        }}
+                    />
+                    <p style={{ fontSize: '10px', color: '#666' }}>
+                        Signature over Printed Name
+                    </p>
                     <p className="date-field">Date: _______________</p>
                 </div>
                 <div className="signature-block">
                     <p className="signature-label">APPROVED BY:</p>
-                    <p style={{ fontSize: '12px', margin: '30px 0 0 0', visibility: 'hidden' }}>placeholder</p>
-                    <div style={{ borderTop: '1px solid #000', width: '100%', margin: '2px 0 5px 0' }} />
-                    <p style={{ fontSize: '10px', color: '#666' }}>Signature over Printed Name</p>
+                    <p
+                        style={{
+                            fontSize: '12px',
+                            margin: '30px 0 0 0',
+                            visibility: 'hidden',
+                        }}
+                    >
+                        placeholder
+                    </p>
+                    <div
+                        style={{
+                            borderTop: '1px solid #000',
+                            width: '100%',
+                            margin: '2px 0 5px 0',
+                        }}
+                    />
+                    <p style={{ fontSize: '10px', color: '#666' }}>
+                        Signature over Printed Name
+                    </p>
                     <p className="date-field">Date: _______________</p>
                 </div>
             </div>
@@ -804,16 +858,19 @@ function SignatureSection({
                     { label: 'Approved by', name: '', showDate: false },
                 ].map(({ label, name, showDate }) => (
                     <div key={label} className="flex flex-col">
-                        <p className="text-sm font-semibold text-foreground mb-6">
+                        <p className="mb-6 text-sm font-semibold text-foreground">
                             {label}:
                         </p>
                         <div className="flex-1" />
                         {name && (
-                            <p className="text-sm font-medium text-foreground mb-0.5">
+                            <p className="mb-0.5 text-sm font-medium text-foreground">
                                 {name}
                             </p>
                         )}
-                        <div style={{ borderTop: '1.5px solid #000' }} className="w-full" />
+                        <div
+                            style={{ borderTop: '1.5px solid #000' }}
+                            className="w-full"
+                        />
                         <p className="mt-1 text-xs text-muted-foreground">
                             Signature over Printed Name
                         </p>
@@ -1042,7 +1099,7 @@ export default function GovernmentRemittanceReport({
             <Head title="Government Remittance Report" />
             <style>{printStyles}</style>
 
-            <div className="flex flex-1 flex-col gap-6 p-6">
+            <div className="flex flex-1 flex-col gap-8 p-8">
                 <div className="no-print flex items-center justify-between">
                     <h1 className="text-2xl font-semibold">
                         Government Remittance Report
@@ -1093,14 +1150,23 @@ export default function GovernmentRemittanceReport({
                                     <span>Show:</span>
                                 </div>
                                 <div className="flex gap-1">
-                                    {(['all', 'regular', 'casual'] as const).map((type) => (
+                                    {(
+                                        ['all', 'regular', 'casual'] as const
+                                    ).map((type) => (
                                         <Button
                                             key={type}
                                             size="sm"
-                                            variant={employeeTypeFilter === type ? 'secondary' : 'ghost'}
-                                            onClick={() => handleEmployeeTypeFilter(type)}
+                                            variant={
+                                                employeeTypeFilter === type
+                                                    ? 'secondary'
+                                                    : 'ghost'
+                                            }
+                                            onClick={() =>
+                                                handleEmployeeTypeFilter(type)
+                                            }
                                         >
-                                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                                            {type.charAt(0).toUpperCase() +
+                                                type.slice(1)}
                                         </Button>
                                     ))}
                                 </div>
@@ -1109,15 +1175,15 @@ export default function GovernmentRemittanceReport({
                     </div>
                 </div>
 
-                <Card className="no-print">
-                    <CardContent className="pt-6">
+                <Card className="no-print border border-secondary">
+                    <CardContent className="pt-4">
                         <div className="flex items-start justify-between">
                             <div className="flex gap-4">
-                                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+                                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg">
                                     <img
                                         src="/images/logo.svg"
                                         alt="Metro Kidapawan Water District Logo"
-                                        className="h-full w-full object-contain p-2"
+                                        className="h-full w-full object-contain"
                                         onError={(e) => {
                                             e.currentTarget.style.display =
                                                 'none';
@@ -1211,7 +1277,9 @@ export default function GovernmentRemittanceReport({
                                         ? 'Total Employee Deductions'
                                         : `${remittances[activeTab]?.agency_name} Employee Share`
                                 }
-                                value={formatCurrency(currentSummary.employee_deductions)}
+                                value={formatCurrency(
+                                    currentSummary.employee_deductions,
+                                )}
                                 description={`Monthly — ${monthLabel}`}
                             />
                             <StatCard
@@ -1221,7 +1289,9 @@ export default function GovernmentRemittanceReport({
                                         ? 'Total Employer Payment'
                                         : `${remittances[activeTab]?.agency_name} Employer Share`
                                 }
-                                value={formatCurrency(currentSummary.employer_payment)}
+                                value={formatCurrency(
+                                    currentSummary.employer_payment,
+                                )}
                                 description={`Monthly — ${monthLabel}`}
                             />
                             <StatCard
@@ -1231,7 +1301,9 @@ export default function GovernmentRemittanceReport({
                                         ? 'Total Remittance'
                                         : `${remittances[activeTab]?.agency_name} Total`
                                 }
-                                value={formatCurrency(currentSummary.total_remit)}
+                                value={formatCurrency(
+                                    currentSummary.total_remit,
+                                )}
                                 description={`Monthly — ${monthLabel}`}
                             />
                             <StatCard
@@ -1306,7 +1378,8 @@ export default function GovernmentRemittanceReport({
                                         </Card>
                                     )}
                                 <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate}
+                                    userName={auth.user?.name || 'Admin User'}
+                                    preparedDate={preparedDate}
                                 />
                             </TabsContent>
 
@@ -1333,7 +1406,8 @@ export default function GovernmentRemittanceReport({
                                     </Card>
                                 )}
                                 <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate}
+                                    userName={auth.user?.name || 'Admin User'}
+                                    preparedDate={preparedDate}
                                 />
                             </TabsContent>
 
@@ -1362,7 +1436,8 @@ export default function GovernmentRemittanceReport({
                                     </Card>
                                 )}
                                 <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate}
+                                    userName={auth.user?.name || 'Admin User'}
+                                    preparedDate={preparedDate}
                                 />
                             </TabsContent>
 
@@ -1390,7 +1465,8 @@ export default function GovernmentRemittanceReport({
                                     </Card>
                                 )}
                                 <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate}
+                                    userName={auth.user?.name || 'Admin User'}
+                                    preparedDate={preparedDate}
                                 />
                             </TabsContent>
 
@@ -1432,7 +1508,8 @@ export default function GovernmentRemittanceReport({
                                     </Card>
                                 )}
                                 <SignatureSection
-                                    userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate}
+                                    userName={auth.user?.name || 'Admin User'}
+                                    preparedDate={preparedDate}
                                 />
                             </TabsContent>
                         </Tabs>
@@ -1546,12 +1623,14 @@ export default function GovernmentRemittanceReport({
                                     <Badge
                                         variant="outline"
                                         className={
-                                            selectedEmployee.employee_type === 'regular'
+                                            selectedEmployee.employee_type ===
+                                            'regular'
                                                 ? 'border-green-200 bg-green-50 text-green-700'
                                                 : 'border-amber-200 bg-amber-50 text-amber-700'
                                         }
                                     >
-                                        {selectedEmployee.employee_type ?? selectedEmployee.classification}
+                                        {selectedEmployee.employee_type ??
+                                            selectedEmployee.classification}
                                     </Badge>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
@@ -1561,51 +1640,101 @@ export default function GovernmentRemittanceReport({
 
                             <div className="grid grid-cols-2 divide-x">
                                 {/* Left — Employee & Earnings */}
-                                <div className="p-6 space-y-4">
+                                <div className="space-y-4 p-6">
                                     <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                                         Details
                                     </p>
                                     {[
-                                        { label: 'Employee ID', value: String(selectedEmployee.id) },
-                                        { label: 'Position', value: selectedEmployee.position },
-                                        { label: 'Basic Pay (Monthly)', value: formatCurrency(selectedEmployee.basicPay) },
+                                        {
+                                            label: 'Employee ID',
+                                            value: String(selectedEmployee.id),
+                                        },
+                                        {
+                                            label: 'Position',
+                                            value: selectedEmployee.position,
+                                        },
+                                        {
+                                            label: 'Basic Pay (Monthly)',
+                                            value: formatCurrency(
+                                                selectedEmployee.basicPay,
+                                            ),
+                                        },
                                     ].map(({ label, value }) => (
-                                        <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                                            <span className="text-sm text-muted-foreground">{label}</span>
-                                            <span className="text-sm font-medium text-foreground tabular-nums">{value}</span>
+                                        <div
+                                            key={label}
+                                            className="flex items-center justify-between border-b border-border/50 py-2 last:border-0"
+                                        >
+                                            <span className="text-sm text-muted-foreground">
+                                                {label}
+                                            </span>
+                                            <span className="text-sm font-medium text-foreground tabular-nums">
+                                                {value}
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
 
                                 {/* Right — Contribution */}
-                                <div className="p-6 space-y-4">
+                                <div className="space-y-4 p-6">
                                     <div className="flex items-center justify-between">
                                         <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                            {getAgencyDisplayName(selectedEmployee.agency)} Contribution
+                                            {getAgencyDisplayName(
+                                                selectedEmployee.agency,
+                                            )}{' '}
+                                            Contribution
                                         </p>
                                         <span className="text-xs text-muted-foreground">
-                                            {getRateDescription(selectedEmployee.agency)}
+                                            {getRateDescription(
+                                                selectedEmployee.agency,
+                                            )}
                                         </span>
                                     </div>
                                     {[
-                                        { label: 'Employee Share', sub: 'deducted from salary', value: formatCurrency(selectedEmployee.employeeShare) },
-                                        { label: 'Employer Share', sub: 'company contribution', value: formatCurrency(selectedEmployee.employerShare) },
+                                        {
+                                            label: 'Employee Share',
+                                            sub: 'deducted from salary',
+                                            value: formatCurrency(
+                                                selectedEmployee.employeeShare,
+                                            ),
+                                        },
+                                        {
+                                            label: 'Employer Share',
+                                            sub: 'company contribution',
+                                            value: formatCurrency(
+                                                selectedEmployee.employerShare,
+                                            ),
+                                        },
                                     ].map(({ label, sub, value }) => (
-                                        <div key={label} className="flex items-center justify-between py-2 border-b border-border/50">
+                                        <div
+                                            key={label}
+                                            className="flex items-center justify-between border-b border-border/50 py-2"
+                                        >
                                             <div>
-                                                <p className="text-sm font-medium text-foreground">{label}</p>
-                                                <p className="text-xs text-muted-foreground">{sub}</p>
+                                                <p className="text-sm font-medium text-foreground">
+                                                    {label}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {sub}
+                                                </p>
                                             </div>
-                                            <span className="text-sm font-semibold tabular-nums">{value}</span>
+                                            <span className="text-sm font-semibold tabular-nums">
+                                                {value}
+                                            </span>
                                         </div>
                                     ))}
                                     <div className="flex items-center justify-between pt-1">
                                         <div>
-                                            <p className="text-sm font-semibold text-foreground">Total</p>
-                                            <p className="text-xs text-muted-foreground">employee + employer</p>
+                                            <p className="text-sm font-semibold text-foreground">
+                                                Total
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                employee + employer
+                                            </p>
                                         </div>
                                         <span className="text-base font-bold tabular-nums">
-                                            {formatCurrency(selectedEmployee.subtotal)}
+                                            {formatCurrency(
+                                                selectedEmployee.subtotal,
+                                            )}
                                         </span>
                                     </div>
                                 </div>
@@ -1613,9 +1742,15 @@ export default function GovernmentRemittanceReport({
 
                             <DialogFooter className="border-t bg-muted/20 px-6 py-3">
                                 <div className="flex w-full items-center justify-between text-xs text-muted-foreground">
-                                    <span>Payroll Period: {selectedPeriod?.label || 'N/A'}</span>
+                                    <span>
+                                        Payroll Period:{' '}
+                                        {selectedPeriod?.label || 'N/A'}
+                                    </span>
                                     <span className="font-medium">
-                                        {getAgencyDisplayName(selectedEmployee.agency)} Remittance
+                                        {getAgencyDisplayName(
+                                            selectedEmployee.agency,
+                                        )}{' '}
+                                        Remittance
                                     </span>
                                 </div>
                             </DialogFooter>

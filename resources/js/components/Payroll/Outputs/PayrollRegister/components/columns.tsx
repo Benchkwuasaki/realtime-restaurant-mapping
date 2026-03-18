@@ -90,9 +90,17 @@ export const columns: DataTableColumnDef<Period>[] = [
         ),
         cell: ({ getValue }) => {
             const val = getValue() as string | null;
+
+            const variant =
+                val === 'Job Order'
+                    ? 'outline'
+                    : val === 'Casual'
+                      ? 'secondary'
+                      : 'default';
+
             return val ? (
                 <Badge
-                    variant="default"
+                    variant={variant}
                     className="min-w-[80px] justify-center"
                 >
                     {val}

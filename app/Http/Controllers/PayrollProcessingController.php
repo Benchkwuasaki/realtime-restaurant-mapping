@@ -194,7 +194,10 @@ class PayrollProcessingController extends Controller
                             ? $employee->basicInfo->last_name.', '.$employee->basicInfo->first_name
                             : '—',
                         'gross_pay' => round($grossPay, 2),
-                        'total_deductions' => round($totalDeductions, 2),
+                        // Derive total_deductions from gross - net_pay (which computeForEmployee
+                        // already computed correctly) rather than re-summing fields independently.
+                        // A separate re-sum can drift when new deduction fields are added.
+                        'total_deductions' => round($grossPay - $data['net_pay'], 2),
                     ]);
                 } catch (\Throwable $e) {
                     Log::error('Employee computation error: '.$e->getMessage(), [

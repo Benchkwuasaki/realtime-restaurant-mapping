@@ -107,14 +107,19 @@ class PayrollRegisterController extends Controller
                 'total_work_days' => (float) ($r->total_work_days ?? 0),
                 'total_hours_worked' => (float) ($r->total_hours_worked ?? 0),
 
-                // Gov't loan deductions
+                // Gov't loan deductions — broken out by loan type
                 'gsis_mpl' => (float) ($r->gsis_mpl ?? 0),
                 'gsis_emergency' => (float) ($r->gsis_emergency ?? 0),
+                'gsis_salary_loan' => (float) ($r->gsis_salary_loan ?? 0),
+                'gsis_policy_loan' => (float) ($r->gsis_policy_loan ?? 0),
                 'pag_ibig_mpl' => (float) ($r->pag_ibig_mpl ?? 0),
+                'pag_ibig_housing' => (float) ($r->pag_ibig_housing ?? 0),
+                'pag_ibig_calamity' => (float) ($r->pag_ibig_calamity ?? 0),
 
                 // Internal org deductions
                 'internal_org_savings' => (float) ($r->internal_org_savings ?? 0),
                 'internal_org_second' => (float) ($r->internal_org_second ?? 0),
+                'internal_org_loans' => (float) ($r->internal_org_loans ?? 0),
 
                 // Other / misc deductions (renamed from ama_y2k_union)
                 'other_deductions_total' => (float) ($r->other_deductions_total ?? 0),
@@ -163,9 +168,14 @@ class PayrollRegisterController extends Controller
             'total_personal_slip_deduction' => $records->sum('personal_slip_deduction'),
             'total_gsis_mpl' => $records->sum('gsis_mpl'),
             'total_gsis_emergency' => $records->sum('gsis_emergency'),
+            'total_gsis_salary_loan' => $records->sum('gsis_salary_loan'),
+            'total_gsis_policy_loan' => $records->sum('gsis_policy_loan'),
             'total_pag_ibig_mpl' => $records->sum('pag_ibig_mpl'),
+            'total_pag_ibig_housing' => $records->sum('pag_ibig_housing'),
+            'total_pag_ibig_calamity' => $records->sum('pag_ibig_calamity'),
             'total_internal_org_savings' => $records->sum('internal_org_savings'),
             'total_internal_org_second' => $records->sum('internal_org_second'),
+            'total_internal_org_loans' => $records->sum('internal_org_loans'),
             'total_other_deductions' => $records->sum('other_deductions_total'),
             'total_water_bill' => $records->sum('water_bill'),
             'total_deductions' => $records->sum('total_deductions'),

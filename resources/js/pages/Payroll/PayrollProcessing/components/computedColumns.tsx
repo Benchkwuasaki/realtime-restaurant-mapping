@@ -36,7 +36,11 @@ export interface ComputedEmployeeRow {
     philhealth: number;
     pagibig: number;
     tax: number;
-    /** gsis_mpl + gsis_emergency + pag_ibig_mpl — displayed in its own column */
+    /**
+     * Sum of ALL gov't loans for the display column:
+     * gsis_mpl + gsis_emergency + gsis_salary_loan + gsis_policy_loan +
+     * pag_ibig_mpl + pag_ibig_housing + pag_ibig_calamity
+     */
     govtLoans: number;
     absentDays: number;
     absentDeduction: number;
@@ -272,7 +276,7 @@ export const computedColumns: DataTableColumnDef<ComputedEmployeeRow>[] = [
             <div className="text-center">
                 <div>Gov&apos;t Loans</div>
                 <div className="text-[10px] font-normal text-red-400">
-                    mpl, emergency
+                    GSIS &amp; Pag-IBIG
                 </div>
             </div>
         ),

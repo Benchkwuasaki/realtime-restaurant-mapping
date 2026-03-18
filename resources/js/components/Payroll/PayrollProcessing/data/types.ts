@@ -120,6 +120,11 @@ export interface ComputedRecord {
     gsis_mpl: number;
     gsis_emergency: number;
     pag_ibig_mpl: number;
+    gsis_salary_loan:number;
+    gsis_policy_loan: number;
+    pag_ibig_housing: number;
+    pag_ibig_calamity: number;
+
 
     // ── Internal org deductions ───────────────────────────────────────────────
     internal_org_savings: number;   // Savings + Share_Capital (both cut-offs)

@@ -37,9 +37,13 @@ return new class extends Migration
         // Replaces str_contains / in_array source matching in computeForEmployee().
         Schema::table('loans', function (Blueprint $table) {
             $table->enum('loan_classification', [
-                'gsis_regular',
-                'gsis_emergency',
-                'pagibig',
+                'gsis_regular',      // GSIS MPL
+                'gsis_emergency',    // GSIS Emergency Loan
+                'gsis_salary',       // GSIS Salary Loan
+                'gsis_policy',       // GSIS Policy Loan
+                'pagibig',           // Pag-IBIG MPL
+                'pagibig_housing',   // Pag-IBIG Housing Loan
+                'pagibig_calamity',  // Pag-IBIG Calamity Loan
                 'internal_org',
             ])->nullable()->after('source');
         });
@@ -97,15 +101,25 @@ return new class extends Migration
             $table->decimal('total_overtime_hours', 8, 4)->default(0);
 
             // ── Gov't Loan Deductions ─────────────────────────────────────────
+            // GSIS loan types — each stored separately so the register can show
+            // a dedicated column per type matching the Loan Entry options.
             $table->decimal('gsis_mpl', 10, 2)->default(0);
             $table->decimal('gsis_emergency', 10, 2)->default(0);
+            $table->decimal('gsis_salary_loan', 10, 2)->default(0);
+            $table->decimal('gsis_policy_loan', 10, 2)->default(0);
+            // Pag-IBIG loan types
             $table->decimal('pag_ibig_mpl', 10, 2)->default(0);
+            $table->decimal('pag_ibig_housing', 10, 2)->default(0);
+            $table->decimal('pag_ibig_calamity', 10, 2)->default(0);
 
             // ── Internal Org Deductions ───────────────────────────────────────
             // Savings + Share_Capital → deducted on BOTH cut-offs
             $table->decimal('internal_org_savings', 10, 2)->default(0);
             // Dues → deducted on 2nd cut-off only (stored for drill-down display)
             $table->decimal('internal_org_second', 10, 2)->default(0);
+            // Loan repayments to internal orgs — stored separately from dues/savings
+            // so the register can show a dedicated Org Loans column.
+            $table->decimal('internal_org_loans', 10, 2)->default(0);
 
             // ── Other / Miscellaneous Deductions ─────────────────────────────
             // Renamed from ama_y2k_union. Accumulates: internal org loans,
@@ -132,8 +146,6 @@ return new class extends Migration
         });
 
         // ── 5. Create payroll_deduction_items (itemized ledger) ───────────────
-        // One row per deduction line per payroll record.
-        // Replaces the opaque other_deductions_total aggregate with a full audit trail.
         Schema::create('payroll_deduction_items', function (Blueprint $table) {
             $table->id();
 
@@ -143,10 +155,8 @@ return new class extends Migration
                 ->on('payroll_records')
                 ->cascadeOnDelete();
 
-            // Matches PayrollDeductionPriorityOrder::CATEGORY_* constants
             $table->string('category', 60);
 
-            // Which table generated this item
             $table->enum('source_type', [
                 'government_loan',
                 'internal_org_deduction',
@@ -155,26 +165,13 @@ return new class extends Migration
                 'water_bill',
                 'miscellaneous',
             ]);
-
-            // FK to the originating record (nullable for gov't loans which have no row)
             $table->unsignedBigInteger('source_id')->nullable();
-
-            // Human-readable label e.g. "GSIS MPL", "AMA Savings"
             $table->string('label', 255);
-
-            // Organisation name for org deductions (null for statutory/misc)
             $table->string('org_name', 255)->nullable();
-
-            // Amount before floor rule / waiver
             $table->decimal('amount', 12, 2);
-
-            // Amount actually applied after floor rule
             $table->decimal('effective_amount', 12, 2);
-
             $table->boolean('was_cut')->default(false);
             $table->decimal('cut_amount', 12, 2)->default(0);
-
-            // HR waived this item for this period (carry-forward applied)
             $table->boolean('waived')->default(false);
 
             $table->timestamps();
