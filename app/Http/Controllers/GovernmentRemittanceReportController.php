@@ -23,14 +23,12 @@ class GovernmentRemittanceReportController extends Controller
     {
         $periodId = $request->get('period_id');
         $agency = $request->get('agency', 'all');
-        $employeeTypeFilter = $request->get('employee_type', 'all'); // 'all', 'regular', 'casual'
+        $employeeTypeFilter = $request->get('employee_type', 'all');
 
-        // Get only 2nd cut-off periods (start_date = 16th of the month)
         $allPeriods = PayrollPeriod::orderBy('start_date', 'desc')
             ->whereRaw('DAY(start_date) = 16')
             ->get();
 
-        // Format periods for dropdown — only include periods that have Regular/Casual payroll records
         $periods = $allPeriods->filter(function ($period) {
             return PayrollRecord::where('payroll_period_id', $period->payroll_period_id)
                 ->whereHas('employee', function ($query) {
@@ -44,7 +42,11 @@ class GovernmentRemittanceReportController extends Controller
             'end_date' => $p->end_date->format('Y-m-d'),
         ]);
 
-        // Get selected period ONLY if period_id is provided - NO DEFAULT
+        // Default to the latest available period when none is specified
+        if (! $periodId && $periods->isNotEmpty()) {
+            $periodId = $periods->first()['id'];
+        }
+
         $selectedPeriod = $periodId
             ? PayrollPeriod::find($periodId)
             : null;
@@ -299,7 +301,6 @@ class GovernmentRemittanceReportController extends Controller
             return $item;
         });
 
-        // Calculate totals by type
         $regularTotals = [
             'gsis_employee' => $regularEmployees->sum('gsis_employee'),
             'gsis_employer' => $regularEmployees->sum('gsis_employer'),
@@ -330,7 +331,6 @@ class GovernmentRemittanceReportController extends Controller
             'bir_total' => $casualEmployees->sum('bir_total'),
         ];
 
-        // Calculate overall totals
         $gsisEmployees = $allEmployees->map(function ($item) {
             return [
                 'id' => $item['id'],
@@ -496,7 +496,6 @@ class GovernmentRemittanceReportController extends Controller
         $totalEmployerPayment = 0;
         $employeesCovered = 0;
 
-        // Calculate by employee type
         $regularRecords = $payrollRecords->filter(function ($record) {
             return strtolower($record->employee?->employment_classification ?? '') === 'regular';
         });
@@ -516,7 +515,6 @@ class GovernmentRemittanceReportController extends Controller
             }
         }
 
-        // Derive Regular/Casual totals from remittances (consistent with top summary cards)
         $regularEmployeeShare = 0;
         $regularEmployerShare = 0;
         $casualEmployeeShare = 0;

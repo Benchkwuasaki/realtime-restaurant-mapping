@@ -439,15 +439,28 @@ class EmployeeController extends Controller
                         'philhealth' => $r->philhealth,
                         'pag_ibig' => $r->pag_ibig,
                         'withholding_tax' => $r->withholding_tax,
-                        'absent_days' => (int) ($r->absent_days ?? 0),
-                        'absent_deduction' => $r->absent_deduction,
+                        // -- Attendance deductions
+                        'absent_days' => (float) ($r->absent_days ?? 0),
+                        'absent_deduction' => (float) ($r->absent_deduction ?? 0),
+                        'half_days' => (int) ($r->half_days ?? 0),
+                        'half_day_deduction' => (float) ($r->half_day_deduction ?? 0),
                         'late_minutes' => (int) ($r->late_minutes ?? 0),
-                        'late_deduction' => $r->late_deduction,
-                        'gsis_mpl' => $r->gsis_mpl,
-                        'gsis_emergency' => $r->gsis_emergency,
-                        'pag_ibig_mpl' => $r->pag_ibig_mpl,
-                        'ama_y2k_union' => $r->ama_y2k_union,
-                        'water_bill' => $r->water_bill,
+                        'late_deduction' => (float) ($r->late_deduction ?? 0),
+                        'undertime_minutes' => (int) ($r->undertime_minutes ?? 0),
+                        'undertime_deduction' => (float) ($r->undertime_deduction ?? 0),
+                        'personal_slip_minutes' => (int) ($r->personal_slip_minutes ?? 0),
+                        'personal_slip_deduction' => (float) ($r->personal_slip_deduction ?? 0),
+                        // -- Gov't loan deductions
+                        'gsis_mpl' => (float) ($r->gsis_mpl ?? 0),
+                        'gsis_emergency' => (float) ($r->gsis_emergency ?? 0),
+                        'pag_ibig_mpl' => (float) ($r->pag_ibig_mpl ?? 0),
+                        // -- Internal org deductions
+                        'internal_org_savings' => (float) ($r->internal_org_savings ?? 0),
+                        'internal_org_second' => (float) ($r->internal_org_second ?? 0),
+                        'internal_org_loans' => (float) ($r->internal_org_loans ?? 0),
+                        // -- Other deductions
+                        'other_deductions_total' => (float) ($r->other_deductions_total ?? 0),
+                        'water_bill' => (float) ($r->water_bill ?? 0),
                         'floor_check_passed' => (bool) ($r->floor_check_passed ?? true),
                         'posted_date' => $r->posted_at
                             ? Carbon::parse($r->posted_at)->format('M d, Y')

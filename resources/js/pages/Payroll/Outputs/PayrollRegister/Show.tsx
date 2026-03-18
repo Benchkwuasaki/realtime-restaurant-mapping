@@ -403,13 +403,8 @@ export default function Show({ period, records, summary }: Props) {
                                     Payroll Register
                                 </p>
                                 <p className="text-[11px] text-muted-foreground">
-                                    {periodLabel}&emsp;·&emsp;Cut-off:{' '}
-                                    {period.cut_off ?? '—'}&emsp;·&emsp;
-                                    <span
-                                        className={`font-semibold ${period.status === 'Closed' ? 'text-green-700' : 'text-blue-600'}`}
-                                    >
-                                        {period.status}
-                                    </span>
+                                    {periodLabel}&emsp;·&emsp;
+                                    {period.cut_off ?? '—'} Cut-off
                                 </p>
                             </div>
                         </div>

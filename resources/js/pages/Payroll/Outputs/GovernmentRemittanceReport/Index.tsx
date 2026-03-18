@@ -1,18 +1,13 @@
+// Government Remittance Index.tsx
+
 import React, { useState, useMemo, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import { StatCard as SharedStatCard } from '@/components/shared/stat-card';
+import { DataTable } from '@/components/shared/data-table/data-table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -40,9 +35,14 @@ import {
     TrendingDown,
     Users,
     Receipt,
-    Info,
 } from 'lucide-react';
 import type { BreadcrumbItem } from '@/types';
+import {
+    useRemittanceColumns,
+    type RemittanceEmployee,
+} from '@/components/Payroll/Outputs/GovernmentRemittance/components/columns';
+
+// ── Print Styles ──────────────────────────────────────────────────────────────
 
 const printStyles = `
   @media screen {
@@ -239,7 +239,6 @@ const printStyles = `
       justify-content: space-between;
       page-break-inside: avoid;
       width: 100%;
-      border-top: 1px dashed #ccc;
       padding-top: 30px;
     }
 
@@ -281,6 +280,9 @@ const printStyles = `
     }
   }
 `;
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 interface Props {
     auth: { user: any };
     periods: Array<{
@@ -324,11 +326,7 @@ interface Props {
         philhealth_employer_rate: number;
         pagibig_per_payroll: number;
     };
-    employeeTypeCounts?: {
-        regular: number;
-        casual: number;
-        total: number;
-    };
+    employeeTypeCounts?: { regular: number; casual: number; total: number };
     currentEmployeeTypeFilter?: string;
 }
 
@@ -356,17 +354,11 @@ interface AgencyData {
     employee_count?: number;
     regular_count?: number;
     casual_count?: number;
-    regular_totals?: {
-        employee: number;
-        employer: number;
-        total: number;
-    };
-    casual_totals?: {
-        employee: number;
-        employer: number;
-        total: number;
-    };
+    regular_totals?: { employee: number; employer: number; total: number };
+    casual_totals?: { employee: number; employer: number; total: number };
 }
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Payroll', href: route('payroll.index') },
@@ -391,6 +383,13 @@ const AGENCY_LOGOS: Record<string, string> = {
     bir: '/images/bir.png',
 };
 
+const EMPLOYEE_TYPE_FILTER_OPTIONS = [
+    { value: 'regular', label: 'Regular' },
+    { value: 'casual', label: 'Casual' },
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-PH', {
         style: 'currency',
@@ -398,8 +397,8 @@ const formatCurrency = (amount: number) =>
         minimumFractionDigits: 2,
     }).format(amount);
 
-// Local wrapper — lets us pass formatted currency strings without touching the
-// shared StatCard component (which expects value: number).
+// ── Local StatCard Wrapper ────────────────────────────────────────────────────
+
 function StatCard({
     title,
     value,
@@ -421,31 +420,35 @@ function StatCard({
     );
 }
 
-interface AgencyTableProps {
+// ── Agency DataTable Card ─────────────────────────────────────────────────────
+
+interface AgencyDataTableCardProps {
     agencyId: string;
     agencyData: AgencyData;
     onEmployeeClick?: (employee: any, agencyId: string) => void;
-    isPrintView?: boolean;
     employeeTypeFilter?: string;
 }
 
-function AgencyTable({
+function AgencyDataTableCard({
     agencyId,
     agencyData,
     onEmployeeClick,
-    isPrintView = false,
     employeeTypeFilter = 'all',
-}: AgencyTableProps) {
+}: AgencyDataTableCardProps) {
     const color = AGENCY_COLORS[agencyId] || 'bg-gray-600';
     const logo = AGENCY_LOGOS[agencyId];
     const employees = agencyData.employees || [];
 
-    const filteredEmployees = useMemo(() => {
-        if (employeeTypeFilter === 'all' || isPrintView) return employees;
-        return employees.filter(
-            (emp) => (emp as any).employee_type === employeeTypeFilter,
-        );
-    }, [employees, employeeTypeFilter, isPrintView]);
+    const filteredEmployees = useMemo((): RemittanceEmployee[] => {
+        const base =
+            employeeTypeFilter === 'all'
+                ? employees
+                : employees.filter(
+                      (emp) =>
+                          (emp as any).employee_type === employeeTypeFilter,
+                  );
+        return base as RemittanceEmployee[];
+    }, [employees, employeeTypeFilter]);
 
     const totals = filteredEmployees.reduce(
         (acc, row) => ({
@@ -456,135 +459,14 @@ function AgencyTable({
         { employee: 0, employer: 0, subtotal: 0 },
     );
 
-    if (isPrintView) {
-        const regularEmployees = employees.filter(
-            (emp) => (emp as any).employee_type === 'regular',
-        );
-        const casualEmployees = employees.filter(
-            (emp) => (emp as any).employee_type === 'casual',
-        );
-
-        return (
-            <div className="print-agency-section">
-                <div className="agency-header">
-                    {logo && (
-                        <img
-                            src={logo}
-                            alt={agencyData.agency_name}
-                            className="agency-logo"
-                            onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                            }}
-                        />
-                    )}
-                    <div className="agency-details">
-                        <h3>{agencyData.agency_name}</h3>
-                        <p className="full-name">{agencyData.full_name}</p>
-                        <p className="rate-desc">
-                            {agencyData.rate_description}
-                        </p>
-                    </div>
-                </div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>EMPLOYEE NAME</th>
-                            <th>POSITION</th>
-                            <th>CLASSIFICATION</th>
-                            <th>BASIC PAY</th>
-                            <th>EMPLOYEE SHARE</th>
-                            <th>EMPLOYER SHARE</th>
-                            <th>SUBTOTAL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {regularEmployees.length > 0 && (
-                            <>
-<tr>
-    <td colSpan={8} style={{ textAlign: 'left', fontWeight: 'bold', padding: '8px', borderBottom: '1px solid #999' }}>
-        REGULAR EMPLOYEES ({regularEmployees.length})
-    </td>
-</tr>
-                                {regularEmployees.map((row, index) => (
-                                    <tr key={row.id}>
-                                        <td>{index + 1}</td>
-                                        <td>{row.name}</td>
-                                        <td>{row.position}</td>
-                                        <td style={{ fontWeight: 'bold' }}>{row.classification}</td>
-                                        <td>{formatCurrency(row.basic_pay)}</td>
-                                        <td>
-                                            {formatCurrency(row.employee_share)}
-                                        </td>
-                                        <td>
-                                            {formatCurrency(row.employer_share)}
-                                        </td>
-                                        <td>{formatCurrency(row.subtotal)}</td>
-                                    </tr>
-                                ))}
-                            </>
-                        )}
-
-                        {casualEmployees.length > 0 && (
-                            <>
-                                <tr>
-    <td colSpan={8} style={{ textAlign: 'left', fontWeight: 'bold', padding: '8px', borderTop: '1px solid #999', borderBottom: '1px solid #999' }}>
-        CASUAL EMPLOYEES ({casualEmployees.length})
-    </td>
-</tr>
-                                {casualEmployees.map((row, index) => (
-                                    <tr key={row.id}>
-                                        <td>
-                                            {regularEmployees.length +
-                                                index +
-                                                1}
-                                        </td>
-                                        <td>{row.name}</td>
-                                        <td>{row.position}</td>
-                                        <td style={{ fontWeight: 'bold' }}>{row.classification}</td>
-                                        <td>{formatCurrency(row.basic_pay)}</td>
-                                        <td>
-                                            {formatCurrency(row.employee_share)}
-                                        </td>
-                                        <td>
-                                            {formatCurrency(row.employer_share)}
-                                        </td>
-                                        <td>{formatCurrency(row.subtotal)}</td>
-                                    </tr>
-                                ))}
-                            </>
-                        )}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td
-                                colSpan={5}
-                                style={{
-                                    textAlign: 'right',
-                                    fontWeight: 'bold',
-                                }}
-                            >
-                                TOTAL:
-                            </td>
-                            <td style={{ fontWeight: 'bold' }}>
-                                {formatCurrency(totals.employee)}
-                            </td>
-                            <td style={{ fontWeight: 'bold' }}>
-                                {formatCurrency(totals.employer)}
-                            </td>
-                            <td style={{ fontWeight: 'bold' }}>
-                                {formatCurrency(totals.subtotal)}
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        );
-    }
+    const columns = useRemittanceColumns({
+        agencyId,
+        onEmployeeClick,
+    });
 
     return (
-        <Card className="card mb-6 border border-secondary">
+        <Card className="mb-6 border border-secondary">
+            {/* Agency Header */}
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -606,7 +488,7 @@ function AgencyTable({
                                 />
                             ) : (
                                 <div
-                                    className={`h-full w-full ${color} bg-opacity-10 flex items-center justify-center`}
+                                    className={`${color} bg-opacity-10 flex h-full w-full items-center justify-center`}
                                 >
                                     <Landmark
                                         className={`h-6 w-6 ${color.replace('bg-', 'text-')}`}
@@ -641,109 +523,220 @@ function AgencyTable({
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-0">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-12">#</TableHead>
-                            <TableHead>Employee Name</TableHead>
-                            <TableHead>Position</TableHead>
-                            <TableHead>Classification</TableHead>
-                            <TableHead className="text-right">
-                                Basic Pay (Monthly)
-                            </TableHead>
-                            <TableHead className="text-right">
-                                Employee Share (Monthly)
-                            </TableHead>
-                            <TableHead className="text-right">
-                                Employer Share (Monthly)
-                            </TableHead>
-                            <TableHead className="text-right">
-                                Subtotal
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredEmployees.length === 0 ? (
-                            <TableRow>
-                                <TableCell
 
-                                    colSpan={8}
-                                    className="py-8 text-center text-muted-foreground"
-                                >
-                                    No data available for this agency
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            filteredEmployees.map((row, index) => (
-                                <TableRow
-                                    key={row.id}
-                                    className="cursor-pointer transition-colors hover:bg-muted/40"
-                                    onClick={() =>
-                                        onEmployeeClick?.(row, agencyId)
-                                    }
-                                >
-                                    <TableCell className="font-medium text-muted-foreground">
-                                        {index + 1}
-                                    </TableCell>
-                                    <TableCell className="font-medium">
-                                        {row.name}
-                                    </TableCell>
-                                    <TableCell>{row.position}</TableCell>
-<TableCell>
-    <Badge
-        variant={
-            (row as any).employee_type === 'regular'
-                ? 'default'
-                : 'secondary'
-        }
-        className="min-w-[60px] justify-center"
-    >
-        {(row as any).employee_type === 'regular' ? 'Regular' : 'Casual'}
-    </Badge>
-</TableCell>
-                                    <TableCell className="text-right tabular-nums">
-                                        {formatCurrency(row.basic_pay)}
-                                    </TableCell>
-                                    <TableCell className="text-right tabular-nums">
-                                        {formatCurrency(row.employee_share)}
-                                    </TableCell>
-                                    <TableCell className="text-right tabular-nums">
-                                        {formatCurrency(row.employer_share)}
-                                    </TableCell>
-                                    <TableCell className="text-right font-medium tabular-nums">
-                                        {formatCurrency(row.subtotal)}
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                    {filteredEmployees.length > 0 && (
-                        <tfoot>
-                            <TableRow className="bg-muted/50">
-                                <TableCell
-                                    colSpan={5}
-                                    className="text-right font-bold"
-                                >
-                                    TOTAL:
-                                </TableCell>
-                                <TableCell className="text-right font-bold tabular-nums">
-                                    {formatCurrency(totals.employee)}
-                                </TableCell>
-                                <TableCell className="text-right font-bold tabular-nums">
-                                    {formatCurrency(totals.employer)}
-                                </TableCell>
-                                <TableCell className="text-right font-bold tabular-nums">
-                                    {formatCurrency(totals.subtotal)}
-                                </TableCell>
-                            </TableRow>
-                        </tfoot>
-                    )}
-                </Table>
-            </CardContent>
+            <section className="gap-6 p-6">
+                <DataTable
+                    data={filteredEmployees}
+                    columns={columns}
+                    getRowId={(row) => String(row.id)}
+                    searchColumnId="name"
+                    searchPlaceholder="Search employees..."
+                    filters={[
+                        {
+                            columnId: 'employee_type',
+                            title: 'Type',
+                            options: EMPLOYEE_TYPE_FILTER_OPTIONS,
+                        },
+                    ]}
+                />
+            </section>
+
+            {filteredEmployees.length > 0 && (
+                <div className="gap-6 border-t border-secondary pt-8 pr-8">
+                    <div className="flex items-center justify-end gap-6 text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">
+                                Employee Share:
+                            </span>
+                            <span className="font-semibold tabular-nums">
+                                {formatCurrency(totals.employee)}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">
+                                Employer Share:
+                            </span>
+                            <span className="font-semibold tabular-nums">
+                                {formatCurrency(totals.employer)}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2 border-l pl-6">
+                            <span className="font-semibold text-muted-foreground">
+                                Total:
+                            </span>
+                            <span className="text-base font-bold tabular-nums">
+                                {formatCurrency(totals.subtotal)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Card>
     );
 }
+
+// ── Agency Print Table (unchanged) ────────────────────────────────────────────
+
+interface AgencyPrintTableProps {
+    agencyId: string;
+    agencyData: AgencyData;
+}
+
+function AgencyPrintTable({ agencyId, agencyData }: AgencyPrintTableProps) {
+    const logo = AGENCY_LOGOS[agencyId];
+    const employees = agencyData.employees || [];
+
+    const regularEmployees = employees.filter(
+        (emp) => (emp as any).employee_type === 'regular',
+    );
+    const casualEmployees = employees.filter(
+        (emp) => (emp as any).employee_type === 'casual',
+    );
+
+    const totals = employees.reduce(
+        (acc, row) => ({
+            employee: acc.employee + row.employee_share,
+            employer: acc.employer + row.employer_share,
+            subtotal: acc.subtotal + row.subtotal,
+        }),
+        { employee: 0, employer: 0, subtotal: 0 },
+    );
+
+    return (
+        <div className="print-agency-section">
+            <div className="agency-header">
+                {logo && (
+                    <img
+                        src={logo}
+                        alt={agencyData.agency_name}
+                        className="agency-logo"
+                        onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                        }}
+                    />
+                )}
+                <div className="agency-details">
+                    <h3>{agencyData.agency_name}</h3>
+                    <p className="full-name">{agencyData.full_name}</p>
+                    <p className="rate-desc">{agencyData.rate_description}</p>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>EMPLOYEE NAME</th>
+                        <th>POSITION</th>
+                        <th>CLASSIFICATION</th>
+                        <th>BASIC PAY</th>
+                        <th>EMPLOYEE SHARE</th>
+                        <th>EMPLOYER SHARE</th>
+                        <th>SUBTOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {regularEmployees.length > 0 && (
+                        <>
+                            <tr>
+                                <td
+                                    colSpan={8}
+                                    style={{
+                                        textAlign: 'left',
+                                        fontWeight: 'bold',
+                                        padding: '8px',
+                                        borderBottom: '1px solid #999',
+                                    }}
+                                >
+                                    REGULAR EMPLOYEES ({regularEmployees.length}
+                                    )
+                                </td>
+                            </tr>
+                            {regularEmployees.map((row, index) => (
+                                <tr key={row.id}>
+                                    <td>{index + 1}</td>
+                                    <td>{row.name}</td>
+                                    <td>{row.position}</td>
+                                    <td style={{ fontWeight: 'bold' }}>
+                                        {row.classification}
+                                    </td>
+                                    <td>{formatCurrency(row.basic_pay)}</td>
+                                    <td>
+                                        {formatCurrency(row.employee_share)}
+                                    </td>
+                                    <td>
+                                        {formatCurrency(row.employer_share)}
+                                    </td>
+                                    <td>{formatCurrency(row.subtotal)}</td>
+                                </tr>
+                            ))}
+                        </>
+                    )}
+
+                    {casualEmployees.length > 0 && (
+                        <>
+                            <tr>
+                                <td
+                                    colSpan={8}
+                                    style={{
+                                        textAlign: 'left',
+                                        fontWeight: 'bold',
+                                        padding: '8px',
+                                        borderTop: '1px solid #999',
+                                        borderBottom: '1px solid #999',
+                                    }}
+                                >
+                                    CASUAL EMPLOYEES ({casualEmployees.length})
+                                </td>
+                            </tr>
+                            {casualEmployees.map((row, index) => (
+                                <tr key={row.id}>
+                                    <td>
+                                        {regularEmployees.length + index + 1}
+                                    </td>
+                                    <td>{row.name}</td>
+                                    <td>{row.position}</td>
+                                    <td style={{ fontWeight: 'bold' }}>
+                                        {row.classification}
+                                    </td>
+                                    <td>{formatCurrency(row.basic_pay)}</td>
+                                    <td>
+                                        {formatCurrency(row.employee_share)}
+                                    </td>
+                                    <td>
+                                        {formatCurrency(row.employer_share)}
+                                    </td>
+                                    <td>{formatCurrency(row.subtotal)}</td>
+                                </tr>
+                            ))}
+                        </>
+                    )}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td
+                            colSpan={5}
+                            style={{ textAlign: 'right', fontWeight: 'bold' }}
+                        >
+                            TOTAL:
+                        </td>
+                        <td style={{ fontWeight: 'bold' }}>
+                            {formatCurrency(totals.employee)}
+                        </td>
+                        <td style={{ fontWeight: 'bold' }}>
+                            {formatCurrency(totals.employer)}
+                        </td>
+                        <td style={{ fontWeight: 'bold' }}>
+                            {formatCurrency(totals.subtotal)}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    );
+}
+
+// ── Signature Section (unchanged) ─────────────────────────────────────────────
 
 interface SignatureSectionProps {
     isPrintView?: boolean;
@@ -833,7 +826,7 @@ function SignatureSection({
     }
 
     return (
-        <div className="no-print mt-10">
+        <div className="mt-10">
             <Separator className="mb-8" />
             <div className="grid grid-cols-3 gap-8">
                 {[
@@ -868,6 +861,8 @@ function SignatureSection({
     );
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function GovernmentRemittanceReport({
     auth,
     periods,
@@ -901,7 +896,7 @@ export default function GovernmentRemittanceReport({
         setEmployeeTypeFilter(currentEmployeeTypeFilter);
     }, [currentEmployeeTypeFilter]);
 
-    // ── CHANGE: deduplicate by monthLabel instead of id ──────────────────────
+    // ── Deduplicate periods by month label ────────────────────────────────────
     const monthPeriods = useMemo(() => {
         const seen = new Set<string>();
         return periods
@@ -927,6 +922,8 @@ export default function GovernmentRemittanceReport({
             }));
     }, [periods]);
 
+    // ── Handlers ──────────────────────────────────────────────────────────────
+
     const handlePeriodChange = (periodId: string) => {
         const period = monthPeriods.find((p) => p.id.toString() === periodId);
         if (period) {
@@ -943,9 +940,9 @@ export default function GovernmentRemittanceReport({
         }
     };
 
-   const handleTabChange = (value: string) => {
-    setActiveTab(value);
-};
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+    };
 
     const handleEmployeeTypeFilter = (type: string) => {
         setEmployeeTypeFilter(type);
@@ -986,17 +983,7 @@ export default function GovernmentRemittanceReport({
         window.print();
     };
 
-    const dateGenerated =
-        new Date().toLocaleDateString('en-PH', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        }) +
-        ' ' +
-        new Date().toLocaleTimeString('en-PH', {
-            hour: '2-digit',
-            minute: '2-digit',
-        });
+    // ── Derived values ────────────────────────────────────────────────────────
 
     const preparedDate = new Date().toLocaleDateString('en-PH', {
         year: 'numeric',
@@ -1009,10 +996,7 @@ export default function GovernmentRemittanceReport({
     const monthLabel = selectedPeriod
         ? new Date(selectedPeriod.end_date + 'T00:00:00').toLocaleDateString(
               'en-PH',
-              {
-                  month: 'long',
-                  year: 'numeric',
-              },
+              { month: 'long', year: 'numeric' },
           )
         : '';
 
@@ -1067,509 +1051,663 @@ export default function GovernmentRemittanceReport({
         (employeeTypeCounts?.regular || 0) > 0 &&
         (employeeTypeCounts?.casual || 0) > 0;
 
+    const agencyTabItems = [
+        { value: 'all', label: 'All Agencies' },
+        { value: 'gsis', label: 'GSIS' },
+        { value: 'philhealth', label: 'PhilHealth' },
+        { value: 'pagibig', label: 'Pag-IBIG' },
+        { value: 'bir', label: 'BIR' },
+    ] as const;
+
+    const getAgencyCount = (agencyValue: string) => {
+        if (agencyValue === 'all') return summary?.employees_covered || 0;
+        return remittances[agencyValue]?.employees?.length || 0;
+    };
+
+    // ── Render ────────────────────────────────────────────────────────────────
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Government Remittance Report" />
             <style>{printStyles}</style>
 
-            <div className="flex flex-1 flex-col gap-8 p-8">
-                <div className="no-print flex items-center justify-between">
-                    <h1 className="text-2xl font-semibold">
-                        Government Remittance Report
-                    </h1>
-                    <Button
-                        variant="default"
-                        onClick={handleExport}
-                        disabled={!hasSelectedPeriod}
-                    >
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print
-                    </Button>
-                </div>
-
-                {exportError && (
-                    <div className="no-print flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3">
-                        <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
-                        <p className="text-base text-gray-800">{exportError}</p>
+            <div className="flex h-full flex-1 flex-col gap-4 p-8">
+                {/* ── Stat Cards ─────────────────────────────────────────── */}
+                {hasSelectedPeriod && (
+                    <div className="no-print grid grid-cols-2 gap-4 lg:grid-cols-4">
+                        <StatCard
+                            icon={<TrendingDown className="m-1.5 size-4" />}
+                            title={
+                                activeTab === 'all'
+                                    ? 'Total Employee Deductions'
+                                    : `${remittances[activeTab]?.agency_name ?? ''} Employee Share`
+                            }
+                            value={formatCurrency(
+                                currentSummary.employee_deductions,
+                            )}
+                            description={`Monthly — ${monthLabel}`}
+                        />
+                        <StatCard
+                            icon={<TrendingUp className="m-1.5 size-4" />}
+                            title={
+                                activeTab === 'all'
+                                    ? 'Total Employer Payment'
+                                    : `${remittances[activeTab]?.agency_name ?? ''} Employer Share`
+                            }
+                            value={formatCurrency(
+                                currentSummary.employer_payment,
+                            )}
+                            description={`Monthly — ${monthLabel}`}
+                        />
+                        <StatCard
+                            icon={<Receipt className="m-1.5 size-4" />}
+                            title={
+                                activeTab === 'all'
+                                    ? 'Total Remittance'
+                                    : `${remittances[activeTab]?.agency_name ?? ''} Total`
+                            }
+                            value={formatCurrency(currentSummary.total_remit)}
+                            description={`Monthly — ${monthLabel}`}
+                        />
+                        <StatCard
+                            icon={<Users className="m-1.5 size-4" />}
+                            title="Employees Covered"
+                            value={currentSummary.employees_covered}
+                            description={monthLabel}
+                        />
                     </div>
                 )}
 
-                <div className="no-print flex flex-col gap-4">
-                    <div className="period-selector flex items-center gap-4">
-                        <Select
-                            value={selectedPeriod?.id?.toString() || ''}
-                            onValueChange={handlePeriodChange}
-                        >
-                            <SelectTrigger className="w-[220px]">
-                                <Calendar className="mr-2 h-4 w-4" />
-                                <SelectValue placeholder="Select a month" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {monthPeriods.map((period) => (
-                                    <SelectItem
-                                        key={period.id}
-                                        value={period.id.toString()}
-                                    >
-                                        {period.monthLabel}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-
-                        {hasSelectedPeriod && hasBothEmployeeTypes && (
-                            <div className="ml-2 flex items-center gap-3">
-                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                    <Filter className="h-3.5 w-3.5" />
-                                    <span>Show:</span>
-                                </div>
-                                <div className="flex gap-1">
-                                    {(
-                                        ['all', 'regular', 'casual'] as const
-                                    ).map((type) => (
-                                        <Button
-                                            key={type}
-                                            size="sm"
-                                            variant={
-                                                employeeTypeFilter === type
-                                                    ? 'secondary'
-                                                    : 'ghost'
-                                            }
-                                            onClick={() =>
-                                                handleEmployeeTypeFilter(type)
-                                            }
+                {/* ── Main Section ───────────────────────────────────────── */}
+                <section className="no-print rounded-lg border border-secondary bg-card p-6">
+                    {/* Section Header */}
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-lg font-semibold">
+                                Government Remittance Report
+                            </h2>
+                            <Select
+                                value={selectedPeriod?.id?.toString() || ''}
+                                onValueChange={handlePeriodChange}
+                            >
+                                <SelectTrigger className="w-[200px]">
+                                    <Calendar className="mr-2 h-4 w-4 shrink-0" />
+                                    <SelectValue placeholder="Select a month" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {monthPeriods.map((period) => (
+                                        <SelectItem
+                                            key={period.id}
+                                            value={period.id.toString()}
                                         >
-                                            {type.charAt(0).toUpperCase() +
-                                                type.slice(1)}
-                                        </Button>
+                                            {period.monthLabel}
+                                        </SelectItem>
                                     ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                <Tabs
-                    value={activeTab}
-                    onValueChange={handleTabChange}
-                    className="no-print tabs-container w-full"
-                >
-                    <div className="shrink-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        <TabsList className="flex h-auto flex-nowrap gap-0 bg-transparent p-0">
-                            {(
-                                [
-                                    { value: 'all', label: 'All Agencies' },
-                                    { value: 'gsis', label: 'GSIS' },
-                                    { value: 'philhealth', label: 'PhilHealth' },
-                                    { value: 'pagibig', label: 'Pag-IBIG' },
-                                    { value: 'bir', label: 'BIR' },
-                                ] as const
-                            ).map(({ value, label }) => (
-                                <TabsTrigger
-                                    key={value}
-                                    value={value}
-                                    className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-                                >
-                                    {label}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </div>
-
-                    <Card className="no-print mt-4 border border-secondary">
-                        <CardContent className="pt-4">
-                            <div className="flex items-start justify-between">
-                                <div className="flex gap-4">
-                                    <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg">
-                                        <img
-                                            src="/images/logo.svg"
-                                            alt="Metro Kidapawan Water District Logo"
-                                            className="h-full w-full object-contain"
-                                            onError={(e) => {
-                                                e.currentTarget.style.display = 'none';
-                                            }}
-                                        />
+                        <div className="flex items-center gap-2">
+                            {hasSelectedPeriod && hasBothEmployeeTypes && (
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                        <Filter className="h-3.5 w-3.5" />
+                                        <span>Show:</span>
                                     </div>
-                                    <div>
-                                        <h2 className="text-xl font-semibold">
-                                            Metro Kidapawan Water District
-                                        </h2>
-                                        <p className="text-sm text-muted-foreground">
-                                            Government Contribution Remittance Report
-                                        </p>
-                                        <p className="mt-1 text-sm">
-                                            Payroll Period:{' '}
-                                            <span className="font-medium">
-                                                {monthLabel || 'No period selected'}
-                                            </span>
-                                        </p>
-                                        {hasSelectedPeriod && employeeTypeFilter !== 'all' && (
-                                            <p className="mt-1 text-sm">
-                                                Employee Type:{' '}
+                                    <div className="flex gap-1">
+                                        {(
+                                            [
+                                                'all',
+                                                'regular',
+                                                'casual',
+                                            ] as const
+                                        ).map((type) => (
+                                            <Button
+                                                key={type}
+                                                size="sm"
+                                                variant={
+                                                    employeeTypeFilter === type
+                                                        ? 'secondary'
+                                                        : 'ghost'
+                                                }
+                                                onClick={() =>
+                                                    handleEmployeeTypeFilter(
+                                                        type,
+                                                    )
+                                                }
+                                            >
+                                                {type.charAt(0).toUpperCase() +
+                                                    type.slice(1)}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <Button
+                                variant="default"
+                                onClick={handleExport}
+                                disabled={!hasSelectedPeriod}
+                            >
+                                <Printer className="mr-2 h-4 w-4" />
+                                Print
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Error Alert */}
+                    {exportError && (
+                        <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3">
+                            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+                            <p className="text-base text-gray-800">
+                                {exportError}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* ── Tabs ─────────────────────────────────────────────── */}
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={handleTabChange}
+                        className="tabs-container w-full"
+                    >
+                        <div className="shrink-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <TabsList className="flex h-auto flex-nowrap gap-0 bg-transparent p-0">
+                                {agencyTabItems.map(({ value, label }) => (
+                                    <TabsTrigger
+                                        key={value}
+                                        value={value}
+                                        className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+                                    >
+                                        {label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </div>
+
+                        {/* No period selected */}
+                        {!hasSelectedPeriod ? (
+                            <Card className="mt-4 border border-dashed py-16">
+                                <CardContent className="text-center">
+                                    <Calendar className="mx-auto mb-4 h-10 w-10 text-muted-foreground/50" />
+                                    <p className="mb-2 text-xl font-medium text-muted-foreground">
+                                        No Payroll Period Selected
+                                    </p>
+                                    <p className="mb-6 text-muted-foreground">
+                                        Please select a payroll period from the
+                                        dropdown above to view remittance data.
+                                    </p>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            const btn = document.querySelector(
+                                                'button[role="combobox"]',
+                                            );
+                                            if (btn)
+                                                (
+                                                    btn as HTMLButtonElement
+                                                ).click();
+                                        }}
+                                        className="gap-2"
+                                    >
+                                        <Calendar className="h-4 w-4" />
+                                        Select Period
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <>
+                                <TabsContent value="all" className="mt-6">
+                                    {remittances.gsis?.employees?.length >
+                                        0 && (
+                                        <AgencyDataTableCard
+                                            agencyId="gsis"
+                                            agencyData={remittances.gsis}
+                                            onEmployeeClick={
+                                                handleEmployeeClick
+                                            }
+                                            employeeTypeFilter={
+                                                employeeTypeFilter
+                                            }
+                                        />
+                                    )}
+                                    {remittances.philhealth?.employees?.length >
+                                        0 && (
+                                        <AgencyDataTableCard
+                                            agencyId="philhealth"
+                                            agencyData={remittances.philhealth}
+                                            onEmployeeClick={
+                                                handleEmployeeClick
+                                            }
+                                            employeeTypeFilter={
+                                                employeeTypeFilter
+                                            }
+                                        />
+                                    )}
+                                    {remittances.pagibig?.employees?.length >
+                                        0 && (
+                                        <AgencyDataTableCard
+                                            agencyId="pagibig"
+                                            agencyData={remittances.pagibig}
+                                            onEmployeeClick={
+                                                handleEmployeeClick
+                                            }
+                                            employeeTypeFilter={
+                                                employeeTypeFilter
+                                            }
+                                        />
+                                    )}
+                                    {!remittances.gsis?.employees?.length &&
+                                        !remittances.philhealth?.employees
+                                            ?.length &&
+                                        !remittances.pagibig?.employees
+                                            ?.length && (
+                                            <Card>
+                                                <CardContent className="py-12 pt-6 text-center text-muted-foreground">
+                                                    <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
+                                                    <p className="text-lg font-medium">
+                                                        No remittance data
+                                                        available
+                                                    </p>
+                                                    <p className="text-sm">
+                                                        There are no government
+                                                        contribution records for
+                                                        this period.
+                                                    </p>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+                                </TabsContent>
+
+                                {/* GSIS */}
+                                <TabsContent value="gsis" className="mt-6">
+                                    {remittances.gsis?.employees?.length > 0 ? (
+                                        <AgencyDataTableCard
+                                            agencyId="gsis"
+                                            agencyData={remittances.gsis}
+                                            onEmployeeClick={
+                                                handleEmployeeClick
+                                            }
+                                            employeeTypeFilter={
+                                                employeeTypeFilter
+                                            }
+                                        />
+                                    ) : (
+                                        <Card>
+                                            <CardContent className="py-12 pt-6 text-center text-muted-foreground">
+                                                <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
+                                                <p className="text-lg font-medium">
+                                                    No GSIS Data
+                                                </p>
+                                                <p className="text-sm">
+                                                    There are no GSIS
+                                                    contribution records for
+                                                    this period.
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                    <SignatureSection
+                                        userName={
+                                            auth.user?.name || 'Admin User'
+                                        }
+                                        preparedDate={preparedDate}
+                                    />
+                                </TabsContent>
+
+                                {/* PhilHealth */}
+                                <TabsContent
+                                    value="philhealth"
+                                    className="mt-6"
+                                >
+                                    {remittances.philhealth?.employees?.length >
+                                    0 ? (
+                                        <AgencyDataTableCard
+                                            agencyId="philhealth"
+                                            agencyData={remittances.philhealth}
+                                            onEmployeeClick={
+                                                handleEmployeeClick
+                                            }
+                                            employeeTypeFilter={
+                                                employeeTypeFilter
+                                            }
+                                        />
+                                    ) : (
+                                        <Card>
+                                            <CardContent className="py-12 pt-6 text-center text-muted-foreground">
+                                                <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
+                                                <p className="text-lg font-medium">
+                                                    No PhilHealth Data
+                                                </p>
+                                                <p className="text-sm">
+                                                    There are no PhilHealth
+                                                    contribution records for
+                                                    this period.
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                    <SignatureSection
+                                        userName={
+                                            auth.user?.name || 'Admin User'
+                                        }
+                                        preparedDate={preparedDate}
+                                    />
+                                </TabsContent>
+
+                                {/* Pag-IBIG */}
+                                <TabsContent value="pagibig" className="mt-6">
+                                    {remittances.pagibig?.employees?.length >
+                                    0 ? (
+                                        <AgencyDataTableCard
+                                            agencyId="pagibig"
+                                            agencyData={remittances.pagibig}
+                                            onEmployeeClick={
+                                                handleEmployeeClick
+                                            }
+                                            employeeTypeFilter={
+                                                employeeTypeFilter
+                                            }
+                                        />
+                                    ) : (
+                                        <Card>
+                                            <CardContent className="py-12 pt-6 text-center text-muted-foreground">
+                                                <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
+                                                <p className="text-lg font-medium">
+                                                    No Pag-IBIG Data
+                                                </p>
+                                                <p className="text-sm">
+                                                    There are no Pag-IBIG
+                                                    contribution records for
+                                                    this period.
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                    <SignatureSection
+                                        userName={
+                                            auth.user?.name || 'Admin User'
+                                        }
+                                        preparedDate={preparedDate}
+                                    />
+                                </TabsContent>
+
+                                {/* BIR */}
+                                <TabsContent value="bir" className="mt-6">
+                                    {remittances.bir?.employees?.length > 0 ? (
+                                        <AgencyDataTableCard
+                                            agencyId="bir"
+                                            agencyData={remittances.bir}
+                                            onEmployeeClick={
+                                                handleEmployeeClick
+                                            }
+                                            employeeTypeFilter={
+                                                employeeTypeFilter
+                                            }
+                                        />
+                                    ) : (
+                                        <Card className="border-purple-200 bg-purple-50/30">
+                                            <CardContent className="py-12 pt-12 text-center">
+                                                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-purple-100">
+                                                    <Landmark className="h-10 w-10 text-purple-600" />
+                                                </div>
+                                                <p className="mb-2 text-2xl font-semibold text-purple-800">
+                                                    BIR (Tax) Remittance
+                                                </p>
+                                                <p className="mb-4 text-purple-600">
+                                                    Coming Soon
+                                                </p>
+                                                <p className="mx-auto max-w-md rounded-lg border border-purple-200 bg-white/50 p-4 text-sm text-muted-foreground">
+                                                    The BIR withholding tax
+                                                    remittance module is
+                                                    currently under development.
+                                                </p>
                                                 <Badge
                                                     variant="outline"
-                                                    className={
-                                                        employeeTypeFilter === 'regular'
-                                                            ? 'border-green-200 bg-green-50 text-green-700'
-                                                            : 'border-amber-200 bg-amber-50 text-amber-700'
-                                                    }
+                                                    className="mt-6 border-purple-300 bg-purple-100 px-4 py-1 text-purple-700"
                                                 >
-                                                    {employeeTypeFilter === 'regular'
-                                                        ? 'Regular Only'
-                                                        : 'Casual Only'}
+                                                    Expected Release: Q2 2026
                                                 </Badge>
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="text-right text-sm text-muted-foreground">
-                                    <p>Date Generated: {dateGenerated}</p>
-                                    <p>Generated by: {auth.user?.name || 'Admin User'}</p>
-                                    <p>Document Reference No. GR-{selectedPeriod?.id || '0000'}</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                    <SignatureSection
+                                        userName={
+                                            auth.user?.name || 'Admin User'
+                                        }
+                                        preparedDate={preparedDate}
+                                    />
+                                </TabsContent>
+                            </>
+                        )}
+                    </Tabs>
+                </section>
 
-                    {!hasSelectedPeriod ? (
-                        <Card className="no-print mt-4 border border-dashed py-16">
-                            <CardContent className="text-center">
-                                <Calendar className="mx-auto mb-4 h-10 w-10 text-muted-foreground/50" />
-                                <p className="mb-2 text-xl font-medium text-muted-foreground">
-                                    No Payroll Period Selected
-                                </p>
-                                <p className="mb-6 text-muted-foreground">
-                                    Please select a payroll period from the dropdown above to view remittance data.
-                                </p>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        const btn = document.querySelector('button[role="combobox"]');
-                                        if (btn) (btn as HTMLButtonElement).click();
+                {/* ── Print-Only Section (unchanged) ─────────────────────── */}
+                <div className="print-only">
+                    <div className="report-main-header">
+                        <div className="report-header-inner">
+                            <img
+                                src="/images/logo.svg"
+                                alt="Metro Kidapawan Water District"
+                                className="report-logo"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                }}
+                            />
+                            <div className="report-header-text">
+                                <h1>METRO KIDAPAWAN WATER DISTRICT</h1>
+                                <h2>
+                                    GOVERNMENT CONTRIBUTION REMITTANCE REPORT
+                                </h2>
+
+                                <p
+                                    className="period"
+                                    style={{
+                                        fontSize: '11px',
+                                        marginTop: '4px',
+                                        color: '#555',
                                     }}
-                                    className="gap-2"
                                 >
-                                    <Calendar className="h-4 w-4" />
-                                    Select Period
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <>
-                            <div className="no-print mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
-                                <StatCard
-                                    icon={<TrendingDown className="h-4 w-4" />}
-                                    title={
-                                        activeTab === 'all'
-                                            ? 'Total Employee Deductions'
-                                            : `${remittances[activeTab]?.agency_name} Employee Share`
-                                    }
-                                    value={formatCurrency(currentSummary.employee_deductions)}
-                                    description={`Monthly — ${monthLabel}`}
-                                />
-                                <StatCard
-                                    icon={<TrendingUp className="h-4 w-4" />}
-                                    title={
-                                        activeTab === 'all'
-                                            ? 'Total Employer Payment'
-                                            : `${remittances[activeTab]?.agency_name} Employer Share`
-                                    }
-                                    value={formatCurrency(currentSummary.employer_payment)}
-                                    description={`Monthly — ${monthLabel}`}
-                                />
-                                <StatCard
-                                    icon={<Receipt className="h-4 w-4" />}
-                                    title={
-                                        activeTab === 'all'
-                                            ? 'Total Remittance'
-                                            : `${remittances[activeTab]?.agency_name} Total`
-                                    }
-                                    value={formatCurrency(currentSummary.total_remit)}
-                                    description={`Monthly — ${monthLabel}`}
-                                />
-                                <StatCard
-                                    icon={<Users className="h-4 w-4" />}
-                                    title="Employees Covered"
-                                    value={currentSummary.employees_covered}
-                                    description={monthLabel}
-                                />
+                                    Monthly contributions for {monthLabel}
+                                </p>
                             </div>
+                        </div>
+                    </div>
 
-                            <TabsContent value="all" className="mt-6">
-                                {remittances.gsis?.employees?.length > 0 && (
-                                    <AgencyTable agencyId="gsis" agencyData={remittances.gsis} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
-                                )}
-                                {remittances.philhealth?.employees?.length > 0 && (
-                                    <AgencyTable agencyId="philhealth" agencyData={remittances.philhealth} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
-                                )}
-                                {remittances.pagibig?.employees?.length > 0 && (
-                                    <AgencyTable agencyId="pagibig" agencyData={remittances.pagibig} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
-                                )}
-                                {!remittances.gsis?.employees?.length && !remittances.philhealth?.employees?.length && !remittances.pagibig?.employees?.length && (
-                                    <Card>
-                                        <CardContent className="py-12 pt-6 text-center text-muted-foreground">
-                                            <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
-                                            <p className="text-lg font-medium">No remittance data available</p>
-                                            <p className="text-sm">There are no government contribution records for this period.</p>
-                                        </CardContent>
-                                    </Card>
-                                )}
-                                <SignatureSection userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate} />
-                            </TabsContent>
-
-                            <TabsContent value="gsis" className="mt-6">
-                                {remittances.gsis?.employees?.length > 0 ? (
-                                    <AgencyTable agencyId="gsis" agencyData={remittances.gsis} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
-                                ) : (
-                                    <Card>
-                                        <CardContent className="py-12 pt-6 text-center text-muted-foreground">
-                                            <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
-                                            <p className="text-lg font-medium">No GSIS Data</p>
-                                            <p className="text-sm">There are no GSIS contribution records for this period.</p>
-                                        </CardContent>
-                                    </Card>
-                                )}
-                                <SignatureSection userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate} />
-                            </TabsContent>
-
-                            <TabsContent value="philhealth" className="mt-6">
-                                {remittances.philhealth?.employees?.length > 0 ? (
-                                    <AgencyTable agencyId="philhealth" agencyData={remittances.philhealth} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
-                                ) : (
-                                    <Card>
-                                        <CardContent className="py-12 pt-6 text-center text-muted-foreground">
-                                            <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
-                                            <p className="text-lg font-medium">No PhilHealth Data</p>
-                                            <p className="text-sm">There are no PhilHealth contribution records for this period.</p>
-                                        </CardContent>
-                                    </Card>
-                                )}
-                                <SignatureSection userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate} />
-                            </TabsContent>
-
-                            <TabsContent value="pagibig" className="mt-6">
-                                {remittances.pagibig?.employees?.length > 0 ? (
-                                    <AgencyTable agencyId="pagibig" agencyData={remittances.pagibig} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
-                                ) : (
-                                    <Card>
-                                        <CardContent className="py-12 pt-6 text-center text-muted-foreground">
-                                            <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
-                                            <p className="text-lg font-medium">No Pag-IBIG Data</p>
-                                            <p className="text-sm">There are no Pag-IBIG contribution records for this period.</p>
-                                        </CardContent>
-                                    </Card>
-                                )}
-                                <SignatureSection userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate} />
-                            </TabsContent>
-
-                            <TabsContent value="bir" className="mt-6">
-                                {remittances.bir?.employees?.length > 0 ? (
-                                    <AgencyTable agencyId="bir" agencyData={remittances.bir} onEmployeeClick={handleEmployeeClick} employeeTypeFilter={employeeTypeFilter} />
-                                ) : (
-                                    <Card className="border-purple-200 bg-purple-50/30">
-                                        <CardContent className="py-12 pt-12 text-center">
-                                            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-purple-100">
-                                                <Landmark className="h-10 w-10 text-purple-600" />
-                                            </div>
-                                            <p className="mb-2 text-2xl font-semibold text-purple-800">BIR (Tax) Remittance</p>
-                                            <p className="mb-4 text-purple-600">Coming Soon</p>
-                                            <p className="mx-auto max-w-md rounded-lg border border-purple-200 bg-white/50 p-4 text-sm text-muted-foreground">
-                                                The BIR withholding tax remittance module is currently under development.
-                                            </p>
-                                            <Badge variant="outline" className="mt-6 border-purple-300 bg-purple-100 px-4 py-1 text-purple-700">
-                                                Expected Release: Q2 2026
-                                            </Badge>
-                                        </CardContent>
-                                    </Card>
-                                )}
-                                <SignatureSection userName={auth.user?.name || 'Admin User'} preparedDate={preparedDate} />
-                            </TabsContent>
-
+                    {activeTab !== 'all' && remittances[activeTab] && (
+                        <>
+                            <AgencyPrintTable
+                                agencyId={activeTab}
+                                agencyData={remittances[activeTab]}
+                            />
+                            <SignatureSection
+                                isPrintView={true}
+                                preparedDate={preparedDate}
+                                userName={auth.user?.name || 'Admin User'}
+                            />
                         </>
                     )}
-               </Tabs>
 
-<div className="print-only">
-    <div className="report-main-header">
-        <div className="report-header-inner">
-            <img src="/images/logo.svg" alt="Metro Kidapawan Water District" className="report-logo" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            <div className="report-header-text">
-                <h1>METRO KIDAPAWAN WATER DISTRICT</h1>
-                <h2>GOVERNMENT CONTRIBUTION REMITTANCE REPORT</h2>
-                <p className="period">{selectedPeriod?.label || ''} — {activeTab === 'all' ? 'All Agencies' : getAgencyDisplayName(activeTab)}</p>
-                <p className="period" style={{ fontSize: '11px', marginTop: '4px', color: '#555' }}>
-                    Monthly contributions for {monthLabel} (1st &amp; 2nd cut-off combined)
-                </p>
-            </div>
-        </div>
-    </div>
-
-    {activeTab !== 'all' && remittances[activeTab] && (
-        <>
-            <AgencyTable agencyId={activeTab} agencyData={remittances[activeTab]} isPrintView={true} />
-            <SignatureSection isPrintView={true} preparedDate={preparedDate} userName={auth.user?.name || 'Admin User'} />
-        </>
-    )}
-
-    {activeTab === 'all' && (
-        <>
-            {activeAgenciesForPrint.map((id, i) => (
-                <div key={id} style={i > 0 ? { pageBreakBefore: 'always', breakBefore: 'always' } : undefined}>
-                    <AgencyTable agencyId={id} agencyData={remittances[id]} isPrintView={true} />
+                    {activeTab === 'all' && (
+                        <>
+                            {activeAgenciesForPrint.map((id, i) => (
+                                <div
+                                    key={id}
+                                    style={
+                                        i > 0
+                                            ? {
+                                                  pageBreakBefore: 'always',
+                                                  breakBefore: 'always',
+                                              }
+                                            : undefined
+                                    }
+                                >
+                                    <AgencyPrintTable
+                                        agencyId={id}
+                                        agencyData={remittances[id]}
+                                    />
+                                </div>
+                            ))}
+                            <SignatureSection
+                                isPrintView={true}
+                                preparedDate={preparedDate}
+                                userName={auth.user?.name || 'Admin User'}
+                            />
+                        </>
+                    )}
                 </div>
-            ))}
-            <SignatureSection isPrintView={true} preparedDate={preparedDate} userName={auth.user?.name || 'Admin User'} />
-        </>
-    )}
-</div>
+            </div>
 
-                {selectedEmployee && (
-                    <Dialog
-                        open={true}
-                        onOpenChange={() => setSelectedEmployee(null)}
-                    >
-                        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
-                            {/* Header */}
-                            <DialogHeader className="border-b px-6 py-4">
-                                <div className="flex items-center gap-3">
-                                    <DialogTitle className="text-base font-semibold">
-                                        {selectedEmployee.name}
-                                    </DialogTitle>
-                                    <Badge
-                                            variant={
-        selectedEmployee.employee_type === 'regular'
-            ? 'default'
-            : 'secondary'
-    }
-    className="min-w-[60px] justify-center"
->
-    {selectedEmployee.employee_type ?? selectedEmployee.classification}
-</Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                    {selectedEmployee.position}
+            {/* ── Employee Detail Dialog (unchanged) ─────────────────────── */}
+            {selectedEmployee && (
+                <Dialog
+                    open={true}
+                    onOpenChange={() => setSelectedEmployee(null)}
+                >
+                    <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
+                        <DialogHeader className="border-b px-6 py-4">
+                            <div className="flex items-center gap-3">
+                                <DialogTitle className="text-base font-semibold">
+                                    {selectedEmployee.name}
+                                </DialogTitle>
+                                <Badge
+                                    variant={
+                                        selectedEmployee.employee_type ===
+                                        'regular'
+                                            ? 'default'
+                                            : 'secondary'
+                                    }
+                                    className="min-w-[60px] justify-center"
+                                >
+                                    {selectedEmployee.employee_type ??
+                                        selectedEmployee.classification}
+                                </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                {selectedEmployee.position}
+                            </p>
+                        </DialogHeader>
+
+                        <div className="grid grid-cols-2 divide-x">
+                            {/* Left — Details */}
+                            <div className="space-y-4 p-6">
+                                <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                                    Details
                                 </p>
-                            </DialogHeader>
-
-                            <div className="grid grid-cols-2 divide-x">
-                                {/* Left — Employee & Earnings */}
-                                <div className="space-y-4 p-6">
-                                    <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                        Details
-                                    </p>
-                                    {[
-                                        {
-                                            label: 'Employee ID',
-                                            value: String(selectedEmployee.id),
-                                        },
-                                        {
-                                            label: 'Position',
-                                            value: selectedEmployee.position,
-                                        },
-                                        {
-                                            label: 'Basic Pay (Monthly)',
-                                            value: formatCurrency(
-                                                selectedEmployee.basicPay,
-                                            ),
-                                        },
-                                    ].map(({ label, value }) => (
-                                        <div
-                                            key={label}
-                                            className="flex items-center justify-between border-b border-border/50 py-2 last:border-0"
-                                        >
-                                            <span className="text-sm text-muted-foreground">
-                                                {label}
-                                            </span>
-                                            <span className="text-sm font-medium text-foreground tabular-nums">
-                                                {value}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Right — Contribution */}
-                                <div className="space-y-4 p-6">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                            {getAgencyDisplayName(
-                                                selectedEmployee.agency,
-                                            )}{' '}
-                                            Contribution
-                                        </p>
-                                        <span className="text-xs text-muted-foreground">
-                                            {getRateDescription(
-                                                selectedEmployee.agency,
-                                            )}
+                                {[
+                                    {
+                                        label: 'Employee ID',
+                                        value: String(selectedEmployee.id),
+                                    },
+                                    {
+                                        label: 'Position',
+                                        value: selectedEmployee.position,
+                                    },
+                                    {
+                                        label: 'Basic Pay (Monthly)',
+                                        value: formatCurrency(
+                                            selectedEmployee.basicPay,
+                                        ),
+                                    },
+                                ].map(({ label, value }) => (
+                                    <div
+                                        key={label}
+                                        className="flex items-center justify-between border-b border-border/50 py-2 last:border-0"
+                                    >
+                                        <span className="text-sm text-muted-foreground">
+                                            {label}
+                                        </span>
+                                        <span className="text-sm font-medium text-foreground tabular-nums">
+                                            {value}
                                         </span>
                                     </div>
-                                    {[
-                                        {
-                                            label: 'Employee Share',
-                                            sub: 'deducted from salary',
-                                            value: formatCurrency(
-                                                selectedEmployee.employeeShare,
-                                            ),
-                                        },
-                                        {
-                                            label: 'Employer Share',
-                                            sub: 'company contribution',
-                                            value: formatCurrency(
-                                                selectedEmployee.employerShare,
-                                            ),
-                                        },
-                                    ].map(({ label, sub, value }) => (
-                                        <div
-                                            key={label}
-                                            className="flex items-center justify-between border-b border-border/50 py-2"
-                                        >
-                                            <div>
-                                                <p className="text-sm font-medium text-foreground">
-                                                    {label}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {sub}
-                                                </p>
-                                            </div>
-                                            <span className="text-sm font-semibold tabular-nums">
-                                                {value}
-                                            </span>
-                                        </div>
-                                    ))}
-                                    <div className="flex items-center justify-between pt-1">
-                                        <div>
-                                            <p className="text-sm font-semibold text-foreground">
-                                                Total
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                employee + employer
-                                            </p>
-                                        </div>
-                                        <span className="text-base font-bold tabular-nums">
-                                            {formatCurrency(
-                                                selectedEmployee.subtotal,
-                                            )}
-                                        </span>
-                                    </div>
-                                </div>
+                                ))}
                             </div>
 
-                            <DialogFooter className="border-t bg-muted/20 px-6 py-3">
-                                <div className="flex w-full items-center justify-between text-xs text-muted-foreground">
-                                    <span>
-                                        Payroll Period:{' '}
-                                        {selectedPeriod?.label || 'N/A'}
-                                    </span>
-                                    <span className="font-medium">
+                            {/* Right — Contribution */}
+                            <div className="space-y-4 p-6">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                                         {getAgencyDisplayName(
                                             selectedEmployee.agency,
                                         )}{' '}
-                                        Remittance
+                                        Contribution
+                                    </p>
+                                    <span className="text-xs text-muted-foreground">
+                                        {getRateDescription(
+                                            selectedEmployee.agency,
+                                        )}
                                     </span>
                                 </div>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                )}
-            </div>
+                                {[
+                                    {
+                                        label: 'Employee Share',
+                                        sub: 'deducted from salary',
+                                        value: formatCurrency(
+                                            selectedEmployee.employeeShare,
+                                        ),
+                                    },
+                                    {
+                                        label: 'Employer Share',
+                                        sub: 'company contribution',
+                                        value: formatCurrency(
+                                            selectedEmployee.employerShare,
+                                        ),
+                                    },
+                                ].map(({ label, sub, value }) => (
+                                    <div
+                                        key={label}
+                                        className="flex items-center justify-between border-b border-border/50 py-2"
+                                    >
+                                        <div>
+                                            <p className="text-sm font-medium text-foreground">
+                                                {label}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {sub}
+                                            </p>
+                                        </div>
+                                        <span className="text-sm font-semibold tabular-nums">
+                                            {value}
+                                        </span>
+                                    </div>
+                                ))}
+                                <div className="flex items-center justify-between pt-1">
+                                    <div>
+                                        <p className="text-sm font-semibold text-foreground">
+                                            Total
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            employee + employer
+                                        </p>
+                                    </div>
+                                    <span className="text-base font-bold tabular-nums">
+                                        {formatCurrency(
+                                            selectedEmployee.subtotal,
+                                        )}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="border-t bg-muted/20 px-6 py-3">
+                            <div className="flex w-full items-center justify-between text-xs text-muted-foreground">
+                                <span>
+                                    Payroll Period:{' '}
+                                    {selectedPeriod?.label || 'N/A'}
+                                </span>
+                                <span className="font-medium">
+                                    {getAgencyDisplayName(
+                                        selectedEmployee.agency,
+                                    )}{' '}
+                                    Remittance
+                                </span>
+                            </div>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
         </AppLayout>
     );
 }

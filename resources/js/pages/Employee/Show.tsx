@@ -87,6 +87,8 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { PhoneInput } from '@/components/phone-input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { PayslipDocument } from '@/pages/Payroll/Outputs/PaySlipGeneration/PayslipDocument';
+import type { PayslipData } from '@/components/Payroll/Outputs/PaySlipGeneration/data/schema';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -259,10 +261,19 @@ interface Payslip {
     absent_deduction: number;
     late_minutes: number;
     late_deduction: number;
+    half_days: number;
+    half_day_deduction: number;
+    undertime_minutes: number;
+    undertime_deduction: number;
+    personal_slip_minutes: number;
+    personal_slip_deduction: number;
     gsis_mpl: number;
     gsis_emergency: number;
     pag_ibig_mpl: number;
-    ama_y2k_union: number;
+    internal_org_savings: number;
+    internal_org_second: number;
+    internal_org_loans: number;
+    other_deductions_total: number;
     water_bill: number;
     floor_check_passed: boolean;
     posted_date: string;
@@ -2137,248 +2148,6 @@ function fmtPeso(amount: number) {
     return `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 }
 
-// ─── PayslipDocument ──────────────────────────────────────────────────────────
-
-type PayslipData = {
-    employee_name: string;
-    position: string;
-    salary_grade: number;
-    step: number;
-    employment_classification: string;
-    period_label: string;
-    basic_pay: number;
-    pera: number;
-    rice_allowance: number;
-    uniform_allowance: number;
-    gsis_premium: number;
-    philhealth: number;
-    pag_ibig: number;
-    withholding_tax: number;
-    absent_days: number;
-    absent_deduction: number;
-    late_minutes: number;
-    late_deduction: number;
-    gsis_mpl: number;
-    gsis_emergency: number;
-    pag_ibig_mpl: number;
-    ama_y2k_union: number;
-    water_bill: number;
-    net_pay: number;
-    floor_check_passed: boolean;
-    posted_date: string;
-    hr_officer: string;
-};
-
-function PayslipDocument({
-    data,
-    printId,
-}: {
-    data: PayslipData;
-    printId: string;
-}) {
-    const p = (n: number) =>
-        Number(n ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
-
-    const grossPay =
-        (data.basic_pay ?? 0) +
-        (data.pera ?? 0) +
-        (data.rice_allowance ?? 0) +
-        (data.uniform_allowance ?? 0);
-
-    const mandatoryDeductions =
-        (data.gsis_premium ?? 0) +
-        (data.philhealth ?? 0) +
-        (data.pag_ibig ?? 0) +
-        (data.withholding_tax ?? 0);
-
-    const absenceLate =
-        (data.absent_deduction ?? 0) + (data.late_deduction ?? 0);
-
-    const loanDeductions =
-        (data.gsis_mpl ?? 0) +
-        (data.gsis_emergency ?? 0) +
-        (data.pag_ibig_mpl ?? 0) +
-        (data.ama_y2k_union ?? 0) +
-        (data.water_bill ?? 0);
-
-    const totalDeductions = mandatoryDeductions + absenceLate + loanDeductions;
-
-    const Row = ({
-        label,
-        value,
-        bold,
-    }: {
-        label: string;
-        value: number;
-        bold?: boolean;
-    }) => (
-        <div
-            className={cn(
-                'flex items-center justify-between px-3 py-1.5 text-xs',
-                bold && 'bg-muted/40 font-bold',
-            )}
-        >
-            <span className="text-muted-foreground">{label}</span>
-            <span className="font-mono text-foreground">₱{p(value)}</span>
-        </div>
-    );
-
-    return (
-        <div id={printId} className="space-y-4 text-sm">
-            {/* Header */}
-            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-                    <div>
-                        <span className="text-muted-foreground">
-                            Employee:{' '}
-                        </span>
-                        <span className="font-semibold text-foreground">
-                            {data.employee_name}
-                        </span>
-                    </div>
-                    <div>
-                        <span className="text-muted-foreground">Period: </span>
-                        <span className="font-semibold text-foreground">
-                            {data.period_label}
-                        </span>
-                    </div>
-                    <div>
-                        <span className="text-muted-foreground">
-                            Position:{' '}
-                        </span>
-                        <span className="font-semibold text-foreground">
-                            {data.position}
-                        </span>
-                    </div>
-                    <div>
-                        <span className="text-muted-foreground">
-                            Classification:{' '}
-                        </span>
-                        <span className="font-semibold text-foreground">
-                            {data.employment_classification}
-                        </span>
-                    </div>
-                    <div>
-                        <span className="text-muted-foreground">
-                            SG / Step:{' '}
-                        </span>
-                        <span className="font-semibold text-foreground">
-                            {data.salary_grade} — {data.step}
-                        </span>
-                    </div>
-                    <div>
-                        <span className="text-muted-foreground">Posted: </span>
-                        <span className="font-semibold text-foreground">
-                            {fmtShort(data.posted_date)}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Earnings & Deductions columns */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {/* Earnings */}
-                <div className="overflow-hidden rounded-lg border border-border">
-                    <div className="border-b border-border bg-muted/50 px-3 py-2 text-xs font-bold tracking-widest text-muted-foreground uppercase">
-                        Earnings
-                    </div>
-                    <Row label="Basic Pay" value={data.basic_pay} />
-                    <Row label="PERA" value={data.pera} />
-                    <Row label="Rice Allowance" value={data.rice_allowance} />
-                    <Row
-                        label="Uniform Allowance"
-                        value={data.uniform_allowance}
-                    />
-                    <Row label="Gross Pay" value={grossPay} bold />
-                </div>
-
-                {/* Deductions */}
-                <div className="overflow-hidden rounded-lg border border-border">
-                    <div className="border-b border-border bg-muted/50 px-3 py-2 text-xs font-bold tracking-widest text-muted-foreground uppercase">
-                        Deductions
-                    </div>
-                    <Row label="GSIS Premium" value={data.gsis_premium} />
-                    <Row label="PhilHealth" value={data.philhealth} />
-                    <Row label="Pag-IBIG" value={data.pag_ibig} />
-                    <Row label="Withholding Tax" value={data.withholding_tax} />
-                    {data.absent_days > 0 && (
-                        <Row
-                            label={`Absences (${data.absent_days}d)`}
-                            value={data.absent_deduction}
-                        />
-                    )}
-                    {data.late_minutes > 0 && (
-                        <Row
-                            label={`Late (${fmtMinutes(data.late_minutes)})`}
-                            value={data.late_deduction}
-                        />
-                    )}
-                    {data.gsis_mpl > 0 && (
-                        <Row label="GSIS MPL" value={data.gsis_mpl} />
-                    )}
-                    {data.gsis_emergency > 0 && (
-                        <Row
-                            label="GSIS Emergency"
-                            value={data.gsis_emergency}
-                        />
-                    )}
-                    {data.pag_ibig_mpl > 0 && (
-                        <Row label="Pag-IBIG MPL" value={data.pag_ibig_mpl} />
-                    )}
-                    {data.ama_y2k_union > 0 && (
-                        <Row label="AMA/Y2K Union" value={data.ama_y2k_union} />
-                    )}
-                    {data.water_bill > 0 && (
-                        <Row label="Water Bill" value={data.water_bill} />
-                    )}
-                    <Row
-                        label="Total Deductions"
-                        value={totalDeductions}
-                        bold
-                    />
-                </div>
-            </div>
-
-            {/* Net Pay */}
-            <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-5 py-4">
-                <span className="text-sm font-bold text-foreground">
-                    NET PAY
-                </span>
-                <span className="text-xl font-black text-primary tabular-nums">
-                    ₱{p(data.net_pay)}
-                </span>
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div>
-                    <span>HR Officer: </span>
-                    <span className="font-semibold text-foreground">
-                        {data.hr_officer}
-                    </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    {data.floor_check_passed ? (
-                        <Badge
-                            variant="outline"
-                            className="border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400"
-                        >
-                            Floor Check Passed
-                        </Badge>
-                    ) : (
-                        <Badge
-                            variant="outline"
-                            className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-400"
-                        >
-                            Pending Floor Check
-                        </Badge>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
 function PayslipViewModal({
     slip,
     open,
@@ -2409,10 +2178,19 @@ function PayslipViewModal({
         absent_deduction: slip.absent_deduction,
         late_minutes: slip.late_minutes,
         late_deduction: slip.late_deduction,
+        half_days: slip.half_days ?? 0,
+        half_day_deduction: slip.half_day_deduction ?? 0,
+        undertime_minutes: slip.undertime_minutes ?? 0,
+        undertime_deduction: slip.undertime_deduction ?? 0,
+        personal_slip_minutes: slip.personal_slip_minutes ?? 0,
+        personal_slip_deduction: slip.personal_slip_deduction ?? 0,
         gsis_mpl: slip.gsis_mpl,
         gsis_emergency: slip.gsis_emergency,
         pag_ibig_mpl: slip.pag_ibig_mpl,
-        ama_y2k_union: slip.ama_y2k_union,
+        internal_org_savings: slip.internal_org_savings ?? 0,
+        internal_org_second: slip.internal_org_second ?? 0,
+        internal_org_loans: slip.internal_org_loans ?? 0,
+        other_deductions_total: slip.other_deductions_total ?? 0,
         water_bill: slip.water_bill,
         net_pay: slip.net_pay,
         floor_check_passed: slip.floor_check_passed,
