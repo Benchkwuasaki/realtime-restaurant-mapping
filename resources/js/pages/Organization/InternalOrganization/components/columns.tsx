@@ -3,6 +3,7 @@
 import { type ColumnDef } from '@tanstack/react-table';
 import { router } from '@inertiajs/react';
 import { route } from 'ziggy-js';
+import { toast } from 'sonner';
 import { useState, useRef } from 'react';
 import { Pen, Trash } from 'lucide-react';
 
@@ -83,6 +84,7 @@ function DeleteConfirmDialog({ org, onClose }: DeleteConfirmDialogProps) {
                 org.internal_organization_id,
             ),
             {
+                onSuccess: () => toast.success('Organization deleted successfully.'),
                 onFinish: () => {
                     setProcessing(false);
                     onClose();
@@ -248,162 +250,166 @@ function MobileOrgCard({ row, onEdit }: MobileOrgCardProps) {
 export const columns = ({
     onEdit,
 }: ColumnOptions): ColumnDef<InternalOrganization>[] => [
-    {
-        id: 'select',
-        header: ({ table }) => (
-            <Checkbox
-                checked={
-                    table.getIsAllPageRowsSelected() ||
-                    (table.getIsSomePageRowsSelected() && 'indeterminate')
-                }
-                onCheckedChange={(value) =>
-                    table.toggleAllPageRowsSelected(!!value)
-                }
-                aria-label="Select all"
-                className="translate-y-0.5"
-            />
-        ),
-        cell: ({ row }) => (
-            <Checkbox
-                checked={row.getIsSelected()}
-                onCheckedChange={(value) => row.toggleSelected(!!value)}
-                aria-label="Select row"
-                className="translate-y-0.5"
-                onClick={(e) => e.stopPropagation()}
-            />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-    },
-    {
-        accessorKey: 'code',
-        header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Code / ID" />
-        ),
-        cell: ({ row }) => (
-            <div className="min-w-[80px] font-mono text-sm">
-                {row.getValue('code')}
-            </div>
-        ),
-        enableSorting: true,
-        enableHiding: true,
-    },
-    {
-        accessorKey: 'name',
-        header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Organization Name" />
-        ),
-        cell: ({ row }) => (
-            <div className="min-w-[160px] font-medium">
-                {row.getValue('name')}
-            </div>
-        ),
-        enableSorting: true,
-        enableHiding: true,
-        mobileCard: (row) => <MobileOrgCard row={row} onEdit={onEdit} />,
-    },
-    {
-        id: 'type',
-        accessorFn: (row) => row.org_type?.internal_org_type ?? '—',
-        header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Type" />
-        ),
-        cell: ({ row }) => (
-            <div className="min-w-[110px]">{row.getValue('type')}</div>
-        ),
-        filterFn: (row, id, value: string[]) =>
-            value.includes(row.getValue(id)),
-        enableSorting: true,
-        enableHiding: true,
-    },
-    {
-        accessorKey: 'head',
-        header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Head" />
-        ),
-        cell: ({ row }) => (
-            <div className="min-w-[140px]">{row.getValue('head')}</div>
-        ),
-        enableSorting: true,
-        enableHiding: true,
-    },
-    {
-        accessorKey: 'payroll_deduction_linked',
-        header: ({ column }) => (
-            <DataTableColumnHeader
-                column={column}
-                title="Payroll Deduction Linked"
-            />
-        ),
-        cell: ({ row }) => {
-            const linked: boolean = row.getValue('payroll_deduction_linked');
-            return (
-                <div className="min-w-[100px]">
-                    <Badge variant={linked ? 'default' : 'destructive'}>
-                        {linked ? 'Yes' : 'No'}
-                    </Badge>
-                </div>
-            );
+        {
+            id: 'select',
+            header: ({ table }) => (
+                <Checkbox
+                    checked={
+                        table.getIsAllPageRowsSelected() ||
+                        (table.getIsSomePageRowsSelected() && 'indeterminate')
+                    }
+                    onCheckedChange={(value) =>
+                        table.toggleAllPageRowsSelected(!!value)
+                    }
+                    aria-label="Select all"
+                    className="translate-y-0.5"
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    aria-label="Select row"
+                    className="translate-y-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                />
+            ),
+            enableSorting: false,
+            enableHiding: false,
         },
-        filterFn: (row, id, value: boolean[]) =>
-            value.includes(row.getValue(id)),
-        enableSorting: true,
-        enableHiding: true,
-    },
-    {
-        accessorKey: 'status',
-        header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Status" />
-        ),
-        cell: ({ row }) => {
-            const isActive: boolean = row.getValue('status');
-            return (
-                <div className="min-w-[90px]">
-                    <Badge variant={isActive ? 'default' : 'destructive'}>
-                        {isActive ? 'Active' : 'Inactive'}
-                    </Badge>
+        {
+            accessorKey: 'code',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Code / ID" />
+            ),
+            cell: ({ row }) => (
+                <div className="min-w-[80px] font-mono text-sm">
+                    {row.getValue('code')}
                 </div>
-            );
+            ),
+            enableSorting: true,
+            enableHiding: true,
         },
-        filterFn: (row, id, value: boolean[]) =>
-            value.includes(row.getValue(id)),
-        enableSorting: true,
-        enableHiding: true,
-    },
-    {
-        id: 'actions',
-        header: 'Actions',
-        cell: ({ row }) => (
-            <DataTableRowActions
-                row={row}
-                actions={[
-                    editAction((org) => onEdit(org)),
-                    deleteAction(
-                        (org) =>
-                            router.delete(
-                                route(
-                                    'internal-organization.destroy',
-                                    org.internal_organization_id,
+        {
+            accessorKey: 'name',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Organization Name" />
+            ),
+            cell: ({ row }) => (
+                <div className="min-w-[160px] font-medium">
+                    {row.getValue('name')}
+                </div>
+            ),
+            enableSorting: true,
+            enableHiding: true,
+            mobileCard: (row) => <MobileOrgCard row={row} onEdit={onEdit} />,
+        },
+        {
+            id: 'type',
+            accessorFn: (row) => row.org_type?.internal_org_type ?? '—',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Type" />
+            ),
+            cell: ({ row }) => (
+                <div className="min-w-[110px]">{row.getValue('type')}</div>
+            ),
+            filterFn: (row, id, value: string[]) =>
+                value.includes(row.getValue(id)),
+            enableSorting: true,
+            enableHiding: true,
+        },
+        {
+            accessorKey: 'head',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Head" />
+            ),
+            cell: ({ row }) => (
+                <div className="min-w-[140px]">{row.getValue('head')}</div>
+            ),
+            enableSorting: true,
+            enableHiding: true,
+        },
+        {
+            accessorKey: 'payroll_deduction_linked',
+            header: ({ column }) => (
+                <DataTableColumnHeader
+                    column={column}
+                    title="Payroll Deduction Linked"
+                />
+            ),
+            cell: ({ row }) => {
+                const linked: boolean = row.getValue('payroll_deduction_linked');
+                return (
+                    <div className="min-w-[100px]">
+                        <Badge variant={linked ? 'default' : 'destructive'}>
+                            {linked ? 'Yes' : 'No'}
+                        </Badge>
+                    </div>
+                );
+            },
+            filterFn: (row, id, value: boolean[]) =>
+                value.includes(row.getValue(id)),
+            enableSorting: true,
+            enableHiding: true,
+        },
+        {
+            accessorKey: 'status',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Status" />
+            ),
+            cell: ({ row }) => {
+                const isActive: boolean = row.getValue('status');
+                return (
+                    <div className="min-w-[90px]">
+                        <Badge variant={isActive ? 'default' : 'destructive'}>
+                            {isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                    </div>
+                );
+            },
+            filterFn: (row, id, value: boolean[]) =>
+                value.includes(row.getValue(id)),
+            enableSorting: true,
+            enableHiding: true,
+        },
+        {
+            id: 'actions',
+            header: 'Actions',
+            cell: ({ row }) => (
+                <DataTableRowActions
+                    row={row}
+                    actions={[
+                        editAction((org) => onEdit(org)),
+                        deleteAction(
+                            (org) =>
+                                router.delete(
+                                    route(
+                                        'internal-organization.destroy',
+                                        org.internal_organization_id,
+                                    ),
+                                    {
+                                        onSuccess: () => toast.success('Organization deleted successfully.'),
+                                    },
                                 ),
-                            ),
-                        {
-                            getName: (org) => org.name,
-                            description: (org) => (
-                                <>
-                                    Are you sure you want to delete{' '}
-                                    <span className="font-medium text-foreground">
-                                        {org.name}
-                                    </span>
-                                    ? This action cannot be undone.
-                                </>
-                            ),
-                            confirmLabel: 'Delete Organization',
-                        },
-                    ),
-                ]}
-            />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-    },
-];
+
+                            {
+                                getName: (org) => org.name,
+                                description: (org) => (
+                                    <>
+                                        Are you sure you want to delete{' '}
+                                        <span className="font-medium text-foreground">
+                                            {org.name}
+                                        </span>
+                                        ? This action cannot be undone.
+                                    </>
+                                ),
+                                confirmLabel: 'Delete Organization',
+                            },
+                        ),
+                    ]}
+                />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        },
+    ];

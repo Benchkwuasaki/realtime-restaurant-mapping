@@ -6,7 +6,7 @@ import { router } from '@inertiajs/react';
 import { Pen, Trash } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { route } from 'ziggy-js';
-
+import { toast } from 'sonner';
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
 import {
     DataTableRowActions,
@@ -54,6 +54,7 @@ function DeleteConfirmDialog({ position, onClose }: DeleteConfirmDialogProps) {
         if (!position) return;
         setProcessing(true);
         router.delete(route('position.destroy', position.position_id), {
+            onSuccess: () => toast.success('Position deleted successfully.'),
             onFinish: () => {
                 setProcessing(false);
                 onClose();
@@ -369,6 +370,9 @@ export function getColumns({
                                         'position.destroy',
                                         position.position_id,
                                     ),
+                                    {
+                                        onSuccess: () => toast.success('Position deleted successfully.'),
+                                    },
                                 ),
                             {
                                 getName: (p) => p.position_name,

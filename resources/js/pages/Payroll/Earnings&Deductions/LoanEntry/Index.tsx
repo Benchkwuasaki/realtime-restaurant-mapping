@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { route } from 'ziggy-js';
+import { toast } from 'sonner';
 import AppLayout from '@/layouts/app-layout';
 import { DataTable } from '@/components/shared/data-table/data-table';
 import {
@@ -269,7 +270,10 @@ function LoanDialog({
         if (isEdit) {
             router.put(route('loanentry.update', loan!.id), payload, {
                 preserveScroll: true,
-                onSuccess: () => onOpenChange(false),
+                onSuccess: () => {
+                    onOpenChange(false);
+                    toast.success('Loan updated successfully.');
+                },
             });
         } else {
             router.post(route('loanentry.store'), payload, {
@@ -278,6 +282,7 @@ function LoanDialog({
                     onOpenChange(false);
                     setGovtForm(emptyGovtForm);
                     setInternalForm(emptyInternalForm);
+                    toast.success('Loan added successfully.');
                 },
             });
         }
@@ -373,26 +378,25 @@ function LoanDialog({
                                                     onSelect={() => {
                                                         activeTab === 'govt'
                                                             ? setG(
-                                                                  'employee_id',
-                                                                  String(e.id),
-                                                              )
+                                                                'employee_id',
+                                                                String(e.id),
+                                                            )
                                                             : setI(
-                                                                  'employee_id',
-                                                                  String(e.id),
-                                                              );
+                                                                'employee_id',
+                                                                String(e.id),
+                                                            );
                                                         setEmployeeOpen(false);
                                                     }}
                                                 >
                                                     <Check
-                                                        className={`mr-2 h-4 w-4 ${
-                                                            String(e.id) ===
-                                                            (activeTab ===
-                                                            'govt'
-                                                                ? govtForm.employee_id
-                                                                : internalForm.employee_id)
+                                                        className={`mr-2 h-4 w-4 ${String(e.id) ===
+                                                                (activeTab ===
+                                                                    'govt'
+                                                                    ? govtForm.employee_id
+                                                                    : internalForm.employee_id)
                                                                 ? 'opacity-100'
                                                                 : 'opacity-0'
-                                                        }`}
+                                                            }`}
                                                     />
                                                     <div className="flex flex-col">
                                                         <span>
@@ -734,6 +738,7 @@ export default function Index({
     const handleDelete = (loan: Loan) => {
         router.delete(route('loanentry.destroy', loan.id), {
             preserveScroll: true,
+            onSuccess: () => toast.success('Loan deleted successfully.'),
         });
     };
 
@@ -824,24 +829,24 @@ export default function Index({
                         filters={
                             activeTabKey === 'govt'
                                 ? [
-                                      {
-                                          columnId: 'source',
-                                          title: 'Source',
-                                          options: sourceFilterOptions,
-                                      },
-                                      {
-                                          columnId: 'status',
-                                          title: 'Status',
-                                          options: statusFilterOptions,
-                                      },
-                                  ]
+                                    {
+                                        columnId: 'source',
+                                        title: 'Source',
+                                        options: sourceFilterOptions,
+                                    },
+                                    {
+                                        columnId: 'status',
+                                        title: 'Status',
+                                        options: statusFilterOptions,
+                                    },
+                                ]
                                 : [
-                                      {
-                                          columnId: 'status',
-                                          title: 'Status',
-                                          options: statusFilterOptions,
-                                      },
-                                  ]
+                                    {
+                                        columnId: 'status',
+                                        title: 'Status',
+                                        options: statusFilterOptions,
+                                    },
+                                ]
                         }
                         addButton={{
                             label: 'New Loan',

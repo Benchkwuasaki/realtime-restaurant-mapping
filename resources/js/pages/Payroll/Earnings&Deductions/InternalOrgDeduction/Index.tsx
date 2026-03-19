@@ -3,6 +3,7 @@
 import { Head, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
+import { toast } from 'sonner';
 import { DataTable } from '@/components/shared/data-table/data-table';
 import { Button } from '@/components/ui/button';
 import {
@@ -173,6 +174,7 @@ function DeductionDialog({
                 onSuccess: () => {
                     setForm(makeEmptyForm());
                     onOpenChange(false);
+                    toast.success('Deduction entry added successfully.');
                 },
                 onFinish: () => setSubmitting(false),
             },
@@ -258,12 +260,11 @@ function DeductionDialog({
                                                     }}
                                                 >
                                                     <Check
-                                                        className={`mr-2 h-4 w-4 ${
-                                                            String(e.id) ===
+                                                        className={`mr-2 h-4 w-4 ${String(e.id) ===
                                                             form.employee_id
-                                                                ? 'opacity-100'
-                                                                : 'opacity-0'
-                                                        }`}
+                                                            ? 'opacity-100'
+                                                            : 'opacity-0'
+                                                            }`}
                                                     />
                                                     <div className="flex flex-col">
                                                         <span>
@@ -313,7 +314,7 @@ function DeductionDialog({
                                 <span className="font-medium">
                                     {
                                         SERVICE_CATEGORY_CUTOFF[
-                                            form.service_category as ServiceCategory
+                                        form.service_category as ServiceCategory
                                         ]
                                     }
                                 </span>
@@ -479,6 +480,8 @@ export default function Index({
     const handleDelete = (deduction: InternalOrgDeduction) => {
         router.delete(route('internal-org-deductions.destroy', deduction.id), {
             preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => toast.success('Deduction entry deleted successfully.'),
         });
     };
 
@@ -489,7 +492,10 @@ export default function Index({
         router.patch(
             route('internal-org-deductions.updateAmount', deduction.id),
             { amount: newAmount },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: () => toast.success('Amount updated successfully.'),
+            },
         );
     };
 

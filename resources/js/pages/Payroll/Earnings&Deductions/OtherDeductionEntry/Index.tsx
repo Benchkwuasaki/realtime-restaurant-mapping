@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { route } from 'ziggy-js';
+import { toast } from 'sonner';
 import AppLayout from '@/layouts/app-layout';
 import { DataTable } from '@/components/shared/data-table/data-table';
 import {
@@ -127,6 +128,7 @@ function DeductionDialog({
                 onSuccess: () => {
                     setForm(makeEmptyForm());
                     onOpenChange(false);
+                    toast.success('Deduction entry added successfully.');
                 },
                 onFinish: () => setSubmitting(false),
             },
@@ -210,12 +212,11 @@ function DeductionDialog({
                                                     }}
                                                 >
                                                     <Check
-                                                        className={`mr-2 h-4 w-4 ${
-                                                            String(e.id) ===
+                                                        className={`mr-2 h-4 w-4 ${String(e.id) ===
                                                             form.employee_id
-                                                                ? 'opacity-100'
-                                                                : 'opacity-0'
-                                                        }`}
+                                                            ? 'opacity-100'
+                                                            : 'opacity-0'
+                                                            }`}
                                                     />
                                                     <div className="flex flex-col">
                                                         <span>
@@ -340,6 +341,7 @@ export default function Index({ deductions = [], employees = [] }: Props) {
     const handleDelete = (deduction: OtherDeduction) => {
         router.delete(route('otherdeductions.destroy', deduction.id), {
             preserveScroll: true,
+            onSuccess: () => toast.success('Deduction entry deleted successfully.'),
         });
     };
 
@@ -350,7 +352,10 @@ export default function Index({ deductions = [], employees = [] }: Props) {
         router.patch(
             route('otherdeductions.updateAmount', deduction.id),
             { amount: newAmount },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: () => toast.success('Amount updated successfully.'),
+            },
         );
     };
 

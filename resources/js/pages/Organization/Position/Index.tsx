@@ -4,6 +4,7 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import { Briefcase, Users, Building2, LayoutGrid } from 'lucide-react';
 import { useState } from 'react';
 import { route } from 'ziggy-js';
+import { toast } from 'sonner';
 import { DataTable } from '@/components/shared/data-table/data-table';
 import { StatCard } from '@/components/shared/stat-card';
 import { Badge } from '@/components/ui/badge';
@@ -194,10 +195,18 @@ function PositionModal({
         e.preventDefault();
         if (isEdit) {
             put(route('position.update', editingPosition!.position_id), {
-                onSuccess: handleClose,
+                onSuccess: () => {
+                    handleClose();
+                    toast.success('Position updated successfully.');
+                },
             });
         } else {
-            post(route('position.store'), { onSuccess: handleClose });
+            post(route('position.store'), {
+                onSuccess: () => {
+                    handleClose();
+                    toast.success('Position created successfully.');
+                },
+            });
         }
     }
 
@@ -308,8 +317,8 @@ function PositionModal({
                                             !data.department_id
                                                 ? 'Select a department first'
                                                 : noDivisions
-                                                  ? 'No divisions available'
-                                                  : 'Select division'
+                                                    ? 'No divisions available'
+                                                    : 'Select division'
                                         }
                                     />
                                 </SelectTrigger>
@@ -363,8 +372,8 @@ function PositionModal({
                                             !data.division_id
                                                 ? 'Select a division first'
                                                 : noUnits
-                                                  ? 'No units available'
-                                                  : 'Select unit (optional)'
+                                                    ? 'No units available'
+                                                    : 'Select unit (optional)'
                                         }
                                     />
                                 </SelectTrigger>
@@ -446,8 +455,8 @@ function PositionModal({
                             {processing
                                 ? 'Saving…'
                                 : isEdit
-                                  ? 'Update Position'
-                                  : 'Create Position'}
+                                    ? 'Update Position'
+                                    : 'Create Position'}
                         </Button>
                     </DialogFooter>
                 </form>

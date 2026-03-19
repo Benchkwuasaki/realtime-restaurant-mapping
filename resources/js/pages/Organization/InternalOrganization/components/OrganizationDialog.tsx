@@ -2,7 +2,7 @@ import { router, useForm } from "@inertiajs/react"
 import { Plus } from "lucide-react"
 import { useEffect, useState } from "react"
 import { route } from "ziggy-js"
-
+import { toast } from 'sonner';
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -86,12 +86,20 @@ export function OrganizationDialog({
         if (isEditing) {
             put(route("internal-organization.update", organization.internal_organization_id), {
                 preserveScroll: true,
-                onSuccess: () => { reset(); onOpenChange(false) },
+                onSuccess: () => {
+                    reset();
+                    onOpenChange(false);
+                    toast.success('Organization updated successfully.');
+                },
             })
         } else {
             post(route("internal-organization.store"), {
                 preserveScroll: true,
-                onSuccess: () => { reset(); onOpenChange(false) },
+                onSuccess: () => {
+                    reset();
+                    onOpenChange(false);
+                    toast.success('Organization added successfully.');
+                },
             })
         }
     }

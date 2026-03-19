@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { route } from 'ziggy-js';
-
+import { toast } from 'sonner';
 import { DataTable } from '@/components/shared/data-table/data-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
 import { Badge } from '@/components/ui/badge';
@@ -305,6 +305,11 @@ function AddMemberDialog({
                     setSelectedIds(new Set());
                     setSearch('');
                     onOpenChange(false);
+                    toast.success(
+                        selectedIds.size === 1
+                            ? 'Member added successfully.'
+                            : `${selectedIds.size} members added successfully.`,
+                    );
                 },
                 onFinish: () => setProcessing(false),
             },
@@ -355,8 +360,8 @@ function AddMemberDialog({
                                 allFilteredSelected
                                     ? true
                                     : someFilteredSelected
-                                      ? 'indeterminate'
-                                      : false
+                                        ? 'indeterminate'
+                                        : false
                             }
                             onCheckedChange={toggleAll}
                             aria-label="Select all filtered"
@@ -366,10 +371,10 @@ function AddMemberDialog({
                             {filtered.length === 0
                                 ? 'No employees to select'
                                 : allFilteredSelected
-                                  ? `All ${filtered.length} shown selected`
-                                  : someFilteredSelected
-                                    ? `${selectedIds.size} of ${filtered.length} selected`
-                                    : `Select all ${filtered.length} shown`}
+                                    ? `All ${filtered.length} shown selected`
+                                    : someFilteredSelected
+                                        ? `${selectedIds.size} of ${filtered.length} selected`
+                                        : `Select all ${filtered.length} shown`}
                         </span>
                     </div>
                 </div>
@@ -407,15 +412,15 @@ function AddMemberDialog({
                                             </p>
                                             {(employee.position ||
                                                 employee.department) && (
-                                                <p className="truncate text-xs text-muted-foreground">
-                                                    {[
-                                                        employee.position,
-                                                        employee.department,
-                                                    ]
-                                                        .filter(Boolean)
-                                                        .join(' · ')}
-                                                </p>
-                                            )}
+                                                    <p className="truncate text-xs text-muted-foreground">
+                                                        {[
+                                                            employee.position,
+                                                            employee.department,
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .join(' · ')}
+                                                    </p>
+                                                )}
                                         </div>
                                         {isSelected && (
                                             <span className="shrink-0 text-xs font-medium text-primary">
@@ -438,8 +443,8 @@ function AddMemberDialog({
                             {processing
                                 ? 'Adding...'
                                 : selectedIds.size > 0
-                                  ? `Add ${selectedIds.size} ${selectedIds.size === 1 ? 'Member' : 'Members'}`
-                                  : 'Add Members'}
+                                    ? `Add ${selectedIds.size} ${selectedIds.size === 1 ? 'Member' : 'Members'}`
+                                    : 'Add Members'}
                         </Button>
                     </DialogFooter>
                 </div>
@@ -468,6 +473,7 @@ function DeleteDialog({ open, onOpenChange, organization }: DeleteDialogProps) {
             {
                 onSuccess: () => {
                     onOpenChange(false);
+                    toast.success('Organization deleted successfully.');
                     router.visit(route('internal-organization.index'));
                 },
             },

@@ -10,7 +10,7 @@ export function peso(amount: number): string {
         maximumFractionDigits: 2,
     }).format(Math.abs(amount));
 }
-
+  
 export function Row({
     label,
     value,
