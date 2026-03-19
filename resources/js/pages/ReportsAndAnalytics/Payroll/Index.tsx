@@ -1,18 +1,21 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { route } from 'ziggy-js';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-    Area, ComposedChart, ResponsiveContainer, Line, LineChart,
+    Area, ComposedChart, ResponsiveContainer,
 } from 'recharts';
 import { useState, useMemo } from 'react';
-import { Banknote, Users, CalendarDays, Minus, CircleCheck, Download } from 'lucide-react';
+import { Banknote, Users, CalendarDays, Minus, CircleCheck, Building2, HeartPulse, Home, ReceiptText, Calendar, RefreshCw } from 'lucide-react';
 import { StatCard } from '@/components/shared/stat-card';
 import { DataTable } from '@/components/shared/data-table/data-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
 import { type DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
 
+/* ══════════════════════════════════════════
+   BREADCRUMBS
+══════════════════════════════════════════ */
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Payroll Reports and Analytics',
@@ -20,15 +23,15 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-/* ── colour tokens ── */
+/* ══════════════════════════════════════════
+   COLOUR TOKENS
+══════════════════════════════════════════ */
 const blue    = '#3b82f6';
 const emerald = '#10b981';
 const amber   = '#f59e0b';
 const red     = '#ef4444';
 const violet  = '#8b5cf6';
 const cyan    = '#06b6d4';
-const rose    = '#f43f5e';
-const indigo  = '#6366f1';
 const slate   = '#64748b';
 
 /* ══════════════════════════════════════════
@@ -38,95 +41,74 @@ interface PayrollRecord {
     id: string;
     name: string;
     department: string;
-    type: 'Regular' | 'Casual' | 'Job Order';
-    status: 'Processed' | 'Pending' | 'On Hold' | 'Released';
+    type: string;
+    status: string;
     basicPay: number;
     allowance: number;
+    grossPay: number;
     gsis: number;
     philhealth: number;
     pagibig: number;
     withholding: number;
     otherDeductions: number;
+    netPay: number;
     period: string;
 }
 
+interface MonthlyTrendItem {
+    month: string;
+    gross: number;
+    net: number;
+    deductions: number;
+}
+
+interface ForecastItem {
+    period: string;
+    forecast: number;
+    previous: number;
+    change: number;
+}
+
+interface Props {
+    payrollRecords:      PayrollRecord[];
+    totalGross:          number;
+    totalDeductions:     number;
+    totalNet:            number;
+    employeeCount:       number;
+    nextPayrollDate:     string;
+    nextPayrollDateFull: string;
+    monthlyTrend:        MonthlyTrendItem[];
+    forecast:            ForecastItem[];
+    departments:         string[];
+    filters: {
+        date_from: string;
+        date_to:   string;
+    };
+}
+
 /* ══════════════════════════════════════════
-   MOCK DATA
+   CONSTANTS
 ══════════════════════════════════════════ */
-const DEPARTMENTS = ['Admin','Operations','Finance','HR','IT','Security','Engineering','Legal'];
-const EMP_TYPES   = ['Regular','Casual','Job Order'] as const;
-const PAY_STATUSES = ['Processed','Pending','On Hold','Released'] as const;
+const EMP_TYPES    = ['Regular', 'Casual', 'Job Order'] as const;
+const PAY_STATUSES = ['Draft', 'Posted', 'Locked'] as const;
 
-function randInt(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-function rand<T>(arr: readonly T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
-
-const NAMES = [
-    'Maria Santos','Juan dela Cruz','Ana Reyes','Pedro Garcia','Rosa Mendoza',
-    'Carlos Bautista','Elena Cruz','Miguel Torres','Luz Villanueva','Ramon Aquino',
-    'Maricel Flores','Antonio Ramos','Josephine Castillo','Eduardo Morales','Cristina Lim',
-    'Roberto Chan','Marilou Tan','Fernando Uy','Gloria Sy','Rodrigo Go',
-];
-
-const BASE_BY_TYPE: Record<string, [number, number]> = {
-    Regular:    [28000, 65000],
-    Casual:     [16000, 27000],
-    'Job Order':[12000, 18000],
+const TYPE_COLORS: Record<string, string> = {
+    Regular:     blue,
+    Casual:      violet,
+    'Job Order': cyan,
 };
 
-const PAYROLL: PayrollRecord[] = Array.from({ length: 120 }, (_, i) => {
-    const type      = rand(EMP_TYPES);
-    const [lo, hi]  = BASE_BY_TYPE[type];
-    const basic     = randInt(lo, hi);
-    const allowance = randInt(1000, 5000);
-    const gsis      = Math.round(basic * 0.09);
-    const philhealth= Math.round(basic * 0.045);
-    const pagibig   = Math.min(Math.round(basic * 0.02), 200);
-    const withholding = type === 'Regular' ? Math.round(basic * 0.08) : 0;
-    const otherDed  = randInt(0, 2000);
-    return {
-        id:             `EMP-${String(i + 1).padStart(4,'0')}`,
-        name:           NAMES[i % 20] + (i >= 20 ? ` ${Math.floor(i/20)+1}` : ''),
-        department:     rand(DEPARTMENTS),
-        type,
-        status:         Math.random() < 0.65 ? 'Processed' : Math.random() < 0.5 ? 'Pending' : Math.random() < 0.5 ? 'Released' : 'On Hold',
-        basicPay:       basic,
-        allowance,
-        gsis,
-        philhealth,
-        pagibig,
-        withholding,
-        otherDeductions:otherDed,
-        period:         'March 2026',
-    };
-});
-
-const MONTHLY_TREND = [
-    { month: 'Apr',  gross: 2850000, net: 2420000, deductions: 430000 },
-    { month: 'May',  gross: 2910000, net: 2470000, deductions: 440000 },
-    { month: 'Jun',  gross: 2880000, net: 2440000, deductions: 440000 },
-    { month: 'Jul',  gross: 2960000, net: 2510000, deductions: 450000 },
-    { month: 'Aug',  gross: 3020000, net: 2560000, deductions: 460000 },
-    { month: 'Sep',  gross: 2990000, net: 2540000, deductions: 450000 },
-    { month: 'Oct',  gross: 3050000, net: 2590000, deductions: 460000 },
-    { month: 'Nov',  gross: 3100000, net: 2620000, deductions: 480000 },
-    { month: 'Dec',  gross: 3350000, net: 2840000, deductions: 510000 },
-    { month: 'Jan',  gross: 3010000, net: 2550000, deductions: 460000 },
-    { month: 'Feb',  gross: 3080000, net: 2610000, deductions: 470000 },
-    { month: 'Mar',  gross: 3120000, net: 2640000, deductions: 480000 },
-];
-
-const FORECAST = [
-    { period: 'Apr 1–15',  forecast: 1580000, previous: 1540000 },
-    { period: 'Apr 16–30', forecast: 1600000, previous: 1560000 },
-    { period: 'May 1–15',  forecast: 1620000, previous: 1580000 },
-    { period: 'May 16–31', forecast: 1640000, previous: 1600000 },
-];
+const STATUS_CFG: Record<string, { color: string; bg: string; border: string }> = {
+    Draft:  { color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+    Posted: { color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
+    Locked: { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+};
 
 /* ══════════════════════════════════════════
    HELPERS
 ══════════════════════════════════════════ */
 const fPeso = (v: number) =>
-    '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    '₱' + (v ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fK = (v: number) => {
     if (v >= 1_000_000) return `₱${(v / 1_000_000).toFixed(2)}M`;
@@ -143,10 +125,15 @@ const TS = {
 };
 
 /* ══════════════════════════════════════════
-   SHARED UI
+   SHARED UI COMPONENTS
 ══════════════════════════════════════════ */
 const Card = ({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-    <div style={{ background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,.06)', padding: 20, ...style }}>
+    <div style={{
+        background: 'var(--card)', borderRadius: 16,
+        border: '1px solid var(--border)',
+        boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+        padding: 20, ...style,
+    }}>
         {children}
     </div>
 );
@@ -159,19 +146,19 @@ const SH = ({ title, sub }: { title: string; sub?: string }) => (
 );
 
 const Badge = ({ label, color, bg }: { label: string; color: string; bg: string }) => (
-    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, color, background: bg, border: `1px solid ${color}22` }}>
+    <span style={{
+        display: 'inline-flex', alignItems: 'center',
+        padding: '2px 8px', borderRadius: 99,
+        fontSize: 11, fontWeight: 600,
+        color, background: bg,
+        border: `1px solid ${color}22`,
+    }}>
         {label}
     </span>
 );
 
 function statusBadge(s: string) {
-    const map: Record<string, { color: string; bg: string }> = {
-        Processed: { color: '#16a34a', bg: '#f0fdf4' },
-        Released:  { color: '#3b82f6', bg: '#eff6ff' },
-        Pending:   { color: '#d97706', bg: '#fffbeb' },
-        'On Hold': { color: '#dc2626', bg: '#fef2f2' },
-    };
-    const m = map[s] ?? map['Pending'];
+    const m = STATUS_CFG[s] ?? STATUS_CFG['Draft'];
     return <Badge label={s} color={m.color} bg={m.bg} />;
 }
 
@@ -179,40 +166,75 @@ function statusBadge(s: string) {
    FILTER BAR
 ══════════════════════════════════════════ */
 function FilterBar({
-    dept, setDept, empType, setEmpType, dateFrom, setDateFrom, dateTo, setDateTo,
+    dept, setDept, empType, setEmpType,
+    dateFrom, setDateFrom, dateTo, setDateTo,
+    departments, onRefresh,
 }: {
-    dept: string; setDept: (v: string) => void;
-    empType: string; setEmpType: (v: string) => void;
-    dateFrom: string; setDateFrom: (v: string) => void;
-    dateTo: string; setDateTo: (v: string) => void;
+    dept: string;        setDept: (v: string) => void;
+    empType: string;     setEmpType: (v: string) => void;
+    dateFrom: string;    setDateFrom: (v: string) => void;
+    dateTo: string;      setDateTo: (v: string) => void;
+    departments: string[];
+    onRefresh: () => void;
 }) {
     const sel: React.CSSProperties = {
-        border: '1px solid var(--border)', borderRadius: 12, padding: '7px 12px',
-        fontSize: 11, color: 'var(--foreground)', background: 'var(--card)', cursor: 'pointer', outline: 'none',
+        border: '1px solid var(--border)', borderRadius: 12,
+        padding: '7px 12px', fontSize: 11,
+        color: 'var(--foreground)', background: 'var(--card)',
+        cursor: 'pointer', outline: 'none',
     };
+
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+            {/* Department filter */}
             <select value={dept} onChange={e => setDept(e.target.value)} style={sel}>
                 <option value="All">All Departments</option>
-                {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
+                {departments.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
+
+            {/* Employment type filter */}
             <select value={empType} onChange={e => setEmpType(e.target.value)} style={sel}>
                 <option value="All">All Types</option>
-                {EMP_TYPES.map(t => <option key={t}>{t}</option>)}
+                {EMP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)', borderRadius: 12, padding: '6px 12px', background: 'var(--card)' }}>
-                <span style={{ fontSize: 11 }}>📅</span>
-                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                    style={{ border: 'none', background: 'transparent', fontSize: 11, color: 'var(--foreground)', outline: 'none', cursor: 'pointer' }} />
+
+            {/* Date range — triggers server reload on Refresh */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                border: '1px solid var(--border)', borderRadius: 12,
+                padding: '6px 12px', background: 'var(--card)',
+            }}>
+                <Calendar size={13} className="text-muted-foreground" />
+                <input
+                    type="date" value={dateFrom}
+                    onChange={e => setDateFrom(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', fontSize: 11, color: 'var(--foreground)', outline: 'none', cursor: 'pointer' }}
+                />
                 <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>–</span>
-                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                    style={{ border: 'none', background: 'transparent', fontSize: 11, color: 'var(--foreground)', outline: 'none', cursor: 'pointer' }} />
+                <input
+                    type="date" value={dateTo}
+                    onChange={e => setDateTo(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', fontSize: 11, color: 'var(--foreground)', outline: 'none', cursor: 'pointer' }}
+                />
             </div>
+
+            {/* Action buttons */}
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                {['🔄 Refresh', '🖨 Print'].map(l => (
-                    <button key={l} style={{ padding: '7px 12px', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', fontSize: 11, cursor: 'pointer', color: 'var(--foreground)' }}>{l}</button>
-                ))}
-                <button style={{ padding: '7px 14px', borderRadius: 12, border: 'none', background: 'var(--foreground)', color: 'var(--background)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>⬇ Export</button>
+                <button
+                    onClick={onRefresh}
+                    style={{ padding: '7px 12px', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', fontSize: 11, cursor: 'pointer', color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: 5 }}
+                >
+                    <RefreshCw size={12} /> Refresh
+                </button>
+                <button
+                    onClick={() => window.print()}
+                    style={{ padding: '7px 12px', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', fontSize: 11, cursor: 'pointer', color: 'var(--foreground)' }}
+                >
+                    🖨 Print
+                </button>
+                <button style={{ padding: '7px 14px', borderRadius: 12, border: 'none', background: 'var(--foreground)', color: 'var(--background)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    ⬇ Export
+                </button>
             </div>
         </div>
     );
@@ -221,19 +243,19 @@ function FilterBar({
 /* ══════════════════════════════════════════
    1. KPI STRIP
 ══════════════════════════════════════════ */
-function KpiStrip({ records }: { records: PayrollRecord[] }) {
-    const totalGross  = records.reduce((s, r) => s + r.basicPay + r.allowance, 0);
-    const totalDed    = records.reduce((s, r) => s + r.gsis + r.philhealth + r.pagibig + r.withholding + r.otherDeductions, 0);
-    const totalNet    = totalGross - totalDed;
-    const empCount    = records.length;
-    const nextPayDate = 'April 15, 2026';
-
+function KpiStrip({
+    totalGross, totalDeductions, totalNet,
+    employeeCount, nextPayrollDate, nextPayrollDateFull,
+}: {
+    totalGross: number; totalDeductions: number; totalNet: number;
+    employeeCount: number; nextPayrollDate: string; nextPayrollDateFull: string;
+}) {
     const kpis = [
-        { label: 'Total Gross Payroll', value: fK(totalGross),  description: 'Current period total',            icon: <Banknote    className="size-4 m-1" /> },
-        { label: 'No. of Employees',    value: String(empCount), description: 'Active this period',              icon: <Users       className="size-4 m-1" /> },
-        { label: 'Next Payroll Date',   value: 'Apr 15',         description: nextPayDate,                       icon: <CalendarDays className="size-4 m-1" /> },
-        { label: 'Total Deductions',    value: fK(totalDed),     description: 'SSS, PhilHealth, Pag-IBIG & Tax', icon: <Minus       className="size-4 m-1" /> },
-        { label: 'Total Net Pay',       value: fK(totalNet),     description: 'Take-home this period',           icon: <CircleCheck className="size-4 m-1" /> },
+        { label: 'Total Gross Payroll', value: fK(totalGross),       description: 'Current period total',             icon: <Banknote     className="size-4 m-1" /> },
+        { label: 'No. of Employees',    value: String(employeeCount), description: 'Active this period',               icon: <Users        className="size-4 m-1" /> },
+        { label: 'Next Payroll Date',   value: nextPayrollDate,       description: nextPayrollDateFull,                icon: <CalendarDays className="size-4 m-1" /> },
+        { label: 'Total Deductions',    value: fK(totalDeductions),   description: 'GSIS, PhilHealth, Pag-IBIG & Tax', icon: <Minus        className="size-4 m-1" /> },
+        { label: 'Total Net Pay',       value: fK(totalNet),          description: 'Take-home this period',            icon: <CircleCheck  className="size-4 m-1" /> },
     ];
 
     return (
@@ -252,19 +274,17 @@ function KpiStrip({ records }: { records: PayrollRecord[] }) {
 }
 
 /* ══════════════════════════════════════════
-   2. PAYROLL BY EMPLOYEE TYPE
+   2. PAYROLL BY EMPLOYMENT TYPE
 ══════════════════════════════════════════ */
 function PayrollByType({ records }: { records: PayrollRecord[] }) {
-    const TYPE_COLORS: Record<string, string> = { Regular: blue, Casual: violet, 'Job Order': cyan };
-
     const data = EMP_TYPES.map(t => {
-        const grp   = records.filter(r => r.type === t);
-        const gross = grp.reduce((s, r) => s + r.basicPay + r.allowance, 0);
+        const grp  = records.filter(r => r.type === t);
+        const gross = grp.reduce((s, r) => s + r.grossPay, 0);
         const ded   = grp.reduce((s, r) => s + r.gsis + r.philhealth + r.pagibig + r.withholding + r.otherDeductions, 0);
-        return { type: t, gross, net: gross - ded, deductions: ded, count: grp.length, color: TYPE_COLORS[t] };
+        return { type: t, gross, net: gross - ded, deductions: ded, count: grp.length, color: TYPE_COLORS[t] ?? slate };
     });
 
-    const totalGross = data.reduce((s, d) => s + d.gross, 0);
+    const totalGross = data.reduce((s, d) => s + d.gross, 0) || 1;
 
     return (
         <Card>
@@ -279,7 +299,6 @@ function PayrollByType({ records }: { records: PayrollRecord[] }) {
                         <div style={{ marginTop: 8, height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
                             <div style={{ width: `${(d.gross / totalGross) * 100}%`, height: '100%', background: d.color, borderRadius: 3 }} />
                         </div>
-                        <div style={{ fontSize: 10, color: d.color, fontWeight: 700, marginTop: 3 }}></div>
                     </div>
                 ))}
             </div>
@@ -302,16 +321,20 @@ function PayrollByType({ records }: { records: PayrollRecord[] }) {
 /* ══════════════════════════════════════════
    3. MONTHLY PAYROLL TREND
 ══════════════════════════════════════════ */
-function MonthlyTrend() {
+function MonthlyTrend({ data }: { data: MonthlyTrendItem[] }) {
+    const sub = data.length >= 2
+        ? `${data[0].month} – ${data[data.length - 1].month}`
+        : 'Monthly breakdown';
+
     return (
         <Card>
-            <SH title="Monthly Payroll Trend" sub="Apr 2025 – Mar 2026" />
+            <SH title="Monthly Payroll Trend" sub={sub} />
             <ResponsiveContainer width="100%" height={220}>
-                <ComposedChart data={MONTHLY_TREND}>
+                <ComposedChart data={data}>
                     <defs>
                         <linearGradient id="grossG" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%"   stopColor={blue}  stopOpacity={0.15} />
-                            <stop offset="100%" stopColor={blue}  stopOpacity={0} />
+                            <stop offset="0%"   stopColor={blue}   stopOpacity={0.15} />
+                            <stop offset="100%" stopColor={blue}   stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="netG" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%"   stopColor={emerald} stopOpacity={0.15} />
@@ -323,8 +346,8 @@ function MonthlyTrend() {
                     <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={54} tickFormatter={v => fK(v)} />
                     <Tooltip contentStyle={TS} formatter={(v: number) => fPeso(v)} />
                     <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Area type="monotone" dataKey="gross"      fill="url(#grossG)" stroke={blue}    strokeWidth={2.5} dot={{ fill: blue,    r: 3, strokeWidth: 0 }} name="Gross Pay"   />
-                    <Area type="monotone" dataKey="net"        fill="url(#netG)"   stroke={emerald} strokeWidth={2.5} dot={{ fill: emerald, r: 3, strokeWidth: 0 }} name="Net Pay"    />
+                    <Area type="monotone" dataKey="gross"      fill="url(#grossG)" stroke={blue}    strokeWidth={2.5} dot={{ fill: blue,    r: 3, strokeWidth: 0 }} name="Gross Pay"  />
+                    <Area type="monotone" dataKey="net"        fill="url(#netG)"   stroke={emerald} strokeWidth={2.5} dot={{ fill: emerald, r: 3, strokeWidth: 0 }} name="Net Pay"   />
                     <Bar  dataKey="deductions" fill={red} opacity={0.4} radius={[3,3,0,0]} name="Deductions" />
                 </ComposedChart>
             </ResponsiveContainer>
@@ -335,35 +358,37 @@ function MonthlyTrend() {
 /* ══════════════════════════════════════════
    4. UPCOMING PAYROLL FORECAST
 ══════════════════════════════════════════ */
-function PayrollForecast() {
+function PayrollForecast({ data }: { data: ForecastItem[] }) {
     return (
         <Card>
-            <SH title="Upcoming Payroll Forecast" sub="Next 2 payroll periods vs previous" />
+            <SH title="Upcoming Payroll Forecast" sub="Next periods vs previous" />
             <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={FORECAST} barGap={4} barCategoryGap="30%">
+                <BarChart data={data} barGap={4} barCategoryGap="30%">
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={54} tickFormatter={v => fK(v)} />
                     <Tooltip contentStyle={TS} formatter={(v: number) => fPeso(v)} />
                     <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Bar dataKey="forecast"  fill={violet} radius={[4,4,0,0]} name="Forecast"  />
-                    <Bar dataKey="previous"  fill={slate}  radius={[4,4,0,0]} name="Previous"  opacity={0.5} />
+                    <Bar dataKey="forecast" fill={violet} radius={[4,4,0,0]} name="Forecast" />
+                    <Bar dataKey="previous" fill={slate}  radius={[4,4,0,0]} name="Previous" opacity={0.5} />
                 </BarChart>
             </ResponsiveContainer>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 14 }}>
-                {FORECAST.map(f => (
-                    <div key={f.period} style={{ background: 'var(--muted)', borderRadius: 10, padding: '10px 12px' }}>
-                        <div style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 600, marginBottom: 4 }}>{f.period}</div>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: violet }}>{fK(f.forecast)}</div>
-                        <div style={{ fontSize: 10, color: 'var(--muted-foreground)', marginTop: 2 }}>
-                            {f.forecast > f.previous
-                                ? <span style={{ color: red }}>↑ {fK(f.forecast - f.previous)}</span>
-                                : <span style={{ color: emerald }}>↓ {fK(f.previous - f.forecast)}</span>
-                            } vs prev
+            {data.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(data.length, 4)}, 1fr)`, gap: 10, marginTop: 14 }}>
+                    {data.map(f => (
+                        <div key={f.period} style={{ background: 'var(--muted)', borderRadius: 10, padding: '10px 12px' }}>
+                            <div style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 600, marginBottom: 4 }}>{f.period}</div>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: violet }}>{fK(f.forecast)}</div>
+                            <div style={{ fontSize: 10, color: 'var(--muted-foreground)', marginTop: 2 }}>
+                                {f.change > 0
+                                    ? <span style={{ color: red }}>↑ {fK(f.change)}</span>
+                                    : <span style={{ color: emerald }}>↓ {fK(Math.abs(f.change))}</span>
+                                } vs prev
+                            </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </Card>
     );
 }
@@ -376,13 +401,13 @@ function GovtRemittances({ records }: { records: PayrollRecord[] }) {
     const philhealth  = records.reduce((s, r) => s + r.philhealth, 0);
     const pagibig     = records.reduce((s, r) => s + r.pagibig, 0);
     const withholding = records.reduce((s, r) => s + r.withholding, 0);
-    const total       = gsis + philhealth + pagibig + withholding;
+    const total       = (gsis + philhealth + pagibig + withholding) || 1;
 
     const items = [
-        { label: 'GSIS',             value: gsis,        color: blue,    bg: '#eff6ff',  pct: (gsis/total)*100,        icon: '🏛' },
-        { label: 'PhilHealth',       value: philhealth,  color: emerald, bg: '#f0fdf4',  pct: (philhealth/total)*100,  icon: '💊' },
-        { label: 'Pag-IBIG',         value: pagibig,     color: amber,   bg: '#fffbeb',  pct: (pagibig/total)*100,     icon: '🏠' },
-        { label: 'Withholding Tax',  value: withholding, color: red,     bg: '#fef2f2',  pct: (withholding/total)*100, icon: '📋' },
+        { label: 'GSIS',            value: gsis,        color: blue,    bg: '#eff6ff', pct: (gsis/total)*100,        icon: <Building2   size={20} color={blue}    /> },
+        { label: 'PhilHealth',      value: philhealth,  color: emerald, bg: '#f0fdf4', pct: (philhealth/total)*100,  icon: <HeartPulse  size={20} color={emerald} /> },
+        { label: 'Pag-IBIG',        value: pagibig,     color: amber,   bg: '#fffbeb', pct: (pagibig/total)*100,     icon: <Home        size={20} color={amber}   /> },
+        { label: 'Withholding Tax', value: withholding, color: red,     bg: '#fef2f2', pct: (withholding/total)*100, icon: <ReceiptText size={20} color={red}     /> },
     ];
 
     const chartData = items.map(i => ({ name: i.label, Amount: i.value }));
@@ -393,19 +418,18 @@ function GovtRemittances({ records }: { records: PayrollRecord[] }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
                 {items.map(it => (
                     <div key={it.label} style={{ background: it.bg, border: `1px solid ${it.color}22`, borderRadius: 12, padding: '12px 14px' }}>
-                        <div style={{ fontSize: 18, marginBottom: 6 }}>{it.icon}</div>
+                        <div style={{ marginBottom: 6 }}>{it.icon}</div>
                         <div style={{ fontSize: 14, fontWeight: 900, color: it.color }}>{fK(it.value)}</div>
                         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--foreground)', marginTop: 2 }}>{it.label}</div>
                         <div style={{ marginTop: 8, height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
                             <div style={{ width: `${it.pct}%`, height: '100%', background: it.color, borderRadius: 3 }} />
                         </div>
-                        <div style={{ fontSize: 10, color: it.color, fontWeight: 700, marginTop: 3 }}></div>
                     </div>
                 ))}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--muted)', borderRadius: 10 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)' }}>Total Remittances</span>
-                <span style={{ fontSize: 14, fontWeight: 900, color: 'var(--foreground)' }}>{fPeso(total)}</span>
+                <span style={{ fontSize: 14, fontWeight: 900, color: 'var(--foreground)' }}>{fPeso(total === 1 ? 0 : total)}</span>
             </div>
             <ResponsiveContainer width="100%" height={160} style={{ marginTop: 14 }}>
                 <BarChart data={chartData} barCategoryGap="35%">
@@ -425,58 +449,16 @@ function GovtRemittances({ records }: { records: PayrollRecord[] }) {
 }
 
 /* ══════════════════════════════════════════
-   6. DEPARTMENT PAYROLL DISTRIBUTION
-══════════════════════════════════════════ */
-// function DeptPayrollDist({ records }: { records: PayrollRecord[] }) {
-//     const DEPT_COLORS = [blue, emerald, amber, violet, cyan, rose, indigo, slate];
-
-//     const data = DEPARTMENTS.map((d, i) => {
-//         const grp   = records.filter(r => r.department === d);
-//         const gross = grp.reduce((s, r) => s + r.basicPay + r.allowance, 0);
-//         const ded   = grp.reduce((s, r) => s + r.gsis + r.philhealth + r.pagibig + r.withholding + r.otherDeductions, 0);
-//         return { dept: d, gross, net: gross - ded, count: grp.length, color: DEPT_COLORS[i] };
-//     }).sort((a, b) => b.gross - a.gross);
-
-//     const maxGross = data[0].gross;
-
-//     return (
-//         <Card>
-//             <SH title="Department Payroll Distribution" sub="Gross pay per department" />
-//             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-//                 {data.map(d => (
-//                     <div key={d.dept}>
-//                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-//                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-//                                 <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color }} />
-//                                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--foreground)' }}>{d.dept}</span>
-//                                 <span style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>{d.count} emp</span>
-//                             </div>
-//                             <div style={{ display: 'flex', gap: 16 }}>
-//                                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)' }}>{fK(d.gross)}</span>
-//                                 <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>Net: {fK(d.net)}</span>
-//                             </div>
-//                         </div>
-//                         <div style={{ height: 14, background: '#f1f5f9', borderRadius: 6, overflow: 'hidden' }}>
-//                             <div style={{ width: `${(d.gross / maxGross) * 100}%`, height: '100%', background: d.color, borderRadius: 6, transition: 'width .4s' }} />
-//                         </div>
-//                     </div>
-//                 ))}
-//             </div>
-//         </Card>
-//     );
-// }
-
-
-
-/* ══════════════════════════════════════════
-   7. PAYROLL STATUS REPORT + TABLE
+   6. PAYROLL STATUS REPORT + TABLE
 ══════════════════════════════════════════ */
 const PAYROLL_COLUMNS: DataTableColumnDef<PayrollRecord>[] = [
     {
         accessorKey: 'id',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Emp ID" />,
         cell: ({ row }) => (
-            <span className="font-mono text-xs font-bold" style={{ color: blue }}>{row.getValue('id')}</span>
+            <span className="font-mono text-xs font-bold" style={{ color: blue }}>
+                {row.getValue('id')}
+            </span>
         ),
     },
     {
@@ -488,6 +470,7 @@ const PAYROLL_COLUMNS: DataTableColumnDef<PayrollRecord>[] = [
         accessorKey: 'department',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Department" />,
         cell: ({ row }) => <span className="text-muted-foreground">{row.getValue('department')}</span>,
+        filterFn: (row, id, values: string[]) => values.includes(row.getValue(id)),
     },
     {
         accessorKey: 'type',
@@ -529,57 +512,65 @@ const PAYROLL_COLUMNS: DataTableColumnDef<PayrollRecord>[] = [
         cell: ({ row }) => <span className="font-mono text-xs" style={{ color: red }}>{fPeso(row.getValue('withholding'))}</span>,
     },
     {
-        accessorKey: 'status',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-        cell: ({ row }) => statusBadge(row.getValue('status')),
-        filterFn: (row, id, values: string[]) => values.includes(row.getValue(id)),
+        accessorKey: 'netPay',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Net Pay" />,
+        cell: ({ row }) => (
+            <span className="font-mono text-xs font-bold" style={{ color: emerald }}>
+                {fPeso(row.getValue('netPay'))}
+            </span>
+        ),
     },
 ];
 
-function PayrollStatusReport({ records }: { records: PayrollRecord[] }) {
+function PayrollStatusReport({
+    records, departments,
+}: {
+    records: PayrollRecord[];
+    departments: string[];
+}) {
     const total = records.length;
 
     const exportCSV = () => {
-        const cols: (keyof PayrollRecord)[] = ['id','name','department','type','status','basicPay','allowance','gsis','philhealth','pagibig','withholding','otherDeductions'];
-        const rows = [cols.join(','), ...records.map(r => cols.map(c => `"${r[c]}"`).join(','))];
+        const cols: (keyof PayrollRecord)[] = [
+            'id','name','department','type','status',
+            'basicPay','allowance','gsis','philhealth','pagibig','withholding','otherDeductions','netPay',
+        ];
+        const rows = [
+            cols.join(','),
+            ...records.map(r => cols.map(c => `"${r[c]}"`).join(',')),
+        ];
         const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = URL.createObjectURL(blob);
         a.download = 'payroll-status.csv';
         a.click();
-    };
-
-    const STATUS_CFG: Record<string, { color: string; bg: string; border: string }> = {
-        Processed: { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-        Released:  { color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
-        Pending:   { color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-        'On Hold': { color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
     };
 
     return (
         <Card>
             <SH title="Payroll Status Report" sub={`${total} total records`} />
 
-            {/* Status summary strip — kept exactly as before */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
+            {/* Status summary strip */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 16 }}>
                 {PAY_STATUSES.map(s => {
                     const cfg   = STATUS_CFG[s];
                     const count = records.filter(r => r.status === s).length;
-                    const gross = records.filter(r => r.status === s).reduce((sum, r) => sum + r.basicPay + r.allowance, 0);
+                    const gross = records
+                        .filter(r => r.status === s)
+                        .reduce((sum, r) => sum + r.grossPay, 0);
                     return (
                         <div key={s} style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 12, padding: '12px 14px' }}>
                             <div style={{ fontSize: 18, fontWeight: 900, color: cfg.color }}>{count}</div>
                             <div style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>{s}</div>
                             <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 3 }}>{fK(gross)}</div>
                             <div style={{ marginTop: 6, height: 4, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
-                                <div style={{ width: `${(count / total) * 100}%`, height: '100%', background: cfg.color, borderRadius: 2 }} />
+                                <div style={{ width: `${total > 0 ? (count / total) * 100 : 0}%`, height: '100%', background: cfg.color, borderRadius: 2 }} />
                             </div>
                         </div>
                     );
                 })}
             </div>
 
-            {/* Shared DataTable */}
             <DataTable
                 columns={PAYROLL_COLUMNS}
                 data={records}
@@ -592,23 +583,18 @@ function PayrollStatusReport({ records }: { records: PayrollRecord[] }) {
                     {
                         columnId: 'department',
                         title: 'Department',
-                        options: DEPARTMENTS.map(d => ({ label: d, value: d })),
+                        options: departments.map(d => ({ label: d, value: d })),
                     },
                     {
                         columnId: 'type',
                         title: 'Type',
                         options: EMP_TYPES.map(t => ({ label: t, value: t })),
                     },
-                    {
-                        columnId: 'status',
-                        title: 'Status',
-                        options: PAY_STATUSES.map(s => ({ label: s, value: s })),
-                    },
                 ]}
                 footerRow={(rows) => {
                     const recs = rows.map(r => r.original);
                     return [
-                        <td key="lbl"  colSpan={4} className="px-4 py-2 text-sm font-semibold text-foreground">
+                        <td key="lbl"   colSpan={4} className="px-4 py-2 text-sm font-semibold text-foreground">
                             Totals ({rows.length} employees)
                         </td>,
                         <td key="basic" className="px-4 py-2 font-mono text-xs font-bold">{fPeso(recs.reduce((s,r) => s+r.basicPay,    0))}</td>,
@@ -617,7 +603,7 @@ function PayrollStatusReport({ records }: { records: PayrollRecord[] }) {
                         <td key="ph"    className="px-4 py-2 font-mono text-xs font-bold" style={{ color: red }}>{fPeso(recs.reduce((s,r) => s+r.philhealth,   0))}</td>,
                         <td key="pag"   className="px-4 py-2 font-mono text-xs font-bold" style={{ color: red }}>{fPeso(recs.reduce((s,r) => s+r.pagibig,      0))}</td>,
                         <td key="wtax"  className="px-4 py-2 font-mono text-xs font-bold" style={{ color: red }}>{fPeso(recs.reduce((s,r) => s+r.withholding,  0))}</td>,
-                        <td key="st" />,
+                        <td key="net"   className="px-4 py-2 font-mono text-xs font-bold" style={{ color: emerald }}>{fPeso(recs.reduce((s,r) => s+r.netPay,   0))}</td>,
                     ];
                 }}
             />
@@ -625,28 +611,54 @@ function PayrollStatusReport({ records }: { records: PayrollRecord[] }) {
     );
 }
 
-const TYPE_COLORS: Record<string, string> = { Regular: blue, Casual: violet, 'Job Order': cyan };
-
 /* ══════════════════════════════════════════
    PAGE EXPORT
 ══════════════════════════════════════════ */
-export default function Index() {
+export default function Index({
+    payrollRecords,
+    totalGross,
+    totalDeductions,
+    totalNet,
+    employeeCount,
+    nextPayrollDate,
+    nextPayrollDateFull,
+    monthlyTrend,
+    forecast,
+    departments,
+    filters,
+}: Props) {
+    // Client-side filter state (dept + type — instant, no server round-trip)
     const [dept,     setDept]     = useState('All');
     const [empType,  setEmpType]  = useState('All');
-    const [dateFrom, setDateFrom] = useState('2026-03-01');
-    const [dateTo,   setDateTo]   = useState('2026-03-31');
-    const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
+    // Date range state — only applied on Refresh (server reload)
+    const [dateFrom, setDateFrom] = useState(filters.date_from);
+    const [dateTo,   setDateTo]   = useState(filters.date_to);
+
+    const date = new Date().toLocaleDateString('en-US', {
+        month: 'long', day: 'numeric', year: 'numeric',
+    });
+
+    // Client-side filtering by dept + type
     const filtered = useMemo(() => {
-        let r = PAYROLL;
+        let r = payrollRecords;
         if (dept    !== 'All') r = r.filter(e => e.department === dept);
         if (empType !== 'All') r = r.filter(e => e.type       === empType);
         return r;
-    }, [dept, empType]);
+    }, [dept, empType, payrollRecords]);
+
+    // Refresh button: reload page with new date range from server
+    const handleRefresh = () => {
+        router.get(
+            route('reports_and_analytics.payroll-report.index'),
+            { date_from: dateFrom, date_to: dateTo },
+            { preserveState: false, replace: true }
+        );
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Payroll Summary" />
+            <Head title="Payroll Reports" />
 
             <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, fontFamily: 'var(--font-sans)' }}>
 
@@ -667,21 +679,30 @@ export default function Index() {
                     empType={empType}   setEmpType={setEmpType}
                     dateFrom={dateFrom} setDateFrom={setDateFrom}
                     dateTo={dateTo}     setDateTo={setDateTo}
+                    departments={departments}
+                    onRefresh={handleRefresh}
                 />
 
-                <KpiStrip records={filtered} />
+                {/* KPI cards — server-computed totals, always accurate */}
+                <KpiStrip
+                    totalGross={totalGross}
+                    totalDeductions={totalDeductions}
+                    totalNet={totalNet}
+                    employeeCount={employeeCount}
+                    nextPayrollDate={nextPayrollDate}
+                    nextPayrollDateFull={nextPayrollDateFull}
+                />
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <MonthlyTrend />
-                    <PayrollForecast />
+                    <MonthlyTrend data={monthlyTrend} />
+                    <PayrollForecast data={forecast} />
                 </div>
 
                 <PayrollByType records={filtered} />
                 <GovtRemittances records={filtered} />
-                {/* <DeptPayrollDist records={filtered} /> */}
-                <PayrollStatusReport records={filtered} />
+                <PayrollStatusReport records={filtered} departments={departments} />
 
             </div>
-        </AppLayout>
+        </AppLayout>    
     );
 }
