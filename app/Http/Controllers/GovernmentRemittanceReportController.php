@@ -100,10 +100,11 @@ class GovernmentRemittanceReportController extends Controller
         if ($selectedPeriod) {
             // Get ALL payroll records for the date range, regardless of employee type
             $payrollRecords = PayrollRecord::with([
-                'employee.basicInfo',
-                'employee.item.position',
-                'employee.salaryGradeStep',
-            ])
+    'employee.basicInfo',
+    'employee.item.position',
+    'employee.salaryGradeStep',
+    'employee.governmentAccounts',
+])
                 ->whereHas('payrollPeriod', function ($query) use ($selectedPeriod) {
                     $query->where('start_date', $selectedPeriod->start_date)
                         ->where('end_date', $selectedPeriod->end_date);
@@ -136,13 +137,14 @@ class GovernmentRemittanceReportController extends Controller
         ]);
 
         return Inertia::render('Payroll/Outputs/GovernmentRemittanceReport/Index', [
-            'periods' => $periods,
-            'selectedPeriod' => $selectedPeriod ? [
-                'id' => $selectedPeriod->payroll_period_id,
-                'label' => $selectedPeriod->start_date->format('F j').' – '.$selectedPeriod->end_date->format('F j, Y'),
-                'start_date' => $selectedPeriod->start_date->format('Y-m-d'),
-                'end_date' => $selectedPeriod->end_date->format('Y-m-d'),
-            ] : null,
+            'periods' => collect($periods)->values()->toArray(),
+           'selectedPeriod' => $selectedPeriod ? [
+    'id' => $selectedPeriod->payroll_period_id,
+    'label' => $selectedPeriod->start_date->format('F j').' – '.$selectedPeriod->end_date->format('F j, Y'),
+    'start_date' => $selectedPeriod->start_date->format('Y-m-d'),
+    'end_date' => $selectedPeriod->end_date->format('Y-m-d'),
+] : null,
+'trendData' => $this->buildTrendData($rates),
             'remittances' => $remittances,
             'currentAgency' => $agency,
             'summary' => $summary,
@@ -236,6 +238,7 @@ class GovernmentRemittanceReportController extends Controller
         $mapRecordsToEmployees = function ($records, $type) use ($rates, $pagibigPerPayroll, $philhealthEmployeeRate, $philhealthEmployerRate, $philhealthFloor, $philhealthCeiling) {
             return $records->map(function ($record) use ($rates, $pagibigPerPayroll, $type, $philhealthEmployeeRate, $philhealthEmployerRate, $philhealthFloor, $philhealthCeiling) {
                 $monthlyBasic = $record->basic_pay * 2;
+                
 
                 // Get employee name
                 $employeeName = $record->employee?->basicInfo
@@ -286,6 +289,18 @@ class GovernmentRemittanceReportController extends Controller
                     'bir_total' => $monthlyTax,
                     // Sort key for alphabetical ordering within type
                     'sort_name' => $employeeName !== '—' ? $employeeName : 'ZZZZZ'.$record->employee_id,
+                   'gsis_number'       => $record->employee?->governmentAccounts
+                           ?->where('account_type', 'GSIS')
+                           ->first()?->account_number ?? null,
+'philhealth_number' => $record->employee?->governmentAccounts
+                           ?->where('account_type', 'PhilHealth')
+                           ->first()?->account_number ?? null,
+'pagibig_number'    => $record->employee?->governmentAccounts
+                           ?->where('account_type', 'Pag-IBIG')
+                           ->first()?->account_number ?? null,
+'tin_number'        => $record->employee?->governmentAccounts
+                           ?->where('account_type', 'TIN')
+                           ->first()?->account_number ?? null,
                 ];
             })->sortBy('sort_name')->values();
         };
@@ -332,61 +347,64 @@ class GovernmentRemittanceReportController extends Controller
         ];
 
         $gsisEmployees = $allEmployees->map(function ($item) {
-            return [
-                'id' => $item['id'],
-                'name' => $item['name'],
-                'position' => $item['position'],
-                'classification' => $item['classification'],
-                'employee_type' => $item['employee_type'],
-                'basic_pay' => $item['basic_pay'],
-                'employee_share' => $item['gsis_employee'],
-                'employer_share' => $item['gsis_employer'],
-                'subtotal' => $item['gsis_total'],
-            ];
-        });
+    return [
+        'id'             => $item['id'],
+        'name'           => $item['name'],
+        'position'       => $item['position'],
+        'classification' => $item['classification'],
+        'employee_type'  => $item['employee_type'],
+        'basic_pay'      => $item['basic_pay'],
+        'employee_share' => $item['gsis_employee'],
+        'employer_share' => $item['gsis_employer'],
+        'subtotal'       => $item['gsis_total'],
+        'government_id' => $item['gsis_number'] ?? null,
+    ];
+});
 
-        $philhealthEmployees = $allEmployees->map(function ($item) {
-            return [
-                'id' => $item['id'],
-                'name' => $item['name'],
-                'position' => $item['position'],
-                'classification' => $item['classification'],
-                'employee_type' => $item['employee_type'],
-                'basic_pay' => $item['basic_pay'],
-                'employee_share' => $item['philhealth_employee'],
-                'employer_share' => $item['philhealth_employer'],
-                'subtotal' => $item['philhealth_total'],
-            ];
-        });
+$philhealthEmployees = $allEmployees->map(function ($item) {
+    return [
+        'id'                 => $item['id'],
+        'name'               => $item['name'],
+        'position'           => $item['position'],
+        'classification'     => $item['classification'],
+        'employee_type'      => $item['employee_type'],
+        'basic_pay'          => $item['basic_pay'],
+        'employee_share'     => $item['philhealth_employee'],
+        'employer_share'     => $item['philhealth_employer'],
+        'subtotal'           => $item['philhealth_total'],
+        'government_id' => $item['philhealth_number'] ?? null,
+    ];
+});
 
-        $pagibigEmployees = $allEmployees->map(function ($item) {
-            return [
-                'id' => $item['id'],
-                'name' => $item['name'],
-                'position' => $item['position'],
-                'classification' => $item['classification'],
-                'employee_type' => $item['employee_type'],
-                'basic_pay' => $item['basic_pay'],
-                'employee_share' => $item['pagibig_employee'],
-                'employer_share' => $item['pagibig_employer'],
-                'subtotal' => $item['pagibig_total'],
-            ];
-        });
+$pagibigEmployees = $allEmployees->map(function ($item) {
+    return [
+        'id'             => $item['id'],
+        'name'           => $item['name'],
+        'position'       => $item['position'],
+        'classification' => $item['classification'],
+        'employee_type'  => $item['employee_type'],
+        'basic_pay'      => $item['basic_pay'],
+        'employee_share' => $item['pagibig_employee'],
+        'employer_share' => $item['pagibig_employer'],
+        'subtotal'       => $item['pagibig_total'],
+        'government_id' => $item['pagibig_number'] ?? null,
+    ];
+});
 
-        $birEmployees = $allEmployees->map(function ($item) {
-            return [
-                'id' => $item['id'],
-                'name' => $item['name'],
-                'position' => $item['position'],
-                'classification' => $item['classification'],
-                'employee_type' => $item['employee_type'],
-                'basic_pay' => $item['basic_pay'],
-                'employee_share' => $item['bir_employee'],
-                'employer_share' => $item['bir_employer'],
-                'subtotal' => $item['bir_total'],
-            ];
-        });
-
+$birEmployees = $allEmployees->map(function ($item) {
+    return [
+        'id'             => $item['id'],
+        'name'           => $item['name'],
+        'position'       => $item['position'],
+        'classification' => $item['classification'],
+        'employee_type'  => $item['employee_type'],
+        'basic_pay'      => $item['basic_pay'],
+        'employee_share' => $item['bir_employee'],
+        'employer_share' => $item['bir_employer'],
+        'subtotal'       => $item['bir_total'],
+        'government_id' => $item['tin_number'] ?? null,
+    ];
+});
         return [
             'gsis' => [
                 'agency' => 'gsis',
@@ -573,4 +591,34 @@ class GovernmentRemittanceReportController extends Controller
             'casual_totals' => ['employee' => 0, 'employer' => 0, 'total' => 0],
         ];
     }
+
+    private function buildTrendData(array $rates): array
+{
+    $periods = PayrollPeriod::whereIn('status', ['Closed', 'Processed'])
+        ->whereRaw('DAY(start_date) = 16')
+        ->orderBy('start_date', 'asc')
+        ->take(12)
+        ->get();
+
+    $pagibigFixed = $rates['pagibig_per_payroll'] * 2;
+    $phRate       = $rates['philhealth_employee_rate'];
+    $phFloor      = $rates['philhealth_floor'];
+    $phCeiling    = $rates['philhealth_ceiling'];
+    $gsisEmp      = $rates['gsis_employee_rate'];
+    $gsisEr       = $rates['gsis_employer_rate'];
+
+    return $periods->map(function ($p) use ($pagibigFixed, $phRate, $phFloor, $phCeiling, $gsisEmp, $gsisEr) {
+        $recs = PayrollRecord::whereHas('payrollPeriod', function ($q) use ($p) {
+            $q->where('start_date', $p->start_date)->where('end_date', $p->end_date);
+        })->get();
+
+        return [
+            'month'      => $p->end_date->format('M'),
+            'GSIS'       => round($recs->sum(fn($r) => $r->basic_pay * 2 * (($gsisEmp + $gsisEr) / 100)), 2),
+            'PhilHealth' => round($recs->sum(fn($r) => max($phFloor, min($phCeiling, round($r->basic_pay * 2 * ($phRate * 2 / 100), 2)))), 2),
+            'PagIBIG'    => $recs->count() * $pagibigFixed,
+            'BIR'        => round($recs->sum('withholding_tax') * 2, 2),
+        ];
+    })->values()->toArray();
+}
 }

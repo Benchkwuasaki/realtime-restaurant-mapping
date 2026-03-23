@@ -19,6 +19,7 @@ export interface RemittanceEmployee {
     employer_share: number;
     subtotal: number;
     employee_type?: string;
+    government_id?: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -100,6 +101,28 @@ export function useRemittanceColumns({
                     )}
                 </div>
             ),
+        },
+
+        {
+            accessorKey: 'government_id',
+            header: ({ column }) => (
+                <DataTableColumnHeader
+                    column={column}
+                    title={
+                        agencyId === 'gsis' ? 'GSIS No.' :
+                            agencyId === 'philhealth' ? 'PhilHealth No.' :
+                                agencyId === 'pagibig' ? 'Pag-IBIG No.' :
+                                    agencyId === 'bir' ? 'TIN' :
+                                        'ID No.'
+                    }
+                />
+            ),
+            cell: ({ row }) => (
+                <span className="font-mono text-xs text-muted-foreground">
+                    {row.getValue('government_id') || '—'}
+                </span>
+            ),
+            enableSorting: false,
         },
 
         {

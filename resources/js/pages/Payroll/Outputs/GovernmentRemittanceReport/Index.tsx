@@ -351,6 +351,13 @@ interface Props {
     };
     employeeTypeCounts?: { regular: number; casual: number; total: number };
     currentEmployeeTypeFilter?: string;
+    trendData?: Array<{
+        month: string;
+        GSIS: number;
+        PhilHealth: number;
+        PagIBIG: number;
+        BIR: number;
+    }>;
 }
 
 interface AgencyData {
@@ -475,9 +482,9 @@ function AgencyDataTableCard({
             employeeTypeFilter === 'all'
                 ? employees
                 : employees.filter(
-                      (emp) =>
-                          (emp as any).employee_type === employeeTypeFilter,
-                  );
+                    (emp) =>
+                        (emp as any).employee_type === employeeTypeFilter,
+                );
         return base as RemittanceEmployee[];
     }, [employees, employeeTypeFilter]);
 
@@ -502,11 +509,10 @@ function AgencyDataTableCard({
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div
-                            className={`${
-                                agencyId === 'philhealth'
-                                    ? 'h-16 w-16'
-                                    : 'h-14 w-14'
-                            } flex items-center justify-center`}
+                            className={`${agencyId === 'philhealth'
+                                ? 'h-16 w-16'
+                                : 'h-14 w-14'
+                                } flex items-center justify-center`}
                         >
                             {logo ? (
                                 <img
@@ -892,6 +898,219 @@ function SignatureSection({
     );
 }
 
+// ── Trend Chart ───────────────────────────────────────────────────────────────
+import {
+    AreaChart, Area,
+    XAxis, YAxis, CartesianGrid,
+    Tooltip, ResponsiveContainer,
+} from 'recharts';
+
+const CHART_TS = { borderRadius: 8, border: '1px solid var(--border)', fontSize: 11, padding: '6px 12px', background: 'var(--card)' };
+const fmtK = (v: number) => `₱${(v / 1000).toFixed(0)}K`;
+const fmtPeso = (v: number) => `₱${v.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+
+// 👇 PASTE THIS NEW TOOLTIP HERE
+function RemittanceTooltip({ active, payload, label }: any) {
+    if (!active || !payload || !payload.length) return null;
+
+    const total = payload.reduce((sum: number, entry: any) => sum + (entry.value ?? 0), 0);
+
+    const agencies = [
+        { key: 'GSIS', color: '#3b82f6', label: 'GSIS' },
+        { key: 'PhilHealth', color: '#10b981', label: 'PhilHealth' },
+        { key: 'PagIBIG', color: '#8b5cf6', label: 'Pag-IBIG' },
+        { key: 'BIR', color: '#f59e0b', label: 'BIR' },
+    ];
+
+    return (
+        <div style={{
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            borderRadius: 10,
+            padding: '12px 16px',
+            minWidth: 220,
+            fontSize: 12,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        }}>
+            <p style={{ fontWeight: 600, marginBottom: 10, fontSize: 13 }}>{label}</p>
+            {agencies.map(({ key, color, label: agencyLabel }) => {
+                const entry = payload.find((p: any) => p.dataKey === key);
+                const value = entry?.value ?? 0;
+                return (
+                    <div key={key} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 24,
+                        paddingBottom: 6,
+                        marginBottom: 6,
+                        borderBottom: '1px solid var(--border)',
+                        opacity: value === 0 ? 0.4 : 1,
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <span style={{
+                                display: 'inline-block',
+                                width: 10, height: 10,
+                                borderRadius: '50%',
+                                background: color,
+                                flexShrink: 0,
+                            }} />
+                            <span style={{ color: 'var(--muted-foreground)' }}>{agencyLabel}</span>
+                        </div>
+                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                            {fmtPeso(value)}
+                        </span>
+                    </div>
+                );
+            })}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 24,
+                marginTop: 4,
+                paddingTop: 4,
+            }}>
+                <span style={{ fontWeight: 700, fontSize: 13 }}>Total</span>
+                <span style={{ fontWeight: 700, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+                    {fmtPeso(total)}
+                </span>
+            </div>
+        </div>
+    );
+}
+function RemittanceTrendChart({
+    data,
+    remittances,
+    currentMonthLabel,
+    employeeTypeFilter = 'all',
+}: {
+    data: any[];
+    remittances: Record<string, AgencyData>;
+    currentMonthLabel: string;
+    employeeTypeFilter?: string;
+}) {
+    const aggregated = useMemo(() => {
+        if (!data || data.length === 0) return [];
+
+        const map = new Map<string, { GSIS: number; PhilHealth: number; PagIBIG: number; BIR: number }>();
+        for (const row of data) {
+            const e = map.get(row.month) ?? { GSIS: 0, PhilHealth: 0, PagIBIG: 0, BIR: 0 };
+            map.set(row.month, {
+                GSIS: e.GSIS + (row.GSIS ?? 0),
+                PhilHealth: e.PhilHealth + (row.PhilHealth ?? 0),
+                PagIBIG: e.PagIBIG + (row.PagIBIG ?? 0),
+                BIR: e.BIR + (row.BIR ?? 0),
+            });
+        }
+
+        const getTotal = (agency: AgencyData | undefined) => {
+            if (!agency) return 0;
+            if (employeeTypeFilter === 'regular') return agency.regular_totals?.total ?? 0;
+            if (employeeTypeFilter === 'casual') return agency.casual_totals?.total ?? 0;
+            return agency.total ?? 0;
+        };
+
+        const shortKey = currentMonthLabel
+            ? new Date(currentMonthLabel).toLocaleDateString('en-PH', { month: 'short' })
+            : null;
+
+        if (shortKey && map.has(shortKey)) {
+            map.set(shortKey, {
+                GSIS: getTotal(remittances.gsis),
+                PhilHealth: getTotal(remittances.philhealth),
+                PagIBIG: getTotal(remittances.pagibig),
+                BIR: getTotal(remittances.bir),
+            });
+        }
+
+        return Array.from(map.entries()).map(([month, values]) => ({ month, ...values }));
+    }, [data, remittances, currentMonthLabel, employeeTypeFilter]);
+
+    if (aggregated.length === 0) return null;
+
+    const periodLabel = aggregated.length === 1 ? '1 month of data' : `Last ${aggregated.length} months`;
+    const filterLabel =
+        employeeTypeFilter === 'regular' ? ' · Regular employees only' :
+            employeeTypeFilter === 'casual' ? ' · Casual employees only' : '';
+
+    const bars = [
+        { key: 'GSIS', color: '#3b82f6', name: 'GSIS' },
+        { key: 'PhilHealth', color: '#10b981', name: 'PhilHealth' },
+        { key: 'PagIBIG', color: '#8b5cf6', name: 'Pag-IBIG' },
+        { key: 'BIR', color: '#f59e0b', name: 'BIR' },
+    ];
+
+    return (
+        <div className="no-print rounded-lg border border-secondary bg-card p-6">
+            {/* Header */}
+            <div className="mb-6 flex items-start justify-between">
+                <div>
+                    <p className="text-sm font-semibold text-foreground">
+                        Monthly Government Remittance Trend
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        {periodLabel} · All contribution types{filterLabel}
+                    </p>
+                </div>
+                {/* Legend pills */}
+                <div className="flex flex-wrap gap-2 justify-end">
+                    {bars.map(({ key, color, name }) => (
+                        <div key={key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span style={{
+                                display: 'inline-block',
+                                width: 10, height: 10,
+                                borderRadius: 3,
+                                background: color,
+                                flexShrink: 0,
+                            }} />
+                            {name}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={aggregated} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    <defs>
+                        {bars.map(({ key, color }) => (
+                            <linearGradient key={key} id={`grad_${key}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor={color} stopOpacity={0.18} />
+                                <stop offset="100%" stopColor={color} stopOpacity={0} />
+                            </linearGradient>
+                        ))}
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis
+                        dataKey="month"
+                        tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                        axisLine={false}
+                        tickLine={false}
+                    />
+                    <YAxis
+                        tickFormatter={fmtK}
+                        tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={52}
+                    />
+                    <Tooltip content={<RemittanceTooltip />} />
+                    {bars.map(({ key, color, name }) => (
+                        <Area
+                            key={key}
+                            type="monotone"
+                            dataKey={key}
+                            name={name}
+                            stroke={color}
+                            fill={`url(#grad_${key})`}
+                            strokeWidth={2}
+                            dot={{ r: 3, fill: color, strokeWidth: 0 }}
+                        />
+                    ))}
+                </AreaChart>
+            </ResponsiveContainer>
+        </div>
+    );
+}
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function GovernmentRemittanceReport({
@@ -904,6 +1123,7 @@ export default function GovernmentRemittanceReport({
     settings,
     employeeTypeCounts = { regular: 0, casual: 0, total: 0 },
     currentEmployeeTypeFilter = 'all',
+    trendData = [],
 }: Props) {
     const [activeTab, setActiveTab] = useState(currentAgency || 'all');
     const [exportError, setExportError] = useState('');
@@ -933,7 +1153,8 @@ export default function GovernmentRemittanceReport({
     // ── Deduplicate periods by month label ────────────────────────────────────
     const monthPeriods = useMemo(() => {
         const seen = new Set<string>();
-        return periods
+        const safePeriods = Array.isArray(periods) ? periods : [];
+        return safePeriods
             .filter((p) => {
                 const label = new Date(
                     p.end_date + 'T00:00:00',
@@ -1052,9 +1273,9 @@ export default function GovernmentRemittanceReport({
 
     const monthLabel = selectedPeriod
         ? new Date(selectedPeriod.end_date + 'T00:00:00').toLocaleDateString(
-              'en-PH',
-              { month: 'long', year: 'numeric' },
-          )
+            'en-PH',
+            { month: 'long', year: 'numeric' },
+        )
         : '';
 
     const getCurrentSummary = () => {
@@ -1355,43 +1576,43 @@ export default function GovernmentRemittanceReport({
                                 <TabsContent value="all" className="mt-6">
                                     {remittances.gsis?.employees?.length >
                                         0 && (
-                                        <AgencyDataTableCard
-                                            agencyId="gsis"
-                                            agencyData={remittances.gsis}
-                                            onEmployeeClick={
-                                                handleEmployeeClick
-                                            }
-                                            employeeTypeFilter={
-                                                employeeTypeFilter
-                                            }
-                                        />
-                                    )}
+                                            <AgencyDataTableCard
+                                                agencyId="gsis"
+                                                agencyData={remittances.gsis}
+                                                onEmployeeClick={
+                                                    handleEmployeeClick
+                                                }
+                                                employeeTypeFilter={
+                                                    employeeTypeFilter
+                                                }
+                                            />
+                                        )}
                                     {remittances.philhealth?.employees?.length >
                                         0 && (
-                                        <AgencyDataTableCard
-                                            agencyId="philhealth"
-                                            agencyData={remittances.philhealth}
-                                            onEmployeeClick={
-                                                handleEmployeeClick
-                                            }
-                                            employeeTypeFilter={
-                                                employeeTypeFilter
-                                            }
-                                        />
-                                    )}
+                                            <AgencyDataTableCard
+                                                agencyId="philhealth"
+                                                agencyData={remittances.philhealth}
+                                                onEmployeeClick={
+                                                    handleEmployeeClick
+                                                }
+                                                employeeTypeFilter={
+                                                    employeeTypeFilter
+                                                }
+                                            />
+                                        )}
                                     {remittances.pagibig?.employees?.length >
                                         0 && (
-                                        <AgencyDataTableCard
-                                            agencyId="pagibig"
-                                            agencyData={remittances.pagibig}
-                                            onEmployeeClick={
-                                                handleEmployeeClick
-                                            }
-                                            employeeTypeFilter={
-                                                employeeTypeFilter
-                                            }
-                                        />
-                                    )}
+                                            <AgencyDataTableCard
+                                                agencyId="pagibig"
+                                                agencyData={remittances.pagibig}
+                                                onEmployeeClick={
+                                                    handleEmployeeClick
+                                                }
+                                                employeeTypeFilter={
+                                                    employeeTypeFilter
+                                                }
+                                            />
+                                        )}
                                     {!remittances.gsis?.employees?.length &&
                                         !remittances.philhealth?.employees
                                             ?.length &&
@@ -1456,7 +1677,7 @@ export default function GovernmentRemittanceReport({
                                     className="mt-6"
                                 >
                                     {remittances.philhealth?.employees?.length >
-                                    0 ? (
+                                        0 ? (
                                         <AgencyDataTableCard
                                             agencyId="philhealth"
                                             agencyData={remittances.philhealth}
@@ -1493,7 +1714,7 @@ export default function GovernmentRemittanceReport({
                                 {/* Pag-IBIG */}
                                 <TabsContent value="pagibig" className="mt-6">
                                     {remittances.pagibig?.employees?.length >
-                                    0 ? (
+                                        0 ? (
                                         <AgencyDataTableCard
                                             agencyId="pagibig"
                                             agencyData={remittances.pagibig}
@@ -1578,6 +1799,14 @@ export default function GovernmentRemittanceReport({
                     </Tabs>
                 </section>
 
+                {/* ── Trend Chart ────────────────────────────────────────── */}
+                <RemittanceTrendChart
+                    data={trendData}
+                    remittances={remittances}
+                    currentMonthLabel={monthLabel}
+                    employeeTypeFilter={employeeTypeFilter}
+                />
+
                 {/* ── Print-Only Section (unchanged) ─────────────────────── */}
                 <div className="print-only">
                     <div className="report-main-header">
@@ -1632,9 +1861,9 @@ export default function GovernmentRemittanceReport({
                                     style={
                                         i > 0
                                             ? {
-                                                  pageBreakBefore: 'always',
-                                                  breakBefore: 'always',
-                                              }
+                                                pageBreakBefore: 'always',
+                                                breakBefore: 'always',
+                                            }
                                             : undefined
                                     }
                                 >
@@ -1681,7 +1910,7 @@ export default function GovernmentRemittanceReport({
                                 <Badge
                                     variant={
                                         selectedEmployee.employee_type ===
-                                        'regular'
+                                            'regular'
                                             ? 'default'
                                             : 'secondary'
                                     }

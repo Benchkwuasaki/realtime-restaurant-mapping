@@ -9,30 +9,52 @@ import {
 import { useState, useMemo } from 'react';
 import { Building2, HeartPulse, Home, Receipt, Landmark } from 'lucide-react';
 import { StatCard } from '@/components/shared/stat-card';
+import {
+    Card,
+    CardHeader,
+    CardTitle,
+    CardDescription,
+    CardContent,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface Props {
+    summary: {
+        total_gsis: number;
+        total_philhealth: number;
+        total_pagibig: number;
+        total_tax: number;
+        total_remittance: number;
+    };
+    gsisData: any[];
+    philhealthData: any[];
+    pagibigData: any[];
+    birData: any[];
+    remittanceData: any[];
+    trendData: any[];
+    period: string;
+}
+
+// ── Breadcrumbs ───────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Government Reports and Analytics',
         href: route('reports_and_analytics.government-report.index'),
     },
-
 ];
 
 /* ── colour tokens ── */
-const blue   = '#3b82f6';
-const green  = '#10b981';
+const blue = '#3b82f6';
+const green = '#10b981';
 const violet = '#8b5cf6';
-const amber  = '#f59e0b';
+const amber = '#f59e0b';
 const indigo = '#6366f1';
 
 /* ── shared UI ── */
 const TS = { borderRadius: 8, border: '1px solid var(--border)', fontSize: 11, padding: '6px 12px', background: 'var(--card)' };
-
-const Card = ({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-    <div style={{ background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', padding: 20, ...style }}>
-        {children}
-    </div>
-);
 
 const SH = ({ title, sub }: { title: string; sub?: string }) => (
     <div style={{ marginBottom: 14 }}>
@@ -63,73 +85,9 @@ const SearchInput = ({ value, onChange, placeholder = 'Search...' }: {
     </div>
 );
 
-/* ── summary data ── */
-const summaryKpis = [
-    { label: 'Total GSIS Contributions',       value: '₱842,400',   accent: blue,   bg: '#eff6ff' },
-    { label: 'Total PhilHealth Contributions', value: '₱124,800',   accent: green,  bg: '#f0fdf4' },
-    { label: 'Total Pag-IBIG Contributions',   value: '₱80,000',    accent: violet, bg: '#f5f3ff' },
-    { label: 'Total Withholding Tax',          value: '₱215,600',   accent: amber,  bg: '#fffbeb' },
-    { label: 'Total Government Remittance',    value: '₱1,262,800', accent: indigo, bg: '#eef2ff' },
-];
+/* ── Helpers ─────────────────────────────────────────────────────────────────── */
 
-/* ── table data ── */
-const gsisData = [
-    { name: 'Juan dela Cruz',  gsis: '01-234567-8', employee: 4200,  employer: 6300,  total: 10500, period: 'Mar 2026' },
-    { name: 'Maria Santos',    gsis: '01-345678-9', employee: 3800,  employer: 5700,  total: 9500,  period: 'Mar 2026' },
-    { name: 'Jose Reyes',      gsis: '01-456789-0', employee: 5000,  employer: 7500,  total: 12500, period: 'Mar 2026' },
-    { name: 'Ana Garcia',      gsis: '01-567890-1', employee: 3200,  employer: 4800,  total: 8000,  period: 'Mar 2026' },
-    { name: 'Pedro Bautista',  gsis: '01-678901-2', employee: 4600,  employer: 6900,  total: 11500, period: 'Mar 2026' },
-    { name: 'Rosa Mendoza',    gsis: '01-789012-3', employee: 3500,  employer: 5250,  total: 8750,  period: 'Mar 2026' },
-];
-
-const philhealthData = [
-    { name: 'Juan dela Cruz',  ph: '12-345678901-2', salary: 42000, employee: 525, employer: 525, total: 1050 },
-    { name: 'Maria Santos',    ph: '12-456789012-3', salary: 38000, employee: 475, employer: 475, total: 950  },
-    { name: 'Jose Reyes',      ph: '12-567890123-4', salary: 50000, employee: 625, employer: 625, total: 1250 },
-    { name: 'Ana Garcia',      ph: '12-678901234-5', salary: 32000, employee: 400, employer: 400, total: 800  },
-    { name: 'Pedro Bautista',  ph: '12-789012345-6', salary: 46000, employee: 575, employer: 575, total: 1150 },
-    { name: 'Rosa Mendoza',    ph: '12-890123456-7', salary: 35000, employee: 437, employer: 437, total: 875  },
-];
-
-const pagibigData = [
-    { name: 'Juan dela Cruz',  pagibig: '1234-5678-9012', salary: 42000, employee: 200, employer: 200, total: 400 },
-    { name: 'Maria Santos',    pagibig: '2345-6789-0123', salary: 38000, employee: 200, employer: 200, total: 400 },
-    { name: 'Jose Reyes',      pagibig: '3456-7890-1234', salary: 50000, employee: 200, employer: 200, total: 400 },
-    { name: 'Ana Garcia',      pagibig: '4567-8901-2345', salary: 32000, employee: 200, employer: 200, total: 400 },
-    { name: 'Pedro Bautista',  pagibig: '5678-9012-3456', salary: 46000, employee: 200, employer: 200, total: 400 },
-    { name: 'Rosa Mendoza',    pagibig: '6789-0123-4567', salary: 35000, employee: 200, employer: 200, total: 400 },
-];
-
-const birData = [
-    { name: 'Juan dela Cruz',  tin: '123-456-789-000', taxable: 38200, tax: 3820, period: 'Mar 2026' },
-    { name: 'Maria Santos',    tin: '234-567-890-000', taxable: 34500, tax: 2760, period: 'Mar 2026' },
-    { name: 'Jose Reyes',      tin: '345-678-901-000', taxable: 45500, tax: 6825, period: 'Mar 2026' },
-    { name: 'Ana Garcia',      tin: '456-789-012-000', taxable: 29000, tax: 1450, period: 'Mar 2026' },
-    { name: 'Pedro Bautista',  tin: '567-890-123-000', taxable: 41800, tax: 5225, period: 'Mar 2026' },
-    { name: 'Rosa Mendoza',    tin: '678-901-234-000', taxable: 31800, tax: 2385, period: 'Mar 2026' },
-];
-
-const remittanceData = [
-    { type: 'GSIS',       period: 'Mar 2026', amount: 842400,  due: 'Apr 10, 2026', status: 'Pending' },
-    { type: 'PhilHealth', period: 'Mar 2026', amount: 124800,  due: 'Apr 15, 2026', status: 'Pending' },
-    { type: 'Pag-IBIG',   period: 'Mar 2026', amount: 80000,   due: 'Apr 15, 2026', status: 'Pending' },
-    { type: 'BIR',        period: 'Mar 2026', amount: 215600,  due: 'Apr 10, 2026', status: 'Pending' },
-    { type: 'GSIS',       period: 'Feb 2026', amount: 836000,  due: 'Mar 10, 2026', status: 'Paid'    },
-    { type: 'PhilHealth', period: 'Feb 2026', amount: 122400,  due: 'Mar 15, 2026', status: 'Paid'    },
-    { type: 'Pag-IBIG',   period: 'Feb 2026', amount: 80000,   due: 'Mar 15, 2026', status: 'Paid'    },
-    { type: 'BIR',        period: 'Feb 2026', amount: 210200,  due: 'Mar 10, 2026', status: 'Paid'    },
-];
-
-const trendData = [
-    { month: 'Oct', GSIS: 810000, PhilHealth: 118000, PagIBIG: 80000, BIR: 198000 },
-    { month: 'Nov', GSIS: 820000, PhilHealth: 119500, PagIBIG: 80000, BIR: 202000 },
-    { month: 'Dec', GSIS: 815000, PhilHealth: 120000, PagIBIG: 80000, BIR: 205000 },
-    { month: 'Jan', GSIS: 825000, PhilHealth: 121000, PagIBIG: 80000, BIR: 208000 },
-    { month: 'Feb', GSIS: 836000, PhilHealth: 122400, PagIBIG: 80000, BIR: 210200 },
-    { month: 'Mar', GSIS: 842400, PhilHealth: 124800, PagIBIG: 80000, BIR: 215600 },
-];
-
-const fmt  = (v: number) => `₱${v.toLocaleString()}`;
+const fmt = (v: number) => `₱${v.toLocaleString()}`;
 const fmtK = (v: number) => `₱${(v / 1000).toFixed(0)}K`;
 
 function filterRows(rows: any[], query: string) {
@@ -140,17 +98,25 @@ function filterRows(rows: any[], query: string) {
 
 /* ══ Summary KPI Strip ══ */
 const KPI_ICONS = [
-    <Building2  className="size-4 m-1" />,
+    <Building2 className="size-4 m-1" />,
     <HeartPulse className="size-4 m-1" />,
-    <Home       className="size-4 m-1" />,
-    <Receipt    className="size-4 m-1" />,
-    <Landmark   className="size-4 m-1" />,
+    <Home className="size-4 m-1" />,
+    <Receipt className="size-4 m-1" />,
+    <Landmark className="size-4 m-1" />,
 ];
 
-function SummaryStrip() {
+function SummaryStrip({ summary }: { summary: Props['summary'] }) {
+    const kpis = [
+        { label: 'Total GSIS Contributions', value: fmt(summary.total_gsis), accent: blue, bg: '#eff6ff' },
+        { label: 'Total PhilHealth Contributions', value: fmt(summary.total_philhealth), accent: green, bg: '#f0fdf4' },
+        { label: 'Total Pag-IBIG Contributions', value: fmt(summary.total_pagibig), accent: violet, bg: '#f5f3ff' },
+        { label: 'Total Withholding Tax', value: fmt(summary.total_tax), accent: amber, bg: '#fffbeb' },
+        { label: 'Total Government Remittance', value: fmt(summary.total_remittance), accent: indigo, bg: '#eef2ff' },
+    ];
+
     return (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {summaryKpis.map((k, i) => (
+            {kpis.map((k, i) => (
                 <StatCard
                     key={k.label}
                     title={k.label}
@@ -221,8 +187,8 @@ const StatusBadge = ({ status }: { status: string }) => {
         <span style={{
             display: 'inline-block', padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
             background: isPaid ? '#f0fdf4' : '#fffbeb',
-            color:      isPaid ? '#16a34a' : '#b45309',
-            border:     `1px solid ${isPaid ? '#bbf7d0' : '#fde68a'}`,
+            color: isPaid ? '#16a34a' : '#b45309',
+            border: `1px solid ${isPaid ? '#bbf7d0' : '#fde68a'}`,
         }}>
             {isPaid ? '✓ Paid' : '⏳ Pending'}
         </span>
@@ -230,21 +196,21 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 /* ══ Monthly Trend Chart ══ */
-function MonthlyTrendChart() {
+function MonthlyTrendChart({ data }: { data: any[] }) {
     return (
         <Card>
-            <SH title="Monthly Government Remittance Trend" sub="Oct 2025 – Mar 2026 · All contribution types" />
+            <SH title="Monthly Government Remittance Trend" sub="Last 12 periods · All contribution types" />
             <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={trendData}>
+                <AreaChart data={data}>
                     <defs>
                         {[
-                            { id: 'gG', color: blue   },
-                            { id: 'pG', color: green  },
+                            { id: 'gG', color: blue },
+                            { id: 'pG', color: green },
                             { id: 'iG', color: violet },
-                            { id: 'bG', color: amber  },
+                            { id: 'bG', color: amber },
                         ].map(({ id, color }) => (
                             <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%"   stopColor={color} stopOpacity={0.18} />
+                                <stop offset="0%" stopColor={color} stopOpacity={0.18} />
                                 <stop offset="100%" stopColor={color} stopOpacity={0} />
                             </linearGradient>
                         ))}
@@ -254,10 +220,10 @@ function MonthlyTrendChart() {
                     <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} width={52} />
                     <Tooltip contentStyle={TS} formatter={(v: any, n: string) => [fmt(v), n]} />
                     <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Area type="monotone" dataKey="GSIS"       stroke={blue}   fill="url(#gG)" strokeWidth={2} dot={{ r: 3, fill: blue,   strokeWidth: 0 }} />
-                    <Area type="monotone" dataKey="PhilHealth" stroke={green}  fill="url(#pG)" strokeWidth={2} dot={{ r: 3, fill: green,  strokeWidth: 0 }} />
-                    <Area type="monotone" dataKey="PagIBIG"    stroke={violet} fill="url(#iG)" strokeWidth={2} dot={{ r: 3, fill: violet, strokeWidth: 0 }} name="Pag-IBIG" />
-                    <Area type="monotone" dataKey="BIR"        stroke={amber}  fill="url(#bG)" strokeWidth={2} dot={{ r: 3, fill: amber,  strokeWidth: 0 }} />
+                    <Area type="monotone" dataKey="GSIS" stroke={blue} fill="url(#gG)" strokeWidth={2} dot={{ r: 3, fill: blue, strokeWidth: 0 }} />
+                    <Area type="monotone" dataKey="PhilHealth" stroke={green} fill="url(#pG)" strokeWidth={2} dot={{ r: 3, fill: green, strokeWidth: 0 }} />
+                    <Area type="monotone" dataKey="PagIBIG" stroke={violet} fill="url(#iG)" strokeWidth={2} dot={{ r: 3, fill: violet, strokeWidth: 0 }} name="Pag-IBIG" />
+                    <Area type="monotone" dataKey="BIR" stroke={amber} fill="url(#bG)" strokeWidth={2} dot={{ r: 3, fill: amber, strokeWidth: 0 }} />
                 </AreaChart>
             </ResponsiveContainer>
         </Card>
@@ -265,20 +231,29 @@ function MonthlyTrendChart() {
 }
 
 /* ══ PAGE ══ */
-export default function GovernmentContributions() {
+export default function GovernmentContributions({
+    summary,
+    gsisData,
+    philhealthData,
+    pagibigData,
+    birData,
+    remittanceData,
+    trendData,
+    period,
+}: Props) {
     const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-    const [gsisSearch,       setGsisSearch]       = useState('');
+    const [gsisSearch, setGsisSearch] = useState('');
     const [philhealthSearch, setPhilhealthSearch] = useState('');
-    const [pagibigSearch,    setPagibigSearch]    = useState('');
-    const [birSearch,        setBirSearch]        = useState('');
-    const [remitSearch,      setRemitSearch]      = useState('');
+    const [pagibigSearch, setPagibigSearch] = useState('');
+    const [birSearch, setBirSearch] = useState('');
+    const [remitSearch, setRemitSearch] = useState('');
 
-    const filteredGsis       = useMemo(() => filterRows(gsisData,       gsisSearch),       [gsisSearch]);
-    const filteredPhilhealth = useMemo(() => filterRows(philhealthData, philhealthSearch), [philhealthSearch]);
-    const filteredPagibig    = useMemo(() => filterRows(pagibigData,    pagibigSearch),    [pagibigSearch]);
-    const filteredBir        = useMemo(() => filterRows(birData,        birSearch),        [birSearch]);
-    const filteredRemit      = useMemo(() => filterRows(remittanceData, remitSearch),      [remitSearch]);
+    const filteredGsis = useMemo(() => filterRows(gsisData, gsisSearch), [gsisData, gsisSearch]);
+    const filteredPhilhealth = useMemo(() => filterRows(philhealthData, philhealthSearch), [philhealthData, philhealthSearch]);
+    const filteredPagibig = useMemo(() => filterRows(pagibigData, pagibigSearch), [pagibigData, pagibigSearch]);
+    const filteredBir = useMemo(() => filterRows(birData, birSearch), [birData, birSearch]);
+    const filteredRemit = useMemo(() => filterRows(remittanceData, remitSearch), [remittanceData, remitSearch]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -303,75 +278,84 @@ export default function GovernmentContributions() {
                     </div>
                 </div>
 
-                <SummaryStrip />
+                <SummaryStrip summary={summary} />
 
                 {/* GSIS */}
                 <Card>
-                    <SH title="GSIS Contribution Report" sub="Government Service Insurance System · Mar 2026" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                        <img src="/images/gsis.png" alt="GSIS" style={{ width: 40, height: 40, objectFit: 'contain' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                        <SH title="GSIS Contribution Report" sub={`Government Service Insurance System · ${period}`} />
+                    </div>
                     <SearchInput value={gsisSearch} onChange={setGsisSearch} placeholder="Search by name, GSIS number, period…" />
                     <SortableTable
                         sortKey="name"
                         rows={filteredGsis}
                         columns={[
-                            { key: 'name',     label: 'Employee Name' },
-                            { key: 'gsis',     label: 'GSIS Number' },
-                            { key: 'employee', label: 'Employee Contribution', render: v => <span style={{ color: '#2563eb', fontWeight: 600 }}>{fmt(v)}</span> },
-                            { key: 'employer', label: 'Employer Contribution', render: v => <span style={{ color: '#7c3aed', fontWeight: 600 }}>{fmt(v)}</span> },
-                            { key: 'total',    label: 'Total Contribution',    render: v => <span style={{ fontWeight: 700 }}>{fmt(v)}</span> },
-                            { key: 'period',   label: 'Payroll Period' },
+                            { key: 'name', label: 'Employee Name' },
+                            { key: 'gsis', label: 'GSIS Number' },
+                            { key: 'employee', label: 'Employee Contribution', render: v => <span style={{ fontWeight: 600 }}>{fmt(v)}</span> },
+                            { key: 'employer', label: 'Employer Contribution', render: v => <span style={{ fontWeight: 600 }}>{fmt(v)}</span> },
+                            { key: 'total', label: 'Total Contribution', render: v => <span style={{ fontWeight: 700 }}>{fmt(v)}</span> },
+                            { key: 'period', label: 'Payroll Period' },
                         ]}
                     />
                 </Card>
 
                 {/* PhilHealth */}
                 <Card>
-                    <SH title="PhilHealth Contribution Report" sub="Philippine Health Insurance Corporation · Mar 2026" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                        <img src="/images/philhealth.png" alt="PhilHealth" style={{ width: 48, height: 48, objectFit: 'contain' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                        <SH title="PhilHealth Contribution Report" sub={`Philippine Health Insurance Corporation · ${period}`} />
+                    </div>
                     <SearchInput value={philhealthSearch} onChange={setPhilhealthSearch} placeholder="Search by name, PhilHealth number…" />
                     <SortableTable
                         sortKey="name"
                         rows={filteredPhilhealth}
                         columns={[
-                            { key: 'name',     label: 'Employee Name' },
-                            { key: 'ph',       label: 'PhilHealth Number' },
-                            { key: 'salary',   label: 'Monthly Salary',    render: v => fmt(v) },
-                            { key: 'employee', label: 'Employee Share',    render: v => <span style={{ color: '#2563eb', fontWeight: 600 }}>{fmt(v)}</span> },
-                            { key: 'employer', label: 'Employer Share',    render: v => <span style={{ color: '#059669', fontWeight: 600 }}>{fmt(v)}</span> },
-                            { key: 'total',    label: 'Total Contribution',render: v => <span style={{ fontWeight: 700 }}>{fmt(v)}</span> },
+                            { key: 'name', label: 'Employee Name' },
+                            { key: 'ph', label: 'PhilHealth Number' },
+                            { key: 'salary', label: 'Monthly Salary', render: v => fmt(v) },
+                            { key: 'employee', label: 'Employee Share', render: v => <span style={{ fontWeight: 600 }}>{fmt(v)}</span> },
+                            { key: 'employer', label: 'Employer Share', render: v => <span style={{ fontWeight: 600 }}>{fmt(v)}</span> },
+                            { key: 'total', label: 'Total Contribution', render: v => <span style={{ fontWeight: 700 }}>{fmt(v)}</span> },
                         ]}
                     />
                 </Card>
 
                 {/* Pag-IBIG */}
                 <Card>
-                    <SH title="Pag-IBIG Contribution Report" sub="Home Development Mutual Fund · Mar 2026" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                        <img src="/images/pagibig.png" alt="Pag-IBIG" style={{ width: 40, height: 40, objectFit: 'contain' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                        <SH title="Pag-IBIG Contribution Report" sub={`Home Development Mutual Fund · ${period}`} />
+                    </div>
                     <SearchInput value={pagibigSearch} onChange={setPagibigSearch} placeholder="Search by name, Pag-IBIG number…" />
                     <SortableTable
                         sortKey="name"
                         rows={filteredPagibig}
                         columns={[
-                            { key: 'name',     label: 'Employee Name' },
-                            { key: 'pagibig',  label: 'Pag-IBIG Number' },
-                            { key: 'salary',   label: 'Monthly Salary',       render: v => fmt(v) },
-                            { key: 'employee', label: 'Employee Contribution', render: v => <span style={{ color: '#2563eb', fontWeight: 600 }}>{fmt(v)}</span> },
-                            { key: 'employer', label: 'Employer Contribution', render: v => <span style={{ color: '#7c3aed', fontWeight: 600 }}>{fmt(v)}</span> },
-                            { key: 'total',    label: 'Total Contribution',    render: v => <span style={{ fontWeight: 700 }}>{fmt(v)}</span> },
+                            { key: 'name', label: 'Employee Name' },
+                            { key: 'pagibig', label: 'Pag-IBIG Number' },
+                            { key: 'salary', label: 'Monthly Salary', render: v => fmt(v) },
+                            { key: 'employee', label: 'Employee Contribution', render: v => <span style={{ fontWeight: 600 }}>{fmt(v)}</span> },
+                            { key: 'employer', label: 'Employer Contribution', render: v => <span style={{ fontWeight: 600 }}>{fmt(v)}</span> },
+                            { key: 'total', label: 'Total Contribution', render: v => <span style={{ fontWeight: 700 }}>{fmt(v)}</span> },
                         ]}
                     />
                 </Card>
 
                 {/* BIR */}
                 <Card>
-                    <SH title="BIR Withholding Tax Report" sub="Bureau of Internal Revenue · Mar 2026" />
+                    <SH title="BIR Withholding Tax Report" sub={`Bureau of Internal Revenue · ${period}`} />
                     <SearchInput value={birSearch} onChange={setBirSearch} placeholder="Search by name, TIN, period…" />
                     <SortableTable
                         sortKey="name"
                         rows={filteredBir}
                         columns={[
-                            { key: 'name',    label: 'Employee Name' },
-                            { key: 'tin',     label: 'TIN Number' },
-                            { key: 'taxable', label: 'Taxable Income',  render: v => fmt(v) },
-                            { key: 'tax',     label: 'Withholding Tax', render: v => <span style={{ color: '#b45309', fontWeight: 700 }}>{fmt(v)}</span> },
-                            { key: 'period',  label: 'Payroll Period' },
+                            { key: 'name', label: 'Employee Name' },
+                            { key: 'tin', label: 'TIN Number' },
+                            { key: 'taxable', label: 'Taxable Income', render: v => fmt(v) },
+                            { key: 'tax', label: 'Withholding Tax', render: v => <span style={{ fontWeight: 700 }}>{fmt(v)}</span> },
+                            { key: 'period', label: 'Payroll Period' },
                         ]}
                     />
                 </Card>
@@ -384,16 +368,16 @@ export default function GovernmentContributions() {
                         sortKey="type"
                         rows={filteredRemit}
                         columns={[
-                            { key: 'type',   label: 'Contribution Type', render: v => <span style={{ fontWeight: 700 }}>{v}</span> },
+                            { key: 'type', label: 'Contribution Type', render: v => <span style={{ fontWeight: 700 }}>{v}</span> },
                             { key: 'period', label: 'Payroll Period' },
-                            { key: 'amount', label: 'Amount',            render: v => <span style={{ fontWeight: 600 }}>{fmt(v)}</span> },
-                            { key: 'due',    label: 'Due Date' },
-                            { key: 'status', label: 'Payment Status',    render: v => <StatusBadge status={v} /> },
+                            { key: 'amount', label: 'Amount', render: v => <span style={{ fontWeight: 600 }}>{fmt(v)}</span> },
+                            { key: 'due', label: 'Due Date' },
+                            { key: 'status', label: 'Payment Status', render: v => <StatusBadge status={v} /> },
                         ]}
                     />
                 </Card>
 
-                <MonthlyTrendChart />
+                <MonthlyTrendChart data={trendData} />
 
             </div>
         </AppLayout>
