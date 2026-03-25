@@ -555,16 +555,11 @@ function CameraGrid({
                 flexDirection: 'column',
                 gap: '0.5rem',
                 width: '100%',
+                height: '100%',
             }}
         >
-            {/* Primary — full width, 16/9 */}
-            <div
-                style={{
-                    width: '100%',
-                    aspectRatio: '16/9',
-                    position: 'relative',
-                }}
-            >
+            {/* Primary — fills remaining height */}
+            <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
                 <CameraTile
                     cam={pinned}
                     isPinned
@@ -1210,7 +1205,7 @@ export default function RecognitionLogIndex({
                 {/* ── Main layout — fills all remaining height ── */}
                 <div className="flex min-h-0 flex-1 flex-col gap-4 xl:flex-row">
                     {/* ══ LEFT: Camera panel ══ */}
-                    <div className="flex min-h-0 shrink-0 flex-col gap-2 xl:w-[69%]">
+                    <div className="flex min-h-0 flex-col gap-2 xl:w-[69%]">
                         {/* Camera toolbar */}
                         <div className="flex shrink-0 items-center justify-between gap-2">
                             <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
@@ -1236,7 +1231,7 @@ export default function RecognitionLogIndex({
                         </div>
 
                         {/* Camera grid — fills remaining height */}
-                        <div className="min-h-0 flex-1">
+                        <div className="min-h-0 flex-1 overflow-hidden">
                             <CameraGrid
                                 cameras={cameras}
                                 pinnedId={pinnedId}

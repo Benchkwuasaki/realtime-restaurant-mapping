@@ -44,7 +44,7 @@ export const EmployeeCardCompact: React.FC<{
             className={`group flex flex-col items-center gap-2 p-3 rounded-xl
                 border border-border bg-card text-card-foreground shadow-sm
                 hover:shadow-md hover:border-primary/40
-                transition-all duration-200 min-w-[120px] max-w-[160px]
+                transition-all duration-200 min-w-30 max-w-40
                 ${onClick ? 'cursor-pointer' : ''}`}
         >
             <div className="relative">

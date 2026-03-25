@@ -88,10 +88,10 @@ function PurposeBadge({ type }: { type: "personal" | "official" }) {
         : <Badge variant="default">Official</Badge>
 }
 
-function ReturnBadge({ status }: { status: "returned" | "not_returned" }) {
-    return status === "returned"
-        ? <Badge variant="green">Returned</Badge>
-        : <Badge variant="yellow">Not Returned</Badge>
+function ReturnBadge({ status }: { status: string }) {
+    if (status === "returned") return <Badge variant="green">Returned</Badge>
+    if (status === "not_returned") return <Badge variant="destructive">Not Returned</Badge>
+    return <Badge variant="yellow">Still Out</Badge>
 }
 
 // ─── Whereabout Slip list ─────────────────────────────────────────────────────
@@ -103,8 +103,14 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
         <div className="flex flex-col gap-1.5">
             {slips.map(slip => {
                 const isPersonal = slip.purpose_type === "personal"
-                const isReturned = slip.return_status === "returned"
+                const isReturned = slip.status === "returned"
+                const isStillOut = slip.status === "still_out" || slip.status === "not_returned"
+
+                // Deducted: slip is returned, minutes computed, AND attendance day is closed
                 const isDeducted = isPersonal && isReturned && slip.minutes_gone != null && hasTimedOut
+
+                // Pending: slip is returned and minutes computed but attendance
+                // record has no time_out yet (day still open — today only)
                 const isPendingDeduction = isPersonal && isReturned && slip.minutes_gone != null && !hasTimedOut
 
                 return (
@@ -123,7 +129,7 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                                 <PurposeBadge type={slip.purpose_type} />
-                                <ReturnBadge status={slip.return_status} />
+                                <ReturnBadge status={slip.status} />
                             </div>
                         </div>
 
@@ -156,7 +162,9 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
                                     ? `${fmtMinutes(slip.minutes_gone)} deducted from work hours`
                                     : isPendingDeduction
                                         ? "Will be deducted once employee clocks out"
-                                        : "No deduction — employee has not returned yet"}
+                                        : isStillOut
+                                            ? "Employee has not returned yet — no deduction applied"
+                                            : "No deduction — employee has not returned yet"}
                             </div>
                         )}
 
@@ -174,6 +182,7 @@ function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; h
 }
 
 // ─── History Table Row ────────────────────────────────────────────────────────
+// Drop-in replacement for the existing HistoryTableRow in Index.tsx
 
 function HistoryTableRow({ r }: { r: AttendanceRecord }) {
     const [expanded, setExpanded] = useState(false)
@@ -183,35 +192,44 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
     const hasTimedOut = !!r.time_out
     const isLate = (r.late_minutes ?? 0) > 0
     const hasSlips = slips.length > 0
+    const onLeave = r.status === "ON_LEAVE_WP" || r.status === "ON_LEAVE_NP"
 
     const personalDeductionMins = hasTimedOut
         ? slips
-            .filter(s => s.purpose_type === "personal" && s.return_status === "returned" && s.minutes_gone != null)
+            .filter(s => s.purpose_type === "personal" && s.status === "returned" && s.minutes_gone != null)
             .reduce((sum, s) => sum + (s.minutes_gone ?? 0), 0)
         : 0
+
+    // Shared italic placeholder used across every time/work column on leave days
+    const LeaveCell = (
+        <span className="text-xs italic text-muted-foreground/50">On leave</span>
+    )
 
     return (
         <>
             <tr
                 className={cn(
                     "border-b border-border/50 transition-colors",
-                    hasSlips ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20",
+                    hasSlips && !onLeave ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20",
                     expanded && "bg-muted/30",
                 )}
-                onClick={() => hasSlips && setExpanded(e => !e)}
+                onClick={() => hasSlips && !onLeave && setExpanded(e => !e)}
             >
+                {/* Expand chevron — hidden for leave rows (no slips to show) */}
                 <td className="w-8 pl-3 py-2.5">
-                    {hasSlips
+                    {hasSlips && !onLeave
                         ? expanded
                             ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                             : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                         : <span className="w-3.5 h-3.5 block" />}
                 </td>
 
+                {/* Date */}
                 <td className="py-2.5 pr-4 text-xs font-medium whitespace-nowrap">
                     {format(parseISO(r.date), "EEE, MMM d, yyyy")}
                 </td>
 
+                {/* Status badge */}
                 <td className="py-2.5 pr-4">
                     <Badge variant="outline" className={cn("text-[10px] gap-1", STATUS_PILL[r.status])}>
                         <Icon className="w-2.5 h-2.5" />
@@ -219,33 +237,60 @@ function HistoryTableRow({ r }: { r: AttendanceRecord }) {
                     </Badge>
                 </td>
 
+                {/* Time In */}
                 <td className="py-2.5 pr-4">
-                    <span className={cn("text-xs font-mono", isLate && "text-rose-600 dark:text-rose-400 font-semibold")}>
-                        {fmtTime(r.time_in)}
-                    </span>
+                    {onLeave ? LeaveCell : (
+                        <span className={cn("text-xs font-mono", isLate && "text-rose-600 dark:text-rose-400 font-semibold")}>
+                            {fmtTime(r.time_in)}
+                        </span>
+                    )}
                 </td>
 
-                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{fmtTime(r.break_out)}</td>
-                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{fmtTime(r.break_in)}</td>
-                <td className="py-2.5 pr-4 text-xs font-mono text-foreground">{fmtTime(r.time_out)}</td>
-                <td className="py-2.5 pr-4 text-xs font-mono font-semibold">{fmtMinutes(r.work_minutes)}</td>
-
-                <td className="py-2.5 pr-4">
-                    {isLate
-                        ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">{fmtMinutes(r.late_minutes)}</span>
-                        : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
+                {/* Break Out */}
+                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">
+                    {onLeave ? LeaveCell : fmtTime(r.break_out)}
                 </td>
 
+                {/* Break In */}
+                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">
+                    {onLeave ? LeaveCell : fmtTime(r.break_in)}
+                </td>
+
+                {/* Time Out */}
+                <td className="py-2.5 pr-4 text-xs font-mono text-foreground">
+                    {onLeave ? LeaveCell : fmtTime(r.time_out)}
+                </td>
+
+                {/* Work Hours */}
+                <td className="py-2.5 pr-4 text-xs font-mono font-semibold">
+                    {onLeave ? LeaveCell : fmtMinutes(r.work_minutes)}
+                </td>
+
+                {/* Late */}
+                <td className="py-2.5 pr-4">
+                    {onLeave
+                        ? LeaveCell
+                        : isLate
+                            ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">{fmtMinutes(r.late_minutes)}</span>
+                            : <span className="text-xs text-muted-foreground/40 font-mono">—</span>
+                    }
+                </td>
+
+                {/* Slip Deduction */}
                 <td className="py-2.5 pr-3">
-                    {personalDeductionMins > 0
-                        ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">-{fmtMinutes(personalDeductionMins)}</span>
-                        : slips.some(s => s.purpose_type === "personal" && s.return_status === "returned" && !hasTimedOut)
-                            ? <span className="text-[10px] text-amber-500 font-semibold">Pending</span>
-                            : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
+                    {onLeave
+                        ? LeaveCell
+                        : personalDeductionMins > 0
+                            ? <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">-{fmtMinutes(personalDeductionMins)}</span>
+                            : slips.some(s => s.purpose_type === "personal" && s.status === "still_out")
+                                ? <span className="text-[10px] text-amber-500 font-semibold">Pending</span>
+                                : <span className="text-xs text-muted-foreground/40 font-mono">—</span>
+                    }
                 </td>
             </tr>
 
-            {expanded && hasSlips && (
+            {/* Expanded slip detail — only for non-leave rows */}
+            {expanded && hasSlips && !onLeave && (
                 <tr className="bg-muted/10 border-b border-border/50">
                     <td colSpan={10} className="px-4 pb-3 pt-2">
                         <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
@@ -736,7 +781,7 @@ function ArchivesDialog({
     return (
         <>
             <Dialog open={open} onOpenChange={v => !v && onClose()}>
-                <DialogContent className="w-[95vw] !max-w-[1000px] h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+                <DialogContent className="w-[95vw] max-w-[1000px]! h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
                     <DialogHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center">
@@ -861,17 +906,49 @@ export default function AttendanceRecordIndex({ records: initialRecords, archive
 
                 setRecords(prev => {
                     const idx = prev.findIndex(r => r.employee_id === updated.employee_id)
+
                     if (idx === -1) return [{ ...updated, history: [] }, ...prev]
+
                     const existing = prev[idx]
+
+                    // Same date — update in place
                     if (existing.date === updated.date) {
-                        const next = [...prev]; next[idx] = { ...updated, history: existing.history }; return next
+                        const next = [...prev]
+                        next[idx] = { ...updated, history: existing.history }
+                        return next
                     }
-                    const next = [...prev]; next[idx] = { ...updated, history: [existing, ...existing.history] }; return next
+
+                    // Different date — only promote incoming if it is actually newer
+                    const existingIsNewer = new Date(existing.date) > new Date(updated.date)
+
+                    if (existingIsNewer) {
+                        // Incoming is older — patch it inside history instead
+                        const updatedHistory = existing.history.some(r => r.date === updated.date)
+                            ? existing.history.map(r => r.date === updated.date ? updated : r)
+                            : [...existing.history, updated]
+                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        const next = [...prev]
+                        next[idx] = { ...existing, history: updatedHistory }
+                        return next
+                    }
+
+                    // Incoming is newer — promote to latest, push existing into history
+                    const next = [...prev]
+                    next[idx] = { ...updated, history: [existing, ...existing.history] }
+                    return next
                 })
 
                 setSelected(prev => {
                     if (!prev || prev.employee_id !== updated.employee_id) return prev
                     if (prev.date === updated.date) return { ...updated, history: prev.history }
+                    const existingIsNewer = new Date(prev.date) > new Date(updated.date)
+                    if (existingIsNewer) {
+                        const updatedHistory = prev.history.some(r => r.date === updated.date)
+                            ? prev.history.map(r => r.date === updated.date ? updated : r)
+                            : [...prev.history, updated]
+                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        return { ...prev, history: updatedHistory }
+                    }
                     return { ...updated, history: [prev, ...prev.history] }
                 })
             })

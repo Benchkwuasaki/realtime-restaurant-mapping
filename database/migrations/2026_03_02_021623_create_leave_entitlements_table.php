@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('leave_type_id')->constrained('leave_types', 'leave_type_id')->cascadeOnDelete();
             $table->text('leave_entitlement_description')->nullable();
             $table->integer('years_of_service')->default(0);
+            $table->string('event_type')->nullable();
             $table->decimal('days_entitled', 8, 4);
             $table->timestamps();
         });

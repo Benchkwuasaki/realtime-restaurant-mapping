@@ -11,6 +11,7 @@ export const employeeSchema = z.object({
   email: z.string(),
   employmentClassification: z.string(), 
   status: z.boolean(), 
+  avatar_url: z.string().nullable().optional(),
 })
 
 export type Employee = z.infer<typeof employeeSchema>

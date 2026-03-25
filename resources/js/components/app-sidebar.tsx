@@ -33,15 +33,17 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/use-auth';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+    TooltipProvider,
+} from '@/components/ui/tooltip';
 
 type Office = { name: string | null; acronym: string | null };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const { user, hasRole } = useAuth();
-
-    const isAdminOrHR =
-        hasRole('ogm') || hasRole('hr_admin') || hasRole('super_admin');
-
     const { department, division, unit } = user?.offices ?? {};
     const hasLinkedDepartment = Boolean(department?.name);
     const incomingDocumentsCount =
@@ -51,26 +53,216 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ).filter((office): office is Office => !!office?.name);
 
     const data = {
-        overview: [
+        navMain: [
             {
                 title: 'Dashboard',
                 url: route('dashboard'),
                 icon: LayoutDashboard,
-                show: isAdminOrHR,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin'),
             },
-            {
-                title: 'Users',
-                url: route('user.index'),
-                icon: UserCog,
-                show: hasRole('super_admin'),
-            },
-        ],
-        management: [
             {
                 title: 'Employee',
                 url: route('employee.index'),
                 icon: User,
-                show: isAdminOrHR,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin'),
+            },
+            {
+                title: 'My Profile',
+                url: user?.employee_id
+                    ? route('employee.show', user?.employee_id)
+                    : '#',
+                icon: User,
+                show: hasRole('employee'),
+            },
+            {
+                title: 'Organization',
+                url: null,
+                icon: Building2,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin'),
+                items: [
+                    {
+                        title: 'Organizational Chart',
+                        url: route('organization.chart'),
+                    },
+                    {
+                        title: 'Departments',
+                        url: route('department.index'),
+                    },
+                    {
+                        title: 'Divisions',
+                        url: route('division.index'),
+                    },
+                    {
+                        title: 'Units',
+                        url: route('unit.index'),
+                    },
+                    {
+                        title: 'Positions',
+                        url: route('position.index'),
+                    },
+                    {
+                        title: 'Internal Organization',
+                        url: route('internal-organization.index'),
+                    },
+                ],
+            },
+            {
+                title: 'Attendance',
+                url: null,
+                icon: FileCheck2,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin'),
+                items: [
+                    {
+                        title: 'Attendance Logs',
+                        url: route('recognition-logs.index'),
+                    },
+                    {
+                        title: 'Attendance Record',
+                        url: route('attendance-record.index'),
+                    },
+                    {
+                        title: 'Whereabout Slip',
+                        url: route('whereabout-slip.index'),
+                    },
+                    {
+                        title: 'Holiday Management',
+                        url: '/holiday',
+                    },
+                ],
+            },
+            {
+                title: 'Leave',
+                url: '/leave',
+                icon: Calendar,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin') ||
+                    hasRole('document_tracking_operator'),
+                items: [
+                    {
+                        title: 'Leave Calendar',
+                        url: route('leave.leave-calendar'),
+                    },
+                    {
+                        title: 'Leave Application',
+                        url: route('leave.leave-application.index'),
+                    },
+                    {
+                        title: 'Leave Adjustment Memo',
+                        url: '/leave/leave-adjustment-memo',
+                    },
+                    {
+                        title: 'Monthly Earned Leave Posting',
+                        url: route('leave.accrual.index'),
+                    },
+                    {
+                        title: 'Leave Settings',
+                        url: route('leave.leave-settings'),
+                    },
+                ], //.filter(item =>
+                //   // employees only see Leave Application
+                //   hasRole('employee') && !hasRole('super_admin')
+                //     ? item.title === 'Leave Application'
+                //     : true
+                // )
+            },
+            {
+                title: 'Leave Application',
+                url: route('leave.leave-application.index'),
+                icon: Calendar,
+                show: hasRole('employee'),
+            },
+            {
+                title: 'Payroll Processing',
+                url: route('payroll.index'),
+                icon: Play,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin'),
+            },
+            {
+                title: 'Outputs',
+                url: null,
+                icon: FileOutput,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin'),
+                items: [
+                    {
+                        title: 'Payroll Register',
+                        url: route('payroll-register.index'),
+                    },
+                    {
+                        title: 'Pay Slip Generation',
+                        url: route('payslipgeneration.index'),
+                    },
+                    {
+                        title: 'Government Remittance Report',
+                        url: route('governmentremittancereport.index'),
+                    },
+                ],
+            },
+            {
+                title: 'Pay Adjustments',
+                url: null,
+                icon: ArrowLeftRight,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin'),
+                items: [
+                    {
+                        title: 'Allowance Management',
+                        url: route('allowancemanagement.index'),
+                    },
+                    { title: 'Loan Entry', url: route('loanentry.index') },
+                    {
+                        title: 'Internal Org Deductions',
+                        url: route('internal-org-deductions.index'),
+                    },
+                    {
+                        title: 'Other Deduction Entry',
+                        url: route('otherdeductions.index'),
+                    },
+                ],
+            },
+            {
+                title: 'Configuration',
+                url: null,
+                icon: Settings2,
+                show:
+                    hasRole('ogm') ||
+                    hasRole('hr_admin') ||
+                    hasRole('super_admin'),
+                items: [
+                    {
+                        title: 'Payroll Deduction Settings',
+                        url: route('payroll.deduction-settings.index'),
+                    },
+                    {
+                        title: 'Salary Grade Table',
+                        url: route('payroll.salary-grade.index'),
+                    },
+                    {
+                        title: 'Step Increment',
+                        url: route('payroll.step-increment.index'),
+                    },
+                ],
             },
             {
                 title: 'Document Tracking',
@@ -100,163 +292,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 ],
             },
             {
-                title: 'Organization',
-                url: null,
-                icon: Building2,
-                show: isAdminOrHR,
-                items: [
-                    {
-                        title: 'Organizational Chart',
-                        url: route('organization.chart'),
-                    },
-                    { title: 'Departments', url: route('department.index') },
-                    { title: 'Divisions', url: route('division.index') },
-                    { title: 'Units', url: route('unit.index') },
-                    { title: 'Positions', url: route('position.index') },
-                    {
-                        title: 'Internal Organization',
-                        url: route('internal-organization.index'),
-                    },
-                ],
-            },
-        ],
-        timeAttendance: [
-            {
-                title: 'Attendance',
-                url: null,
-                icon: FileCheck2,
-                show:
-                    hasRole('ogm') ||
-                    hasRole('hr_admin') ||
-                    hasRole('super_admin'),
-                items: [
-                    {
-                        title: 'Attendance Logs',
-                        url: route('recognition-logs.index'),
-                    },
-                    {
-                        title: 'Attendance Record',
-                        url: route('attendance-record.index'),
-                    },
-                    {
-                        title: 'Attendance Settings',
-                        url: route('attendance-settings.index'),
-                    },
-                    {
-                        title: 'Whereabout Slip',
-                        url: route('whereabout-slip.index'),
-                    },
-                    {
-                        title: 'Holiday Management',
-                        url: '/holiday',
-                    },
-                    {
-                        title: 'Overtime Entry',
-                        url: '/organization/overtime_entry',
-                    },
-                ],
-            },
-
-            {
-                title: 'Leave',
-                url: '/leave',
-                icon: Calendar,
-                show: isAdminOrHR,
-                items: [
-                    {
-                        title: 'Leave Calendar',
-                        url: route('leave.leave-calendar'),
-                    },
-                    {
-                        title: 'Leave Application',
-                        url: route('leave.leave-application.index'),
-                    },
-                    {
-                        title: 'Leave Adjustment Memo',
-                        url: '/leave/leave-adjustment-memo',
-                    },
-                    {
-                        title: 'Monthly Earned Leave Posting',
-                        url: route('leave.accrual.index'),
-                    },
-                    {
-                        title: 'Leave Settings',
-                        url: route('leave.leave-settings'),
-                    },
-                ],
-            },
-        ],
-        finance: [
-            {
-                title: 'Payroll Processing',
-                url: route('payroll.index'),
-                icon: Play,
-                show: isAdminOrHR,
-            },
-            {
-                title: 'Outputs',
-                url: null,
-                icon: FileOutput,
-                show: isAdminOrHR,
-                items: [
-                    {
-                        title: 'Payroll Register',
-                        url: route('payroll-register.index'),
-                    },
-                    {
-                        title: 'Pay Slip Generation',
-                        url: route('payslipgeneration.index'),
-                    },
-                    {
-                        title: 'Government Remittance Report',
-                        url: route('governmentremittancereport.index'),
-                    },
-                ],
-            },
-            {
-                title: 'Pay Adjustments',
-                url: null,
-                icon: ArrowLeftRight,
-                show: isAdminOrHR,
-                items: [
-                    {
-                        title: 'Allowance Management',
-                        url: route('allowancemanagement.index'),
-                    },
-                    { title: 'Loan Entry', url: route('loanentry.index') },
-                    {
-                        title: 'Internal Org Deductions',
-                        url: route('internal-org-deductions.index'),
-                    },
-                    {
-                        title: 'Other Deduction Entry',
-                        url: route('otherdeductions.index'),
-                    },
-                ],
-            },
-            {
-                title: 'Configuration',
-                url: null,
-                icon: Settings2,
-                show: isAdminOrHR,
-                items: [
-                    {
-                        title: 'Payroll Deduction Settings',
-                        url: route('payroll.deduction-settings.index'),
-                    },
-                    {
-                        title: 'Salary Grade Table',
-                        url: route('payroll.salary-grade.index'),
-                    },
-                    {
-                        title: 'Step Increment',
-                        url: route('payroll.step-increment.index'),
-                    },
-                ],
-            },
-        ],
-        system: [
-            {
                 title: 'Reports and Analytics',
                 url: '/reports_and_analytics',
                 icon: FileBarChart,
@@ -279,7 +314,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     },
                     {
                         title: 'Leave Reports',
-                        url: route('reports_and_analytics.leave-report.index'),
+                        url: route('reports_and_analytics.leave.index'),
                     },
                     {
                         title: 'Payroll Reports',
@@ -296,18 +331,47 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 ],
             },
             {
-                title: 'Activity Logs',
-                url: route('activity_logs.index'),
-                icon: Logs,
-                show: isAdminOrHR,
-            },
-            {
                 title: 'Announcements',
-                url: route('announcement.index'),
+                url: route('announcements.index'),
                 icon: Bell,
                 show: true,
             },
+            {
+                title: 'Activity Logs',
+                url: route('activity_logs.index'),
+                icon: Logs,
+                show: true,
+            },
         ],
+        // navSecondary: [
+        //   {
+        //     title: "Support",
+        //     url: "#",
+        //     icon: LifeBuoy,
+        //   },
+        //   {
+        //     title: "Feedback",
+        //     url: "#",
+        //     icon: Send,
+        //   },
+        // ],
+        // projects: [
+        //   {
+        //     name: "Design Engineering",
+        //     url: "#",
+        //     icon: Frame,
+        //   },
+        //   {
+        //     name: "Sales & Marketing",
+        //     url: "#",
+        //     icon: PieChart,
+        //   },
+        //   {
+        //     name: "Travel",
+        //     url: "#",
+        //     icon: Map,
+        //   },
+        // ],
     };
 
     return (
@@ -320,7 +384,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             className="h-auto min-h-0 py-3"
                         >
                             <Link
-                                href="/dashboard"
+                                href={route('dashboard')}
                                 className="flex items-center gap-3 px-2"
                             >
                                 <img
@@ -339,19 +403,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
+
+                {(() => {
+                    if (officeParts.length === 0) return null;
+
+                    return (
+                        <div className="flex justify-center gap-1.5 px-3 pb-2">
+                            <Building2 className="size-3 shrink-0 text-muted-foreground" />
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex flex-row">
+                                            <p className="cursor-default text-xs leading-tight font-bold text-muted-foreground">
+                                                {officeParts
+                                                    .map(
+                                                        (office) =>
+                                                            office.acronym ??
+                                                            office.name,
+                                                    )
+                                                    .join(' › ')}
+                                            </p>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>
+                                            {officeParts
+                                                .map((office) => office.name)
+                                                .join(' › ')}
+                                        </p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    );
+                })()}
             </SidebarHeader>
-
             <SidebarContent>
-                <NavMain label="OVERVIEW" items={data.overview} />
-                <NavMain label="MANAGEMENT" items={data.management} />
-                <NavMain
-                    label="TIME & ATTENDANCE"
-                    items={data.timeAttendance}
-                />
-                <NavMain label="PAYROLL" items={data.finance} />
-                <NavMain label="SYSTEM" items={data.system} />
+                <NavMain items={data.navMain} />
+                {/* <NavProjects projects={data.projects} /> */}
+                {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
             </SidebarContent>
-
             <SidebarFooter>
                 <NavUser />
             </SidebarFooter>

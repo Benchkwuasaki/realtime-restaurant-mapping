@@ -170,7 +170,6 @@ function AttendanceDonut({
 }
 
 /* ── LATE LIST ───────────────────────────────────────────────────────────── */
-
 function fmtLate(min: number) {
     if (min < 60) return `+${min}m`;
     const h = Math.floor(min / 60);
@@ -239,7 +238,6 @@ function LateList({ entries }: { entries: TopLateEntry[] }) {
                                     }}
                                 />
                             </div>
-                            {/* Only show dept if it's not a dash/empty */}
                             {e.dept &&
                                 e.dept !== '—' &&
                                 e.dept.trim() !== '' && (
@@ -358,51 +356,6 @@ function LeaveTypeChart({ data }: { data: LeaveTypeCount[] }) {
     );
 }
 
-/* ── TOP 5 LEAVE TYPES ───────────────────────────────────────────────────── */
-function Top5LeaveTypes({ data }: { data: LeaveTypeCount[] }) {
-    const top5 = [...data].sort((a, b) => b.value - a.value).slice(0, 5);
-    if (!top5.length)
-        return (
-            <p className="py-8 text-center text-xs text-muted-foreground">
-                No data available
-            </p>
-        );
-    const max = top5[0]?.value ?? 1;
-    return (
-        <div className="flex flex-col gap-3">
-            {top5.map((e, i) => (
-                <div key={e.label} className="flex items-center gap-3">
-                    <span className="w-3 shrink-0 text-[10px] font-black text-muted-foreground">
-                        {i + 1}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-center justify-between">
-                            <span className="truncate text-xs font-semibold text-foreground">
-                                {e.label}
-                            </span>
-                            <span
-                                className="ml-2 shrink-0 text-xs font-black"
-                                style={{ color: e.fill }}
-                            >
-                                {e.value}
-                            </span>
-                        </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                            <div
-                                className="h-full rounded-full transition-all duration-500"
-                                style={{
-                                    width: `${(e.value / max) * 100}%`,
-                                    background: e.fill,
-                                }}
-                            />
-                        </div>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
-
 /* ── TOP LEAVE TAKERS ────────────────────────────────────────────────────── */
 function TopLeaveTakers({ takers }: { takers: TopLeaveTaker[] }) {
     if (!takers.length)
@@ -473,7 +426,6 @@ function TopLeaveTakers({ takers }: { takers: TopLeaveTaker[] }) {
 }
 
 /* ── TREND AREA ──────────────────────────────────────────────────────────── */
-
 const MONTH_ABBR: Record<string, string> = {
     January: 'Jan',
     February: 'Feb',
@@ -490,13 +442,8 @@ const MONTH_ABBR: Record<string, string> = {
 };
 
 function abbreviateMonth(m: string): string {
-    // Already short (e.g. "Jan")
     if (m.length <= 3) return m;
-
-    // Full name (e.g. "January")
     if (MONTH_ABBR[m]) return MONTH_ABBR[m];
-
-    // ISO format: "2025-01" or "2025-01-01"
     const parts = m.split('-');
     if (parts.length >= 2) {
         const monthIndex = parseInt(parts[1], 10) - 1;
@@ -516,7 +463,6 @@ function abbreviateMonth(m: string): string {
         ];
         return names[monthIndex] ?? m;
     }
-
     return m.slice(0, 3);
 }
 
@@ -695,7 +641,6 @@ export default function Page() {
         0,
     );
 
-    // ── Realtime attendance state ─────────────────────────────────────────
     const [realtimePresent, setRealtimePresent] = useState(presentToday ?? 0);
     const [realtimeOnTime, setRealtimeOnTime] = useState(onTimeToday ?? 0);
     const [realtimeLate, setRealtimeLate] = useState(lateToday ?? 0);
@@ -780,7 +725,6 @@ export default function Page() {
         ? Math.round(trend.reduce((s, b) => s + b.v, 0) / trend.length)
         : 0;
 
-    // Greeting based on time of day
     const hour = time.getHours();
     const greeting =
         hour < 12
@@ -793,9 +737,9 @@ export default function Page() {
     return (
         <AppLayout>
             <Head title="Dashboard" />
-            <div className="flex min-h-screen flex-col gap-4 bg-background p-5">
+            <div className="flex min-h-screen flex-col gap-4 bg-background p-4 sm:p-5">
                 {/* ── HEADER ───────────────────────────────────────────── */}
-                <div className="flex items-center justify-between py-1">
+                <div className="flex flex-col gap-3 py-1 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <div className="mb-0.5 flex items-center gap-2">
                             <div className="h-5 w-1.5 rounded-full bg-primary" />
@@ -803,7 +747,7 @@ export default function Page() {
                                 Dashboard
                             </h1>
                         </div>
-                        <div className="mt-0.5 flex items-center gap-1.5 pl-3.5">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 pl-3.5">
                             <span className="text-xs text-muted-foreground">
                                 {greeting},
                             </span>
@@ -815,7 +759,7 @@ export default function Page() {
                             </span>
                         </div>
                     </div>
-                    <div className="flex flex-col items-end gap-0.5 rounded-2xl border border-border bg-card px-4 py-2.5 shadow-sm">
+                    <div className="flex flex-col items-start gap-0.5 self-start rounded-2xl border border-border bg-card px-4 py-2.5 shadow-sm sm:items-end sm:self-auto">
                         <div className="flex items-center gap-2">
                             <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
                             <span className="text-xs font-medium text-muted-foreground">
@@ -825,12 +769,13 @@ export default function Page() {
                                 {timeStr}
                             </span>
                         </div>
-                        <span className="text-right text-[10px] text-muted-foreground">
+                        <span className="text-left text-[10px] text-muted-foreground sm:text-right">
                             {dateStr}
                         </span>
                     </div>
                 </div>
 
+                {/* ── STAT CARDS ───────────────────────────────────────── */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                     <StatCard
                         title="Total Employees"
@@ -868,8 +813,9 @@ export default function Page() {
                     />
                 </div>
 
-                {/* ── ROW 2 ────────────────────────────────────────────── */}
-                <div className="grid grid-cols-3 gap-4">
+                {/* ── ROW 2: Attendance / Late / Workforce ─────────────── */}
+                {/* Mobile: stacked. md: 2-col (attendance + late). lg: 3-col */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <DashCard>
                         <SH
                             icon={UserCheck}
@@ -896,7 +842,8 @@ export default function Page() {
                         <LateList entries={realtimeTopLate} />
                     </DashCard>
 
-                    <DashCard>
+                    {/* Workforce spans full width on md, normal on lg */}
+                    <DashCard className="md:col-span-2 lg:col-span-1">
                         <SH
                             icon={Users}
                             color={COLORS.indigo}
@@ -916,7 +863,8 @@ export default function Page() {
                         color={COLORS.late}
                         title="Leave Overview"
                     />
-                    <div className="grid grid-cols-2 gap-8">
+                    {/* Mobile: stacked. lg: side-by-side */}
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
                         <div>
                             <p className="mb-3 text-[10px] font-bold tracking-[0.12em] text-muted-foreground uppercase">
                                 Top 5 Most Used Leave Types
@@ -937,16 +885,17 @@ export default function Page() {
                 </DashCard>
 
                 {/* ── ROW 4: PENDING + TREND ───────────────────────────── */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Mobile: stacked. lg: side-by-side */}
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <DashCard>
                         <SH
                             icon={Clock}
                             color={COLORS.absent}
                             title="Leave Pending Requests"
                         />
-                        <div className="mb-5 flex items-stretch gap-4">
+                        <div className="mb-5 flex flex-col items-stretch gap-4 sm:flex-row">
                             <div
-                                className="flex flex-1 flex-col items-center justify-center rounded-lg p-5"
+                                className="flex flex-col items-center justify-center rounded-lg p-5 sm:flex-1"
                                 style={{
                                     background: `${COLORS.absent}10`,
                                     border: `1.5px solid ${COLORS.absent}28`,
@@ -962,7 +911,7 @@ export default function Page() {
                                     total pending
                                 </p>
                             </div>
-                            <div className="grid flex-1 grid-cols-1 gap-2">
+                            <div className="grid grid-cols-3 gap-2 sm:flex-1 sm:grid-cols-1">
                                 {pendingKPI.map((k) => {
                                     const Icon = k.icon;
                                     return (

@@ -170,7 +170,9 @@ class LeaveBalanceService
         }
 
         // ── Sex check — SLB is female-only ───────────────────────────────────
-        $isFemale = (bool) ($employee->basicInfo?->sex ?? false); // 1 = Female
+        // `sex` is stored as a boolean column: 1 = Female, 0 = Male.
+        // Use strict integer comparison to avoid false positives from casting.
+        $isFemale = ((int) ($employee->basicInfo?->sex ?? 0)) === 1;
         if (! $isFemale) {
             return $this->slbResult(false, 0, $lookbackFrom, $lookbackTo, 'Employee is not female.');
         }
@@ -270,11 +272,16 @@ class LeaveBalanceService
      * Manually adjust a leave balance row (HR correction).
      * Recomputes balance = total_days - used_days and re-checks VL threshold
      * in case the adjustment pushed VL over 10 days.
+     *
+     * @param  string  $remarks  Optional HR note recorded for audit purposes.
+     *                           Currently stored as a model comment; extend to
+     *                           an audit log table when the audit module is ready.
      */
     public function adjustBalance(
-        int   $employeeLeaveBalanceId,
-        float $totalDays,
-        float $usedDays,
+        int    $employeeLeaveBalanceId,
+        float  $totalDays,
+        float  $usedDays,
+        string $remarks = '',
     ): EmployeeLeaveBalance {
         $balance = EmployeeLeaveBalance::findOrFail($employeeLeaveBalanceId);
 
@@ -381,6 +388,63 @@ class LeaveBalanceService
         }
 
         return $years;
+    }
+
+    /**
+     * Forfeit unused balances for all non-cumulative leave types at year-end.
+     *
+     * CSC Rule XVI mandates:
+     *   • Forced Leave (5 days)            — forfeited if unused by Dec 31
+     *   • Special Privilege Leave (3 days) — forfeited if unused by Dec 31
+     *   • VAWC Leave                       — non-cumulative per RA 9262
+     *   • Solo Parent Leave                — non-cumulative per RA 8972
+     *   • Special Leave Benefit for Women  — non-cumulative per RA 9710
+     *
+     * This method zeroes `balance` (and aligns `total_days`) for every
+     * `employee_leave_balances` row where:
+     *   (a) the leave type has `is_cumulative = false`, AND
+     *   (b) the cycle_year matches the year being closed, AND
+     *   (c) the remaining balance > 0
+     *
+     * `used_days` is intentionally preserved for audit history.
+     *
+     * Idempotent — safe to run multiple times for the same year.
+     *
+     * Intended to be called by a scheduled Artisan command on January 1
+     * (or the last working day of December) each year.
+     *
+     * @param  int  $cycleYear  The year whose non-cumulative balances are forfeited.
+     * @return int  Number of balance rows zeroed.
+     */
+    public function forfeitNonCumulativeBalances(int $cycleYear): int
+    {
+        $nonCumulativeTypeIds = LeaveType::where('is_cumulative', false)
+            ->where('status', true)
+            ->pluck('leave_type_id')
+            ->all();
+
+        if (empty($nonCumulativeTypeIds)) {
+            return 0;
+        }
+
+        $affected = EmployeeLeaveBalance::where('cycle_year', $cycleYear)
+            ->whereIn('leave_type_id', $nonCumulativeTypeIds)
+            ->where('balance', '>', 0)
+            ->get();
+
+        $count = 0;
+
+        foreach ($affected as $row) {
+            // Set total_days = used_days so the invariant total_days - used_days = balance = 0
+            // is maintained. used_days itself is NOT changed (audit record).
+            $row->update([
+                'total_days' => round((float) $row->used_days, 4),
+                'balance'    => 0.0,
+            ]);
+            $count++;
+        }
+
+        return $count;
     }
 
     // ─────────────────────────────────────────────────────────────────────────

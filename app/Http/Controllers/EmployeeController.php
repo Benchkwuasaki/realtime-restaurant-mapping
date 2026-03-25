@@ -657,6 +657,7 @@ class EmployeeController extends Controller
             'email' => $employee->work_email,
             'employmentClassification' => $employee->employment_classification ?? '—',
             'status' => (bool) $employee->status,
+            'avatar_url' => $employee->avatar_url,
         ];
     }
 

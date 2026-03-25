@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('notes')->nullable();
 
-            $table->unsignedBigInteger('origin_office_id');
+            $table->unsignedBigInteger('origin_office_id')->nullable();
             $table->unsignedBigInteger('current_office_id')->nullable();
 
             $table->enum('status', [
@@ -40,7 +40,7 @@ return new class extends Migration
             $table->foreign('origin_office_id')
                 ->references('department_id')
                 ->on('departments')
-                ->restrictOnDelete();
+                ->nullOnDelete();
 
             $table->foreign('current_office_id')
                 ->references('department_id')

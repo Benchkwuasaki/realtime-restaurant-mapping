@@ -1,8 +1,3 @@
-import { type VariantProps } from "class-variance-authority"
-import { type badgeVariants } from "@/components/ui/badge"
-
-type BadgeVariant = VariantProps<typeof badgeVariants>["variant"]
-
 export const holidayTypes = [
   {
     value: "Regular Holiday",
@@ -22,9 +17,9 @@ export const holidayTypes = [
   },
 ]
 
-export const TYPE_BADGE_VARIANT: Record<string, BadgeVariant> = {
-  "Regular Holiday":     "red",
-  "Special Non-Working": "yellow",
-  "Special Working":     "blue",
-  "Local Holiday":       "gray",
+export const TYPE_TEXT_COLOR: Record<string, string> = {
+  "Regular Holiday":     "text-red-500 dark:text-red-400",
+  "Special Non-Working": "text-yellow-500 dark:text-yellow-400",
+  "Special Working":     "text-blue-500 dark:text-blue-400",
+  "Local Holiday":       "text-gray-500 dark:text-gray-400",
 }

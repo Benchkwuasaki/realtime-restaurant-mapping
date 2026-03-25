@@ -20,9 +20,11 @@ class EmployeeLeaveBalance extends Model
     ];
 
     protected $casts = [
-        'total_days' => 'decimal:1',
-        'used_days'  => 'decimal:1',
-        'balance'    => 'decimal:1',
+        // DB column is decimal(8,4) — cast must match to preserve accrual precision.
+        // decimal:1 would silently truncate e.g. 1.2500 → 1.3, corrupting balances.
+        'total_days' => 'decimal:4',
+        'used_days'  => 'decimal:4',
+        'balance'    => 'decimal:4',
     ];
 
     // ─── Relationships ────────────────────────────────────────────────────────

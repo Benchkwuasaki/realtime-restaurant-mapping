@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\EmployeeLeaveBalance;
 use App\Models\LeaveApplication;
+use App\Models\LeaveAccrualRecord;
+use App\Models\Employee;
+use App\Models\LeaveType;
 use Inertia\Inertia;
 
 class LeaveReportController extends Controller
@@ -33,11 +36,9 @@ class LeaveReportController extends Controller
             ])
             ->filter(fn ($r) => $r['start'] && $r['end'])
             ->values()
-            ->all();            // plain PHP array — no Collection object passed to Inertia
+            ->all();
 
         // ── Leave Balances ────────────────────────────────────────────────────
-        // Each employee gets one entry with their info + an array of per-leave-type
-        // rows. The React component uses the `leaves` array to populate the drawer.
         $currentYear = now()->year;
 
         $balances = EmployeeLeaveBalance::with([
@@ -60,14 +61,10 @@ class LeaveReportController extends Controller
                 $department = $employee?->item?->position?->department?->department_name
                            ?? 'Unassigned';
 
-                // Adapt division / unit to your actual basicInfo column names.
-                // Remove whichever fields your EmployeeBasicInfo doesn't have.
                 $division = $basicInfo?->division ?? null;
                 $unit     = $basicInfo?->unit     ?? null;
 
-                // Position title from the plantilla item chain.
-                $position = $employee?->item?->position?->position_title
-                         ?? $basicInfo?->position
+                $position = $employee?->item?->position?->position_name
                          ?? 'N/A';
 
                 $leaves = $rows
@@ -81,7 +78,7 @@ class LeaveReportController extends Controller
                     ])
                     ->sortBy('leave_type_name')
                     ->values()
-                    ->all();         // plain PHP array — no Collection object passed to Inertia
+                    ->all();
 
                 return [
                     'employee_id' => $first->employee_id,
@@ -97,11 +94,105 @@ class LeaveReportController extends Controller
             })
             ->sortBy('name')
             ->values()
-            ->all();            // plain PHP array — no Collection object passed to Inertia
+            ->all();
 
         return Inertia::render('ReportsAndAnalytics/Leave/Index', [
             'requests' => $requests,
             'balances' => $balances,
+        ]);
+    }
+
+    /**
+     * Returns the full chronological leave card transaction log for one
+     * employee × one leave type, suitable for the CSC Leave Card format.
+     *
+     * Route: GET /reports/leave/leave-card/{employeeId}/{leaveTypeId}
+     * Name:  reports_and_analytics.leave.leave-card
+     */
+    public function leaveCard(int $employeeId, int $leaveTypeId)
+    {
+        $employee  = Employee::with(['basicInfo', 'item.position.department'])
+                        ->findOrFail($employeeId);
+        $leaveType = LeaveType::findOrFail($leaveTypeId);
+
+        $basicInfo = $employee->basicInfo;
+        $name      = $basicInfo
+            ? trim($basicInfo->first_name . ' ' . $basicInfo->last_name)
+            : 'Unknown';
+
+        // ── Accrual rows (credits earned) ─────────────────────────────────────
+        $accruals = LeaveAccrualRecord::with('posting')
+            ->where('employee_id', $employeeId)
+            ->where('leave_type_id', $leaveTypeId)
+            ->get()
+            ->map(fn ($a) => [
+                'date'        => $a->posting?->posting_date?->toDateString(),
+                'reference'   => null,
+                'particulars' => 'Earned — ' . $a->attendance_days . ' attendance days',
+                'earned'      => (float) $a->accrual_earned,
+                'used'        => null,
+                'balance'     => (float) $a->balance_after,
+                'type'        => 'credit',
+            ]);
+
+        // ── Application rows (debits used) ────────────────────────────────────
+        $applications = LeaveApplication::where('employee_id', $employeeId)
+            ->where('leave_type_id', $leaveTypeId)
+            ->whereIn('status', ['Approved'])
+            ->get()
+            ->map(fn ($a) => [
+                'date'        => $a->start_date?->toDateString(),
+                'reference'   => (string) $a->leave_application_id,
+                'particulars' => $a->start_date->format('M d') . ' – ' . $a->end_date->format('M d, Y'),
+                'earned'      => null,
+                'used'        => (float) ($a->start_date->diffInDays($a->end_date) + 1),
+                'balance'     => null,  // computed on the frontend from running total
+                'type'        => 'debit',
+            ]);
+
+        // ── Merge, sort chronologically, recompute running balance ────────────
+        // If balance_after is available from accruals we use it; for debit rows
+        // we recompute the running balance from the sorted transaction list so
+        // the frontend always receives a consistent `balance` column.
+        $transactions = $accruals
+            ->merge($applications)
+            ->sortBy('date')
+            ->values();
+
+        // Seed from the first accrual record's balance_before if available.
+        $runningBalance = (float) (LeaveAccrualRecord::where('employee_id', $employeeId)
+            ->where('leave_type_id', $leaveTypeId)
+            ->orderBy('leave_accrual_record_id')
+            ->value('balance_before') ?? 0);
+
+        $transactions = $transactions->map(function ($row) use (&$runningBalance) {
+            if ($row['type'] === 'credit') {
+                $runningBalance = $row['balance'] ?? ($runningBalance + ($row['earned'] ?? 0));
+                $row['balance'] = round($runningBalance, 4);
+            } else {
+                $runningBalance = round($runningBalance - ($row['used'] ?? 0), 4);
+                $row['balance'] = $runningBalance;
+            }
+            return $row;
+        })->values()->all();
+
+        return response()->json([
+            'employee' => [
+                'name'       => $name,
+                'work_id'    => $employee->work_id ?? '',
+                'position'   => $employee->item?->position?->position_name ?? 'N/A',
+                'department' => $employee->item?->position?->department?->department_name ?? 'N/A',
+                'division'   => $employee->item?->position?->division?->division_name ?? null,
+                'unit'       => $employee->item?->position?->unit?->unit_name ?? null,
+            ],
+            'leave_type' => [
+                'id'          => $leaveType->leave_type_id,
+                'name'        => $leaveType->leave_type_name,
+                'is_paid'     => (bool) $leaveType->is_paid,
+                'is_accrual'  => (bool) $leaveType->is_accrual,
+            ],
+            'transactions' => $transactions,
+            'as_of'        => now()->toDateString(),
         ]);
     }
 }

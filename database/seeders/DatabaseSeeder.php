@@ -617,6 +617,7 @@ class DatabaseSeeder extends Seeder
             LeaveApplicationSeeder::class,
             MandatoryAllowanceSeeder::class,
             // LeaveEntitlementSeeder::class,
+            AnnouncementSeeder::class,
         ]);
     }
 

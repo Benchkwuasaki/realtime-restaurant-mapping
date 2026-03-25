@@ -28,9 +28,9 @@ return new class extends Migration
             $table->foreignId('internal_org_type_id')
                   ->constrained('internal_org_types', 'internal_org_type_id')
                   ->restrictOnDelete();
-            $table->string('head');
+            $table->foreignId('head_employee_id')->nullable()->constrained('employees', 'employee_id')->nullOnDelete();
             $table->boolean('payroll_deduction_linked')->default(false);
-            $table->boolean('status')->default(true); // true = Active
+            $table->boolean('status')->default(true);
             $table->timestamps();
             $table->softDeletes();
         });

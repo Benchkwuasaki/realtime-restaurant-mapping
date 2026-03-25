@@ -10,14 +10,6 @@ import { configureEcho } from '@laravel/echo-react';
 
 configureEcho({
     broadcaster: 'reverb',
-});
-
-configureEcho({
-    broadcaster: 'reverb',
-});
-
-configureEcho({
-    broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY,
     wsHost: import.meta.env.VITE_REVERB_HOST,
     wsPort: Number(import.meta.env.VITE_REVERB_PORT) || 8080,

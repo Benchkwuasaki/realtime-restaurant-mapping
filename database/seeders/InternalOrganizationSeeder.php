@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Employee;
 use App\Models\InternalOrganization;
-use App\Models\InternalOrganizationService;
 use App\Models\InternalOrgType;
 use Illuminate\Database\Seeder;
 
@@ -14,13 +14,36 @@ class InternalOrganizationSeeder extends Seeder
         // Resolve type IDs once — assumes InternalOrgTypeSeeder / migration seeding ran first
         $typeIds = InternalOrgType::pluck('internal_org_type_id', 'internal_org_type');
 
+        // The EmployeeSeeder creates 100 employees assigned work_id EMP-0001 through EMP-0100.
+        // We resolve their employee_ids by work_id so the mapping is deterministic regardless
+        // of auto-increment state.
+        $empByWorkId = Employee::pluck('employee_id', 'work_id');
+
+        // Helper: resolve employee_id from 1-based seeder index (EMP-0001 = index 1)
+        $emp = fn (int $n) => $empByWorkId[sprintf('EMP-%04d', $n)] ?? null;
+
+        // Pick heads that are spread across departments and position types:
+        //   EMP-0001  → HR Officer (i=0)
+        //   EMP-0005  → HR Division Chief (i=4)
+        //   EMP-0009  → Operations Coordinator (i=6, 1-based offset)
+        //   EMP-0015  → Accountant (i=14)
+        //   EMP-0019  → Finance Manager (i=18)
+        //   EMP-0020  → Records Officer (i=19)
+        //   EMP-0025  → Legal Officer (i=24)
+        //   EMP-0027  → Legal Division Chief (i=26)
+        //   EMP-0014  → IT Manager (i=13)
+        //   EMP-0008  → Public Affairs Officer (i=7)
+        //   EMP-0022  → Procurement Officer (i=21)
+        //   EMP-0024  → Admin Division Chief (i=23)
+        //   EMP-0010  → Senior Developer (i=9)
+
         $organizations = [
             // ── Unions ───────────────────────────────────────────────────────────
             [
                 'code' => 'UN-001',
                 'name' => 'General Workers Union',
                 'internal_org_type_id' => $typeIds['Union'],
-                'head' => 'Ricardo Santos',
+                'head_employee_id' => $emp(1),
                 'payroll_deduction_linked' => true,
                 'status' => true,
             ],
@@ -28,7 +51,7 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'UN-002',
                 'name' => 'Technical Employees Union',
                 'internal_org_type_id' => $typeIds['Union'],
-                'head' => 'Maria Dela Cruz',
+                'head_employee_id' => $emp(14),
                 'payroll_deduction_linked' => true,
                 'status' => true,
             ],
@@ -36,7 +59,7 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'UN-003',
                 'name' => 'Administrative Staff Union',
                 'internal_org_type_id' => $typeIds['Union'],
-                'head' => 'Jose Reyes',
+                'head_employee_id' => $emp(24),
                 'payroll_deduction_linked' => false,
                 'status' => false,
             ],
@@ -46,7 +69,7 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'CO-001',
                 'name' => 'Employees Multi-Purpose Cooperative',
                 'internal_org_type_id' => $typeIds['Cooperative'],
-                'head' => 'Lorna Bautista',
+                'head_employee_id' => $emp(5),
                 'payroll_deduction_linked' => true,
                 'status' => true,
             ],
@@ -54,7 +77,7 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'CO-002',
                 'name' => 'Staff Savings and Credit Cooperative',
                 'internal_org_type_id' => $typeIds['Cooperative'],
-                'head' => 'Antonio Villanueva',
+                'head_employee_id' => $emp(15),
                 'payroll_deduction_linked' => true,
                 'status' => true,
             ],
@@ -62,7 +85,7 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'CO-003',
                 'name' => 'Workers Consumer Cooperative',
                 'internal_org_type_id' => $typeIds['Cooperative'],
-                'head' => 'Carla Mendoza',
+                'head_employee_id' => $emp(19),
                 'payroll_deduction_linked' => false,
                 'status' => true,
             ],
@@ -70,7 +93,7 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'CO-004',
                 'name' => 'Health Services Cooperative',
                 'internal_org_type_id' => $typeIds['Cooperative'],
-                'head' => 'Benjamin Torres',
+                'head_employee_id' => $emp(22),
                 'payroll_deduction_linked' => false,
                 'status' => false,
             ],
@@ -80,7 +103,7 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'AS-001',
                 'name' => 'Employees Welfare Association',
                 'internal_org_type_id' => $typeIds['Association'],
-                'head' => 'Gloria Ramos',
+                'head_employee_id' => $emp(8),
                 'payroll_deduction_linked' => true,
                 'status' => true,
             ],
@@ -88,7 +111,7 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'AS-002',
                 'name' => 'Retired Employees Association',
                 'internal_org_type_id' => $typeIds['Association'],
-                'head' => 'Eduardo Flores',
+                'head_employee_id' => $emp(25),
                 'payroll_deduction_linked' => false,
                 'status' => true,
             ],
@@ -96,7 +119,7 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'AS-003',
                 'name' => 'Women in the Workplace Association',
                 'internal_org_type_id' => $typeIds['Association'],
-                'head' => 'Sophia Garcia',
+                'head_employee_id' => $emp(10),
                 'payroll_deduction_linked' => false,
                 'status' => true,
             ],
@@ -104,7 +127,7 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'AS-004',
                 'name' => 'Sports and Recreation Association',
                 'internal_org_type_id' => $typeIds['Association'],
-                'head' => 'Ramon Castillo',
+                'head_employee_id' => $emp(20),
                 'payroll_deduction_linked' => false,
                 'status' => false,
             ],
@@ -112,81 +135,21 @@ class InternalOrganizationSeeder extends Seeder
                 'code' => 'AS-005',
                 'name' => 'Professional Development Association',
                 'internal_org_type_id' => $typeIds['Association'],
-                'head' => 'Patricia Navarro',
+                'head_employee_id' => $emp(27),
                 'payroll_deduction_linked' => true,
                 'status' => true,
             ],
         ];
 
         foreach ($organizations as $org) {
-            InternalOrganization::updateOrCreate(['code' => $org['code']], $org);
-        }
+            $record = InternalOrganization::updateOrCreate(
+                ['code' => $org['code']],
+                $org
+            );
 
-        // ── Services ───────────────────────────────────────────────────────────
-        // NOTE: Loans are intentionally excluded here.
-        // Internal org loans are entered via the Loan Entry page and stored in
-        // the loans table with internal_organization_id FK.
-        // InternalOrgDeduction only handles: Savings, Share_Capital, Dues.
-
-        $servicesByOrgCode = [
-
-            // ── UN-001: General Workers Union ──────────────────────────────────
-            'UN-001' => [
-                ['name' => 'Union Membership Dues', 'category' => InternalOrganizationService::CATEGORY_DUES,    'deductable_from_payroll' => true],
-                ['name' => 'Union Mutual Aid Fund', 'category' => InternalOrganizationService::CATEGORY_SAVINGS, 'deductable_from_payroll' => true],
-            ],
-
-            // ── UN-002: Technical Employees Union ──────────────────────────────
-            'UN-002' => [
-                ['name' => 'Union Membership Dues', 'category' => InternalOrganizationService::CATEGORY_DUES,    'deductable_from_payroll' => true],
-                ['name' => 'Union Solidarity Fund', 'category' => InternalOrganizationService::CATEGORY_SAVINGS, 'deductable_from_payroll' => true],
-            ],
-
-            // ── CO-001: Employees Multi-Purpose Cooperative ────────────────────
-            'CO-001' => [
-                ['name' => 'Regular Savings',            'category' => InternalOrganizationService::CATEGORY_SAVINGS,       'deductable_from_payroll' => true],
-                ['name' => 'Share Capital Contribution', 'category' => InternalOrganizationService::CATEGORY_SHARE_CAPITAL, 'deductable_from_payroll' => true],
-                ['name' => 'Membership Dues',            'category' => InternalOrganizationService::CATEGORY_DUES,          'deductable_from_payroll' => true],
-            ],
-
-            // ── CO-002: Staff Savings and Credit Cooperative ───────────────────
-            'CO-002' => [
-                ['name' => 'Compulsory Savings',         'category' => InternalOrganizationService::CATEGORY_SAVINGS,       'deductable_from_payroll' => true],
-                ['name' => 'Voluntary Savings',          'category' => InternalOrganizationService::CATEGORY_SAVINGS,       'deductable_from_payroll' => true],
-                ['name' => 'Share Capital Contribution', 'category' => InternalOrganizationService::CATEGORY_SHARE_CAPITAL, 'deductable_from_payroll' => true],
-                ['name' => 'Membership Dues',            'category' => InternalOrganizationService::CATEGORY_DUES,          'deductable_from_payroll' => true],
-            ],
-
-            // ── AS-001: Employees Welfare Association ──────────────────────────
-            'AS-001' => [
-                ['name' => 'Association Membership Dues', 'category' => InternalOrganizationService::CATEGORY_DUES,    'deductable_from_payroll' => true],
-                ['name' => 'Welfare Fund Savings',        'category' => InternalOrganizationService::CATEGORY_SAVINGS, 'deductable_from_payroll' => true],
-            ],
-
-            // ── AS-005: Professional Development Association ───────────────────
-            'AS-005' => [
-                ['name' => 'Association Membership Dues',   'category' => InternalOrganizationService::CATEGORY_DUES,    'deductable_from_payroll' => true],
-                ['name' => 'Professional Development Fund', 'category' => InternalOrganizationService::CATEGORY_SAVINGS, 'deductable_from_payroll' => true],
-            ],
-        ];
-
-        foreach ($servicesByOrgCode as $orgCode => $services) {
-            $org = InternalOrganization::where('code', $orgCode)->first();
-            if (! $org) {
-                continue;
-            }
-
-            foreach ($services as $service) {
-                InternalOrganizationService::updateOrCreate(
-                    [
-                        'internal_organization_id' => $org->internal_organization_id,
-                        'internal_organization_service_name' => $service['name'],
-                    ],
-                    [
-                        'service_category' => $service['category'],
-                        'deductable_from_payroll' => $service['deductable_from_payroll'],
-                    ]
-                );
+            // The head is automatically a member of their organization
+            if ($org['head_employee_id']) {
+                $record->members()->syncWithoutDetaching([$org['head_employee_id']]);
             }
         }
     }

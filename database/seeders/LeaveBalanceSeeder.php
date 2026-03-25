@@ -12,45 +12,42 @@ class LeaveBalanceSeeder extends Seeder
     // ── Leave types whose balance rows are NOT pre-seeded ─────────────────────
     //
     // DYNAMICALLY GRANTED (by LeaveBalanceService at runtime):
-    //   • Forced Leave          — granted when VL balance ≥ 10 days
+    //   • Forced Leave            — granted when VL balance ≥ 10 days
     //   • Special Privilege Leave — granted when VL balance ≥ 10 days
     //
     // GRANTED AT FILING (validated on-demand, not pre-allocated):
+    //   • Maternity Leave               — event-driven (live birth / miscarriage);
+    //     days depend on the declared event_type. No standing balance makes sense.
     //   • Special Leave Benefit for Women — requires 6 months aggregate service
     //     in the last 12 months prior to surgery (rolling lookback per RA 9710).
-    //     The eligibility window is relative to the surgery date, so a standing
-    //     balance row would be misleading. LeaveBalanceService::checkSLBEligibility()
-    //     handles this at leave filing time.
     //
-    // These names must exactly match leave_type_name in leave_types table.
+    // These names must exactly match leave_type_name in the leave_types table.
     // ──────────────────────────────────────────────────────────────────────────
     private const SKIP_SEEDING = [
         'Forced Leave',
         'Special Privilege Leave',
+        'Maternity Leave',
         'Special Leave Benefit for Women',
         // Leave Without Pay has no entitlements — nothing to seed
         'Leave Without Pay',
     ];
 
     // ── Sex-restricted leave types ────────────────────────────────────────────
-    // Key = leave_type_name, value = required sex string on the LeaveType record.
-    // Employees of the wrong sex are skipped entirely for these types.
-    // ──────────────────────────────────────────────────────────────────────────
     private const SEX_RESTRICTED = [
-        'Maternity Leave'                 => 'Female',
-        'Paternity Leave'                 => 'Male',
-        'VAWC Leave'                      => 'Female',
+        'Paternity Leave' => 'Male',
+        'VAWC Leave'      => 'Female',
     ];
 
     // ── Accrual leave types ───────────────────────────────────────────────────
-    // Start with 0.0 balance — their balance grows through monthly accrual
-    // postings in LeaveAccrualController. The entitlement row defines the
-    // annual target (15 days), not the opening balance.
+    // Seeded with a 10-day opening balance for dev/testing purposes.
+    // In production, these grow through monthly accrual postings (1.25 days/month).
     // ──────────────────────────────────────────────────────────────────────────
     private const ACCRUAL_TYPES = [
         'Vacation Leave',
         'Sick Leave',
     ];
+
+    private const ACCRUAL_OPENING_BALANCE = 10.0;
 
     public function run(): void
     {
@@ -59,9 +56,10 @@ class LeaveBalanceSeeder extends Seeder
         $cycleYear = now()->year;
         $now       = now()->toDateTimeString();
 
-        // ── Load all active leave types with their first entitlement ──────────
-        // We use the first (lowest days_entitled) entitlement row as the opening
-        // balance for non-accrual types. Skipped types are excluded entirely.
+        // ── Load all active leave types with their entitlements ───────────────
+        // For non-accrual, non-event-driven types, we use the sole entitlement
+        // row as the flat opening balance. Types with multiple event-dependent
+        // rows (Maternity Leave) are excluded via SKIP_SEEDING above.
         $leaveTypes = LeaveType::where('status', true)
             ->whereNotIn('leave_type_name', self::SKIP_SEEDING)
             ->with([
@@ -70,7 +68,6 @@ class LeaveBalanceSeeder extends Seeder
             ->get();
 
         // ── Load all active employees with sex ────────────────────────────────
-        // sex: 0 = Male, 1 = Female
         $employees = DB::table('employees as e')
             ->join('employee_basic_info as b', 'b.employee_basic_info_id', '=', 'e.employee_basic_info_id')
             ->where('e.status', true)
@@ -94,13 +91,8 @@ class LeaveBalanceSeeder extends Seeder
                 }
 
                 // ── Opening balance ───────────────────────────────────────────
-                // Accrual types (VL, SL) always start at 0 — their balance
-                // is built up through monthly accrual postings.
-                //
-                // All other types use the minimum entitlement row as the
-                // opening balance (the flat grant for that leave type).
                 if (in_array($lt->leave_type_name, self::ACCRUAL_TYPES, true)) {
-                    $openingBalance = 0.0;
+                    $openingBalance = self::ACCRUAL_OPENING_BALANCE;
                 } else {
                     $firstEntitlement = $lt->entitlements->first();
                     $openingBalance   = $firstEntitlement
@@ -121,7 +113,6 @@ class LeaveBalanceSeeder extends Seeder
             }
         }
 
-        // Batch insert — avoids memory issues with large employee × leave type sets
         foreach (array_chunk($rows, 500) as $chunk) {
             DB::table('employee_leave_balances')->insert($chunk);
         }
@@ -133,7 +124,9 @@ class LeaveBalanceSeeder extends Seeder
             $leaveTypes->count(),
         ));
 
-        $this->command->warn('Note: Forced Leave, Special Privilege Leave — granted automatically when VL ≥ 10 (run CheckLeaveEntitlements command).');
-        $this->command->warn('Note: Special Leave Benefit for Women — validated at leave filing time (6-month rolling lookback).');
+        $this->command->warn('Note: Vacation Leave and Sick Leave seeded with ' . self::ACCRUAL_OPENING_BALANCE . ' days opening balance (dev/testing).');
+        $this->command->warn('Note: Forced Leave, Special Privilege Leave — granted automatically when VL ≥ 10 (run leave:check-entitlements command).');
+        $this->command->warn('Note: Maternity Leave — granted at filing time based on declared event (live_birth / miscarriage).');
+        $this->command->warn('Note: Special Leave Benefit for Women — validated at filing time (6-month rolling lookback).');
     }
 }

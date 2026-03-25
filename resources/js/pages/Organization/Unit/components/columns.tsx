@@ -3,7 +3,7 @@
 import { router } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import { useState, useRef } from 'react';
-import { Pen, Trash } from 'lucide-react';
+import { Pen, Trash, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
@@ -28,6 +28,7 @@ import { type Unit } from '../data/schema';
 
 interface ColumnOptions {
     onEdit: (unit: Unit) => void;
+    onAssign: (unit: Unit) => void;
 }
 
 // ─── Mobile Delete Confirm Dialog ─────────────────────────────────────────────
@@ -118,9 +119,10 @@ function DeleteConfirmDialog({ unit, onClose }: DeleteConfirmDialogProps) {
 interface MobileUnitCardProps {
     row: Unit;
     onEdit: (unit: Unit) => void;
+    onAssign: (unit: Unit) => void;
 }
 
-function MobileUnitCard({ row, onEdit }: MobileUnitCardProps) {
+function MobileUnitCard({ row, onEdit, onAssign }: MobileUnitCardProps) {
     const [confirmUnit, setConfirmUnit] = useState<Unit | null>(null);
     const suppressNextClick = useRef(false);
 
@@ -171,7 +173,19 @@ function MobileUnitCard({ row, onEdit }: MobileUnitCardProps) {
                         {row.positions?.length ?? 0} position
                         {(row.positions?.length ?? 0) !== 1 ? 's' : ''}
                     </span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-12 w-12 p-0 text-xs text-muted-foreground hover:text-primary"
+                            title="Assign employees"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onAssign(row);
+                            }}
+                        >
+                            <UserPlus />
+                        </Button>
                         <Button
                             variant="ghost"
                             size="sm"
@@ -210,6 +224,7 @@ function MobileUnitCard({ row, onEdit }: MobileUnitCardProps) {
 
 export function getColumns({
     onEdit,
+    onAssign,
 }: ColumnOptions): DataTableColumnDef<Unit>[] {
     return [
         {
@@ -251,7 +266,9 @@ export function getColumns({
             ),
             enableSorting: true,
             enableHiding: true,
-            mobileCard: (row) => <MobileUnitCard row={row} onEdit={onEdit} />,
+            mobileCard: (row) => (
+                <MobileUnitCard row={row} onEdit={onEdit} onAssign={onAssign} />
+            ),
         },
         {
             accessorKey: 'unit_acronym',
@@ -301,6 +318,12 @@ export function getColumns({
                 <DataTableRowActions
                     row={row}
                     actions={[
+                        // ── Assign employees action ──
+                        {
+                            icon: UserPlus,
+                            label: 'Assign Employees',
+                            onClick: (unit) => onAssign(unit),
+                        },
                         editAction(onEdit),
                         deleteAction(
                             (unit) =>

@@ -125,7 +125,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveE
                 const description = row.getValue('leave_entitlement_description') as string | null;
                 return (
                     <div
-                        className={`min-w-50 max-w-75 text-sm text-muted-foreground text-justify cursor-pointer ${expanded ? 'whitespace-normal wrap-break-word' : 'truncate'
+                        className={`min-w-90 max-w-150 text-sm text-muted-foreground text-justify cursor-pointer ${expanded ? 'whitespace-normal wrap-break-word' : 'truncate'
                             }`}
                         onClick={(e) => {
                             e.stopPropagation();
@@ -140,6 +140,25 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<LeaveE
             enableSorting: false,
             enableHiding: true,
         },
+
+        // years of service
+        {
+            accessorKey: 'event_type',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Event Name" />
+            ),
+            cell: ({ row }) => {
+                const event_type = row.getValue('event_type') as string | null;
+                return (
+                    <span className="text-sm text-muted-foreground">
+                        {event_type || 'N/A'}
+                    </span>
+                );
+            },
+            enableSorting: true,
+            enableHiding: true,
+        },
+
 
         // years of service
         {

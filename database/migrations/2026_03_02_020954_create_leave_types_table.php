@@ -17,8 +17,13 @@ return new class extends Migration
             $table->text('leave_type_description')->nullable();
             $table->enum('eligible_sex', ['All', 'Male', 'Female'])->default('All');
             $table->boolean('is_paid')->default(false);
+            $table->boolean('is_cumulative')->default(true);
+            $table->boolean('is_per_event')->default(false);
+            $table->unsignedTinyInteger('max_lifetime_grants')->nullable();
             $table->boolean('is_convertible')->default(false);
             $table->boolean('is_accrual')->default(false);
+            $table->enum('availment_type', ['continuous', 'intermittent', 'both'])->default('both');
+            $table->unsignedTinyInteger('availment_deadline_days')->nullable();
             $table->boolean('status')->default(true);
             $table->timestamps();
         });

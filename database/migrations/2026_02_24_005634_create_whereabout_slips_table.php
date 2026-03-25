@@ -19,15 +19,16 @@ return new class extends Migration
             $table->string('purpose_description');
             $table->time('time_out');
             $table->time('time_returned')->nullable();
+            $table->date('date_returned')->nullable();
             $table->time('time_noted')->nullable();
-            $table->unsignedSmallInteger('minutes_gone')->nullable(); // null until employee returns; personal only deducts from work_minutes
-            $table->enum('status', ['pending', 'done'])->default('pending');
-            $table->enum('return_status', ['not_returned', 'returned'])->default('not_returned');
+            $table->date('date_noted')->nullable();
+            $table->unsignedSmallInteger('minutes_gone')->nullable();
+            $table->enum('status', ['still_out', 'not_returned', 'returned'])->default('still_out');
             $table->string('prov_code')->nullable();
             $table->string('city_code')->nullable();
             $table->string('brgy_code')->nullable();
-            $table->decimal('latitude', 11, 7);
-            $table->decimal('longitude', 11, 7);
+            $table->decimal('latitude', 11, 7)->nullable();
+            $table->decimal('longitude', 11, 7)->nullable();
             $table->timestamps();
         });
     }

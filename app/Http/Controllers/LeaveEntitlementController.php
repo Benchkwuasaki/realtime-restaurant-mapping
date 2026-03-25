@@ -35,7 +35,8 @@ class LeaveEntitlementController extends Controller
             'leave_entitlement_description' => 'nullable|string',
             'years_of_service' => 'required|integer|min:0',
             'days_entitled' => 'required|numeric|min:0',
-        ]);
+            'event_type' => 'nullable|string',
+            ]);
 
         // Create a new leave entitlement record in the database
         LeaveEntitlement::create($validated);
@@ -74,6 +75,7 @@ class LeaveEntitlementController extends Controller
             'leave_entitlement_description' => 'nullable|string',
             'years_of_service' => 'required|integer|min:0',
             'days_entitled' => 'required|numeric|min:0',
+            'event_type' => 'nullable|string',
         ]);
 
         // Update the leave entitlement record with validated data

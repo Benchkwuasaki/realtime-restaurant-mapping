@@ -28,8 +28,8 @@ export default function Index({ activity_logs, stat }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Activity Logs" />
 
-            <div className="flex h-full flex-1 flex-col gap-8 p-8">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+            <div className="flex h-full flex-1 flex-col gap-4 p-3 sm:gap-6 sm:p-6 lg:gap-8 lg:p-8">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
                     <StatCard
                         title="Total Logs"
                         value={stat.total_logs}

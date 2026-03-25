@@ -1,48 +1,64 @@
-import { UserCheck, Coffee, UserX } from "lucide-react"
+import { UserCheck, Coffee, UserX, SquareArrowRight, Banknote } from "lucide-react"
 import type { AttendanceRecord } from "./schema"
 
 // ─── Status options (for faceted filter) ─────────────────────────────────────
 
 export const statusOptions = [
-    { value: "PRESENT",  label: "Present"  },
-    { value: "HALF_DAY", label: "Half Day" },
-    { value: "ABSENT",   label: "Absent"   },
+    { value: "PRESENT",      label: "Present"            },
+    { value: "HALF_DAY",     label: "Half Day"           },
+    { value: "ABSENT",       label: "Absent"             },
+    { value: "ON_LEAVE_WP",  label: "On Leave (With Pay)"    },
+    { value: "ON_LEAVE_NP",  label: "On Leave (No Pay)"      },
 ]
 
 // ─── Status pill styles ───────────────────────────────────────────────────────
 
 export const STATUS_PILL: Record<string, string> = {
-    PRESENT:  "bg-emerald-500 text-white border-emerald-500",
-    HALF_DAY: "bg-yellow-500 text-white border-yellow-500",
-    ABSENT:   "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+    PRESENT:     "bg-emerald-500 text-white border-emerald-500",
+    HALF_DAY:    "bg-yellow-500  text-white border-yellow-500",
+    ABSENT:      "bg-destructive text-white border-destructive [a&]:hover:bg-destructive/90",
+    ON_LEAVE_WP: "bg-blue-500    text-white border-blue-500",
+    ON_LEAVE_NP: "bg-indigo-500  text-white border-indigo-500",
 }
 
 export const STATUS_DOT: Record<string, string> = {
-    PRESENT:  "bg-emerald-500 text-white border-emerald-500",
-    HALF_DAY: "bg-yellow-500 text-white border-yellow-500",
-    ABSENT:   "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+    PRESENT:     "bg-emerald-500",
+    HALF_DAY:    "bg-yellow-500",
+    ABSENT:      "bg-destructive",
+    ON_LEAVE_WP: "bg-blue-500",
+    ON_LEAVE_NP: "bg-indigo-500",
 }
 
 // Human-readable labels shown in pills and dialogs
 export const STATUS_LABEL: Record<string, string> = {
-    PRESENT:  "Present",
-    HALF_DAY: "Half Day",
-    ABSENT:   "Absent",
+    PRESENT:     "Present",
+    HALF_DAY:    "Half Day",
+    ABSENT:      "Absent",
+    ON_LEAVE_WP: "On Leave (WP)",
+    ON_LEAVE_NP: "On Leave (NP)",
 }
 
 // Short descriptions used in stat cards
 export const STATUS_DESCRIPTION: Record<string, string> = {
-    PRESENT:  "Clocked in or actively working",
-    HALF_DAY: "Left before time out",
-    // Absent = no clock-in AND no break_out scan. May still have a break_in
-    // entry if the employee scanned arriving from lunch but never clocked in.
-    ABSENT:   "No clock-in recorded",
+    PRESENT:     "Clocked in or actively working",
+    HALF_DAY:    "Left before time out",
+    ABSENT:      "No clock-in recorded",
+    ON_LEAVE_WP: "On approved leave — with pay",
+    ON_LEAVE_NP: "On approved leave — no pay",
 }
 
 export const STATUS_ICON = {
-    PRESENT:  UserCheck,
-    HALF_DAY: Coffee,
-    ABSENT:   UserX,
+    PRESENT:     UserCheck,
+    HALF_DAY:    Coffee,
+    ABSENT:      UserX,
+    ON_LEAVE_WP: Banknote,
+    ON_LEAVE_NP: SquareArrowRight,
+}
+
+// ─── Leave status helper ──────────────────────────────────────────────────────
+
+export function isOnLeave(status: string): boolean {
+    return status === "ON_LEAVE_WP" || status === "ON_LEAVE_NP"
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

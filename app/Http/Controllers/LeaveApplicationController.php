@@ -44,9 +44,11 @@ class LeaveApplicationController extends Controller
                 'leave_type_name' => $e->leaveType?->leave_type_name ?? '',
                 'leave_entitlement_description' => $e->leave_entitlement_description,
                 'years_of_service' => $e->years_of_service,
+                'event_type' => $e->event_type,
                 'days_entitled' => (float) $e->days_entitled,
                 'is_paid' => (bool) ($e->leaveType?->is_paid ?? false),
                 'eligible_sex' => $e->leaveType?->eligible_sex,
+                 'availment_deadline_days'       => $e->leaveType?->availment_deadline_days,
             ]);
 
         $vacationTypeId = $leave_entitlements->firstWhere('leave_type_name', 'Vacation Leave')['leave_type_id'] ?? null;
@@ -56,9 +58,7 @@ class LeaveApplicationController extends Controller
             'basicInfo',
             'item.position.department',
             'salaryGradeStep',
-            'leaveBalances' => fn ($q) => $q
-                ->where('cycle_year', $currentYear)
-                ->whereIn('leave_type_id', array_filter([$vacationTypeId, $sickTypeId])),
+            'leaveBalances' => fn($q) => $q->where('cycle_year', $currentYear),
         ])
             ->join('employee_basic_info', 'employees.employee_basic_info_id', '=', 'employee_basic_info.employee_basic_info_id')
             ->orderBy('employee_basic_info.last_name')
@@ -76,10 +76,14 @@ class LeaveApplicationController extends Controller
                 'monthly_salary' => $e->salaryGradeStep?->monthly_salary
                     ? number_format((float) $e->salaryGradeStep->monthly_salary, 2)
                     : '',
+                'solo_parent_id_number' => $e->solo_parent_id_number,
                 'vl_total_earned' => (string) ($e->leaveBalances->firstWhere('leave_type_id', $vacationTypeId)?->total_days ?? 0),
                 'vl_balance' => (string) ($e->leaveBalances->firstWhere('leave_type_id', $vacationTypeId)?->balance ?? 0),
                 'sl_total_earned' => (string) ($e->leaveBalances->firstWhere('leave_type_id', $sickTypeId)?->total_days ?? 0),
                 'sl_balance' => (string) ($e->leaveBalances->firstWhere('leave_type_id', $sickTypeId)?->balance ?? 0),
+                'leave_balances' => $e->leaveBalances
+                    ->mapWithKeys(fn($b) => [$b->leave_type_id => (float) $b->balance])
+                    ->toArray(),
             ]);
 
         // filter leave applications based on role
@@ -325,7 +329,8 @@ class LeaveApplicationController extends Controller
             'monetization_sl_days' => ['nullable', 'numeric'],
         ]);
 
-        Log::info('Validated leave application update', [$validated]);
+        $wasAlreadyApproved = $leaveApplication->status === 'Approved';
+        $isNowApproved = $validated['status'] === 'Approved';
 
         $leaveApplication->update([
             'employee_id' => $validated['employee_id'],
@@ -360,6 +365,11 @@ class LeaveApplicationController extends Controller
             'monetization_sl_days' => $validated['monetization_sl_days'] ?? null,
         ];
 
+        if (!$wasAlreadyApproved && $isNowApproved) {
+            $this->applyLeaveBalance($leaveApplication, $validated);
+        }
+
+
         if ($leaveApplication->detail) {
             $leaveApplication->detail->update($detailData);
         } else {
@@ -371,6 +381,189 @@ class LeaveApplicationController extends Controller
         Log::info('Leave application updated', [$leaveApplication->leave_application_id]);
 
         return redirect()->back();
+    }
+
+
+    public function print(string $id)
+    {
+        $currentYear = now()->year;
+
+        $app = LeaveApplication::with(['employee.basicInfo', 'leaveType', 'detail'])
+            ->findOrFail($id);
+
+        $leave_entitlements = LeaveEntitlement::with('leaveType')->get();
+
+        $vacationTypeId = $leave_entitlements->first(fn($e) => $e->leaveType?->leave_type_name === 'Vacation Leave')?->leave_type_id;
+        $sickTypeId = $leave_entitlements->first(fn($e) => $e->leaveType?->leave_type_name === 'Sick Leave')?->leave_type_id;
+
+        $employees = Employee::with([
+            'basicInfo',
+            'item.position.department',
+            'leaveBalances' => fn($q) => $q
+                ->where('cycle_year', $currentYear)
+                ->whereIn('leave_type_id', array_filter([$vacationTypeId, $sickTypeId])),
+        ])
+            ->get()
+            ->map(fn(Employee $e) => [
+                'employee_id' => $e->employee_id,
+                'employee_name' => $e->basicInfo->full_name ?? $e->basicInfo->first_name,
+                'last_name' => $e->basicInfo->last_name ?? '',
+                'first_name' => $e->basicInfo->first_name ?? '',
+                'middle_name' => $e->basicInfo->middle_name ?? '',
+                'department_name' => $e->item?->position?->department?->department_name ?? '',
+                'position_name' => $e->item?->position?->position_name ?? '',
+                'vl_total_earned' => (float) ($e->leaveBalances->firstWhere('leave_type_id', $vacationTypeId)?->total_days ?? 0),
+                'vl_balance' => (float) ($e->leaveBalances->firstWhere('leave_type_id', $vacationTypeId)?->balance ?? 0),
+                'sl_total_earned' => (float) ($e->leaveBalances->firstWhere('leave_type_id', $sickTypeId)?->total_days ?? 0),
+                'sl_balance' => (float) ($e->leaveBalances->firstWhere('leave_type_id', $sickTypeId)?->balance ?? 0),
+            ]);
+
+        $appEmployee = $employees->firstWhere('employee_id', $app->employee_id);
+
+        return Inertia::render('Leave/LeaveApplication/LeaveApplicationPrint', [
+            'app' => [
+                'leave_application_id' => $app->leave_application_id,
+                'employee_id' => $app->employee_id,
+                'leave_type_id' => $app->leave_type_id,
+                'leave_type_availed' => $app->leave_type_availed,
+                'office_department' => $app->office_department,
+                'position' => $app->position,
+                'salary' => $app->salary,
+                'date_of_filing' => $app->date_of_filing?->toDateString(),
+                'start_date' => $app->start_date?->toDateString(),
+                'end_date' => $app->end_date?->toDateString(),
+                'is_requested' => $app->is_requested,
+                'is_with_pay' => $app->is_with_pay,
+                'approved_with_pay' => $app->approved_with_pay,
+                'approved_without_pay' => $app->approved_without_pay,
+                'approved_others' => $app->approved_others,
+                'status' => $app->status,
+                'for_disapproval_reason' => $app->for_disapproval_reason,
+                'disapproved_reason' => $app->disapproved_reason,
+                'recommendation_officer' => $app->recommendation_officer,
+                'approval_officer' => $app->approval_officer,
+                'employee' => $app->employee ? [
+                    'employee_id' => $app->employee->employee_id,
+                    'employee_name' => $app->employee->basicInfo->full_name ?? $app->employee->basicInfo->first_name,
+                ] : null,
+                'detail' => $app->detail ? [
+                    'leave_location_type' => $app->detail->leave_location_type,
+                    'leave_location' => $app->detail->leave_location,
+                    'sick_type' => $app->detail->sick_type,
+                    'sick_details' => $app->detail->sick_details,
+                    'women_illness' => $app->detail->women_illness,
+                    'study_purpose' => $app->detail->study_purpose,
+                    'other_purpose' => $app->detail->other_purpose,
+                    'monetization_vl_days' => $app->detail->monetization_vl_days,
+                    'monetization_sl_days' => $app->detail->monetization_sl_days,
+                ] : null,
+            ],
+            'employees' => $employees,
+            'vl_earned' => $appEmployee['vl_total_earned'] ?? 0,
+            'sl_earned' => $appEmployee['sl_total_earned'] ?? 0,
+            'vl_balance' => $appEmployee['vl_balance'] ?? 0,
+            'sl_balance' => $appEmployee['sl_balance'] ?? 0,
+        ]);
+    }
+
+    // Apply leave balance deduction or remaining entitlement on approval
+    private function applyLeaveBalance(LeaveApplication $app, array $validated): void
+    {
+        $currentYear = now()->year;
+        $leaveName = $validated['leave_type_availed'] ?? '';
+        $leaveTypeId = $validated['leave_type_id'] ?? null;
+
+        // Determine if this is an accrual leave type
+        $isAccrual = (bool) preg_match(
+            '/vacation|sick|mandatory|forced|special privilege/i',
+            $leaveName
+        );
+
+        if ($isAccrual) {
+            // Resolve whether to deduct from VL or SL balance
+            $isSick = (bool) preg_match('/^sick leave$/i', trim($leaveName));
+
+            $targetTypeId = LeaveEntitlement::with('leaveType')
+                ->get()
+                ->first(
+                    fn($e) => $isSick
+                    ? str_contains(strtolower($e->leaveType?->leave_type_name ?? ''), 'sick leave')
+                    : str_contains(strtolower($e->leaveType?->leave_type_name ?? ''), 'vacation leave')
+                )?->leave_type_id;
+
+            $deductDays = (float) ($validated['approved_with_pay'] ?? 0);
+
+            // Deduct approved_with_pay days from the matching VL or SL balance row
+            if ($targetTypeId && $deductDays > 0) {
+                $balance = $app->employee
+                    ->leaveBalances()
+                    ->where('cycle_year', $currentYear)
+                    ->where('leave_type_id', $targetTypeId)
+                    ->first();
+
+                if ($balance) {
+                    // Decrement only the balance column, not total_days
+                    $balance->decrement('balance', $deductDays);
+                }
+            }
+
+            return;
+        }
+
+        // Non-accrual / intermittent leaves — deduct days applied from existing balance
+        if (!$leaveTypeId)
+            return;
+
+        $entitlement = LeaveEntitlement::where('leave_type_id', $leaveTypeId)->first();
+        if (!$entitlement)
+            return;
+
+        // Compute actual working days consumed by this application
+        $daysApplied = $this->computeWorkingDays(
+            $validated['start_date'] ?? null,
+            $validated['end_date'] ?? null
+        );
+
+        $existing = $app->employee
+            ->leaveBalances()
+            ->where('cycle_year', $currentYear)
+            ->where('leave_type_id', $leaveTypeId)
+            ->first();
+
+        if ($existing) {
+            // Deduct from whatever balance remains, not from full entitlement
+            $existing->update([
+                'balance' => max(0, (float) $existing->balance - $daysApplied),
+            ]);
+        } else {
+            // First-time use — initialize from full entitlement then deduct
+            $app->employee->leaveBalances()->create([
+                'cycle_year' => $currentYear,
+                'leave_type_id' => $leaveTypeId,
+                'total_days' => (float) $entitlement->days_entitled,
+                'balance' => max(0, (float) $entitlement->days_entitled - $daysApplied),
+            ]);
+        }
+    }
+
+    // Count weekdays (Mon–Fri) between two date strings, inclusive
+    private function computeWorkingDays(?string $start, ?string $end): int
+    {
+        if (!$start || !$end)
+            return 0;
+        $s = Carbon::parse($start);
+        $e = Carbon::parse($end);
+        if ($e->lt($s))
+            return 0;
+
+        $count = 0;
+        $cur = $s->copy();
+        while ($cur->lte($e)) {
+            if (!$cur->isWeekend())
+                $count++;
+            $cur->addDay();
+        }
+        return $count;
     }
 
     /**

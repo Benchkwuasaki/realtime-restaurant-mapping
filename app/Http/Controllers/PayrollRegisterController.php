@@ -58,7 +58,43 @@ class PayrollRegisterController extends Controller
             'description' => "Viewed Payroll Register for Period #{$period->payroll_period_id}",
         ]);
 
-        $records = PayrollRecord::with([
+        $records = $this->buildRecords($period);
+        $summary = $this->buildSummary($records);
+
+        return Inertia::render('Payroll/Outputs/PayrollRegister/Show', [
+            'period' => [
+                'payroll_period_id' => $period->payroll_period_id,
+                'start_date' => $period->start_date->toDateString(),
+                'end_date' => $period->end_date->toDateString(),
+                'cut_off' => $period->cut_off,
+                'status' => $period->status,
+            ],
+            'records' => $records,
+            'summary' => $summary,
+        ]);
+    }
+
+    public function print(PayrollPeriod $period): Response
+    {
+        $records = $this->buildRecords($period);
+        $summary = $this->buildSummary($records);
+
+        return Inertia::render('Payroll/Outputs/PayrollRegister/Print', [
+            'period' => [
+                'payroll_period_id' => $period->payroll_period_id,
+                'start_date' => $period->start_date->toDateString(),
+                'end_date' => $period->end_date->toDateString(),
+                'cut_off' => $period->cut_off,
+                'status' => $period->status,
+            ],
+            'records' => $records,
+            'summary' => $summary,
+        ]);
+    }
+
+    private function buildRecords(PayrollPeriod $period)
+    {
+        return PayrollRecord::with([
             'employee.basicInfo',
             'employee.item.position',
             'employee.salaryGradeStep',
@@ -75,22 +111,16 @@ class PayrollRegisterController extends Controller
                 'position' => $r->employee?->item?->position?->position_name ?? '—',
                 'salary_grade' => (int) ($r->employee?->salaryGradeStep?->salary_grade ?? 0),
                 'step' => (int) ($r->employee?->salaryGradeStep?->step ?? 0),
-
-                // Earnings
                 'basic_pay' => (float) ($r->basic_pay ?? 0),
                 'pera' => (float) ($r->pera ?? 0),
                 'rice_allowance' => (float) ($r->rice_allowance ?? 0),
                 'uniform_allowance' => (float) ($r->uniform_allowance ?? 0),
                 'overtime_pay' => (float) ($r->overtime_pay ?? 0),
                 'gross_pay' => $r->gross_pay,
-
-                // Mandatory deductions
                 'gsis_premium' => (float) ($r->gsis_premium ?? 0),
                 'philhealth' => (float) ($r->philhealth ?? 0),
                 'pag_ibig' => (float) ($r->pag_ibig ?? 0),
                 'withholding_tax' => (float) ($r->withholding_tax ?? 0),
-
-                // Attendance deductions
                 'absent_days' => (float) ($r->absent_days ?? 0),
                 'absent_deduction' => (float) ($r->absent_deduction ?? 0),
                 'half_days' => (int) ($r->half_days ?? 0),
@@ -102,12 +132,8 @@ class PayrollRegisterController extends Controller
                 'personal_slip_minutes' => (int) ($r->personal_slip_minutes ?? 0),
                 'personal_slip_deduction' => (float) ($r->personal_slip_deduction ?? 0),
                 'official_slip_minutes' => (int) ($r->official_slip_minutes ?? 0),
-
-                // Work metrics
                 'total_work_days' => (float) ($r->total_work_days ?? 0),
                 'total_hours_worked' => (float) ($r->total_hours_worked ?? 0),
-
-                // Gov't loan deductions — broken out by loan type
                 'gsis_mpl' => (float) ($r->gsis_mpl ?? 0),
                 'gsis_emergency' => (float) ($r->gsis_emergency ?? 0),
                 'gsis_salary_loan' => (float) ($r->gsis_salary_loan ?? 0),
@@ -115,17 +141,11 @@ class PayrollRegisterController extends Controller
                 'pag_ibig_mpl' => (float) ($r->pag_ibig_mpl ?? 0),
                 'pag_ibig_housing' => (float) ($r->pag_ibig_housing ?? 0),
                 'pag_ibig_calamity' => (float) ($r->pag_ibig_calamity ?? 0),
-
-                // Internal org deductions
                 'internal_org_savings' => (float) ($r->internal_org_savings ?? 0),
                 'internal_org_second' => (float) ($r->internal_org_second ?? 0),
                 'internal_org_loans' => (float) ($r->internal_org_loans ?? 0),
-
-                // Other / misc deductions (renamed from ama_y2k_union)
                 'other_deductions_total' => (float) ($r->other_deductions_total ?? 0),
                 'water_bill' => (float) ($r->water_bill ?? 0),
-
-                // Itemized ledger — enables per-line drill-down in the register view
                 'deduction_items' => $r->deductionItems->map(fn ($item) => [
                     'id' => $item->id,
                     'category' => $item->category,
@@ -138,8 +158,6 @@ class PayrollRegisterController extends Controller
                     'cut_amount' => (float) $item->cut_amount,
                     'waived' => (bool) $item->waived,
                 ])->values(),
-
-                // Totals
                 'total_deductions' => $r->total_deductions,
                 'net_pay' => (float) ($r->net_pay ?? 0),
                 'floor_check_passed' => (bool) ($r->floor_check_passed ?? true),
@@ -149,8 +167,11 @@ class PayrollRegisterController extends Controller
             ])
             ->sortBy('employee_name')
             ->values();
+    }
 
-        $summary = [
+    private function buildSummary($records): array
+    {
+        return [
             'total_employees' => $records->count(),
             'total_basic_pay' => $records->sum('basic_pay'),
             'total_pera' => $records->sum('pera'),
@@ -183,17 +204,5 @@ class PayrollRegisterController extends Controller
             'floor_issues' => $records->where('floor_check_passed', false)->count(),
             'hr_officer_name' => $records->firstWhere('hr_officer_name', '!=', '—')['hr_officer_name'] ?? '—',
         ];
-
-        return Inertia::render('Payroll/Outputs/PayrollRegister/Show', [
-            'period' => [
-                'payroll_period_id' => $period->payroll_period_id,
-                'start_date' => $period->start_date->toDateString(),
-                'end_date' => $period->end_date->toDateString(),
-                'cut_off' => $period->cut_off,
-                'status' => $period->status,
-            ],
-            'records' => $records,
-            'summary' => $summary,
-        ]);
     }
 }

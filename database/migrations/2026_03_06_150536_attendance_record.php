@@ -4,16 +4,15 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up(): void
     {
         Schema::create('attendance_records', function (Blueprint $table) {
             $table->id();
 
             $table->foreignId('employee_id')
-                  ->constrained('employees', 'employee_id')
-                  ->cascadeOnDelete();
+                ->constrained('employees', 'employee_id')
+                ->cascadeOnDelete();
 
             $table->date('date');
 
@@ -35,7 +34,13 @@ return new class extends Migration
             $table->unsignedSmallInteger('late_minutes')->nullable();
             $table->unsignedSmallInteger('work_minutes')->nullable();
 
-            $table->enum('status', ['PRESENT', 'HALF_DAY', 'ABSENT'])->default('ABSENT');
+            $table->enum('status', [
+                'PRESENT',
+                'HALF_DAY',
+                'ABSENT',
+                'ON_LEAVE_WP',  
+                'ON_LEAVE_NP',
+            ])->default('ABSENT');
 
             $table->timestamps();
 

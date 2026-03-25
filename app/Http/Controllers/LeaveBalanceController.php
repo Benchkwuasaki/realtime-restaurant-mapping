@@ -13,7 +13,9 @@ use Inertia\Response;
 
 class LeaveBalanceController extends Controller
 {
-    public function __construct(protected LeaveBalanceService $service) {}
+    public function __construct(protected LeaveBalanceService $service)
+    {
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Index – Leave Balances tab
@@ -23,29 +25,31 @@ class LeaveBalanceController extends Controller
     public function index(Request $request): Response
     {
         $currentYear = (int) date('Y');
-        $cycleYear   = $request->integer('year', $currentYear) ?: $currentYear;
-        $search      = (string) $request->get('search', '');
+        $cycleYear = $request->integer('year', $currentYear) ?: $currentYear;
+        $search = (string) $request->get('search', '');
 
         $cycleYears = $this->service->getCycleYears();
 
         // All active leave types (not just accrual) — for column headers
         $leaveTypes = LeaveType::where('status', true)
+        ->whereIn('availment_type', 'intermittent')
             ->get(['leave_type_id', 'leave_type_name']);
+        dd($leaveTypes);
 
         // Accrual-only types — for the posting wizard leave type selector
         $availableLeaveTypes = LeaveType::where('is_accrual', true)
             ->where('status', true)
             ->get(['leave_type_id', 'leave_type_name']);
-
+        dd($availableLeaveTypes);
         $balancesData = $this->service->getBalancesTable($cycleYear, $search);
 
         return Inertia::render('Leave/Balances/Index', [
-            'tab'                   => 'balances',
+            'tab' => 'balances',
             'available_leave_types' => $availableLeaveTypes,
-            'balances_data'         => $balancesData,
-            'balances_leave_types'  => $leaveTypes,
-            'balances_cycle_year'   => $cycleYear,
-            'balances_cycle_years'  => $cycleYears,
+            'balances_data' => $balancesData,
+            'balances_leave_types' => $leaveTypes,
+            'balances_cycle_year' => $cycleYear,
+            'balances_cycle_years' => $cycleYears,
         ]);
     }
 
@@ -57,8 +61,8 @@ class LeaveBalanceController extends Controller
     public function show(Request $request, Employee $employee): Response
     {
         $currentYear = (int) date('Y');
-        $cycleYear   = $request->integer('year', $currentYear) ?: $currentYear;
-        $cycleYears  = $this->service->getCycleYears();
+        $cycleYear = $request->integer('year', $currentYear) ?: $currentYear;
+        $cycleYears = $this->service->getCycleYears();
 
         $balances = $this->service->getEmployeeBalances($employee->employee_id, $cycleYear);
 
@@ -67,16 +71,16 @@ class LeaveBalanceController extends Controller
         $balances = $this->service->getEmployeeBalances($employee->employee_id, $cycleYear);
 
         return Inertia::render('Leave/Balances/Show', [
-            'employee'    => [
-                'employee_id'               => $employee->employee_id,
-                'name'                      => $employee->basicInfo?->full_name ?? '—',
-                'avatar_url'                => $employee->avatar_url,
-                'department'                => $employee->item?->position?->department?->department_name ?? '—',
+            'employee' => [
+                'employee_id' => $employee->employee_id,
+                'name' => $employee->basicInfo?->full_name ?? '—',
+                'avatar_url' => $employee->avatar_url,
+                'department' => $employee->item?->position?->department?->department_name ?? '—',
                 'employment_classification' => $employee->employment_classification ?? '—',
             ],
-            'balances'          => $balances,
-            'cycle_year'        => $cycleYear,
-            'cycle_years'       => $cycleYears,
+            'balances' => $balances,
+            'cycle_year' => $cycleYear,
+            'cycle_years' => $cycleYears,
         ]);
     }
 
@@ -89,8 +93,8 @@ class LeaveBalanceController extends Controller
     {
         $data = $request->validate([
             'total_days' => ['required', 'numeric', 'min:0', 'max:999'],
-            'used_days'  => ['required', 'numeric', 'min:0', 'max:999'],
-            'remarks'    => ['nullable', 'string', 'max:500'],
+            'used_days' => ['required', 'numeric', 'min:0', 'max:999'],
+            'remarks' => ['nullable', 'string', 'max:500'],
         ]);
 
         if ($data['used_days'] > $data['total_days']) {
@@ -147,11 +151,11 @@ class LeaveBalanceController extends Controller
     public function grant(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'employee_id'   => ['required', 'integer', 'exists:employees,employee_id'],
+            'employee_id' => ['required', 'integer', 'exists:employees,employee_id'],
             'leave_type_id' => ['required', 'integer', 'exists:leave_types,leave_type_id'],
-            'cycle_year'    => ['required', 'integer', 'min:2000', 'max:2100'],
-            'total_days'    => ['required', 'numeric', 'min:0.01', 'max:999'],
-            'remarks'       => ['nullable', 'string', 'max:500'],
+            'cycle_year' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'total_days' => ['required', 'numeric', 'min:0.01', 'max:999'],
+            'remarks' => ['nullable', 'string', 'max:500'],
         ]);
 
         $exists = EmployeeLeaveBalance::where('employee_id', $data['employee_id'])
@@ -166,12 +170,12 @@ class LeaveBalanceController extends Controller
         }
 
         EmployeeLeaveBalance::create([
-            'employee_id'   => $data['employee_id'],
+            'employee_id' => $data['employee_id'],
             'leave_type_id' => $data['leave_type_id'],
-            'cycle_year'    => $data['cycle_year'],
-            'total_days'    => round((float) $data['total_days'], 4),
-            'used_days'     => 0.0,
-            'balance'       => round((float) $data['total_days'], 4),
+            'cycle_year' => $data['cycle_year'],
+            'total_days' => round((float) $data['total_days'], 4),
+            'used_days' => 0.0,
+            'balance' => round((float) $data['total_days'], 4),
         ]);
 
         return back()->with('success', 'Leave balance granted successfully.');

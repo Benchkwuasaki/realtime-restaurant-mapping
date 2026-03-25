@@ -32,7 +32,7 @@ function CardField({
 }) {
     return (
         <div className="flex items-center justify-between gap-4 text-sm">
-            <span className="text-muted-foreground shrink-0">{label}</span>
+            <span className="shrink-0 text-muted-foreground">{label}</span>
             <span className="text-right">{value}</span>
         </div>
     );
@@ -87,21 +87,21 @@ export function getColumns({
             mobileCard: (row) => (
                 <div className="-mx-3 -my-1.5 flex flex-col">
                     <div className="space-y-2 px-3 py-3">
-                        <p className="text-sm font-semibold leading-snug">
+                        <p className="text-sm leading-snug font-semibold">
                             {row.leave_type_name}
                         </p>
                         {row.leave_type_description ? (
-                            <p className="text-muted-foreground text-justify text-sm leading-relaxed">
+                            <p className="text-justify text-sm leading-relaxed text-muted-foreground">
                                 {row.leave_type_description}
                             </p>
                         ) : (
-                            <p className="text-muted-foreground/50 text-sm italic">
+                            <p className="text-sm text-muted-foreground/50 italic">
                                 No description
                             </p>
                         )}
                     </div>
 
-                    <div className="border-secondary flex items-center border-t px-3 py-2.5">
+                    <div className="flex items-center border-t border-secondary px-3 py-2.5">
                         <Badge variant={row.status ? 'default' : 'destructive'}>
                             {row.status ? 'Active' : 'Inactive'}
                         </Badge>
@@ -117,23 +117,11 @@ export function getColumns({
                 <DataTableColumnHeader column={column} title="Description" />
             ),
             cell: ({ row }) => {
-                const [expanded, setExpanded] = React.useState(false);
                 const description = row.getValue('leave_type_description') as
                     | string
                     | null;
                 return (
-                    <div
-                        className={`min-w-50 max-w-75 text-muted-foreground cursor-pointer text-justify text-sm ${
-                            expanded
-                                ? 'wrap-break-word whitespace-normal'
-                                : 'truncate'
-                        }`}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setExpanded((prev) => !prev);
-                        }}
-                        title="click to expand"
-                    >
+                    <div className="max-w-75 min-w-50 truncate text-sm text-muted-foreground">
                         {description || 'N/A'}
                     </div>
                 );
@@ -149,28 +137,16 @@ export function getColumns({
                 <DataTableColumnHeader column={column} title="Requirements" />
             ),
             cell: ({ row }) => {
-                const [expanded, setExpanded] = React.useState(false);
                 const requirements = row.original.requirements;
                 if (!requirements || requirements.length === 0) {
                     return (
-                        <span className="text-muted-foreground text-sm">
+                        <span className="text-sm text-muted-foreground">
                             N/A
                         </span>
                     );
                 }
                 return (
-                    <div
-                        className={`max-w-70 text-muted-foreground min-w-40 cursor-pointer text-sm ${
-                            expanded
-                                ? 'wrap-break-word whitespace-normal'
-                                : 'truncate'
-                        }`}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setExpanded((prev) => !prev);
-                        }}
-                        title="click to expand"
-                    >
+                    <div className="max-w-70 min-w-40 truncate text-sm text-muted-foreground">
                         {requirements
                             .map((req) => req.requirement_name)
                             .join(', ')}
@@ -192,7 +168,7 @@ export function getColumns({
             cell: ({ row }) => {
                 const val = row.getValue('eligible_sex') as string | null;
                 return (
-                    <span className="text-muted-foreground text-sm">{val}</span>
+                    <span className="text-sm text-muted-foreground">{val}</span>
                 );
             },
             enableSorting: true,
@@ -214,7 +190,7 @@ export function getColumns({
                 const isPaid = row.getValue('is_paid') as boolean;
                 return (
                     <Badge variant={isPaid ? 'default' : 'destructive'}>
-                        {isPaid ? 'Paid' : 'Not paid'}
+                        {isPaid ? 'Paid' : 'Unpaid'}
                     </Badge>
                 );
             },
@@ -237,7 +213,7 @@ export function getColumns({
                 const isConvertible = row.getValue('is_convertible') as boolean;
                 return (
                     <Badge variant={isConvertible ? 'default' : 'destructive'}>
-                        {isConvertible ? 'Convertible' : 'Not Convertible'}
+                        {isConvertible ? 'Convertible' : 'Non-convertible'}
                     </Badge>
                 );
             },
@@ -258,7 +234,7 @@ export function getColumns({
                 const isConvertible = row.getValue('is_accrual') as boolean;
                 return (
                     <Badge variant={isConvertible ? 'default' : 'destructive'}>
-                        {isConvertible ? 'Accrual' : 'Not Accrual'}
+                        {isConvertible ? 'Accrues' : 'Does Not Accrue'}
                     </Badge>
                 );
             },
@@ -319,7 +295,7 @@ export function getColumns({
                                 description: (lt) => (
                                     <>
                                         Are you sure you want to delete{' '}
-                                        <span className="text-foreground font-medium">
+                                        <span className="font-medium text-foreground">
                                             {lt.leave_type_name}
                                         </span>
                                         ? This will also remove all associated

@@ -104,7 +104,7 @@ function MobileDetailModal({ leaveEntitlement, onClose, onEdit, onDeleted }: Mob
                             label="Description"
                             value={
                                 <span className="text-muted-foreground">
-                                    {leaveEntitlement.leave_entitlement_description || "—"}
+                                    {leaveEntitlement.leave_entitlement_description || "N/A"}
                                 </span>
                             }
                         />
@@ -115,6 +115,14 @@ function MobileDetailModal({ leaveEntitlement, onClose, onEdit, onDeleted }: Mob
                         <DetailRow
                             label="Days Entitled"
                             value={`${leaveEntitlement.days_entitled} day${Number(leaveEntitlement.days_entitled) !== 1 ? "s" : ""}`}
+                        />
+                        <DetailRow
+                            label="Days Entitled"
+                            value={
+                                <span className="text-muted-foreground">
+                                    {leaveEntitlement.event_type|| "N/A"}
+                                </span>
+                                }
                         />
                     </div>
 
@@ -186,7 +194,8 @@ function LeaveEntitlementModal({ open, editingLeaveEntitlement, onClose, leave_t
         leave_type_id: editingLeaveEntitlement?.leave_type_id ?? "",
         leave_entitlement_description: editingLeaveEntitlement?.leave_entitlement_description ?? "",
         years_of_service: editingLeaveEntitlement?.years_of_service ?? 0,
-        days_entitled: editingLeaveEntitlement?.days_entitled ?? "",
+        days_entitled: editingLeaveEntitlement?.days_entitled ?? "",  
+        event_type: editingLeaveEntitlement?.event_type ?? "",  
     })
 
     function handleClose() {
@@ -292,6 +301,20 @@ function LeaveEntitlementModal({ open, editingLeaveEntitlement, onClose, leave_t
                                     placeholder="e.g. 15.0"
                                 />
                                 <FieldError message={errors.days_entitled} />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-medium">
+                                    Event Name
+                                </label>
+                                <Input
+                                    type="text"
+                                    value={data.event_type}
+                                    onChange={(e) => setData("event_type", e.target.value)}
+                                    className="text-sm mt-1"
+                                    placeholder="e.g. Live Birth"
+                                />
+                                <FieldError message={errors.event_type} />
                             </div>
                         </section>
                     </div>

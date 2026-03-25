@@ -3,7 +3,7 @@
 import { router } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import { useState, useRef } from "react"
-import { Pen, Trash } from "lucide-react"
+import { Pen, Trash, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
@@ -28,6 +28,8 @@ import { type Department } from "../data/schema"
 
 interface ColumnOptions {
     onEdit: (department: Department) => void
+    onDelete?: (department: Department) => void
+    onAssign: (department: Department) => void
 }
 
 // ─── Mobile Delete Confirm Dialog ─────────────────────────────────────────────
@@ -63,7 +65,10 @@ function DeleteConfirmDialog({ department, onClose }: DeleteConfirmDialogProps) 
 
     return (
         <Dialog open={department !== null} onOpenChange={(o) => { if (!o) onClose() }}>
-            <DialogContent className="p-0 gap-0 overflow-hidden sm:max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <DialogContent
+                className="p-0 gap-0 overflow-hidden sm:max-w-sm"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <DialogHeader className="px-5 py-4 border-b border-border">
                     <DialogTitle className="text-sm font-semibold text-foreground">
                         Delete Department
@@ -72,13 +77,21 @@ function DeleteConfirmDialog({ department, onClose }: DeleteConfirmDialogProps) 
 
                 <div className="px-5 py-4 text-sm text-muted-foreground">
                     Are you sure you want to delete{" "}
-                    <span className="font-medium text-foreground">{department?.department_name}</span>?{" "}
-                    This will also affect any divisions assigned to this department.
-                    This action cannot be undone.
+                    <span className="font-medium text-foreground">
+                        {department?.department_name}
+                    </span>
+                    ? This will also affect any divisions assigned to this department. This
+                    action cannot be undone.
                 </div>
 
                 <DialogFooter className="px-5 py-4 border-t border-border xs:flex xs:flex-row xs:justify-end bg-muted/30">
-                    <Button type="button" variant="outline" size="sm" onClick={onClose} className="text-xs">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onClose}
+                        className="text-xs"
+                    >
                         Cancel
                     </Button>
                     <Button
@@ -102,23 +115,28 @@ function DeleteConfirmDialog({ department, onClose }: DeleteConfirmDialogProps) 
 interface MobileDepartmentCardProps {
     row: Department
     onEdit: (department: Department) => void
+    onAssign: (department: Department) => void
 }
 
-function MobileDepartmentCard({ row, onEdit }: MobileDepartmentCardProps) {
+function MobileDepartmentCard({ row, onEdit, onAssign }: MobileDepartmentCardProps) {
     const [confirmDepartment, setConfirmDepartment] = useState<Department | null>(null)
     const suppressNextClick = useRef(false)
 
     function handleDialogClose() {
         suppressNextClick.current = true
         setConfirmDepartment(null)
-        setTimeout(() => { suppressNextClick.current = false }, 200)
+        setTimeout(() => {
+            suppressNextClick.current = false
+        }, 200)
     }
 
     return (
         <>
             <div
                 className="flex flex-col bg-background overflow-hidden"
-                onClick={(e) => { if (suppressNextClick.current) e.stopPropagation() }}
+                onClick={(e) => {
+                    if (suppressNextClick.current) e.stopPropagation()
+                }}
             >
                 {/* ── Card Body ── */}
                 <div className="px-4 pt-4 pb-5 space-y-2">
@@ -141,9 +159,22 @@ function MobileDepartmentCard({ row, onEdit }: MobileDepartmentCardProps) {
                 {/* ── Card Footer ── */}
                 <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
                     <span className="text-xs text-muted-foreground">
-                        {row.divisions?.length ?? 0} division{(row.divisions?.length ?? 0) !== 1 ? "s" : ""}
+                        {row.divisions?.length ?? 0} division
+                        {(row.divisions?.length ?? 0) !== 1 ? "s" : ""}
                     </span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-12 p-0 text-xs text-muted-foreground hover:text-primary w-12"
+                            title="Assign employees"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onAssign(row)
+                            }}
+                        >
+                            <UserPlus />
+                        </Button>
                         <Button
                             variant="ghost"
                             size="sm"
@@ -170,17 +201,14 @@ function MobileDepartmentCard({ row, onEdit }: MobileDepartmentCardProps) {
                 </div>
             </div>
 
-            <DeleteConfirmDialog
-                department={confirmDepartment}
-                onClose={handleDialogClose}
-            />
+            <DeleteConfirmDialog department={confirmDepartment} onClose={handleDialogClose} />
         </>
     )
 }
 
 // ─── Columns ──────────────────────────────────────────────────────────────────
 
-export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Department>[] {
+export function getColumns({ onEdit, onDelete, onAssign }: ColumnOptions): DataTableColumnDef<Department>[] {
     return [
         {
             id: "select",
@@ -220,7 +248,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Depart
             enableSorting: true,
             enableHiding: true,
             mobileCard: (row) => (
-                <MobileDepartmentCard row={row} onEdit={onEdit} />
+                <MobileDepartmentCard row={row} onEdit={onEdit} onAssign={onAssign} />
             ),
         },
         {
@@ -245,7 +273,11 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Depart
                 const desc: string | null = row.getValue("department_description")
                 return (
                     <div className="min-w-[200px] max-w-[360px] text-sm text-muted-foreground truncate">
-                        {desc ?? <span className="italic text-muted-foreground/50">No description</span>}
+                        {desc ?? (
+                            <span className="italic text-muted-foreground/50">
+                                No description
+                            </span>
+                        )}
                     </div>
                 )
             },
@@ -259,6 +291,12 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Depart
                 <DataTableRowActions
                     row={row}
                     actions={[
+                        // ── Assign employees action ──
+                        {
+                            icon: UserPlus,
+                            label: "Assign Employees",
+                            onClick: (department) => onAssign(department),
+                        },
                         editAction(onEdit),
                         deleteAction(
                             (department) =>
@@ -269,13 +307,15 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Depart
                                             toast.success("Department deleted", {
                                                 description: `"${department.department_name}" has been permanently removed.`,
                                             })
+                                            onDelete?.(department)
                                         },
                                         onError: () => {
                                             toast.error("Failed to delete department", {
-                                                description: "Something went wrong. Please try again.",
+                                                description:
+                                                    "Something went wrong. Please try again.",
                                             })
                                         },
-                                    }
+                                    },
                                 ),
                             {
                                 getName: (d) => d.department_name,
@@ -284,15 +324,14 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Depart
                                         Are you sure you want to delete{" "}
                                         <span className="font-medium text-foreground">
                                             {d.department_name}
-                                        </span>?{" "}
-                                        This will also affect any divisions assigned to this department.
-                                        This action cannot be undone.
+                                        </span>
+                                        ? This will also affect any divisions assigned to this
+                                        department. This action cannot be undone.
                                     </>
                                 ),
                                 confirmLabel: "Delete Department",
-                            }
+                            },
                         ),
-                        
                     ]}
                 />
             ),

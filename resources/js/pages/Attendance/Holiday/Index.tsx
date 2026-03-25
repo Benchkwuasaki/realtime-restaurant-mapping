@@ -1,4 +1,5 @@
-import { Head, router, useForm, usePage } from '@inertiajs/react'
+import { Head, router, useForm } from '@inertiajs/react'
+import { toast } from 'sonner'
 import { CalendarDays, Check, Pencil, Plus, PlusCircle, Repeat, Trash2, ArrowUpDown, X, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { route } from 'ziggy-js'
@@ -40,7 +41,7 @@ import { StatCard } from '@/components/shared/stat-card'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { cn } from '@/lib/utils'
 import type { BreadcrumbItem } from '@/types'
-import { TYPE_BADGE_VARIANT } from './data/data'
+import { TYPE_TEXT_COLOR } from './data/data'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -97,9 +98,9 @@ function FieldError({ message }: { message?: string }) {
 
 function TypeBadge({ type }: { type: string }) {
     return (
-        <Badge variant={TYPE_BADGE_VARIANT[type] ?? 'secondary'}>
+        <span className={cn('text-xs font-medium', TYPE_TEXT_COLOR[type] ?? 'text-muted-foreground')}>
             {type}
-        </Badge>
+        </span>
     )
 }
 
@@ -130,9 +131,15 @@ function HolidayModal({ open, editingHoliday, onClose }: HolidayModalProps) {
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (isEdit) {
-            put(route('holiday.update', editingHoliday!.holiday_id), { onSuccess: handleClose })
+            put(route('holiday.update', editingHoliday!.holiday_id), {
+                onSuccess: () => { handleClose(); toast.success('Holiday updated successfully.') },
+                onError:   () => toast.error('Failed to update holiday. Please check the form.'),
+            })
         } else {
-            post(route('holiday.store'), { onSuccess: handleClose })
+            post(route('holiday.store'), {
+                onSuccess: () => { handleClose(); toast.success('Holiday created successfully.') },
+                onError:   () => toast.error('Failed to create holiday. Please check the form.'),
+            })
         }
     }
 
@@ -254,8 +261,10 @@ interface DeleteDialogProps {
 function DeleteAlertDialog({ holiday, onClose }: DeleteDialogProps) {
     function handleConfirm() {
         if (holiday) {
+            const name = holiday.name
             router.delete(route('holiday.destroy', holiday.holiday_id), {
-                onFinish: onClose,
+                onSuccess: () => { onClose(); toast.success(`"${name}" was deleted.`) },
+                onError:   () => { onClose(); toast.error(`Failed to delete "${name}".`) },
             })
         }
     }
@@ -559,7 +568,6 @@ function MonthCard({ monthName, year, holidays, onEdit, onDelete, isMobile }: Mo
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HolidayIndex({ holidays, currentYear }: Props) {
-    const { props } = usePage<{ flash?: { success?: string } }>()
     const isMobile = useIsMobile()
 
     const [modalOpen, setModalOpen]             = useState(false)
@@ -609,11 +617,6 @@ export default function HolidayIndex({ holidays, currentYear }: Props) {
                     />
                 </div>
 
-                {props.flash?.success && (
-                    <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300">
-                        {props.flash.success}
-                    </div>
-                )}
 
                 <div className="flex items-center gap-2">
                     <Input

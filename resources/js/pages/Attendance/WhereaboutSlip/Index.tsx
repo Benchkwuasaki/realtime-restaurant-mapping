@@ -65,8 +65,6 @@ interface MapCommand {
     code: string
 }
 
-type MapStatusFilter = "all" | "pending" | "done"
-
 const breadcrumbs: BreadcrumbItem[] = [
     { title: "Attendance", href: route("whereabout-slip.index") },
     { title: "Whereabout Slips", href: route("whereabout-slip.index") },
@@ -99,7 +97,6 @@ async function fetchBounds(baseUrl: string, whereClause: string): Promise<[[numb
     } catch { return null }
 }
 
-// Module-level name cache for stat cards
 const brgyNameCache = new Map<string, Promise<string>>()
 function fetchBrgyName(brgyCode: string): Promise<string> {
     if (!brgyNameCache.has(brgyCode)) {
@@ -114,6 +111,14 @@ function fetchBrgyName(brgyCode: string): Promise<string> {
     return brgyNameCache.get(brgyCode)!
 }
 
+function formatTime(value?: string | null) {
+    if (!value) return "—"
+    const [hh, mm] = value.split(":")
+    const h = parseInt(hh, 10)
+    const m = mm ?? "00"
+    return `${h % 12 === 0 ? 12 : h % 12}:${m} ${h >= 12 ? "PM" : "AM"}`
+}
+
 // ─── SlipDashboard ─────────────────────────────────────────────────────────────
 
 function SlipDashboard({ slips }: { slips: WhereaboutSlip[] }) {
@@ -121,7 +126,9 @@ function SlipDashboard({ slips }: { slips: WhereaboutSlip[] }) {
 
     const stats = useMemo(() => {
         const withLocation = slips.filter((s) => s.latitude && s.longitude)
-        const pending = slips.filter((s) => s.return_status === "not_returned")
+        // Outstanding = still_out | not_returned
+        const outstanding = slips.filter((s) => s.status === "still_out" || s.status === "not_returned")
+        const overdue = slips.filter((s) => s.status === "not_returned")
         const official = slips.filter((s) => s.purpose_type === "official")
         const personal = slips.filter((s) => s.purpose_type === "personal")
         const uniqueEmployees = new Set(slips.map((s) => s.employee_id)).size
@@ -138,7 +145,7 @@ function SlipDashboard({ slips }: { slips: WhereaboutSlip[] }) {
         })
         const topBrgyEntry = Object.entries(brgyCount).sort((a, b) => b[1] - a[1])[0]
 
-        return { withLocation, pending, official, personal, uniqueEmployees, avgMinutes, topBrgyEntry }
+        return { withLocation, outstanding, overdue, official, personal, uniqueEmployees, avgMinutes, topBrgyEntry }
     }, [slips])
 
     useEffect(() => {
@@ -156,8 +163,8 @@ function SlipDashboard({ slips }: { slips: WhereaboutSlip[] }) {
             />
             <StatCard
                 title="Still Out"
-                value={stats.pending.length}
-                description={stats.pending.length > 0 ? "not yet returned" : "all returned"}
+                value={stats.outstanding.length}
+                description={stats.overdue.length > 0 ? `${stats.overdue.length} not returned` : "all within schedule"}
                 icon={<AlertCircle className="w-4 h-4 text-primary" />}
             />
             <StatCard
@@ -174,9 +181,7 @@ function SlipDashboard({ slips }: { slips: WhereaboutSlip[] }) {
             />
             <StatCard
                 title="Top Destination"
-                value={
-                    topBrgyName ?? (stats.topBrgyEntry ? stats.topBrgyEntry[0] : "—")
-                }
+                value={topBrgyName ?? (stats.topBrgyEntry ? stats.topBrgyEntry[0] : "—")}
                 description={stats.topBrgyEntry ? `${stats.topBrgyEntry[1]} visit${stats.topBrgyEntry[1] !== 1 ? "s" : ""}` : undefined}
                 icon={<MapPinned className="w-4 h-4 text-primary" />}
             />
@@ -185,29 +190,38 @@ function SlipDashboard({ slips }: { slips: WhereaboutSlip[] }) {
 }
 
 // ─── SlipMapView ──────────────────────────────────────────────────────────────
+// Only shows outstanding slips (still_out + not_returned).
 
 function SlipMapView({ slips }: { slips: WhereaboutSlip[] }) {
     const containerRef = useRef<HTMLDivElement>(null)
     const mapRef = useRef<any>(null)
     const markersRef = useRef<any[]>([])
-    const [filter, setFilter] = useState<MapStatusFilter>("all")
 
-    const filteredSlips = useMemo(() => {
-        const withCoords = slips.filter((s) => s.latitude && s.longitude)
-        if (filter === "all") return withCoords
-        if (filter === "pending") return withCoords.filter((s) => s.return_status === "not_returned")
-        return withCoords.filter((s) => s.return_status === "returned")
-    }, [slips, filter])
+    // Only outstanding slips with coordinates are relevant for the map.
+    const outstandingSlips = useMemo(
+        () => slips.filter(
+            (s) => (s.status === "still_out" || s.status === "not_returned") && s.latitude && s.longitude
+        ),
+        [slips]
+    )
 
+    const toReturnCount = outstandingSlips.filter((s) => s.status === "still_out").length
+    const notReturnedCount = outstandingSlips.filter((s) => s.status === "not_returned").length
+
+    // ── Pin color: amber = still_out, red = not_returned ─────────────────────
     function makeIcon(L: any, slip: WhereaboutSlip) {
-        const isPending = slip.return_status === "not_returned"
+        const isOverdue = slip.status === "not_returned"
         const isOfficial = slip.purpose_type === "official"
-        const color = isPending ? "#ef4444" : isOfficial ? "#3b82f6" : "#10b981"
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
-            <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20S24 21 24 12C24 5.373 18.627 0 12 0z" fill="${color}" stroke="white" stroke-width="1.5"/>
-            <circle cx="12" cy="12" r="5" fill="white" opacity="0.9"/>
+        // Overdue → red. To-return official → blue. To-return personal → amber.
+        const color = isOverdue ? "#ef4444" : isOfficial ? "#3b82f6" : "#f59e0b"
+        const ringColor = isOverdue ? "#fca5a5" : isOfficial ? "#93c5fd" : "#fcd34d"
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+            <circle cx="14" cy="12" r="13" fill="${ringColor}" opacity="0.35"/>
+            <path d="M14 1C8.477 1 4 5.477 4 11c0 7.875 10 23 10 23S24 18.875 24 11C24 5.477 19.523 1 14 1z"
+                  fill="${color}" stroke="white" stroke-width="1.5"/>
+            <circle cx="14" cy="11" r="4.5" fill="white" opacity="0.9"/>
         </svg>`
-        return L.divIcon({ html: svg, className: "", iconSize: [24, 32], iconAnchor: [12, 32], popupAnchor: [0, -32] })
+        return L.divIcon({ html: svg, className: "", iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -38] })
     }
 
     const refreshMarkers = useCallback(() => {
@@ -218,7 +232,7 @@ function SlipMapView({ slips }: { slips: WhereaboutSlip[] }) {
         markersRef.current.forEach((m) => m.remove())
         markersRef.current = []
 
-        filteredSlips.forEach((slip) => {
+        outstandingSlips.forEach((slip) => {
             const lat = parseFloat(slip.latitude!)
             const lng = parseFloat(slip.longitude!)
             if (isNaN(lat) || isNaN(lng)) return
@@ -227,30 +241,60 @@ function SlipMapView({ slips }: { slips: WhereaboutSlip[] }) {
                 ? `${slip.employee.basic_info.first_name} ${slip.employee.basic_info.last_name}`
                 : `Employee #${slip.employee_id}`
 
-            const statusColor = slip.return_status === "not_returned" ? "#ef4444" : "#10b981"
-            const statusLabel = slip.return_status === "not_returned" ? "Still Out" : "Returned"
-            const typeLabel = slip.purpose_type === "official" ? "Official" : "Personal"
+            const isOverdue = slip.status === "not_returned"
+            const isOfficial = slip.purpose_type === "official"
+
+            const statusColor = isOverdue ? "#ef4444" : "#f59e0b"
+            const statusBg = isOverdue ? "#fef2f2" : "#fffbeb"
+            const statusLabel = isOverdue ? "⚠ Not Returned — past work hours" : "🕐 Still Out"
+            const typeColor = isOfficial ? "#3b82f6" : "#6b7280"
+            const typeLabel = isOfficial ? "Official" : "Personal"
+            const typeBg = isOfficial ? "#eff6ff" : "#f3f4f6"
+
+            const timeOutStr = formatTime(slip.time_out)
+            const minutesSince = slip.time_out
+                ? (() => {
+                    const now = new Date()
+                    const [hh, mm] = slip.time_out.split(":")
+                    const out = new Date(now)
+                    out.setHours(parseInt(hh, 10), parseInt(mm, 10), 0, 0)
+                    const diff = Math.max(0, Math.floor((now.getTime() - out.getTime()) / 60000))
+                    return diff > 0 ? `${diff} min ago` : "just now"
+                })()
+                : null
 
             const popup = `
-                <div style="font-family:system-ui;font-size:12px;line-height:1.5;min-width:160px">
-                    <div style="font-weight:700;font-size:13px;margin-bottom:4px">${empName}</div>
-                    <div style="color:#6b7280;margin-bottom:2px">${slip.purpose_description ?? ""}</div>
-                    <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-                        <span style="background:#f3f4f6;border-radius:4px;padding:1px 6px;font-size:11px">${typeLabel}</span>
-                        <span style="background:${statusColor}20;color:${statusColor};border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600">${statusLabel}</span>
+                <div style="font-family:system-ui,sans-serif;font-size:12px;line-height:1.55;min-width:180px;max-width:220px">
+                    <div style="font-weight:700;font-size:13px;margin-bottom:2px;color:#111">${empName}</div>
+                    <div style="color:#6b7280;font-size:11px;margin-bottom:8px">${slip.purpose_description ?? ""}</div>
+
+                    <div style="display:flex;flex-direction:column;gap:4px">
+                        <div style="background:${statusBg};border:1px solid ${statusColor}40;border-radius:5px;padding:4px 8px;color:${statusColor};font-size:11px;font-weight:600">
+                            ${statusLabel}
+                        </div>
+
+                        <div style="display:flex;gap:6px">
+                            <span style="background:${typeBg};color:${typeColor};border-radius:4px;padding:2px 7px;font-size:11px;font-weight:500">
+                                ${typeLabel}
+                            </span>
+                            ${minutesSince ? `<span style="background:#f3f4f6;color:#374151;border-radius:4px;padding:2px 7px;font-size:11px">Out ${minutesSince}</span>` : ""}
+                        </div>
+
+                        <div style="display:flex;justify-content:space-between;padding-top:2px;font-size:11px;color:#6b7280;border-top:1px solid #f3f4f6;margin-top:2px">
+                            <span>Time Out</span>
+                            <span style="font-weight:600;color:#111">${timeOutStr}</span>
+                        </div>
                     </div>
-                    ${slip.minutes_gone != null ? `<div style="color:#6b7280;margin-top:4px;font-size:11px">Away: ${slip.minutes_gone} min</div>` : ""}
                 </div>`
 
             const marker = L.marker([lat, lng], { icon: makeIcon(L, slip) })
-                .bindPopup(popup, { maxWidth: 220 })
+                .bindPopup(popup, { maxWidth: 240, className: "whereabout-popup" })
                 .addTo(map)
 
             markersRef.current.push(marker)
         })
-    }, [filteredSlips])
+    }, [outstandingSlips])
 
-    // Init map once
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return
 
@@ -289,71 +333,70 @@ function SlipMapView({ slips }: { slips: WhereaboutSlip[] }) {
         }
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Refresh markers whenever filter or slips change
     useEffect(() => {
         if (mapRef.current) refreshMarkers()
     }, [refreshMarkers])
 
-    const allCount = slips.filter((s) => s.latitude && s.longitude).length
-    const pendingCount = slips.filter((s) => s.latitude && s.longitude && s.return_status === "not_returned").length
-    const returnedCount = slips.filter((s) => s.latitude && s.longitude && s.return_status === "returned").length
+    const isEmpty = outstandingSlips.length === 0
 
     return (
         <div className="rounded-lg border border-border bg-card overflow-hidden">
-            {/* Header bar */}
+            {/* Header */}
             <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-semibold text-foreground">Location Map</span>
+                    <span className="text-sm font-semibold text-foreground">Outstanding Locations</span>
                     <span className="text-xs text-muted-foreground">
-                        {filteredSlips.length} pin{filteredSlips.length !== 1 ? "s" : ""} shown
+                        {outstandingSlips.length} employee{outstandingSlips.length !== 1 ? "s" : ""} currently out
                     </span>
                 </div>
 
-                {/* Filter tabs */}
-                <div className="flex items-center gap-1 rounded-md border border-border p-0.5 bg-muted/40">
-                    {(["all", "pending", "done"] as const).map((f) => {
-                        const count = f === "all" ? allCount : f === "pending" ? pendingCount : returnedCount
-                        const labels = { all: "All", pending: "Still Out", done: "Returned" }
-                        return (
-                            <button
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={cn(
-                                    "px-3 py-1 text-xs font-medium rounded transition-colors",
-                                    filter === f
-                                        ? "bg-background text-foreground shadow-sm"
-                                        : "text-muted-foreground hover:text-foreground"
-                                )}
-                            >
-                                {labels[f]}
-                                <span className={cn(
-                                    "ml-1.5 tabular-nums",
-                                    f === "pending" && count > 0 ? "text-red-500" : "text-muted-foreground"
-                                )}>
-                                    {count}
-                                </span>
-                            </button>
-                        )
-                    })}
+                {/* Status counts */}
+                <div className="flex items-center gap-2 text-xs">
+                    {toReturnCount > 0 && (
+                        <span className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 px-2.5 py-0.5 text-amber-700 dark:text-amber-400 font-medium">
+                            <span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                            {toReturnCount} still out
+                        </span>
+                    )}
+                    {notReturnedCount > 0 && (
+                        <span className="flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50 dark:bg-red-950/40 dark:border-red-700 px-2.5 py-0.5 text-red-700 dark:text-red-400 font-medium">
+                            <span className="inline-block w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                            {notReturnedCount} not returned
+                        </span>
+                    )}
+                    {isEmpty && (
+                        <span className="text-muted-foreground italic">All employees have returned</span>
+                    )}
                 </div>
 
                 {/* Legend */}
-                <div className="hidden sm:flex items-center gap-3 text-[11px] text-muted-foreground">
+                <div className="hidden md:flex items-center gap-4 text-[11px] text-muted-foreground border-l border-border pl-4">
                     <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" /> Still Out
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" />
+                        Personal — still out
                     </span>
                     <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" /> Personal
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500" />
+                        Official — still out
                     </span>
                     <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500" /> Official
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" />
+                        Not Returned (past work hours)
                     </span>
                 </div>
             </div>
 
             {/* Map */}
-            <div ref={containerRef} className="w-full h-[360px]" style={{ zIndex: 0 }} />
+            <div className="relative">
+                <div ref={containerRef} className="w-full h-[360px]" style={{ zIndex: 0 }} />
+                {isEmpty && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/70 backdrop-blur-sm pointer-events-none">
+                        <MapPinned className="w-8 h-8 text-muted-foreground/40" />
+                        <p className="text-sm text-muted-foreground">No outstanding slips to display</p>
+                    </div>
+                )}
+            </div>
         </div>
     )
 }
@@ -779,7 +822,7 @@ export default function WhereaboutSlipIndex({ slips, employees }: Props) {
     function openEdit(slip: WhereaboutSlip) { setEditingSlip(slip); setModalOpen(true) }
     function closeModal() { setModalOpen(false); setEditingSlip(null) }
 
-    const columns = getColumns({ onEdit: openEdit, onDelete: () => { } })
+    const columns = getColumns({ onDelete: () => { } })
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -792,13 +835,9 @@ export default function WhereaboutSlipIndex({ slips, employees }: Props) {
                     </div>
                 )}
 
-                {/* Stat cards */}
                 <SlipDashboard slips={slips} />
-
-                {/* Map view */}
                 <SlipMapView slips={slips} />
 
-                {/* Table */}
                 <DataTable
                     columns={columns}
                     data={slips}
@@ -806,9 +845,23 @@ export default function WhereaboutSlipIndex({ slips, employees }: Props) {
                     searchColumnId="employee"
                     searchPlaceholder="Search employee…"
                     filters={[
-                        { columnId: "purpose_type", title: "Purpose Type", options: [{ value: "official", label: "Official" }, { value: "personal", label: "Personal" }] },
-                        { columnId: "status", title: "Status", options: [{ value: "pending", label: "Pending" }, { value: "done", label: "Done" }] },
-                        { columnId: "return_status", title: "Return", options: [{ value: "not_returned", label: "Not Returned" }, { value: "returned", label: "Returned" }] },
+                        {
+                            columnId: "purpose_type",
+                            title: "Purpose Type",
+                            options: [
+                                { value: "official", label: "Official" },
+                                { value: "personal", label: "Personal" },
+                            ],
+                        },
+                        {
+                            columnId: "status",
+                            title: "Status",
+                            options: [
+                                { value: "still_out", label: "Still Out" },
+                                { value: "not_returned", label: "Not Returned" },
+                                { value: "returned", label: "Returned" },
+                            ],
+                        },
                     ]}
                     addButton={{ label: "Create Slip", onClick: openCreate }}
                     bulkDelete={{
@@ -825,6 +878,7 @@ export default function WhereaboutSlipIndex({ slips, employees }: Props) {
                 editingSlip={editingSlip}
                 employees={employees}
                 onClose={closeModal}
+                
             />
         </AppLayout>
     )

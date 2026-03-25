@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Department;
 use App\Models\Division;
+use App\Models\Employee;
 use App\Models\Item;
-use App\Models\Position;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -149,6 +150,122 @@ class DivisionController extends Controller
 
         return redirect()->route('division.index')
             ->with('success', count($request->ids).' division(s) deleted successfully.');
+    }
+
+    /**
+     * Return employees eligible to be assigned to the given division.
+     *
+     * Eligible = any of:
+     *   1. No item assigned at all
+     *   2. Has an item whose position has no department (fully unlinked)
+     *   3. Has an item whose position belongs to the same department as the
+     *      division BUT has no division assigned yet
+     *
+     * Excluded:
+     *   - Employees whose position name matches "Head of * Department"
+     *     (they are department heads and should not be assigned to a division)
+     */
+    public function unlinkedEmployees(Division $division): JsonResponse
+    {
+        try {
+            $divisionDepartmentId = $division->department_id;
+
+            $employees = Employee::with([
+                'basicInfo',
+                'item.position',
+            ])
+                ->get()
+                ->filter(function (Employee $employee) use ($divisionDepartmentId) {
+                    $item = $employee->item;
+                    $position = $item?->position;
+
+                    // ── Exclude department heads ──────────────────────────────────
+                    // Position name pattern: "Head of * Department"
+                    if ($position && preg_match('/^Head of .+ Department$/i', $position->position_name)) {
+                        return false;
+                    }
+
+                    // ── No item at all → eligible ─────────────────────────────────
+                    if (is_null($employee->item_id) || is_null($item)) {
+                        return true;
+                    }
+
+                    // ── No position → eligible ────────────────────────────────────
+                    if (is_null($position)) {
+                        return true;
+                    }
+
+                    // ── No department on position → eligible ──────────────────────
+                    if (is_null($position->department_id)) {
+                        return true;
+                    }
+
+                    // ── Same department, no division yet → eligible ───────────────
+                    if (
+                        $position->department_id === $divisionDepartmentId &&
+                        is_null($position->division_id)
+                    ) {
+                        return true;
+                    }
+
+                    return false;
+                })
+                ->map(fn (Employee $employee) => [
+                    'employee_id' => $employee->employee_id,
+                    'full_name' => trim(collect([
+                        $employee->basicInfo?->first_name ?? '',
+                        $employee->basicInfo?->middle_name ?? '',
+                        $employee->basicInfo?->last_name ?? '',
+                    ])->filter()->implode(' ')),
+                    'work_id' => $employee->work_id,
+                    'position_name' => $employee->item?->position?->position_name,
+                    'department_id' => $employee->item?->position?->department_id,
+                ])
+                ->values();
+
+            return response()->json($employees);
+        } catch (\Throwable $e) {
+            \Log::error('Division unlinkedEmployees error: '.$e->getMessage());
+
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Assign a set of employees to the given division.
+     *
+     * - Updates position.division_id to this division
+     * - If the employee had no department on their position, inherits the
+     *   division's department (department_id is also updated)
+     */
+    public function attachEmployees(Request $request, Division $division): RedirectResponse
+    {
+        $request->validate([
+            'employee_ids' => ['required', 'array'],
+            'employee_ids.*' => ['integer', 'exists:employees,employee_id'],
+        ]);
+
+        Employee::with('item.position')
+            ->whereIn('employee_id', $request->employee_ids)
+            ->get()
+            ->each(function (Employee $employee) use ($division) {
+                $position = $employee->item?->position;
+                if (! $position) {
+                    return;
+                }
+
+                $updates = ['division_id' => $division->division_id];
+
+                // Inherit department if the position had none
+                if (is_null($position->department_id)) {
+                    $updates['department_id'] = $division->department_id;
+                }
+
+                $position->update($updates);
+            });
+
+        return redirect()->route('division.index')
+            ->with('success', count($request->employee_ids).' employee(s) assigned to '.$division->division_name.' successfully.');
     }
 
     public function cleanDivisionName(string $name): string

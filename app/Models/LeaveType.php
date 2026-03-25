@@ -15,16 +15,25 @@ class LeaveType extends Model
         'leave_type_description',
         'eligible_sex',
         'is_paid',
+        'is_cumulative',
+        'is_per_event',
+        'max_lifetime_grants',
         'is_convertible',
         'is_accrual',
+        'availment_type',
+        'availment_deadline_days',
         'status',
     ];
 
     protected $casts = [
-        'is_paid'        => 'boolean',
-        'is_convertible' => 'boolean',
-        'is_accrual'     => 'boolean',
-        'status'         => 'boolean',
+        'is_paid'                 => 'boolean',
+        'is_cumulative'           => 'boolean',
+        'is_per_event'            => 'boolean',
+        'max_lifetime_grants'     => 'integer',
+        'is_convertible'          => 'boolean',
+        'is_accrual'              => 'boolean',
+        'availment_deadline_days' => 'integer',
+        'status'                  => 'boolean',
     ];
 
     // ─── Relationships ────────────────────────────────────────────────────────

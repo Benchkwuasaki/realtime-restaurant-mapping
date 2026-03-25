@@ -96,11 +96,28 @@ export function getHistoryColumns(
                 </div>
             ),
             mobileCard: (row) => (
-                <div className="flex items-center gap-2">
-                    <EmployeeAvatar url={row.avatar_url} name={row.name} />
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium truncate">{row.name}</span>
-                        <span className="text-xs text-muted-foreground truncate">{row.department}</span>
+                <div className="flex flex-col bg-background overflow-hidden">
+                    {/* Card body */}
+                    <div className="px-4 pt-4 pb-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                            <EmployeeAvatar url={row.avatar_url} name={row.name} />
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-semibold text-foreground truncate">{row.name}</span>
+                                <span className="text-xs text-muted-foreground truncate">{row.department}</span>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span className="text-xs text-muted-foreground">{row.leave_type_name}</span>
+                            <span className="text-xs text-muted-foreground">
+                                {MONTHS[row.posting_month - 1]} {row.posting_year}
+                            </span>
+                            <span className="text-xs font-mono text-muted-foreground">{row.reference_no}</span>
+                        </div>
+                    </div>
+                    {/* Card footer */}
+                    <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
+                        <CreditBadge status={row.credit_status} />
+                        <span className="text-xs text-muted-foreground">{row.posting_date}</span>
                     </div>
                 </div>
             ),
@@ -126,9 +143,6 @@ export function getHistoryColumns(
             cell: ({ row }) => (
                 <span className="text-muted-foreground text-sm">{row.original.leave_type_name}</span>
             ),
-            mobileCard: (row) => (
-                <span className="text-xs text-muted-foreground">{row.leave_type_name}</span>
-            ),
             enableSorting: true,
             enableHiding: true,
         },
@@ -138,11 +152,6 @@ export function getHistoryColumns(
             cell: ({ row }) => (
                 <span className="text-muted-foreground text-sm">
                     {MONTHS[row.original.posting_month - 1]} {row.original.posting_year}
-                </span>
-            ),
-            mobileCard: (row) => (
-                <span className="text-xs text-muted-foreground">
-                    {MONTHS[row.posting_month - 1]} {row.posting_year}
                 </span>
             ),
             enableHiding: true,
@@ -172,7 +181,6 @@ export function getHistoryColumns(
             accessorKey: "credit_status",
             header: "Status",
             cell: ({ row }) => <CreditBadge status={row.original.credit_status} />,
-            mobileCard: (row) => <CreditBadge status={row.credit_status} />,
             filterFn: (row, _id, value: string[]) =>
                 value.includes(row.getValue("credit_status")),
             enableSorting: true,

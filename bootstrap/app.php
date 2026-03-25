@@ -3,6 +3,7 @@
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -34,6 +35,19 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
         ]);
     })
+
+    ->withSchedule(function (Schedule $schedule): void {
+        // Step 1: Ensure every active employee has at least an ABSENT record for today
+        $schedule->command('attendance:sync-absent')
+            ->dailyAt('00:01')
+            ->timezone('Asia/Manila');
+
+        // Step 2: Promote ABSENT → ON_LEAVE for any approved leave applications
+        $schedule->command('attendance:sync-leave')
+            ->dailyAt('00:05')
+            ->timezone('Asia/Manila');
+    })
+
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->respond(function (Response $response, Throwable $exception, Request $request) {
             // $test = [
@@ -57,4 +71,5 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->toResponse($request)
                 ->setStatusCode($response->getStatusCode());
         });
+
     })->create();

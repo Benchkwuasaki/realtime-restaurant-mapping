@@ -800,14 +800,7 @@ function HistoryTab({
                         showCloseButton
                     >
                         {selectedRow && (
-                            <div className="mr-auto flex items-center gap-2">
-                                <Badge
-                                    variant="outline"
-                                    className="font-mono text-xs"
-                                >
-                                    {selectedRow.reference_no}
-                                </Badge>
-                            </div>
+                            <div className="mr-auto flex items-center gap-2"></div>
                         )}
                     </DialogFooter>
                 </DialogContent>
@@ -819,7 +812,8 @@ function HistoryTab({
 function BalancesTab({
     data,
     leaveTypes,
-    cycleYear: _cycleYear,
+    cycleYear,
+    cycleYears = [],
 }: {
     data: LeaveBalanceRow[];
     leaveTypes: LeaveType[];
@@ -829,14 +823,44 @@ function BalancesTab({
     const columns = useLeaveBalanceColumns(leaveTypes);
 
     return (
-        <DataTable
-            columns={columns}
-            data={data}
-            getRowId={(row) => String(row.employee_id)}
-            searchColumnId="name"
-            searchPlaceholder="Search employee..."
-            defaultPageSize={10}
-        />
+        <div className="flex flex-col gap-4">
+            {cycleYears.length > 1 && (
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium whitespace-nowrap text-foreground">
+                        Cycle Year
+                    </label>
+                    <Select
+                        value={String(cycleYear)}
+                        onValueChange={(v) =>
+                            router.get(
+                                route('leave.accrual.balances'),
+                                { year: v },
+                                { preserveState: false },
+                            )
+                        }
+                    >
+                        <SelectTrigger className="w-32">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {cycleYears.map((y) => (
+                                <SelectItem key={y} value={String(y)}>
+                                    {y}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+            <DataTable
+                columns={columns}
+                data={data}
+                getRowId={(row) => String(row.employee_id)}
+                searchColumnId="name"
+                searchPlaceholder="Search employee..."
+                defaultPageSize={10}
+            />
+        </div>
     );
 }
 
@@ -859,6 +883,7 @@ export default function MonthlyEarnedLeave() {
         balances_data = [],
         balances_leave_types = [],
         balances_cycle_year = new Date().getFullYear(),
+        balances_cycle_years = [],
     } = usePage<{ props: PageProps }>().props as unknown as PageProps;
 
     const activeTab =
@@ -975,15 +1000,15 @@ export default function MonthlyEarnedLeave() {
                                     Leave Balances
                                 </h2>
                                 <p className="mt-0.5 text-sm text-muted-foreground">
-                                    Current leave balances per employee for FY{' '}
-                                    {balances_cycle_year}–
-                                    {balances_cycle_year + 1}.
+                                    Current leave balances per employee for
+                                    cycle year {balances_cycle_year}.
                                 </p>
                             </div>
                             <BalancesTab
                                 data={balances_data}
                                 leaveTypes={balances_leave_types}
                                 cycleYear={balances_cycle_year}
+                                cycleYears={balances_cycle_years}
                             />
                         </div>
                     </TabsContent>

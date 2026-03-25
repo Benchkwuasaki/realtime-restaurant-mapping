@@ -1,7 +1,6 @@
 'use client';
 
 import { Head, router, useForm } from '@inertiajs/react';
-import { type ColumnDef } from '@tanstack/react-table';
 import {
     Building2,
     Calendar,
@@ -20,6 +19,7 @@ import { route } from 'ziggy-js';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/shared/data-table/data-table';
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
+import type { DataTableColumnDef } from '@/components/shared/data-table/types/data-table-types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -32,12 +32,20 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from '@/components/ui/sheet';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
 import {
+    EmployeeOption,
     OrganizationDialog,
     type InternalOrgType,
 } from './components/OrganizationDialog';
@@ -64,7 +72,7 @@ interface InternalOrganization {
     code: string;
     name: string;
     internal_org_type_id: number;
-    org_type?: InternalOrgType; // eager-loaded relation
+    org_type?: InternalOrgType;
     head: string;
     payroll_deduction_linked: boolean;
     status: boolean;
@@ -77,6 +85,7 @@ interface Props {
     organization: InternalOrganization;
     availableEmployees: AvailableEmployee[];
     orgTypes: InternalOrgType[];
+    employees: EmployeeOption[];
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -89,7 +98,6 @@ function formatDate(dateString: string) {
     });
 }
 
-// Fallback palette for unknown / dynamically added types
 const knownTypeColors: Record<string, string> = {
     Union: 'bg-primary/10 text-primary border-primary/20',
     Cooperative: 'bg-chart-2/10 text-chart-2 border-chart-2/20',
@@ -108,45 +116,207 @@ function InfoRow({
     label,
     icon,
     children,
+    inline = false,
 }: {
     label: string;
     icon: React.ReactNode;
     children: React.ReactNode;
+    inline?: boolean;
 }) {
     return (
-        <div className="flex flex-col gap-1 py-3">
+        <div
+            className={`flex ${inline ? 'flex-row items-center justify-between' : 'flex-col gap-1'}`}
+        >
             <span className="flex items-center gap-1.5 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
                 <span className="text-primary/50">{icon}</span>
                 {label}
             </span>
-            <div className="flex items-center gap-2">{children}</div>
+            <div className="flex min-h-[22px] items-center gap-2">
+                {children}
+            </div>
         </div>
+    );
+}
+
+// ─── Sidebar Content (shared between desktop aside and mobile sheet) ───────────
+
+function SidebarContent({
+    organization,
+    onEdit,
+    onDelete,
+    onToggleStatus,
+    processing,
+}: {
+    organization: InternalOrganization;
+    onEdit: () => void;
+    onDelete: () => void;
+    onToggleStatus: () => void;
+    processing: boolean;
+}) {
+    const typeName = organization.org_type?.internal_org_type;
+    const typeClass = getTypeColor(typeName);
+
+    return (
+        <>
+            <div className="mb-4 flex flex-col items-center gap-3 text-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-primary/20 bg-primary/10">
+                    <Building2 className="h-10 w-10 text-primary" />
+                </div>
+
+                <div>
+                    <h1 className="text-lg leading-tight font-semibold text-foreground">
+                        {organization.name}
+                    </h1>
+                    <p className="font-mono text-sm text-muted-foreground">
+                        {organization.code}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                    {organization.status ? (
+                        <>
+                            <span className="relative flex h-2 w-2">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-chart-5 opacity-75" />
+                                <span className="relative inline-flex h-2 w-2 rounded-full bg-chart-5" />
+                            </span>
+                            <span className="text-xs font-medium text-chart-5">
+                                Active
+                            </span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                            <span className="text-xs font-medium text-muted-foreground">
+                                Inactive
+                            </span>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <div className="mb-4 flex justify-center gap-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-fit text-xs"
+                    onClick={onEdit}
+                >
+                    <Pencil className="mr-1.5 h-3 w-3" />
+                    Edit
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-fit border-destructive/30 text-xs text-destructive hover:bg-destructive/5 hover:text-destructive"
+                    onClick={onDelete}
+                >
+                    <Trash2 className="mr-1.5 h-3 w-3" />
+                    Delete
+                </Button>
+            </div>
+
+            <div className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+                Organization Info
+            </div>
+            <Separator />
+
+            <InfoRow label="Type" icon={<Tag className="h-3 w-3" />} inline>
+                <span
+                    className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${typeClass}`}
+                >
+                    {typeName ?? '—'}
+                </span>
+            </InfoRow>
+
+            <Separator />
+
+            <InfoRow label="Head" icon={<User className="h-3 w-3" />} inline>
+                {organization.head ? (
+                    <span className="inline-flex items-center rounded-md bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+                        {organization.head}
+                    </span>
+                ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                )}
+            </InfoRow>
+
+            <Separator />
+
+            <InfoRow
+                label="Payroll Deduction"
+                icon={<CreditCard className="h-3 w-3" />}
+                inline
+            >
+                {organization.payroll_deduction_linked ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-chart-5" />
+                        Linked
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        <XCircle className="h-3.5 w-3.5" />
+                        Not Linked
+                    </span>
+                )}
+            </InfoRow>
+
+            <Separator />
+
+            <InfoRow
+                label="Date Created"
+                icon={<Calendar className="h-3 w-3" />}
+                inline
+            >
+                <span className="text-xs text-foreground">
+                    {formatDate(organization.created_at)}
+                </span>
+            </InfoRow>
+
+            <Separator />
+
+            <InfoRow
+                label="Status"
+                icon={<CheckCircle2 className="h-3 w-3" />}
+                inline
+            >
+                <Button
+                    variant={organization.status ? 'default' : 'destructive'}
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={onToggleStatus}
+                    disabled={processing}
+                >
+                    {organization.status ? 'Activate' : 'Deactivate'}
+                </Button>
+            </InfoRow>
+
+            <Separator className="mb-3" />
+
+            <p className="text-[10px] text-muted-foreground">
+                Last updated {formatDate(organization.updated_at)}
+            </p>
+        </>
     );
 }
 
 // ─── Mobile Member Card ────────────────────────────────────────────────────────
 
-interface MobileMemberCardProps {
-    row: OrganizationMember;
-}
-
-function MobileMemberCard({ row }: MobileMemberCardProps) {
+function MobileMemberCard({ row }: { row: OrganizationMember }) {
     return (
         <div className="flex flex-col overflow-hidden bg-background">
-            <div className="space-y-2 px-4 pt-4 pb-5">
+            <div className="space-y-1 px-4 pt-4 pb-3">
                 <span className="text-base font-semibold text-foreground">
                     {row.name}
                 </span>
-                <div className="flex flex-col gap-0.5">
-                    {row.position && (
-                        <span className="text-xs text-muted-foreground">
-                            {row.position}
-                            {row.department && <> · {row.department}</>}
-                        </span>
-                    )}
-                </div>
+                {(row.position || row.department) && (
+                    <p className="text-xs text-muted-foreground">
+                        {row.position}
+                        {row.position && row.department && <> · </>}
+                        {row.department}
+                    </p>
+                )}
             </div>
-            <div className="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-2.5">
+            <div className="flex items-center border-t border-border bg-muted/30 px-4 py-2.5">
                 <Badge
                     variant={row.status ? 'default' : 'destructive'}
                     className="text-xs"
@@ -160,7 +330,7 @@ function MobileMemberCard({ row }: MobileMemberCardProps) {
 
 // ─── Member Columns ────────────────────────────────────────────────────────────
 
-const memberColumns: ColumnDef<OrganizationMember>[] = [
+const memberColumns: DataTableColumnDef<OrganizationMember>[] = [
     {
         id: 'select',
         header: ({ table }) => (
@@ -196,6 +366,7 @@ const memberColumns: ColumnDef<OrganizationMember>[] = [
                 {row.getValue('name')}
             </div>
         ),
+        // ← Mobile card attached here so DataTable picks it up
         mobileCard: (row) => <MobileMemberCard row={row} />,
     },
     {
@@ -513,6 +684,7 @@ export default function Show({
     organization,
     availableEmployees,
     orgTypes,
+    employees,
 }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
@@ -546,167 +718,94 @@ export default function Show({
         );
     }
 
-    const typeName = organization.org_type?.internal_org_type;
-    const typeClass = getTypeColor(typeName);
     const members = organization.members ?? [];
+
+    const sidebarProps = {
+        organization,
+        onEdit: () => setEditDialogOpen(true),
+        onDelete: () => setDeleteDialogOpen(true),
+        onToggleStatus: handleToggleStatus,
+        processing,
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={organization.name} />
 
-            <div className="flex min-h-full gap-5 bg-background p-5">
-                {/* ── Left Sidebar ───────────────────────────────────────────────────── */}
-                <aside className="flex w-72 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card p-5 shadow-sm">
-                    <div className="mb-4 flex flex-col items-center gap-3 text-center">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-primary/20 bg-primary/10">
-                            <Building2 className="h-10 w-10 text-primary" />
-                        </div>
-
-                        <div>
-                            <h1 className="text-lg leading-tight font-semibold text-foreground">
-                                {organization.name}
-                            </h1>
-                            <p className="font-mono text-sm text-muted-foreground">
-                                {organization.code}
-                            </p>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                            {organization.status ? (
-                                <>
-                                    <span className="relative flex h-2 w-2">
-                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-chart-5 opacity-75" />
-                                        <span className="relative inline-flex h-2 w-2 rounded-full bg-chart-5" />
-                                    </span>
-                                    <span className="text-xs font-medium text-chart-5">
-                                        Active
-                                    </span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
-                                    <span className="text-xs font-medium text-muted-foreground">
-                                        Inactive
-                                    </span>
-                                </>
-                            )}
-                        </div>
+            <div className="flex min-h-full flex-col gap-4 bg-background p-4 lg:flex-row lg:gap-5 lg:p-5">
+                {/* ── Mobile: top bar with org identity + sheet trigger ─────────── */}
+                <div className="flex items-center gap-3 lg:hidden">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-primary/20 bg-primary/10">
+                        <Building2 className="h-6 w-6 text-primary" />
                     </div>
-
-                    <div className="mb-4 flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 text-xs"
-                            onClick={() => setEditDialogOpen(true)}
-                        >
-                            <Pencil className="mr-1.5 h-3 w-3" />
-                            Edit
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-destructive/30 text-xs text-destructive hover:bg-destructive/5 hover:text-destructive"
-                            onClick={() => setDeleteDialogOpen(true)}
-                        >
-                            <Trash2 className="h-3 w-3" />
-                        </Button>
+                    <div className="min-w-0 flex-1">
+                        <h1 className="truncate text-base leading-tight font-semibold text-foreground">
+                            {organization.name}
+                        </h1>
+                        <p className="font-mono text-xs text-muted-foreground">
+                            {organization.code}
+                        </p>
                     </div>
-
-                    <Separator className="mb-2" />
-
-                    <div className="mb-1 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
-                        Organization Info
-                    </div>
-
-                    <InfoRow label="Type" icon={<Tag className="h-3 w-3" />}>
-                        <span
-                            className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${typeClass}`}
-                        >
-                            {typeName ?? '—'}
-                        </span>
-                    </InfoRow>
-
-                    <Separator />
-
-                    <InfoRow label="Head" icon={<User className="h-3 w-3" />}>
-                        <span className="inline-flex items-center rounded-md bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-                            {organization.head}
-                        </span>
-                    </InfoRow>
-
-                    <Separator />
-
-                    <InfoRow
-                        label="Payroll Deduction"
-                        icon={<CreditCard className="h-3 w-3" />}
-                    >
-                        {organization.payroll_deduction_linked ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-chart-5" />
-                                Linked
+                    <div className="flex shrink-0 items-center gap-1.5">
+                        {/* Status dot */}
+                        {organization.status ? (
+                            <span className="relative flex h-2 w-2">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-chart-5 opacity-75" />
+                                <span className="relative inline-flex h-2 w-2 rounded-full bg-chart-5" />
                             </span>
                         ) : (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                                <XCircle className="h-3.5 w-3.5" />
-                                Not Linked
-                            </span>
+                            <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
                         )}
-                    </InfoRow>
+                        {/* Info sheet trigger */}
+                        <Sheet>
+                            <SheetTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs"
+                                >
+                                    Info
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent
+                                side="bottom"
+                                className="max-h-[85vh] overflow-y-auto rounded-t-2xl px-5 py-6"
+                            >
+                                <SheetHeader className="mb-4">
+                                    <SheetTitle className="sr-only">
+                                        Organization Info
+                                    </SheetTitle>
+                                </SheetHeader>
+                                <SidebarContent {...sidebarProps} />
+                            </SheetContent>
+                        </Sheet>
+                    </div>
+                </div>
 
-                    <Separator />
-
-                    <InfoRow
-                        label="Date Created"
-                        icon={<Calendar className="h-3 w-3" />}
-                    >
-                        <span className="text-xs text-foreground">
-                            {formatDate(organization.created_at)}
-                        </span>
-                    </InfoRow>
-
-                    <Separator />
-
-                    <InfoRow
-                        label="Status"
-                        icon={<CheckCircle2 className="h-3 w-3" />}
-                    >
-                        <Button
-                            variant={
-                                organization.status ? 'default' : 'destructive'
-                            }
-                            size="sm"
-                            className="h-6 text-xs"
-                            onClick={handleToggleStatus}
-                            disabled={processing}
-                        >
-                            {organization.status ? 'Activate' : 'Deactivate'}
-                        </Button>
-                    </InfoRow>
-
-                    <Separator className="mb-3" />
-
-                    <p className="text-[10px] text-muted-foreground">
-                        Last updated {formatDate(organization.updated_at)}
-                    </p>
+                {/* ── Desktop: left sidebar ─────────────────────────────────────── */}
+                <aside className="hidden w-72 shrink-0 flex-col overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-sm lg:flex">
+                    <SidebarContent {...sidebarProps} />
                 </aside>
 
-                {/* ── Right Content ──────────────────────────────────────────────────── */}
-                <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card p-5 shadow-sm">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-lg font-semibold text-foreground">
+                {/* ── Right / main content ──────────────────────────────────────── */}
+                <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm lg:p-5">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                            <h2 className="text-base font-semibold text-foreground lg:text-lg">
                                 Members
                             </h2>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="truncate text-xs text-muted-foreground lg:text-sm">
                                 Employees under{' '}
                                 <span className="font-medium text-foreground">
                                     {organization.name}
                                 </span>
                             </p>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="text-xs">
+                        <div className="flex shrink-0 items-center gap-2">
+                            <Badge
+                                variant="outline"
+                                className="hidden text-xs sm:inline-flex"
+                            >
                                 {members.length}{' '}
                                 {members.length === 1 ? 'member' : 'members'}
                             </Badge>
@@ -715,8 +814,10 @@ export default function Show({
                                 className="gap-1.5 text-xs"
                                 onClick={() => setAddMemberDialogOpen(true)}
                             >
-                                <UserPlus className="h-3.5 w-3.5" />
-                                Add Member
+                                <UserPlus className="h-3.5 w-3.5 shrink-0" />
+                                <span className="hidden sm:inline">
+                                    Add Member
+                                </span>
                             </Button>
                         </div>
                     </div>
@@ -732,12 +833,13 @@ export default function Show({
                 </main>
             </div>
 
-            {/* ── Edit Organization Modal ─────────────────────────────────────────── */}
+            {/* ── Dialogs ───────────────────────────────────────────────────────── */}
             <OrganizationDialog
                 open={editDialogOpen}
                 onOpenChange={setEditDialogOpen}
                 organization={organization}
                 orgTypes={orgTypes}
+                employees={employees}
             />
 
             <AddMemberDialog

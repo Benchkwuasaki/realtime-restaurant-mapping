@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Department;
+use App\Models\Employee;
 use App\Models\Item;
 use App\Models\Position;
 use App\Services\ActivityLogService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,6 +35,7 @@ class DepartmentController extends Controller
                 ])
                 ->values(),
         ]);
+
         $this->activityLogService->createLog([
             'user_id' => Auth::id(),
             'module' => 'organization',
@@ -121,6 +124,82 @@ class DepartmentController extends Controller
 
         return redirect()->route('department.index')
             ->with('success', count($request->ids).' department(s) deleted successfully.');
+    }
+
+    /**
+     * Return employees who have no department linked via their position.
+     * An employee is "unlinked" when:
+     *   - they have no item assigned, OR
+     *   - their item's position has a null department_id
+     */
+    public function unlinkedEmployees(): JsonResponse
+    {
+        try {
+            $employees = Employee::with([
+                    'basicInfo',
+                    'item.position',
+                ])
+                ->get()
+                ->filter(function (Employee $employee) {
+                    // No item assigned at all
+                    if (is_null($employee->item_id) || is_null($employee->item)) {
+                        return true;
+                    }
+                    // Item has no position
+                    if (is_null($employee->item->position)) {
+                        return true;
+                    }
+                    // Position has no department
+                    return is_null($employee->item->position->department_id);
+                })
+                ->map(fn(Employee $employee) => [
+                    'employee_id'   => $employee->employee_id,
+                    'full_name'     => trim(collect([
+                        $employee->basicInfo?->first_name ?? '',
+                        $employee->basicInfo?->middle_name ?? '',
+                        $employee->basicInfo?->last_name ?? '',
+                    ])->filter()->implode(' ')),
+                    'work_id'       => $employee->work_id,
+                    'position_name' => $employee->item?->position?->position_name,
+                ])
+                ->values();
+
+            return response()->json($employees);
+        } catch (\Throwable $e) {
+            \Log::error('unlinkedEmployees error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Link a set of employees to the given department by updating the
+     * department_id on each employee's position.
+     */
+    public function attachEmployees(Request $request, Department $department): RedirectResponse
+    {
+        $request->validate([
+            'employee_ids'   => ['required', 'array'],
+            'employee_ids.*' => ['integer', 'exists:employees,employee_id'],
+        ]);
+
+        Employee::with('item.position')
+            ->whereIn('employee_id', $request->employee_ids)
+            ->get()
+            ->each(function (Employee $employee) use ($department) {
+                $position = $employee->item?->position;
+                if ($position) {
+                    $position->update(['department_id' => $department->department_id]);
+                }
+            });
+
+        $this->activityLogService->createLog([
+            'user_id' => Auth::id(),
+            'module'  => 'organization',
+            'activity' => 'Assigned ' . count($request->employee_ids) . ' employee(s) to ' . $department->department_name,
+        ]);
+
+        return redirect()->route('department.index')
+            ->with('success', count($request->employee_ids) . ' employee(s) linked to ' . $department->department_name . ' successfully.');
     }
 
     public function cleanDepartmentName(string $name): string

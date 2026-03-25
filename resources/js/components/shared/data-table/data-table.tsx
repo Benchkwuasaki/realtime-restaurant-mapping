@@ -17,7 +17,6 @@ import {
 } from '@tanstack/react-table';
 import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 
 import {
     Table,
@@ -240,6 +239,13 @@ export function DataTable<TData, TValue>({
     const isMobile = useIsMobile();
     const pageRows = table.getRowModel().rows;
 
+    // Clear selection when switching to mobile — checkboxes are hidden there
+    React.useEffect(() => {
+        if (isMobile) {
+            table.resetRowSelection();
+        }
+    }, [isMobile]);
+
     return (
         <div className="flex flex-col gap-4">
             <DataTableToolbar
@@ -255,27 +261,6 @@ export function DataTable<TData, TValue>({
             <div className="rounded-md border border-gray-200">
                 {isMobile ? (
                     <div className="divide-y divide-gray-200">
-                        {/* ── Select-all header ── */}
-                        <div className="flex items-center gap-3 bg-muted/50 px-4 py-2">
-                            <Checkbox
-                                checked={
-                                    table.getIsAllPageRowsSelected() ||
-                                    (table.getIsSomePageRowsSelected() &&
-                                        'indeterminate')
-                                }
-                                onCheckedChange={(value) =>
-                                    table.toggleAllPageRowsSelected(!!value)
-                                }
-                                aria-label="Select all"
-                            />
-                            <span className="text-xs font-medium text-muted-foreground">
-                                {table.getIsSomePageRowsSelected() ||
-                                table.getIsAllPageRowsSelected()
-                                    ? `${Object.keys(rowSelection).length} selected`
-                                    : 'Select all'}
-                            </span>
-                        </div>
-
                         {/* ── Cards ── */}
                         {pageRows?.length ? (
                             pageRows.map((row) => {
@@ -297,30 +282,14 @@ export function DataTable<TData, TValue>({
                                         }
                                         className={[
                                             'flex items-center gap-3 px-4 py-3 transition-colors',
-                                            row.getIsSelected()
-                                                ? 'bg-muted'
-                                                : isNewest
-                                                  ? 'bg-primary/5'
-                                                  : 'bg-background',
+                                            isNewest
+                                                ? 'bg-primary/5'
+                                                : 'bg-background',
                                             onRowClick
                                                 ? 'cursor-pointer active:bg-muted'
                                                 : '',
                                         ].join(' ')}
                                     >
-                                        {/* Per-row checkbox */}
-                                        <div
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="shrink-0"
-                                        >
-                                            <Checkbox
-                                                checked={row.getIsSelected()}
-                                                onCheckedChange={(value) =>
-                                                    row.toggleSelected(!!value)
-                                                }
-                                                aria-label="Select row"
-                                            />
-                                        </div>
-
                                         {/* Card fields */}
                                         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                                             {cardColumns.map((col) => {

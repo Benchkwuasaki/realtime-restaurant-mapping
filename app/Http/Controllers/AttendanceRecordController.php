@@ -55,11 +55,10 @@ class AttendanceRecordController extends Controller
                 'date_filed' => \Carbon\Carbon::parse($s->date_filed)->format('Y-m-d'),
                 'purpose_type' => $s->purpose_type,
                 'purpose_description' => $s->purpose_description,
-                'time_out' => $s->time_out,
-                'time_returned' => $s->time_returned,
-                'minutes_gone' => $s->minutes_gone,
-                'status' => $s->status,
-                'return_status' => $s->return_status,
+                'time_out'            => $s->time_out,
+                'time_returned'       => $s->time_returned,
+                'minutes_gone'        => $s->minutes_gone,
+                'status'              => $s->status,
             ])->values()->all());
 
         $allRecords = $all

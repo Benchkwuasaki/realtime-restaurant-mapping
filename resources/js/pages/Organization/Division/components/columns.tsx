@@ -3,7 +3,7 @@
 import { router } from "@inertiajs/react"
 import { route } from "ziggy-js"
 import { useState, useRef } from "react"
-import { Pen, Trash } from "lucide-react"
+import { Pen, Trash, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
@@ -28,6 +28,7 @@ import { type Division } from "../data/schema"
 
 interface ColumnOptions {
     onEdit: (division: Division) => void
+    onAssign: (division: Division) => void
 }
 
 // ─── Mobile Delete Confirm Dialog ─────────────────────────────────────────────
@@ -102,9 +103,10 @@ function DeleteConfirmDialog({ division, onClose }: DeleteConfirmDialogProps) {
 interface MobileDivisionCardProps {
     row: Division
     onEdit: (division: Division) => void
+    onAssign: (division: Division) => void
 }
 
-function MobileDivisionCard({ row, onEdit }: MobileDivisionCardProps) {
+function MobileDivisionCard({ row, onEdit, onAssign }: MobileDivisionCardProps) {
     const [confirmDivision, setConfirmDivision] = useState<Division | null>(null)
     const suppressNextClick = useRef(false)
 
@@ -147,7 +149,19 @@ function MobileDivisionCard({ row, onEdit }: MobileDivisionCardProps) {
                     <span className="text-xs text-muted-foreground">
                         {row.units?.length ?? 0} unit{(row.units?.length ?? 0) !== 1 ? "s" : ""}
                     </span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-12 p-0 text-xs text-muted-foreground hover:text-primary w-12"
+                            title="Assign employees"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onAssign(row)
+                            }}
+                        >
+                            <UserPlus />
+                        </Button>
                         <Button
                             variant="ghost"
                             size="sm"
@@ -184,7 +198,7 @@ function MobileDivisionCard({ row, onEdit }: MobileDivisionCardProps) {
 
 // ─── Columns ──────────────────────────────────────────────────────────────────
 
-export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Division>[] {
+export function getColumns({ onEdit, onAssign }: ColumnOptions): DataTableColumnDef<Division>[] {
     return [
         {
             id: "select",
@@ -225,7 +239,7 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Divisi
             enableSorting: true,
             enableHiding: true,
             mobileCard: (row) => (
-                <MobileDivisionCard row={row} onEdit={onEdit} />
+                <MobileDivisionCard row={row} onEdit={onEdit} onAssign={onAssign} />
             ),
         },
         {
@@ -281,6 +295,12 @@ export function getColumns({ onEdit }: ColumnOptions): DataTableColumnDef<Divisi
                 <DataTableRowActions
                     row={row}
                     actions={[
+                        // ── Assign employees action ──
+                        {
+                            icon: UserPlus,
+                            label: "Assign Employees",
+                            onClick: (division) => onAssign(division),
+                        },
                         editAction(onEdit),
                         deleteAction(
                             (division) =>

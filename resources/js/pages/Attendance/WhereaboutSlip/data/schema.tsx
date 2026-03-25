@@ -25,10 +25,15 @@ export const whereaboutSlipSchema = z.object({
     purpose_description: z.string(),
     time_out: z.string(),
     time_returned: z.string().nullable().optional(),
+    date_returned: z.string().nullable().optional(), // may differ from date_filed
     time_noted: z.string().nullable().optional(),
-    minutes_gone: z.number().nullable().optional(), // null until employee returns
-    status: z.enum(['pending', 'done']),
-    return_status: z.enum(['not_returned', 'returned']),
+    date_noted: z.string().nullable().optional(), // date supervisor noted the return
+    minutes_gone: z.number().nullable().optional(), // null until returned
+    // Single status field:
+    //   still_out    – slip filed, employee is out within work hours
+    //   not_returned – work_schedule_end passed, still out
+    //   returned     – employee has logged their return
+    status: z.enum(['still_out', 'not_returned', 'returned']),
     prov_code: z.string().nullable().optional(),
     city_code: z.string().nullable().optional(),
     brgy_code: z.string().nullable().optional(),

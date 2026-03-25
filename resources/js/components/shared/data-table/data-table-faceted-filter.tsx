@@ -123,9 +123,9 @@ export function DataTableFacetedFilter<TData, TValue>({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 border-dashed max-w-40 sm:max-w-none">
-          <PlusCircle />
-          {title}
+        <Button variant="outline" size="sm" className="h-8 border-dashed max-w-[48vw] sm:max-w-none">
+          <PlusCircle className="shrink-0" />
+          <span className="truncate">{title}</span>
           {selectedKeys.size > 0 && (
             <>
               <Separator orientation="vertical" className="mx-2 h-4" />
@@ -160,7 +160,7 @@ export function DataTableFacetedFilter<TData, TValue>({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
-        className="w-[min(220px,calc(100vw-2rem))]"
+        className="w-[min(220px,calc(100vw-2rem))] max-h-[60vh] overflow-y-auto"
       >
         {options.map((option) => {
           const key = String(option.value)

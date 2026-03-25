@@ -25,28 +25,29 @@ use App\Http\Controllers\InternalOrgDeductionController;
 use App\Http\Controllers\JobOrderPositionController;
 use App\Http\Controllers\LeaveAccrualController;
 use App\Http\Controllers\LeaveApplicationController;
+use App\Http\Controllers\LeaveBalanceController;
 use App\Http\Controllers\LeaveCalendarController;
 use App\Http\Controllers\LeaveEntitlementController;
 use App\Http\Controllers\LeaveReportController;
-use App\Http\Controllers\LeaveSettingsController;
 // Leave
+use App\Http\Controllers\LeaveSettingsController;
 use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\LoanEntryController;
 use App\Http\Controllers\OrganizationalChartController;
 use App\Http\Controllers\OtherDeductionEntryController;
 use App\Http\Controllers\PayrollDeductionSettingsController;
-use App\Http\Controllers\PayrollProcessingController;
 // Leave
+use App\Http\Controllers\PayrollProcessingController;
 use App\Http\Controllers\PayrollRegisterController;
 use App\Http\Controllers\PayrollReportController;
 use App\Http\Controllers\PaySlipGenerationController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RecognitionLogController;
 use App\Http\Controllers\ReportsAndAnalyticsController;
-use App\Http\Controllers\SalaryGradeTableController;
 // Leave
-use App\Http\Controllers\StepIncrementController;
+use App\Http\Controllers\SalaryGradeTableController;
 // reports and analytics
+use App\Http\Controllers\StepIncrementController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WhereaboutSlipController;
@@ -148,6 +149,8 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::prefix('organization/units')->name('unit.')->group(function () {
         Route::get('/', [UnitController::class, 'index'])->name('index');
         Route::post('/', [UnitController::class, 'store'])->name('store');
+        Route::get('/{unit}/unlinked-employees', [UnitController::class, 'unlinkedEmployees'])->name('unlinked-employees');
+        Route::post('/{unit}/attach-employees', [UnitController::class, 'attachEmployees'])->name('attach-employees');
         Route::delete('/bulk-destroy', [UnitController::class, 'bulkDestroy'])->name('bulk-destroy');
         Route::get('/{unit}', [UnitController::class, 'show'])->name('show');
         Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
@@ -164,6 +167,12 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::get('/create', [DepartmentController::class, 'create'])->name('create');
         Route::post('/', [DepartmentController::class, 'store'])->name('store');
         Route::delete('/bulk-destroy', [DepartmentController::class, 'bulkDestroy'])->name('bulk-destroy');
+
+        // ✅ Custom routes BEFORE the /{department} wildcard
+        Route::get('/unlinked-employees', [DepartmentController::class, 'unlinkedEmployees'])->name('unlinked-employees');
+        Route::post('/{department}/attach-employees', [DepartmentController::class, 'attachEmployees'])->name('attach-employees');
+
+        // /{department} wildcard routes AFTER
         Route::get('/{department}', [DepartmentController::class, 'show'])->name('show');
         Route::get('/{department}/edit', [DepartmentController::class, 'edit'])->name('edit');
         Route::put('/{department}', [DepartmentController::class, 'update'])->name('update');
@@ -197,6 +206,8 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
     Route::prefix('organization/divisions')->name('division.')->group(function () {
         Route::get('/', [DivisionController::class, 'index'])->name('index');
         Route::get('/{division}', [DivisionController::class, 'show'])->name('show');
+        Route::get('/{division}/unlinked-employees', [DivisionController::class, 'unlinkedEmployees'])->name('unlinked-employees');
+        Route::post('/{division}/attach-employees', [DivisionController::class, 'attachEmployees'])->name('attach-employees');
         Route::post('/', [DivisionController::class, 'store'])->name('store');
         Route::put('/{division}', [DivisionController::class, 'update'])->name('update');
         Route::delete('/bulk-destroy', [DivisionController::class, 'bulkDestroy'])->name('bulk-destroy');
@@ -343,13 +354,22 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
             Route::get('/balances', [LeaveAccrualController::class, 'balances'])->name('balances'); // from main (NEW)
         });
 
+        // leave balances (HR management — adjust, grant, threshold checks)
+        Route::prefix('balances')->name('balances.')->group(function () {
+            Route::get('/', [LeaveBalanceController::class, 'index'])->name('index');
+            Route::get('/{employee}', [LeaveBalanceController::class, 'show'])->name('show');
+            Route::put('/entry/{balance}', [LeaveBalanceController::class, 'update'])->name('update');
+            Route::post('/grant', [LeaveBalanceController::class, 'grant'])->name('grant');
+            Route::post('/check-thresholds', [LeaveBalanceController::class, 'checkThresholds'])->name('check-thresholds');
+        });
+
         // leave application
         Route::prefix('leave-application')->name('leave-application.')->group(function () {
             Route::get('/', [LeaveApplicationController::class, 'index'])->name('index');
             Route::post('/', [LeaveApplicationController::class, 'store'])->name('store');
             Route::put('/{application}', [LeaveApplicationController::class, 'update'])->name('update');
+            Route::get('/{id}/print', [LeaveApplicationController::class, 'print'])->name('print');
         });
-
     });
 
     /*
@@ -367,6 +387,8 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
             Route::get('/', [PayrollRegisterController::class, 'index'])->name('index');
             Route::get('/{period}', [PayrollRegisterController::class, 'show'])->name('show');
         });
+        Route::get('/payroll/payroll-register/{period}/print', [PayrollRegisterController::class, 'print'])
+            ->name('payroll-register.print');
 
         Route::get('/check-duplicate', [PayrollProcessingController::class, 'checkDuplicate'])->name('check-duplicate');
 
@@ -484,7 +506,18 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
 
     // Attendance Report (from main - NEW)
     Route::prefix('reports')->name('reports_and_analytics.')->group(function () {
-        Route::inertia('/leave', 'ReportsAndAnalytics\Leave\LeaveIndexa')->name('leave');
+        Route::prefix('/leave')->name('leave.')->group(function () {
+
+            // Existing index page
+            Route::get('/', [LeaveReportController::class, 'index'])
+                ->name('index');
+
+            // NEW — Leave Card JSON endpoint (consumed by the frontend via fetch)
+            Route::get('/leave-card/{employeeId}/{leaveTypeId}', [LeaveReportController::class, 'leaveCard'])
+                ->name('leave-card')
+                ->whereNumber(['employeeId', 'leaveTypeId']);
+
+        });
 
         Route::get('/attendance-report', [AttendanceReportController::class, 'index'])
             ->name('attendance-report.index');
@@ -492,19 +525,26 @@ Route::group(['middleware' => ['auth', 'verified']], function () {
         Route::get('/employee-report', [EmployeeReportController::class, 'index'])
             ->name('employee-report.index');
 
-        Route::get('/leave-report', [LeaveReportController::class, 'index'])
-            ->name('leave-report.index');
+        Route::get('/leave', [LeaveReportController::class, 'index'])
+            ->name('leave.index');
 
         Route::get('/payroll-report', [PayrollReportController::class, 'index'])
             ->name('payroll-report.index');
 
         Route::get('/government-report', [GovernmentReportController::class, 'index'])
             ->name('government-report.index');
-
     });
 
-    Route::prefix('announcement')->name('announcement.')->group(function () {
+    /*
+    |--------------------------------------------------------------------------
+    | Announcements
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('announcements')->name('announcements.')->group(function () {
         Route::get('/', [AnnouncementController::class, 'index'])->name('index');
+        Route::post('/', [AnnouncementController::class, 'store'])->name('store');
+        Route::put('/{announcement}', [AnnouncementController::class, 'update'])->name('update');
+        Route::delete('/{announcement}', [AnnouncementController::class, 'destroy'])->name('destroy');
     });
 
     Route::get('/activity_logs', [ActivityLogsController::class, 'index'])->name('activity_logs.index');

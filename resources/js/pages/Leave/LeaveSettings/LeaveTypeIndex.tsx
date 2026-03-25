@@ -1,24 +1,13 @@
 'use client';
 
-import { router } from '@inertiajs/react';
 import { useForm } from '@inertiajs/react';
 import { type Row } from '@tanstack/react-table';
-import { Trash2, Plus, Pencil } from 'lucide-react';
+import { Trash2, Plus } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 
 import { DataTable } from '@/components/shared/data-table/data-table';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,7 +28,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { getColumns } from './components/columns';
 import type { LeaveType } from './data/schema';
-import { useIsMobile } from '@/hooks/use-is-mobile';
 
 type Props = {
     leave_types: LeaveType[];
@@ -47,208 +35,179 @@ type Props = {
 
 function FieldError({ message }: { message?: string }) {
     if (!message) return null;
-    return <p className="text-destructive mt-1 text-xs">{message}</p>;
+    return <p className="mt-1 text-xs text-destructive">{message}</p>;
 }
 
-// ─── Mobile Detail Modal ───────────────────────────────────────────────────────
+//  View Modal
+// Opens when a row is clicked. Read-only view of all leave type fields.
+// Layout: title + status badge → 2-col grid fields → requirements → description.
 
-function DetailRow({
-    label,
-    value,
-}: {
-    label: string;
-    value: React.ReactNode;
-}) {
-    return (
-        <div className="border-secondary flex items-start justify-between gap-4 border-b py-2 last:border-0">
-            <span className="text-muted-foreground shrink-0 text-xs">
-                {label}
-            </span>
-            <span className="text-right text-xs">{value}</span>
-        </div>
-    );
-}
-
-interface MobileDetailModalProps {
+interface ViewModalProps {
     leaveType: LeaveType | null;
     onClose: () => void;
-    onEdit: (leaveType: LeaveType) => void;
-    onDeleted: () => void;
 }
 
-function MobileDetailModal({
-    leaveType,
-    onClose,
-    onEdit,
-    onDeleted,
-}: MobileDetailModalProps) {
-    const [confirmOpen, setConfirmOpen] = React.useState(false);
-
+function ViewModal({ leaveType, onClose }: ViewModalProps) {
     if (!leaveType) return null;
 
-    function handleDelete() {
-        router.delete(
-            route('leave.leave-type.destroy', leaveType!.leave_type_id),
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setConfirmOpen(false);
-                    onDeleted();
-                },
-            },
-        );
-    }
+    const availmentTypeLabel: Record<string, string> = {
+        continuous: 'Continuous',
+        intermittent: 'Intermittent',
+        both: 'Both',
+    };
 
     return (
-        <>
-            <Dialog open={!!leaveType} onOpenChange={(o) => !o && onClose()}>
-                <DialogContent className="flex max-h-[85vh] max-w-sm flex-col gap-0 p-0">
-                    <DialogHeader className="border-secondary shrink-0 border-b px-5 py-4">
-                        <DialogTitle className="pr-6 text-sm font-semibold">
+        <Dialog open={!!leaveType} onOpenChange={(o) => !o && onClose()}>
+            <DialogContent className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-lg">
+                {/* Header — title + status badge */}
+                <DialogHeader className="shrink-0 border-b border-secondary px-6 py-5">
+                    <div className="flex items-center gap-2 pr-6">
+                        <DialogTitle className="text-base font-medium">
                             {leaveType.leave_type_name}
                         </DialogTitle>
-                    </DialogHeader>
+                        <Badge
+                            variant={leaveType.status ? 'default' : 'secondary'}
+                        >
+                            {leaveType.status ? 'Active' : 'Inactive'}
+                        </Badge>
+                    </div>
+                </DialogHeader>
 
-                    <div className="flex-1 space-y-1 overflow-y-auto px-5 py-4">
-                        <DetailRow
-                            label="Description"
-                            value={
-                                <span className="text-muted-foreground">
-                                    {leaveType.leave_type_description || '—'}
-                                </span>
-                            }
-                        />
-                        <DetailRow
-                            label="Eligible Sex"
-                            value={leaveType.eligible_sex ?? '—'}
-                        />
-                        <DetailRow
-                            label="Compensation"
-                            value={
-                                <Badge
-                                    variant={
-                                        leaveType.is_paid
-                                            ? 'default'
-                                            : 'secondary'
-                                    }
-                                >
-                                    {leaveType.is_paid ? 'Paid' : 'Not Paid'}
-                                </Badge>
-                            }
-                        />
-                        <DetailRow
-                            label="Cash Convertible"
-                            value={
-                                <Badge
-                                    variant={
-                                        leaveType.is_convertible
-                                            ? 'default'
-                                            : 'secondary'
-                                    }
-                                >
-                                    {leaveType.is_convertible
-                                        ? 'Convertible'
-                                        : 'Not Convertible'}
-                                </Badge>
-                            }
-                        />
-                        <DetailRow
-                            label="Accrual"
-                            value={
-                                <Badge
-                                    variant={
-                                        leaveType.is_accrual
-                                            ? 'default'
-                                            : 'secondary'
-                                    }
-                                >
-                                    {leaveType.is_accrual
-                                        ? 'Accrual'
-                                        : 'Non-Accrual'}
-                                </Badge>
-                            }
-                        />
-                        <DetailRow
-                            label="Status"
-                            value={
-                                <Badge
-                                    variant={
-                                        leaveType.status
-                                            ? 'default'
-                                            : 'secondary'
-                                    }
-                                >
-                                    {leaveType.status ? 'Active' : 'Inactive'}
-                                </Badge>
-                            }
-                        />
-                        <DetailRow
-                            label="Requirements"
-                            value={
-                                leaveType.requirements &&
-                                leaveType.requirements.length > 0
-                                    ? leaveType.requirements
-                                          .map((r) => r.requirement_name)
-                                          .join(', ')
-                                    : 'None'
-                            }
-                        />
+                <div className="flex-1 overflow-y-auto">
+                    {/* General fields — 2 column grid */}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-b border-secondary px-6 py-4">
+                        <div>
+                            <p className="mb-0.5 text-xs text-muted-foreground">
+                                Eligible sex
+                            </p>
+                            <p className="text-sm font-medium">
+                                {leaveType.eligible_sex}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="mb-0.5 text-xs text-muted-foreground">
+                                Compensation
+                            </p>
+                            <p className="text-sm font-medium">
+                                {leaveType.is_paid ? 'Paid' : 'Not Paid'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="mb-0.5 text-xs text-muted-foreground">
+                                Cash convertible
+                            </p>
+                            <p className="text-sm font-medium">
+                                {leaveType.is_convertible
+                                    ? 'Convertible'
+                                    : 'Not Convertible'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="mb-0.5 text-xs text-muted-foreground">
+                                Accrual
+                            </p>
+                            <p className="text-sm font-medium">
+                                {leaveType.is_accrual
+                                    ? 'Accrual'
+                                    : 'Non-Accrual'}
+                            </p>
+                        </div>
                     </div>
 
-                    <DialogFooter className="bg-muted/30 shrink-0 flex-row justify-between gap-2 px-5 py-4">
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            className="gap-1.5"
-                            onClick={() => setConfirmOpen(true)}
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Delete
-                        </Button>
+                    {/*  Availment fields — 2 column grid */}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-b border-secondary px-6 py-4">
+                        <div>
+                            <p className="mb-0.5 text-xs text-muted-foreground">
+                                Cumulative
+                            </p>
+                            <p className="text-sm font-medium">
+                                {leaveType.is_cumulative
+                                    ? 'Cumulative'
+                                    : 'Non-Cumulative'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="mb-0.5 text-xs text-muted-foreground">
+                                Per event
+                            </p>
+                            <p className="text-sm font-medium">
+                                {leaveType.is_per_event
+                                    ? 'Per Event'
+                                    : 'Not Per Event'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="mb-0.5 text-xs text-muted-foreground">
+                                Availment type
+                            </p>
+                            <p className="text-sm font-medium">
+                                {availmentTypeLabel[leaveType.availment_type]}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="mb-0.5 text-xs text-muted-foreground">
+                                Max lifetime grants
+                            </p>
+                            <p
+                                className={`text-sm font-medium ${leaveType.max_lifetime_grants == null ? 'text-muted-foreground italic' : ''}`}
+                            >
+                                {leaveType.max_lifetime_grants ?? 'Unlimited'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="mb-0.5 text-xs text-muted-foreground">
+                                Availment deadline
+                            </p>
+                            <p
+                                className={`text-sm font-medium ${leaveType.availment_deadline_days == null ? 'text-muted-foreground italic' : ''}`}
+                            >
+                                {leaveType.availment_deadline_days != null
+                                    ? `${leaveType.availment_deadline_days} days`
+                                    : 'No deadline'}
+                            </p>
+                        </div>
+                    </div>
 
-                        <Button
-                            size="sm"
-                            className="gap-1.5"
-                            onClick={() => {
-                                onClose();
-                                onEdit(leaveType);
-                            }}
-                        >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Edit
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    {/* Requirements — bullet list */}
+                    <div className="border-b border-secondary px-6 py-4">
+                        <p className="mb-2 text-xs text-muted-foreground">
+                            Requirements
+                        </p>
+                        {leaveType.requirements &&
+                        leaveType.requirements.length > 0 ? (
+                            <ul className="list-disc space-y-1 pl-4">
+                                {leaveType.requirements.map((r) => (
+                                    <li
+                                        key={r.leave_type_requirement_id}
+                                        className="text-sm"
+                                    >
+                                        {r.requirement_name}
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-muted-foreground italic">
+                                None
+                            </p>
+                        )}
+                    </div>
 
-            {/* Delete confirmation — rendered outside the detail Dialog to avoid nesting issues */}
-            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            Delete {leaveType.leave_type_name}?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will also remove all associated requirements.
-                            This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDelete}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </>
+                    {/* Description — at the bottom */}
+                    <div className="px-6 py-4">
+                        <p className="mb-0.5 text-xs text-muted-foreground">
+                            Description
+                        </p>
+                        <p className="text-justify text-sm leading-relaxed text-muted-foreground">
+                            {leaveType.leave_type_description || '—'}
+                        </p>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 
-// ─── Create / Edit Modal ───────────────────────────────────────────────────────
+// Create / Edit Modal
 
 interface LeaveTypeModalProps {
     open: boolean;
@@ -294,6 +253,25 @@ function LeaveTypeModal({
                     ? '1'
                     : '0'
                 : '',
+            is_cumulative: editingLeaveType
+                ? editingLeaveType.is_cumulative
+                    ? '1'
+                    : '0'
+                : '1',
+            is_per_event: editingLeaveType
+                ? editingLeaveType.is_per_event
+                    ? '1'
+                    : '0'
+                : '0',
+            max_lifetime_grants:
+                editingLeaveType?.max_lifetime_grants != null
+                    ? String(editingLeaveType.max_lifetime_grants)
+                    : '',
+            availment_type: editingLeaveType?.availment_type ?? 'both',
+            availment_deadline_days:
+                editingLeaveType?.availment_deadline_days != null
+                    ? String(editingLeaveType.availment_deadline_days)
+                    : '',
             status: editingLeaveType
                 ? editingLeaveType.status
                     ? '1'
@@ -340,7 +318,6 @@ function LeaveTypeModal({
                 ),
                 {
                     data: payload,
-                    // onSuccess: handleClose,
                     onSuccess: () => {
                         toast.success('Leave type updated successfully.');
                         handleClose();
@@ -351,7 +328,6 @@ function LeaveTypeModal({
         } else {
             post(route('leave.leave-type.store'), {
                 data: payload,
-                // onSuccess: handleClose,
                 onSuccess: () => {
                     toast.success('Leave type created successfully.');
                     handleClose();
@@ -375,12 +351,13 @@ function LeaveTypeModal({
                     className="flex flex-1 flex-col overflow-hidden"
                 >
                     <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-                        <p className="text-muted-foreground text-xs">
+                        <p className="text-xs text-muted-foreground">
                             All fields with{' '}
                             <span className="text-red-600">*</span> are
                             required.
                         </p>
 
+                        {/* Leave Type */}
                         <div>
                             <label className="text-xs font-medium">
                                 Leave Type Name{' '}
@@ -397,6 +374,7 @@ function LeaveTypeModal({
                             <FieldError message={errors.leave_type_name} />
                         </div>
 
+                        {/* Description */}
                         <div>
                             <label className="text-xs font-medium">
                                 Description
@@ -419,6 +397,7 @@ function LeaveTypeModal({
                         </div>
 
                         <section className="grid grid-cols-2 gap-5">
+                            {/* Eligible Sex */}
                             <div>
                                 <label className="text-xs font-medium">
                                     Eligible Sex{' '}
@@ -446,6 +425,7 @@ function LeaveTypeModal({
                                 <FieldError message={errors.eligible_sex} />
                             </div>
 
+                            {/* Compensation Status */}
                             <div>
                                 <label className="text-xs font-medium">
                                     Compensation Status{' '}
@@ -470,6 +450,7 @@ function LeaveTypeModal({
                         </section>
 
                         <section className="grid grid-cols-2 gap-5">
+                            {/* Cash Convertible */}
                             <div>
                                 <label className="text-xs font-medium">
                                     Cash Convertible Status{' '}
@@ -496,6 +477,7 @@ function LeaveTypeModal({
                                 <FieldError message={errors.is_convertible} />
                             </div>
 
+                            {/* Accrual */}
                             <div>
                                 <label className="text-xs font-medium">
                                     Accrual{' '}
@@ -523,7 +505,153 @@ function LeaveTypeModal({
                             </div>
                         </section>
 
+                        {/*   Cumulative + Per Event */}
                         <section className="grid grid-cols-2 gap-5">
+                            {/* Cumulative */}
+                            <div>
+                                <label className="text-xs font-medium">
+                                    Cumulative{' '}
+                                    <span className="text-red-600">*</span>
+                                </label>
+                                <Select
+                                    value={data.is_cumulative}
+                                    onValueChange={(v) =>
+                                        setData('is_cumulative', v)
+                                    }
+                                >
+                                    <SelectTrigger className="mt-1">
+                                        <SelectValue placeholder="Select cumulative status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">
+                                            Cumulative
+                                        </SelectItem>
+                                        <SelectItem value="0">
+                                            Non-Cumulative
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FieldError message={errors.is_cumulative} />
+                            </div>
+
+                            {/* Per Event */}
+                            <div>
+                                <label className="text-xs font-medium">
+                                    Per Event{' '}
+                                    <span className="text-red-600">*</span>
+                                </label>
+                                <Select
+                                    value={data.is_per_event}
+                                    onValueChange={(v) =>
+                                        setData('is_per_event', v)
+                                    }
+                                >
+                                    <SelectTrigger className="mt-1">
+                                        <SelectValue placeholder="Select per event status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">
+                                            Per Event
+                                        </SelectItem>
+                                        <SelectItem value="0">
+                                            Not Per Event
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FieldError message={errors.is_per_event} />
+                            </div>
+                        </section>
+
+                        {/*   Availment Type + Max Lifetime Grants */}
+                        <section className="grid grid-cols-2 gap-5">
+                            {/* Availment Type */}
+                            <div>
+                                <label className="text-xs font-medium">
+                                    Availment Type{' '}
+                                    <span className="text-red-600">*</span>
+                                </label>
+                                <Select
+                                    value={data.availment_type}
+                                    onValueChange={(v) =>
+                                        setData(
+                                            'availment_type',
+                                            v as
+                                                | 'continuous'
+                                                | 'intermittent'
+                                                | 'both',
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger className="mt-1">
+                                        <SelectValue placeholder="Select availment type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="continuous">
+                                            Continuous
+                                        </SelectItem>
+                                        <SelectItem value="intermittent">
+                                            Intermittent
+                                        </SelectItem>
+                                        <SelectItem value="both">
+                                            Both
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FieldError message={errors.availment_type} />
+                            </div>
+
+                            {/* Max Lifetime Grants */}
+                            <div>
+                                <label className="text-xs font-medium">
+                                    Max Lifetime Grants
+                                </label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={255}
+                                    value={data.max_lifetime_grants}
+                                    onChange={(e) =>
+                                        setData(
+                                            'max_lifetime_grants',
+                                            e.target.value,
+                                        )
+                                    }
+                                    className="mt-1 text-sm"
+                                    placeholder="e.g. 3 (optional)"
+                                />
+                                <FieldError
+                                    message={errors.max_lifetime_grants}
+                                />
+                            </div>
+                        </section>
+
+                        {/*   Availment Deadline Days + Status */}
+                        <section className="grid grid-cols-2 gap-5">
+                            {/* Availment Deadline */}
+                            <div>
+                                <label className="text-xs font-medium">
+                                    Availment Deadline (days)
+                                </label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={255}
+                                    value={data.availment_deadline_days}
+                                    onChange={(e) =>
+                                        setData(
+                                            'availment_deadline_days',
+                                            e.target.value,
+                                        )
+                                    }
+                                    className="mt-1 text-sm"
+                                    placeholder="e.g. 30 (optional)"
+                                />
+                                <FieldError
+                                    message={errors.availment_deadline_days}
+                                />
+                            </div>
+
+                            {/* Status */}
                             <div>
                                 <label className="text-xs font-medium">
                                     Status{' '}
@@ -549,6 +677,7 @@ function LeaveTypeModal({
                             </div>
                         </section>
 
+                        {/* Requirements */}
                         <div>
                             <div className="mb-2 flex items-center justify-between">
                                 <label className="text-xs font-medium">
@@ -567,7 +696,7 @@ function LeaveTypeModal({
                             </div>
 
                             {requirementInputs.length === 0 ? (
-                                <p className="text-muted-foreground text-xs">
+                                <p className="text-xs text-muted-foreground">
                                     No requirements added yet.
                                 </p>
                             ) : (
@@ -575,7 +704,7 @@ function LeaveTypeModal({
                                     {requirementInputs.map((req, index) => (
                                         <div
                                             key={index}
-                                            className="bg-muted/20 relative flex items-center gap-2"
+                                            className="relative flex items-center gap-2 bg-muted/20"
                                         >
                                             <Input
                                                 value={req.requirement_name}
@@ -604,7 +733,7 @@ function LeaveTypeModal({
                                                 onClick={() =>
                                                     removeRequirement(index)
                                                 }
-                                                className="text-muted-foreground hover:text-destructive shrink-0 transition-colors"
+                                                className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
                                                 title="Remove requirement"
                                             >
                                                 <Trash2 className="h-3.5 w-3.5" />
@@ -616,7 +745,7 @@ function LeaveTypeModal({
                         </div>
                     </div>
 
-                    <DialogFooter className="bg-muted/30 shrink-0 border-t px-5 py-4">
+                    <DialogFooter className="shrink-0 border-t bg-muted/30 px-5 py-4">
                         <Button
                             type="button"
                             variant="outline"
@@ -642,8 +771,6 @@ function LeaveTypeModal({
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LeaveTypeIndex({ leave_types }: Props) {
-    const isMobile = useIsMobile();
-
     const [modalOpen, setModalOpen] = React.useState(false);
     const [editingLeaveType, setEditingLeaveType] =
         React.useState<LeaveType | null>(null);
@@ -665,10 +792,9 @@ export default function LeaveTypeIndex({ leave_types }: Props) {
         setEditingLeaveType(null);
     }
 
+    // Opens ViewModal on any row click (desktop + mobile)
     function handleRowClick(row: Row<LeaveType>) {
-        if (isMobile) {
-            setDetailLeaveType(row.original);
-        }
+        setDetailLeaveType(row.original);
     }
 
     const columns = getColumns({ onEdit: openEdit });
@@ -681,7 +807,7 @@ export default function LeaveTypeIndex({ leave_types }: Props) {
                 getRowId={(row) => String(row.leave_type_id)}
                 searchColumnId="leave_type_name"
                 searchPlaceholder="Search leave types..."
-                onRowClick={isMobile ? handleRowClick : undefined}
+                onRowClick={handleRowClick}
                 filters={[
                     {
                         columnId: 'eligible_sex',
@@ -728,12 +854,10 @@ export default function LeaveTypeIndex({ leave_types }: Props) {
                 }}
             />
 
-            {/* Mobile-only detail modal */}
-            <MobileDetailModal
+            {/* View modal — opens on row click */}
+            <ViewModal
                 leaveType={detailLeaveType}
                 onClose={() => setDetailLeaveType(null)}
-                onEdit={openEdit}
-                onDeleted={() => setDetailLeaveType(null)}
             />
 
             {/* Create / Edit modal */}

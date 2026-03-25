@@ -28,7 +28,7 @@ class WhereaboutSlipController extends Controller
             'approvedBy.basicInfo',
             'attestedBy.basicInfo',
         ])
-            ->latest()
+            ->orderByDesc('date_filed')
             ->get()
             ->map(fn ($slip) => [
                 'whereabout_slip_id' => $slip->whereabout_slip_id,
@@ -42,9 +42,10 @@ class WhereaboutSlipController extends Controller
                 'time_out' => $slip->time_out,
                 'time_returned' => $slip->time_returned,
                 'time_noted' => $slip->time_noted,
+                'date_returned' => $slip->date_returned,
+                'date_noted' => $slip->date_noted,
                 'minutes_gone' => $slip->minutes_gone,
                 'status' => $slip->status,
-                'return_status' => $slip->return_status,
                 'prov_code' => $slip->prov_code,
                 'city_code' => $slip->city_code,
                 'brgy_code' => $slip->brgy_code,
@@ -67,6 +68,8 @@ class WhereaboutSlipController extends Controller
             'module' => 'attendance',
             'description' => 'Viewed whereabout slip management',
         ]);
+
+        // dd($slips);
 
         return Inertia::render('Attendance/WhereaboutSlip/Index', [
             'slips' => $slips,
@@ -126,37 +129,68 @@ class WhereaboutSlipController extends Controller
     public function logReturn(Request $request, WhereaboutSlip $whereaboutSlip): RedirectResponse
     {
         $timeOut = $whereaboutSlip->time_out;
+        $dateFiled = $whereaboutSlip->date_filed->toDateString();
 
+        // ── Base validation (always runs) ─────────────────────────────────────
         $validated = $request->validate([
+            'date_returned' => [
+                'required',
+                'date',
+                'date_format:Y-m-d',
+                "after_or_equal:{$dateFiled}",
+            ],
             'time_returned' => [
                 'required',
                 'date_format:H:i:s',
-                "after:{$timeOut}",
+            ],
+            'date_noted' => [
+                'required',
+                'date',
+                'date_format:Y-m-d',
+                'after_or_equal:date_returned',
             ],
             'time_noted' => [
                 'required',
                 'date_format:H:i:s',
-                "after:{$timeOut}",
-                'after:time_returned',
             ],
-        ], [
-            'time_returned.after' => "Time returned must be after the time out ({$timeOut}).",
-            'time_noted.after' => 'Time noted must be after time returned.',
         ]);
 
+        // ── Same-day time constraints ─────────────────────────────────────────
+        // Only enforce time_returned > time_out when the employee returns on
+        // the exact same calendar day the slip was filed. A next-day (or later)
+        // return can be any time — e.g. came back at 7 AM after a 2 PM departure.
+        if ($validated['date_returned'] === $dateFiled) {
+            $request->validate([
+                'time_returned' => ["after:{$timeOut}"],
+            ], [
+                'time_returned.after' => "Time returned must be after the time out ({$timeOut}).",
+            ]);
+        }
+
+        // Only enforce time_noted >= time_returned when the supervisor records
+        // the note on the exact same date the employee returned.
+        // If noted on a later date, any time of day is acceptable.
+        if ($validated['date_noted'] === $validated['date_returned']) {
+            $request->validate([
+                'time_noted' => ['after_or_equal:time_returned'],
+            ], [
+                'time_noted.after_or_equal' => 'Time noted must be at or after time returned.',
+            ]);
+        }
+
         // ── Compute minutes_gone ──────────────────────────────────────────────
-        // This is the raw duration the employee was away (time_out → time_returned).
-        // For personal slips, ProcessAttendanceLog will deduct this from work_minutes.
-        // For official slips, it is stored for record-keeping but not deducted.
-        $minutesGone = (int) Carbon::createFromTimeString($timeOut)
-            ->diffInMinutes(Carbon::createFromTimeString($validated['time_returned']));
+        // Full datetime diff so overnight/multi-day gaps are calculated correctly.
+        // e.g. filed Mar 12 at 14:00, returned Mar 14 at 08:00 = 1,080 min away.
+        $minutesGone = (int) Carbon::parse("{$dateFiled} {$timeOut}")
+            ->diffInMinutes(Carbon::parse("{$validated['date_returned']} {$validated['time_returned']}"));
 
         $whereaboutSlip->update([
+            'date_returned' => $validated['date_returned'],
             'time_returned' => $validated['time_returned'],
+            'date_noted' => $validated['date_noted'],
             'time_noted' => $validated['time_noted'],
             'minutes_gone' => $minutesGone,
-            'return_status' => 'returned',
-            'status' => 'done',
+            'status' => 'returned',
         ]);
 
         // ── Re-trigger attendance computation for personal slips ──────────────
@@ -233,5 +267,32 @@ class WhereaboutSlipController extends Controller
                 'name_extension' => $employee->basicInfo->name_extension,
             ] : null,
         ];
+    }
+
+    public function handle(): void
+    {
+        $now = Carbon::now('Asia/Manila');
+
+        // Eager-load the employee so we can check their work_schedule_end.
+        $outstanding = WhereaboutSlip::with('employee')
+            ->where('status', 'still_out')
+            ->where('date_filed', $now->toDateString()) // only today's slips
+            ->get();
+
+        $escalated = 0;
+
+        foreach ($outstanding as $slip) {
+            $schedEnd = $slip->employee?->work_schedule_end; // e.g. "17:00:00"
+            if (! $schedEnd) {
+                continue;
+            }
+
+            $endTime = Carbon::parse($now->toDateString().' '.$schedEnd, 'Asia/Manila');
+
+            if ($now->greaterThanOrEqualTo($endTime)) {
+                $slip->update(['status' => 'not_returned']);
+                $escalated++;
+            }
+        }
     }
 }

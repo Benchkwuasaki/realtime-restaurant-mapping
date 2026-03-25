@@ -12,6 +12,7 @@ import {
     NavigationOff,
     CheckCheck,
     X,
+    Printer,
 } from 'lucide-react';
 
 import { DataTableColumnHeader } from '@/components/shared/data-table/data-table-column-header';
@@ -191,8 +192,27 @@ function RowActions({ row, onEdit, onAction, authEmployeeId, hasOtherRoles }: Ro
 
     if (hideActions) return null;
 
-    // no actions shown for terminal statuses (Approved / Disapproved)
-    if (!isPending && !isForDecision) return null;
+    // terminal statuses — printer icon opens the view modal, user prints from there
+    const isTerminal = status === 'Approved' || status === 'Disapproved';
+    if (isTerminal) {
+        return (
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground"
+                    onClick={() => {
+                        const url = route('leave.leave-application.print', row.leave_application_id);
+                        window.open(url, '_blank');
+                    }}
+                    title="Print"
+                >
+                    <Printer className="h-4 w-4" />
+                    <span className="sr-only">View and print</span>
+                </Button>
+            </div>
+        );
+    }
 
     // user has no applicable capability for the current status
     if (isPending && !canRecommend && !effectiveCanEdit) return null;
@@ -466,7 +486,7 @@ export function getColumns({
                     row.original.end_date,
                 );
                 return days != null ? (
-                    <p className="text-sm text-muted-foreground">{days} days</p>
+                    <p className="text-sm text-muted-foreground">{days} working day{days !== 1 ? 's' : ''}</p>
                 ) : (
                     <span className="text-sm text-muted-foreground">N/A</span>
                 );

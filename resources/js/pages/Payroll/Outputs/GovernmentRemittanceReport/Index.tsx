@@ -458,8 +458,6 @@ function StatCard({
     );
 }
 
-// ── Agency DataTable Card ─────────────────────────────────────────────────────
-
 interface AgencyDataTableCardProps {
     agencyId: string;
     agencyData: AgencyData;
@@ -504,8 +502,7 @@ function AgencyDataTableCard({
 
     return (
         <Card className="mb-6 border border-secondary">
-            {/* Agency Header */}
-            <CardHeader className="pb-3">
+            <CardHeader>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div
@@ -561,7 +558,7 @@ function AgencyDataTableCard({
                 </div>
             </CardHeader>
 
-            <section className="gap-6 p-6">
+            <section className="gap-8 p-8">
                 <DataTable
                     data={filteredEmployees}
                     columns={columns}

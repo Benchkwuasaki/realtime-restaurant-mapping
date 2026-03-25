@@ -1,9 +1,10 @@
 import { router, useForm } from "@inertiajs/react"
-import { Plus } from "lucide-react"
+import { Check, ChevronsUpDown, Plus } from "lucide-react"
 import { useEffect, useState } from "react"
 import { route } from "ziggy-js"
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import {
     Dialog,
     DialogContent,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
     Select,
     SelectContent,
@@ -22,6 +24,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { cn } from "@/lib/utils"
 
 import { type InternalOrganization } from "../data/schema"
 
@@ -32,6 +35,11 @@ export interface InternalOrgType {
     internal_org_type: string
 }
 
+export interface EmployeeOption {
+    id: string
+    name: string
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface OrganizationDialogProps {
@@ -39,6 +47,8 @@ interface OrganizationDialogProps {
     onOpenChange: (open: boolean) => void
     organization?: InternalOrganization | null
     orgTypes?: InternalOrgType[]
+    employees?: EmployeeOption[]
+    redirectTo?: string
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -48,6 +58,8 @@ export function OrganizationDialog({
     onOpenChange,
     organization,
     orgTypes: initialOrgTypes = [],
+    employees = [],
+    redirectTo,
 }: OrganizationDialogProps) {
     const isEditing = !!organization
 
@@ -63,7 +75,7 @@ export function OrganizationDialog({
         code: "",
         name: "",
         internal_org_type_id: "" as string | number,
-        head: "",
+        head_employee_id: "",
         payroll_deduction_linked: false,
         status: true,
     })
@@ -74,10 +86,11 @@ export function OrganizationDialog({
                 code: organization.code ?? "",
                 name: organization.name ?? "",
                 internal_org_type_id: organization.internal_org_type_id ?? "",
-                head: organization.head ?? "",
+                head_employee_id: String(organization.head_employee_id ?? ""),
                 payroll_deduction_linked: organization.payroll_deduction_linked ?? false,
                 status: organization.status ?? true,
             })
+            setHeadSearch(organization.head ?? "")
         }
     }, [organization])
 
@@ -87,9 +100,11 @@ export function OrganizationDialog({
             put(route("internal-organization.update", organization.internal_organization_id), {
                 preserveScroll: true,
                 onSuccess: () => {
-                    reset();
-                    onOpenChange(false);
-                    toast.success('Organization updated successfully.');
+                    reset()
+                    onOpenChange(false)
+                    if (redirectTo) {
+                        router.visit(redirectTo)
+                    }
                 },
             })
         } else {
@@ -105,13 +120,28 @@ export function OrganizationDialog({
     }
 
     function handleOpenChange(value: boolean) {
-        if (!value) { reset(); setAddingType(false); setNewTypeName("") }
+        if (!value) {
+            reset()
+            setAddingType(false)
+            setNewTypeName("")
+            setHeadSearch("")
+            setHeadOpen(false)
+        }
         onOpenChange(value)
     }
 
     // ── Inline "Add Type" sub-form ────────────────────────────────────────────
 
     const [addingType, setAddingType] = useState(false)
+    const [headSearch, setHeadSearch] = useState("")
+    const [headOpen, setHeadOpen] = useState(false)
+    const selectedEmployee = employees.find(e => e.id === data.head_employee_id)
+
+    const filteredEmployees = headSearch.trim().length === 0
+        ? employees
+        : employees.filter((e) =>
+            e.name.toLowerCase().includes(headSearch.toLowerCase())
+        )
     const [newTypeName, setNewTypeName] = useState("")
     const [typeError, setTypeError] = useState<string | null>(null)
     const [savingType, setSavingType] = useState(false)
@@ -149,6 +179,11 @@ export function OrganizationDialog({
                 onFinish: () => setSavingType(false),
             }
         )
+    }
+
+    function handleOpenChange(value: boolean) {
+        if (!value) { reset(); setAddingType(false); setNewTypeName(""); setHeadOpen(false) }
+        onOpenChange(value)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -282,32 +317,74 @@ export function OrganizationDialog({
                     {/* ── Head ─────────────────────────────────────────────── */}
                     <div className="grid gap-1.5">
                         <Label htmlFor="head">Head</Label>
-                        <Input
-                            id="head"
-                            value={data.head}
-                            onChange={(e) => setData("head", e.target.value)}
-                            placeholder="Name of the organization head"
-                        />
-                        {errors.head && (
-                            <p className="text-destructive text-xs">{errors.head}</p>
+                        <Popover open={headOpen} onOpenChange={setHeadOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    id="head"
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={headOpen}
+                                    className="w-full justify-between font-normal text-sm shadow-none hover:bg-background"
+                                >
+                                    <span className={cn("truncate", !selectedEmployee && "text-muted-foreground")}>
+                                        {selectedEmployee ? selectedEmployee.name : "Select employee…"}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                <Command filter={(itemValue, search) =>
+                                    itemValue.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+                                }>
+                                    <CommandInput placeholder="Search employee…" className="text-sm" />
+                                    <CommandList className="max-h-52 overflow-y-auto">
+                                        <CommandEmpty>No employees found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {employees.map((emp) => (
+                                                <CommandItem
+                                                    key={emp.id}
+                                                    value={emp.name}
+                                                    onSelect={() => {
+                                                        setData("head_employee_id", data.head_employee_id === emp.id ? "" : emp.id)
+                                                        setHeadOpen(false)
+                                                    }}
+                                                    className="text-sm"
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", data.head_employee_id === emp.id ? "opacity-100" : "opacity-0")} />
+                                                    {emp.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                        {errors.head_employee_id && (
+                            <p className="text-destructive text-xs">{errors.head_employee_id}</p>
                         )}
                     </div>
 
                     {/* ── Toggles ───────────────────────────────────────────── */}
                     <div className="grid gap-3">
-                        <div className="bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3">
+                        <div className={`bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3 transition-opacity ${!data.status ? "opacity-50" : ""}`}>
                             <div className="grid gap-0.5">
-                                <Label htmlFor="payroll_deduction_linked" className="cursor-pointer text-sm font-medium">
+                                <Label
+                                    htmlFor="payroll_deduction_linked"
+                                    className={`text-sm font-medium ${!data.status ? "cursor-not-allowed text-muted-foreground" : "cursor-pointer"}`}
+                                >
                                     Payroll Deduction Linked
                                 </Label>
                                 <p className="text-muted-foreground text-xs">
-                                    Link this organization to payroll deductions
+                                    {!data.status
+                                        ? "Unavailable while organization is inactive"
+                                        : "Link this organization to payroll deductions"}
                                 </p>
                             </div>
                             <Switch
                                 id="payroll_deduction_linked"
                                 checked={data.payroll_deduction_linked}
                                 onCheckedChange={(checked) => setData("payroll_deduction_linked", checked)}
+                                disabled={!data.status}
                             />
                         </div>
 
@@ -323,13 +400,16 @@ export function OrganizationDialog({
                             <Switch
                                 id="status"
                                 checked={data.status}
-                                onCheckedChange={(checked) => setData("status", checked)}
+                                onCheckedChange={(checked) => {
+                                    setData("status", checked)
+                                    if (!checked) setData("payroll_deduction_linked", false)
+                                }}
                             />
                         </div>
                     </div>
                 </form>
 
-                <DialogFooter showCloseButton>
+                <DialogFooter className="px-5 py-4 border-t border-border xs:flex xs:flex-row xs:justify-between bg-muted/30" showCloseButton>
                     <Button
                         type="submit"
                         form="organization-form"
@@ -338,7 +418,7 @@ export function OrganizationDialog({
                         {processing ? "Saving..." : isEditing ? "Update Organization" : "Save Organization"}
                     </Button>
                 </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            </DialogContent >
+        </Dialog >
     )
 }

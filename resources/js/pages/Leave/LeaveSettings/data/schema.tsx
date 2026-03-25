@@ -21,6 +21,7 @@ export const leaveEntitlementSchema = z.object({
     leave_entitlement_description: z.string().nullable(),
     years_of_service: z.number(),
     days_entitled: z.number(),
+    event_type: z.string(),
 })
 
 // Shape of a single leave type record
@@ -32,6 +33,11 @@ export const leaveTypeSchema = z.object({
     is_paid: z.boolean(),
     is_convertible: z.boolean(),
     is_accrual: z.boolean(),
+    is_cumulative: z.boolean(),
+    is_per_event: z.boolean(),
+    max_lifetime_grants: z.number().nullable(),
+    availment_type: z.enum(["continuous", "intermittent", "both"]),
+    availment_deadline_days: z.number().nullable(),
     status: z.boolean(),
     requirements: z.array(leaveTypeRequirementSchema), // list of documents/requirements needed for this leave type
 })

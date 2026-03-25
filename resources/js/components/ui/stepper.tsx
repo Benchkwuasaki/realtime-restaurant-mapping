@@ -107,6 +107,9 @@ interface StepperProps {
 }
 
 export function Stepper({ steps, currentStep }: StepperProps) {
+    const lastIndex = steps.length - 1
+    const isAllComplete = currentStep >= lastIndex
+
     return (
         <div className="w-full">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-y-3 pb-6">
@@ -117,9 +120,9 @@ export function Stepper({ steps, currentStep }: StepperProps) {
                         title={step.title}
                         description={step.description}
                         icon={step.icon}
-                        isCompleted={index < currentStep}
-                        isActive={index === currentStep}
-                        isLast={index === steps.length - 1}
+                        isCompleted={isAllComplete || index < currentStep}
+                        isActive={!isAllComplete && index === currentStep}
+                        isLast={index === lastIndex}
                     />
                 ))}
             </div>

@@ -99,51 +99,50 @@ export function DataTableToolbar<TData>({
 
   return (
     <>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <Input
-            placeholder={searchPlaceholder}
-            value={searchValue}
-            onChange={(e) => {
-              setSearchValue(e.target.value)
-              const col = table.getColumn(searchColumnId)
-              if (!col && process.env.NODE_ENV === "development") {
-                console.warn(`[DataTableToolbar] searchColumnId "${searchColumnId}" not found.`)
-              }
-              col?.setFilterValue(e.target.value)
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Left: search + filters + reset inline */}
+        <Input
+          placeholder={searchPlaceholder}
+          value={searchValue}
+          onChange={(e) => {
+            setSearchValue(e.target.value)
+            const col = table.getColumn(searchColumnId)
+            if (!col && process.env.NODE_ENV === "development") {
+              console.warn(`[DataTableToolbar] searchColumnId "${searchColumnId}" not found.`)
+            }
+            col?.setFilterValue(e.target.value)
+          }}
+          className="h-8 min-w-0 w-40 sm:w-50 lg:w-62.5"
+        />
+
+        {filters.map(({ columnId, title, options }) =>
+          table.getColumn(columnId) ? (
+            <DataTableFacetedFilter
+              key={columnId}
+              column={table.getColumn(columnId)}
+              title={title}
+              options={options}
+              table={table}
+            />
+          ) : null
+        )}
+
+        {isFiltered && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              table.resetColumnFilters()
+              setSearchValue("")
             }}
-            className="h-8 sm:w-50 lg:w-62.5"
-          />
+          >
+            Reset
+            <X className="ml-1 size-3.5" />
+          </Button>
+        )}
 
-          {filters.map(({ columnId, title, options }) =>
-            table.getColumn(columnId) ? (
-              <DataTableFacetedFilter
-                key={columnId}
-                column={table.getColumn(columnId)}
-                title={title}
-                options={options}
-                table={table}
-              />
-            ) : null
-          )}
-
-          {isFiltered && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                table.resetColumnFilters()
-                setSearchValue("")
-              }}
-            >
-              Reset
-              <X className="ml-1 size-3.5" />
-            </Button>
-          )}
-        </div>
-
-        {/* Right — actions: always row, wraps to next line on mobile */}
-        <div className="flex shrink-0 items-center gap-2">
+        {/* Right: action buttons */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {hasSelection && bulkDelete && (
             <Button
               variant="destructive"
@@ -152,7 +151,6 @@ export function DataTableToolbar<TData>({
               className="gap-1.5"
             >
               <Trash2 className="size-3.5 shrink-0" />
-              {/* Hide label on xs to save space, show count always */}
               <span className="hidden sm:inline">Delete</span>
               <span>({selectedCount})</span>
             </Button>

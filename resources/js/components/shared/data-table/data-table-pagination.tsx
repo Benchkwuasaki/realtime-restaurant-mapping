@@ -43,13 +43,13 @@ export function DataTablePagination<TData>({
   const hasSelectionColumn = !!table.getColumn("select")
 
   return (
-    <div className="flex items-center justify-between px-2">
-      <div className="text-muted-foreground flex-1 text-sm">
+    <div className="flex flex-wrap items-center justify-between gap-y-2 px-2">
+      <div className="text-muted-foreground text-sm">
         {hasSelectionColumn && (
           <>{selectedCount} of {totalFiltered} row(s) selected.</>
-        )}  
+        )}
       </div>
-      <div className="flex items-center space-x-6 lg:space-x-8">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 lg:gap-x-8">
         <div className="flex items-center space-x-2">
           <p className="hidden sm:block text-sm font-medium">Rows per page</p>
           <Select
@@ -68,10 +68,10 @@ export function DataTablePagination<TData>({
             </SelectContent>
           </Select>
         </div>
-        <div className="hidden sm:flex w-25 ...">
+        <div className="text-sm font-medium tabular-nums">
           Page {pageIndex + 1} of {pageCount}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1">
           <Button
             variant="outline"
             size="icon"

@@ -1,1699 +1,864 @@
-import { Head, router } from '@inertiajs/react';
-import Cropper from 'react-easy-crop';
+import { Head, router } from "@inertiajs/react"
+import Cropper from "react-easy-crop"
 import {
-    Pencil,
-    Mail,
-    Phone,
-    MapPin,
-    User,
-    Heart,
-    Home,
-    Briefcase,
-    Clock,
-    FileText,
-    Landmark,
-    Camera,
-    XCircle,
-    Eye,
-    EyeOff,
-    Plus,
-    Trash2,
-    Save,
-    ChevronDown,
-    ChevronRight,
-    Pen,
-    Upload,
-    Download,
-    FolderOpen,
-    AlertTriangle,
-    Timer,
+    Pencil, Mail, Phone, MapPin, User, Heart, Home,
+    Briefcase, Clock, FileText, Landmark, Camera, XCircle,
+    Eye, EyeOff, Plus, Trash2, Save, ChevronDown, ChevronRight,
+    Pen, Upload, Download, FolderOpen, AlertTriangle, Timer,
     ClipboardList,
-} from 'lucide-react';
-import { useState, useMemo, useRef, useEffect } from 'react';
-import React from 'react';
-import { route } from 'ziggy-js';
-import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { type DateRange } from 'react-day-picker';
-import { Calendar } from '@/components/ui/calendar';
+} from "lucide-react"
+import { useState, useMemo, useRef, useEffect } from "react"
+import React from "react"
+import { route } from "ziggy-js"
+import { toast } from "sonner"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+import { type DateRange } from "react-day-picker"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarDays } from "lucide-react"
+import { useReactTable, getCoreRowModel, flexRender } from "@tanstack/react-table"
+import { leaveBalanceColumns } from "./components/leave-balance-columns"
+import type { LeaveBalance as LeaveBalanceRow } from "./data/leave-balance-schema"
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
-import { CalendarDays } from 'lucide-react';
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
-    useReactTable,
-    getCoreRowModel,
-    flexRender,
-} from '@tanstack/react-table';
-import { leaveBalanceColumns } from './components/leave-balance-columns';
-import type { LeaveBalance as LeaveBalanceRow } from './data/leave-balance-schema';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { X } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { PhoneInput } from '@/components/phone-input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { PayslipDocument } from '@/pages/Payroll/Outputs/PaySlipGeneration/PayslipDocument';
-import type { PayslipData } from '@/components/Payroll/Outputs/PaySlipGeneration/data/schema';
+    Select, SelectContent, SelectGroup, SelectItem, SelectLabel,
+    SelectTrigger, SelectValue,
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { X } from "lucide-react"
+import AppLayout from "@/layouts/app-layout"
+import { type BreadcrumbItem } from "@/types"
+import { PhoneInput } from "@/components/phone-input"
+import { useAuth } from "@/hooks/use-auth"
+import { PayslipDocument } from "@/pages/Payroll/Outputs/PaySlipGeneration/PayslipDocument"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Department {
-    department_name: string;
-}
-interface Division {
-    division_name: string;
-}
-interface Unit {
-    unit_name: string;
-}
+interface Department { department_name: string }
+interface Division { division_name: string }
+interface Unit { unit_name: string }
 interface Position {
-    position_name: string;
-    position_type?: string;
-    department_id?: number | null;
-    division_id?: number | null;
-    unit_id?: number | null;
-    department?: Department;
-    division?: Division;
-    unit?: Unit;
+    position_name: string
+    position_type?: string
+    department_id?: number | null
+    division_id?: number | null
+    unit_id?: number | null
+    department?: Department
+    division?: Division
+    unit?: Unit
 }
 interface Item {
-    item_id: number;
-    is_occupied: boolean;
-    position?: Position;
+    item_id: number
+    is_occupied: boolean
+    position?: Position
 }
 interface SalaryGradeStep {
-    salary_grade_step_id: number;
-    salary_grade: number;
-    step: number;
-    monthly_salary: number;
+    salary_grade_step_id: number
+    salary_grade: number
+    step: number
+    monthly_salary: number
 }
 interface Address {
-    id?: number;
-    street_address?: string;
-    city?: string;
-    state?: string;
-    zip_code?: string;
+    id?: number
+    street_address?: string
+    city?: string
+    state?: string
+    zip_code?: string
 }
 interface Education {
-    level?: string;
-    school_name: string;
-    school_address?: string;
-    degree?: string;
-    graduation_date?: string;
+    level?: string
+    school_name: string
+    school_address?: string
+    degree?: string
+    graduation_date?: string
 }
 interface FamilyMember {
-    full_name: string;
-    relationship?: string;
-    contact_number?: string;
-    sex?: boolean;
-    date_of_birth?: string;
-    place_of_birth?: string;
+    full_name: string
+    relationship?: string
+    contact_number?: string
+    sex?: boolean
+    date_of_birth?: string
+    place_of_birth?: string
 }
 interface BasicInfo {
-    first_name: string;
-    last_name: string;
-    middle_name?: string;
-    name_extension?: string;
-    full_name: string;
-    birth_date?: string;
-    sex?: boolean;
-    civil_status?: string;
-    place_of_birth?: string;
-    personal_email?: string;
-    phone_number?: string;
-    addresses?: Address[];
-    educations?: Education[];
-    family_info?: FamilyMember[];
+    first_name: string
+    last_name: string
+    middle_name?: string
+    name_extension?: string
+    full_name: string
+    birth_date?: string
+    sex?: boolean
+    civil_status?: string
+    place_of_birth?: string
+    personal_email?: string
+    phone_number?: string
+    addresses?: Address[]
+    educations?: Education[]
+    family_info?: FamilyMember[]
 }
+// Merged: supports both API shapes (status from v2, return_status from v1)
 interface WhereaboutSlip {
-    whereabout_slip_id: number;
-    purpose_type: 'personal' | 'official';
-    purpose_description: string;
-    time_out?: string;
-    time_returned?: string;
-    return_status: 'returned' | 'not_returned';
-    minutes_gone?: number;
+    whereabout_slip_id: number
+    purpose_type: "personal" | "official"
+    purpose_description: string
+    time_out?: string
+    time_returned?: string
+    status?: "returned" | "not_returned" | "still_out"
+    return_status?: "returned" | "not_returned"
+    minutes_gone?: number
 }
 interface AttendanceRecord {
-    id: number;
-    date: string;
-    scheduled_time_in?: string;
-    scheduled_break_out?: string;
-    scheduled_break_in?: string;
-    scheduled_time_out?: string;
-    grace_minutes?: number;
-    time_in?: string;
-    break_out?: string;
-    break_in?: string;
-    time_out?: string;
-    late_minutes?: number;
-    work_minutes?: number;
-    status?: string;
-    whereabout_slips?: WhereaboutSlip[];
+    id: number
+    date: string
+    scheduled_time_in?: string
+    scheduled_break_out?: string
+    scheduled_break_in?: string
+    scheduled_time_out?: string
+    grace_minutes?: number
+    time_in?: string
+    break_out?: string
+    break_in?: string
+    time_out?: string
+    late_minutes?: number
+    work_minutes?: number
+    status?: string
+    whereabout_slips?: WhereaboutSlip[]
 }
 interface GovernmentAccount {
-    government_account_id: number;
-    account_type: string;
-    account_number: string;
+    government_account_id: number
+    account_type: string
+    account_number: string
 }
 interface EligibilityInfo {
-    eligibility_information_id: number;
-    eligibility_name: string;
-    year_passed?: string;
+    eligibility_information_id: number
+    eligibility_name: string
+    year_passed?: string
 }
 interface MasterAllowance {
-    id: number;
-    name: string;
-    monthly_salary: number;
-    taxable: boolean;
+    id: number
+    name: string
+    monthly_salary: number
+    taxable: boolean
 }
 interface Allowance {
-    employee_allowance_id: number;
-    allowance_type: string;
-    amount: number;
-    taxable: boolean;
+    employee_allowance_id: number
+    allowance_type: string
+    amount: number
+    taxable: boolean
 }
 interface UploadedFile {
-    id: number;
-    file_name: string;
-    file_size: number;
-    created_at: string;
-    file_url: string;
+    id: number
+    file_name: string
+    file_size: number
+    created_at: string
+    file_url: string
 }
 interface SeminarTraining {
-    id: number;
-    seminar_name: string;
-    venue?: string;
-    organizer?: string;
-    date_attended?: string;
+    id: number
+    seminar_name: string
+    venue?: string
+    organizer?: string
+    date_attended?: string
 }
 interface ServiceRecord {
-    id: number;
-    position_name: string;
-    department_name?: string;
-    year_start?: string;
-    year_end?: string;
+    id: number
+    position_name: string
+    department_name?: string
+    year_start?: string
+    year_end?: string
 }
 interface InternalOrganization {
-    internal_organization_id: number;
-    name: string;
-    type: string;
-    code: string;
+    internal_organization_id: number
+    name: string
+    type: string
+    code: string
 }
 interface Payslip {
-    payroll_record_id: number;
-    // Summary (table display)
-    period_label: string;
-    pay_date?: string;
-    gross_pay: number;
-    total_deductions: number;
-    net_pay: number;
-    // Full detail (modal / PayslipDocument)
-    employee_name: string;
-    position: string;
-    salary_grade: number;
-    step: number;
-    employment_classification: string;
-    basic_pay: number;
-    pera: number;
-    rice_allowance: number;
-    uniform_allowance: number;
-    gsis_premium: number;
-    philhealth: number;
-    pag_ibig: number;
-    withholding_tax: number;
-    absent_days: number;
-    absent_deduction: number;
-    late_minutes: number;
-    late_deduction: number;
-    half_days: number;
-    half_day_deduction: number;
-    undertime_minutes: number;
-    undertime_deduction: number;
-    personal_slip_minutes: number;
-    personal_slip_deduction: number;
-    gsis_mpl: number;
-    gsis_emergency: number;
-    pag_ibig_mpl: number;
-    internal_org_savings: number;
-    internal_org_second: number;
-    internal_org_loans: number;
-    other_deductions_total: number;
-    water_bill: number;
-    floor_check_passed: boolean;
-    posted_date: string;
-    hr_officer: string;
+    payroll_record_id: number
+    period_label: string
+    pay_date?: string
+    gross_pay: number
+    total_deductions: number
+    net_pay: number
+    employee_name: string
+    position: string
+    salary_grade: number
+    step: number
+    employment_classification: string
+    basic_pay: number
+    pera: number
+    rice_allowance: number
+    uniform_allowance: number
+    gsis_premium: number
+    philhealth: number
+    pag_ibig: number
+    withholding_tax: number
+    absent_days: number
+    absent_deduction: number
+    late_minutes: number
+    late_deduction: number
+    half_days: number
+    half_day_deduction: number
+    undertime_minutes: number
+    undertime_deduction: number
+    personal_slip_minutes: number
+    personal_slip_deduction: number
+    gsis_mpl: number
+    gsis_emergency: number
+    pag_ibig_mpl: number
+    internal_org_savings: number
+    internal_org_second: number
+    internal_org_loans: number
+    other_deductions_total: number
+    water_bill: number
+    floor_check_passed: boolean
+    posted_date: string
+    hr_officer: string
 }
 interface Employee {
-    employee_id: number;
-    work_email: string;
-    work_id?: string;
-    employment_classification: string;
-    date_applied?: string;
-    date_hired?: string;
-    work_schedule_start?: string;
-    work_schedule_end?: string;
-    break_start?: string;
-    break_end?: string;
-    status: boolean;
-    avatar_url?: string;
-    basic_info?: BasicInfo;
-    item?: Item;
-    salary_grade_step?: SalaryGradeStep;
-    allowances?: Allowance[];
-    eligibility_information?: EligibilityInfo[];
-    government_accounts?: GovernmentAccount[];
-    leave_balances?: LeaveBalanceRow[];
-    uploadedFiles?: UploadedFile[];
-    seminarsAndTrainings?: SeminarTraining[];
-    serviceRecords?: ServiceRecord[];
-    internal_organizations?: InternalOrganization[];
-    attendance_records?: AttendanceRecord[];
-    payslips?: Payslip[];
+    employee_id: number
+    work_email: string
+    work_id?: string
+    employment_classification: string
+    date_applied?: string
+    date_hired?: string
+    work_schedule_start?: string
+    work_schedule_end?: string
+    break_start?: string
+    break_end?: string
+    status: boolean
+    avatar_url?: string
+    basic_info?: BasicInfo
+    item?: Item
+    salary_grade_step?: SalaryGradeStep
+    allowances?: Allowance[]
+    eligibility_information?: EligibilityInfo[]
+    government_accounts?: GovernmentAccount[]
+    leave_balances?: LeaveBalanceRow[]
+    uploadedFiles?: UploadedFile[]
+    seminarsAndTrainings?: SeminarTraining[]
+    serviceRecords?: ServiceRecord[]
+    internal_organizations?: InternalOrganization[]
+    attendance_records?: AttendanceRecord[]
+    payslips?: Payslip[]
 }
 interface Props {
-    employee: Employee;
-    items: Item[];
-    salaryGradeSteps: SalaryGradeStep[];
-    masterAllowances: MasterAllowance[];
+    employee: Employee
+    items: Item[]
+    salaryGradeSteps: SalaryGradeStep[]
+    masterAllowances: MasterAllowance[]
 }
 
 // ─── Position group ───────────────────────────────────────────────────────────
 
 interface PositionGroup {
-    positionName: string;
-    displayLabel: string;
-    position: Position | undefined;
-    items: Item[];
-    totalSlots: number;
-    availableSlots: number;
-    isFull: boolean;
+    positionName: string
+    displayLabel: string
+    position: Position | undefined
+    items: Item[]
+    totalSlots: number
+    availableSlots: number
+    isFull: boolean
 }
 
 function buildPositionGroups(items: Item[]): PositionGroup[] {
-    const map = new Map<string, PositionGroup>();
+    const map = new Map<string, PositionGroup>()
     for (const item of items) {
-        const pos = item.position;
+        const pos = item.position
         const key = pos
-            ? [
-                  pos.position_name,
-                  pos.department_id ?? 'null',
-                  pos.division_id ?? 'null',
-                  pos.unit_id ?? 'null',
-              ].join('::')
-            : `__item_${item.item_id}`;
-
+            ? [pos.position_name, pos.department_id ?? "null", pos.division_id ?? "null", pos.unit_id ?? "null"].join("::")
+            : `__item_${item.item_id}`
         if (!map.has(key)) {
-            // Build the display label with org context — same as Create.tsx
-            const parts: string[] = [];
-            if (pos?.department?.department_name)
-                parts.push(pos.department.department_name);
-            if (pos?.division?.division_name)
-                parts.push(pos.division.division_name);
-            if (pos?.unit?.unit_name) parts.push(pos.unit.unit_name);
-            const orgLabel = parts.join(' / ');
+            const parts: string[] = []
+            if (pos?.department?.department_name) parts.push(pos.department.department_name)
+            if (pos?.division?.division_name) parts.push(pos.division.division_name)
+            if (pos?.unit?.unit_name) parts.push(pos.unit.unit_name)
+            const orgLabel = parts.join(" / ")
             const displayLabel = orgLabel
                 ? `${pos?.position_name ?? `Item #${item.item_id}`} — ${orgLabel}`
-                : (pos?.position_name ?? `Item #${item.item_id}`);
-
-            map.set(key, {
-                positionName: pos?.position_name ?? `Item #${item.item_id}`,
-                displayLabel, // ← add this
-                position: pos,
-                items: [],
-                totalSlots: 0,
-                availableSlots: 0,
-                isFull: false,
-            });
+                : (pos?.position_name ?? `Item #${item.item_id}`)
+            map.set(key, { positionName: pos?.position_name ?? `Item #${item.item_id}`, displayLabel, position: pos, items: [], totalSlots: 0, availableSlots: 0, isFull: false })
         }
-        const grp = map.get(key)!;
-        grp.items.push(item);
-        grp.totalSlots++;
-        if (!item.is_occupied) grp.availableSlots++;
+        const grp = map.get(key)!
+        grp.items.push(item)
+        grp.totalSlots++
+        if (!item.is_occupied) grp.availableSlots++
     }
-    for (const grp of map.values()) grp.isFull = grp.availableSlots === 0;
-    return Array.from(map.values()).sort((a, b) =>
-        a.displayLabel.localeCompare(b.displayLabel),
-    );
+    for (const grp of map.values()) grp.isFull = grp.availableSlots === 0
+    return Array.from(map.values()).sort((a, b) => a.displayLabel.localeCompare(b.displayLabel))
 }
 
-const JOB_ORDER_CLASSIFICATION = 'Job Order';
+const JOB_ORDER_CLASSIFICATION = "Job Order"
 
-// Match Create.tsx exactly — positions tagged with position_type "Job Order"
 function isJobOrderPosition(grp: PositionGroup): boolean {
-    return grp.position?.position_type === JOB_ORDER_CLASSIFICATION;
+    return grp.position?.position_type === JOB_ORDER_CLASSIFICATION
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(date?: string) {
-    if (!date) return undefined;
-    return new Date(date).toLocaleDateString('en-PH', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    });
+    if (!date) return undefined
+    return new Date(date).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })
 }
 function fmtShort(date?: string) {
-    if (!date) return '—';
-    return new Date(date).toLocaleDateString('en-PH', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
+    if (!date) return "—"
+    return new Date(date).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
 }
 function cap(str?: string) {
-    if (!str) return undefined;
-    return str.charAt(0).toUpperCase() + str.slice(1);
+    if (!str) return undefined
+    return str.charAt(0).toUpperCase() + str.slice(1)
 }
-function toInputDate(date?: string) {
-    if (!date) return '';
-    return date.slice(0, 10);
-}
-function toInputTime(t?: string): string {
-    if (!t) return '';
-    return t.slice(0, 5);
-}
+function toInputDate(date?: string) { if (!date) return ""; return date.slice(0, 10) }
+function toInputTime(t?: string): string { if (!t) return ""; return t.slice(0, 5) }
 function toLocalDate(s: string): Date {
-    if (s.length > 10) {
-        const d = new Date(s);
-        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    }
-    const [y, m, d] = s.split('-').map(Number);
-    return new Date(y, m - 1, d);
+    if (s.length > 10) { const d = new Date(s); return new Date(d.getFullYear(), d.getMonth(), d.getDate()) }
+    const [y, m, d] = s.split("-").map(Number)
+    return new Date(y, m - 1, d)
 }
 function fmtTime(t?: string): string {
-    if (!t) return '—';
-    const slice =
-        t.length > 8 ? new Date(t).toTimeString().slice(0, 5) : t.slice(0, 5);
-    const [h, m] = slice.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const h12 = h % 12 || 12;
-    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+    if (!t) return "—"
+    const slice = t.length > 8 ? new Date(t).toTimeString().slice(0, 5) : t.slice(0, 5)
+    const [h, m] = slice.split(":").map(Number)
+    const ampm = h >= 12 ? "PM" : "AM"
+    const h12 = h % 12 || 12
+    return `${h12}:${String(m).padStart(2, "0")} ${ampm}`
 }
 function fmtMinutes(mins?: number | null): string {
-    if (mins == null) return '—';
-    if (mins < 60) return `${mins}m`;
-    const h = Math.floor(mins / 60);
-    const rem = mins % 60;
-    return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
+    if (mins == null) return "—"
+    if (mins < 60) return `${mins}m`
+    const h = Math.floor(mins / 60); const rem = mins % 60
+    return rem > 0 ? `${h}h ${rem}m` : `${h}h`
 }
-async function getCroppedImg(
-    imageSrc: string,
-    croppedAreaPixels: { x: number; y: number; width: number; height: number },
-): Promise<Blob> {
+function fmtPeso(amount: number) {
+    return `₱${Number(amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
+}
+
+// Normalise whereabout slip status — handles both v1 (return_status) and v2 (status) API shapes
+function slipStatus(slip: WhereaboutSlip): "returned" | "not_returned" | "still_out" {
+    return (slip.status ?? slip.return_status ?? "not_returned") as "returned" | "not_returned" | "still_out"
+}
+
+async function getCroppedImg(imageSrc: string, croppedAreaPixels: { x: number; y: number; width: number; height: number }): Promise<Blob> {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = imageSrc;
-    });
-    const canvas = document.createElement('canvas');
-    canvas.width = croppedAreaPixels.width;
-    canvas.height = croppedAreaPixels.height;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(
-        image,
-        croppedAreaPixels.x,
-        croppedAreaPixels.y,
-        croppedAreaPixels.width,
-        croppedAreaPixels.height,
-        0,
-        0,
-        croppedAreaPixels.width,
-        croppedAreaPixels.height,
-    );
+        const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = imageSrc
+    })
+    const canvas = document.createElement("canvas")
+    canvas.width = croppedAreaPixels.width; canvas.height = croppedAreaPixels.height
+    const ctx = canvas.getContext("2d")!
+    ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, croppedAreaPixels.width, croppedAreaPixels.height)
     return new Promise((resolve, reject) =>
-        canvas.toBlob(
-            (blob) =>
-                blob ? resolve(blob) : reject(new Error('Canvas is empty')),
-            'image/jpeg',
-            0.92,
-        ),
-    );
+        canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error("Canvas is empty"))), "image/jpeg", 0.92))
 }
 
-// Attendance status — semantic colour map
+// Attendance status colour map
 const STATUS_CLASSES: Record<string, string> = {
-    PRESENT: 'bg-emerald-500 text-white border-emerald-500',
-    HALF_DAY: 'bg-yellow-500 text-white border-yellow-500',
-    ABSENT: 'bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
-    ON_LEAVE:
-        'bg-violet-100 text-violet-700  border-violet-200/60  dark:bg-violet-950/60  dark:text-violet-400  dark:border-violet-800/60',
-    LATE: 'border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
-};
+    PRESENT: "bg-emerald-500 text-white border-emerald-500",
+    HALF_DAY: "bg-yellow-500 text-white border-yellow-500",
+    ABSENT: "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+    ON_LEAVE: "bg-violet-100 text-violet-700 border-violet-200/60 dark:bg-violet-950/60 dark:text-violet-400 dark:border-violet-800/60",
+    LATE: "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+}
 const STATUS_LABEL: Record<string, string> = {
-    PRESENT: 'Present',
-    HALF_DAY: 'Half Day',
-    ABSENT: 'Absent',
-    ON_LEAVE: 'On Leave',
-    LATE: 'Late',
-};
-function statusKey(raw?: string): string {
-    return (raw ?? 'ABSENT').toUpperCase().replace(/[-\s]/g, '_');
+    PRESENT: "Present", HALF_DAY: "Half Day", ABSENT: "Absent", ON_LEAVE: "On Leave", LATE: "Late",
 }
+function statusKey(raw?: string): string { return (raw ?? "ABSENT").toUpperCase().replace(/[-\s]/g, "_") }
 
-/** Attendance status badge */
+// ─── Shared Badges ────────────────────────────────────────────────────────────
+
 function StatusBadge({ status }: { status?: string }) {
-    const key = statusKey(status);
-    return (
-        <Badge
-            variant="outline"
-            className={cn('text-[10px]', STATUS_CLASSES[key])}
-        >
-            {STATUS_LABEL[key] ?? status ?? '—'}
-        </Badge>
-    );
+    const key = statusKey(status)
+    return <Badge variant="outline" className={cn("text-[10px]", STATUS_CLASSES[key])}>{STATUS_LABEL[key] ?? (status ?? "—")}</Badge>
 }
-
-/** Personal / Official purpose */
-function PurposeBadge({ type }: { type: 'personal' | 'official' }) {
-    return type === 'personal' ? (
-        <Badge variant="secondary">Personal</Badge>
-    ) : (
-        <Badge variant="default">Official</Badge>
-    );
+function PurposeBadge({ type }: { type: "personal" | "official" }) {
+    return type === "personal" ? <Badge variant="secondary">Personal</Badge> : <Badge variant="default">Official</Badge>
 }
-
-/** Returned / Not Returned */
-function ReturnBadge({ status }: { status: 'returned' | 'not_returned' }) {
-    return status === 'returned' ? (
-        <Badge variant="green">Returned</Badge>
-    ) : (
-        <Badge variant="yellow">Not Returned</Badge>
-    );
+function ReturnBadge({ status }: { status: "returned" | "not_returned" | "still_out" }) {
+    return status === "returned" ? <Badge variant="green">Returned</Badge> : <Badge variant="yellow">Not Returned</Badge>
 }
-
-/** Generic primary-tinted value badge — uses your --primary CSS var */
-function ValueBadge({ value }: { value: string }) {
-    return (
-        <Badge className="max-w-full truncate rounded-md text-xs font-semibold">
-            {value}
-        </Badge>
-    );
-}
-
-/** Active / Inactive */
 function ActiveBadge({ active }: { active: boolean }) {
-    return active ? (
-        <Badge variant="default">Active</Badge>
-    ) : (
-        <Badge variant="destructive">Inactive</Badge>
-    );
+    return active ? <Badge variant="default">Active</Badge> : <Badge variant="destructive">Inactive</Badge>
 }
 
 // ─── InfoRow ──────────────────────────────────────────────────────────────────
 
-function InfoRow({
-    icon: Icon,
-    label,
-    value,
-    onEdit,
-}: {
-    icon: React.ElementType;
-    label: string;
-    value?: string;
-    onEdit?: () => void;
+function InfoRow({ icon: Icon, label, value, onEdit }: {
+    icon: React.ElementType; label: string; value?: string; onEdit?: () => void
 }) {
     return (
-        <div className="group/row flex items-start gap-3 border-b border-border py-3 last:border-0">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent">
-                <Icon className="h-4 w-4 text-primary" />
+        <div className="flex items-start gap-3 py-3 border-b border-border last:border-0 group/row">
+            <div className="mt-0.5 shrink-0 w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+                <Icon className="w-4 h-4 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="mb-1 text-[10px] leading-none tracking-widest text-muted-foreground uppercase">
-                    {label}
-                </p>
-                <p className="text-sm leading-snug font-medium wrap-break-word text-foreground">
-                    {value || (
-                        <span className="text-xs font-normal text-muted-foreground/40 italic">
-                            Not provided
-                        </span>
-                    )}
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-none mb-1">{label}</p>
+                <p className="text-sm text-foreground font-medium leading-snug wrap-break-word">
+                    {value || <span className="text-muted-foreground/40 font-normal italic text-xs">Not provided</span>}
                 </p>
             </div>
-            {onEdit && (
-                <Button size={'icon-xs'} onClick={onEdit} variant={'ghost'}>
-                    <Pencil className="h-3 w-3" />
-                </Button>
-            )}
+            {onEdit && <Button size={"icon-xs"} onClick={onEdit} variant={"ghost"}><Pencil className="w-3 h-3" /></Button>}
         </div>
-    );
+    )
 }
 
 // ─── Basic Info Edit Dialog ────────────────────────────────────────────────────
 
-function BasicInfoEditDialog({
-    employee,
-    open,
-    onClose,
-}: {
-    employee: Employee;
-    open: boolean;
-    onClose: () => void;
+function BasicInfoEditDialog({ employee, open, onClose, canEdit }: {
+    employee: Employee; open: boolean; onClose: () => void; canEdit: boolean
 }) {
-    const basic = employee.basic_info;
-    const firstAddress = (basic?.addresses ?? [])[0];
-
+    const basic = employee.basic_info
+    const firstAddress = (basic?.addresses ?? [])[0]
     const [form, setForm] = useState({
-        first_name: basic?.first_name ?? '',
-        last_name: basic?.last_name ?? '',
-        middle_name: basic?.middle_name ?? '',
-        name_extension: basic?.name_extension ?? '',
+        first_name: basic?.first_name ?? "", last_name: basic?.last_name ?? "",
+        middle_name: basic?.middle_name ?? "", name_extension: basic?.name_extension ?? "",
         birth_date: toInputDate(basic?.birth_date),
-        sex: basic?.sex !== undefined ? String(Number(basic.sex)) : '',
-        civil_status: basic?.civil_status ?? '',
-        place_of_birth: basic?.place_of_birth ?? '',
-        personal_email: basic?.personal_email ?? '',
-        phone_number: basic?.phone_number ?? '',
-        work_id: employee.work_id ?? '',
-        street_address: firstAddress?.street_address ?? '',
-        city: firstAddress?.city ?? '',
-        state: firstAddress?.state ?? '',
-        zip_code: firstAddress?.zip_code ?? '',
-    });
-    const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
-    const save = () =>
-        router.put(route('employee.update', employee.employee_id), form, {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Basic information updated successfully.');
-                onClose();
-            },
-            onError: () =>
-                toast.error(
-                    'Failed to update basic information. Please try again.',
-                ),
-        });
+        sex: basic?.sex !== undefined ? String(Number(basic.sex)) : "",
+        civil_status: basic?.civil_status ?? "", place_of_birth: basic?.place_of_birth ?? "",
+        personal_email: basic?.personal_email ?? "", phone_number: basic?.phone_number ?? "",
+        work_id: employee.work_id ?? "",
+        street_address: firstAddress?.street_address ?? "", city: firstAddress?.city ?? "",
+        state: firstAddress?.state ?? "", zip_code: firstAddress?.zip_code ?? "",
+    })
+    const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+    const save = () => router.put(route("employee.update", employee.employee_id), form, {
+        preserveScroll: true,
+        onSuccess: () => { toast.success("Basic information updated successfully."); onClose() },
+        onError: () => toast.error("Failed to update basic information. Please try again."),
+    })
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Edit Basic Information</DialogTitle>
-                </DialogHeader>
-                <div className="grid grid-cols-1 gap-3 py-2 sm:grid-cols-2">
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Edit Basic Information</DialogTitle></DialogHeader>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">First Name *</Label><Input value={form.first_name} onChange={e => set("first_name", e.target.value)} /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Last Name *</Label><Input value={form.last_name} onChange={e => set("last_name", e.target.value)} /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Middle Name</Label><Input value={form.middle_name} onChange={e => set("middle_name", e.target.value)} /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Extension</Label><Input value={form.name_extension} onChange={e => set("name_extension", e.target.value)} placeholder="Jr., Sr., III…" /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date of Birth</Label><Input type="date" value={form.birth_date} onChange={e => set("birth_date", e.target.value)} /></div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            First Name *
-                        </Label>
-                        <Input
-                            value={form.first_name}
-                            onChange={(e) => set('first_name', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Last Name *
-                        </Label>
-                        <Input
-                            value={form.last_name}
-                            onChange={(e) => set('last_name', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Middle Name
-                        </Label>
-                        <Input
-                            value={form.middle_name}
-                            onChange={(e) => set('middle_name', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Extension
-                        </Label>
-                        <Input
-                            value={form.name_extension}
-                            onChange={(e) =>
-                                set('name_extension', e.target.value)
-                            }
-                            placeholder="Jr., Sr., III…"
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Date of Birth
-                        </Label>
-                        <Input
-                            type="date"
-                            value={form.birth_date}
-                            onChange={(e) => set('birth_date', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Sex
-                        </Label>
-                        <Select
-                            value={form.sex}
-                            onValueChange={(v) => set('sex', v)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="1">Male</SelectItem>
-                                <SelectItem value="0">Female</SelectItem>
-                            </SelectContent>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Sex</Label>
+                        <Select value={form.sex} onValueChange={v => set("sex", v)}>
+                            <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                            <SelectContent><SelectItem value="1">Male</SelectItem><SelectItem value="0">Female</SelectItem></SelectContent>
                         </Select>
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Civil Status
-                        </Label>
-                        <Select
-                            value={form.civil_status}
-                            onValueChange={(v) => set('civil_status', v)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select…" />
-                            </SelectTrigger>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Civil Status</Label>
+                        <Select value={form.civil_status} onValueChange={v => set("civil_status", v)}>
+                            <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="single">Single</SelectItem>
-                                <SelectItem value="married">Married</SelectItem>
-                                <SelectItem value="divorced">
-                                    Divorced
-                                </SelectItem>
-                                <SelectItem value="widowed">Widowed</SelectItem>
+                                <SelectItem value="single">Single</SelectItem><SelectItem value="married">Married</SelectItem>
+                                <SelectItem value="divorced">Divorced</SelectItem><SelectItem value="widowed">Widowed</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Place of Birth</Label><Input value={form.place_of_birth} onChange={e => set("place_of_birth", e.target.value)} /></div>
+                    <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Personal Email</Label><Input type="email" value={form.personal_email} onChange={e => set("personal_email", e.target.value)} /></div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Place of Birth
-                        </Label>
-                        <Input
-                            value={form.place_of_birth}
-                            onChange={(e) =>
-                                set('place_of_birth', e.target.value)
-                            }
-                        />
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Phone Number</Label>
+                        <PhoneInput defaultCountry="PH" value={form.phone_number} onChange={v => set("phone_number", v ?? "")} />
                     </div>
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Personal Email
-                        </Label>
-                        <Input
-                            type="email"
-                            value={form.personal_email}
-                            onChange={(e) =>
-                                set('personal_email', e.target.value)
-                            }
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Phone Number
-                        </Label>
-                        <PhoneInput
-                            defaultCountry="PH"
-                            value={form.phone_number}
-                            onChange={(v) => set('phone_number', v ?? '')}
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Work ID
-                        </Label>
-                        <Input
-                            value={form.work_id}
-                            onChange={(e) => set('work_id', e.target.value)}
-                            placeholder="e.g. EMP-2024-001"
-                        />
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Work ID</Label>
+                        <Input value={form.work_id} onChange={e => set("work_id", e.target.value)} placeholder="e.g. EMP-2024-001"
+                            readOnly={!canEdit} className={cn(!canEdit && "bg-muted/40 cursor-default")} disabled={!canEdit} />
                     </div>
                 </div>
-                <div className="mt-1 border-t border-border pt-3">
-                    <p className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                        Address
-                    </p>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="col-span-full">
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Street Address
-                            </Label>
-                            <Input
-                                value={form.street_address}
-                                onChange={(e) =>
-                                    set('street_address', e.target.value)
-                                }
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                City
-                            </Label>
-                            <Input
-                                value={form.city}
-                                onChange={(e) => set('city', e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Province / State
-                            </Label>
-                            <Input
-                                value={form.state}
-                                onChange={(e) => set('state', e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Zip Code
-                            </Label>
-                            <Input
-                                value={form.zip_code}
-                                onChange={(e) =>
-                                    set('zip_code', e.target.value)
-                                }
-                            />
-                        </div>
+                <div className="border-t border-border pt-3 mt-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Address</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="col-span-full"><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Street Address</Label><Input value={form.street_address} onChange={e => set("street_address", e.target.value)} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">City</Label><Input value={form.city} onChange={e => set("city", e.target.value)} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Province / State</Label><Input value={form.state} onChange={e => set("state", e.target.value)} /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Zip Code</Label><Input value={form.zip_code} onChange={e => set("zip_code", e.target.value)} /></div>
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={save}
-                        disabled={!form.first_name || !form.last_name}
-                    >
-                        <Save className="mr-1.5 h-3.5 w-3.5" />
-                        Save Changes
-                    </Button>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={save} disabled={!form.first_name || !form.last_name}><Save className="w-3.5 h-3.5 mr-1.5" />Save Changes</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    );
+    )
 }
 
-// ─── Salary Grade Edit Dialog ─────────────────────────────────────────────────
+// ─── Salary Grade Edit Dialog (full grouped dropdown from v1) ─────────────────
 
-function SalaryEditDialog({
-    employee,
-    open,
-    onClose,
-    salaryGradeSteps,
-}: {
-    employee: Employee;
-    open: boolean;
-    onClose: () => void;
-    salaryGradeSteps: SalaryGradeStep[];
+function SalaryEditDialog({ employee, open, onClose, salaryGradeSteps }: {
+    employee: Employee; open: boolean; onClose: () => void; salaryGradeSteps: SalaryGradeStep[]
 }) {
-    const sgs = employee.salary_grade_step;
-    const [form, setForm] = useState({
-        salary_grade_step_id: sgs?.salary_grade_step_id?.toString() ?? '',
-    });
+    const sgs = employee.salary_grade_step
+    const [form, setForm] = useState({ salary_grade_step_id: sgs?.salary_grade_step_id?.toString() ?? "" })
 
     const grouped = useMemo(() => {
-        const map = new Map<number, SalaryGradeStep[]>();
+        const map = new Map<number, SalaryGradeStep[]>()
         for (const s of salaryGradeSteps ?? []) {
-            if (!map.has(s.salary_grade)) map.set(s.salary_grade, []);
-            map.get(s.salary_grade)!.push(s);
+            if (!map.has(s.salary_grade)) map.set(s.salary_grade, [])
+            map.get(s.salary_grade)!.push(s)
         }
-        return Array.from(map.entries()).sort(([a], [b]) => a - b);
-    }, [salaryGradeSteps]);
+        return Array.from(map.entries()).sort(([a], [b]) => a - b)
+    }, [salaryGradeSteps])
 
-    const selectedStep = (salaryGradeSteps ?? []).find(
-        (s) => s.salary_grade_step_id.toString() === form.salary_grade_step_id,
-    );
+    const selectedStep = (salaryGradeSteps ?? []).find(s => s.salary_grade_step_id.toString() === form.salary_grade_step_id)
 
-    const save = () =>
-        router.put(route('employee.update', employee.employee_id), form, {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Salary classification updated successfully.');
-                onClose();
-            },
-            onError: () =>
-                toast.error(
-                    'Failed to update salary classification. Please try again.',
-                ),
-        });
+    const save = () => router.put(route("employee.update", employee.employee_id), form, {
+        preserveScroll: true,
+        onSuccess: () => { toast.success("Salary classification updated successfully."); onClose() },
+        onError: () => toast.error("Failed to update salary classification. Please try again."),
+    })
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                    <DialogTitle>Edit Salary Classification</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3 py-2">
+                <DialogHeader><DialogTitle>Edit Salary Classification</DialogTitle></DialogHeader>
+                <div className="py-2 space-y-3">
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Salary Grade &amp; Step
-                        </Label>
-                        <Select
-                            value={form.salary_grade_step_id}
-                            onValueChange={(v) =>
-                                setForm({ salary_grade_step_id: v })
-                            }
-                        >
-                            <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select salary grade and step…" />
-                            </SelectTrigger>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Salary Grade &amp; Step</Label>
+                        <Select value={form.salary_grade_step_id} onValueChange={v => setForm({ salary_grade_step_id: v })}>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="Select salary grade and step…" /></SelectTrigger>
                             <SelectContent className="max-h-72">
                                 {grouped.map(([grade, steps]) => (
                                     <SelectGroup key={grade}>
-                                        <SelectLabel className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-                                            Salary Grade {grade}
-                                        </SelectLabel>
-                                        {[...steps]
-                                            .sort((a, b) => a.step - b.step)
-                                            .map((s) => (
-                                                <SelectItem
-                                                    key={s.salary_grade_step_id}
-                                                    value={s.salary_grade_step_id.toString()}
-                                                >
-                                                    SG-{s.salary_grade}, Step{' '}
-                                                    {s.step} — ₱
-                                                    {Number(
-                                                        s.monthly_salary,
-                                                    ).toLocaleString('en-PH', {
-                                                        minimumFractionDigits: 2,
-                                                    })}
-                                                </SelectItem>
-                                            ))}
+                                        <SelectLabel className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">Salary Grade {grade}</SelectLabel>
+                                        {[...steps].sort((a, b) => a.step - b.step).map(s => (
+                                            <SelectItem key={s.salary_grade_step_id} value={s.salary_grade_step_id.toString()}>
+                                                SG-{s.salary_grade}, Step {s.step} — ₱{Number(s.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                                            </SelectItem>
+                                        ))}
                                     </SelectGroup>
                                 ))}
                             </SelectContent>
                         </Select>
                         {sgs && (
-                            <p className="mt-1.5 text-xs text-muted-foreground">
-                                Current: SG-{sgs.salary_grade}, Step {sgs.step}{' '}
-                                — ₱
-                                {Number(sgs.monthly_salary).toLocaleString(
-                                    'en-PH',
-                                    { minimumFractionDigits: 2 },
-                                )}
+                            <p className="text-xs text-muted-foreground mt-1.5">
+                                Current: SG-{sgs.salary_grade}, Step {sgs.step} — ₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                             </p>
                         )}
-                        {selectedStep &&
-                            selectedStep.salary_grade_step_id !==
-                                sgs?.salary_grade_step_id && (
-                                <p className="mt-1 text-xs font-medium text-primary">
-                                    New: SG-{selectedStep.salary_grade}, Step{' '}
-                                    {selectedStep.step} — ₱
-                                    {Number(
-                                        selectedStep.monthly_salary,
-                                    ).toLocaleString('en-PH', {
-                                        minimumFractionDigits: 2,
-                                    })}
-                                </p>
-                            )}
+                        {selectedStep && selectedStep.salary_grade_step_id !== sgs?.salary_grade_step_id && (
+                            <p className="text-xs font-medium text-primary mt-1">
+                                New: SG-{selectedStep.salary_grade}, Step {selectedStep.step} — ₱{Number(selectedStep.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                            </p>
+                        )}
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={save}
-                        disabled={!form.salary_grade_step_id}
-                    >
-                        <Save className="mr-1.5 h-3.5 w-3.5" />
-                        Save Changes
-                    </Button>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={save} disabled={!form.salary_grade_step_id}><Save className="w-3.5 h-3.5 mr-1.5" />Save Changes</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    );
+    )
 }
 
 // ─── Employment Edit Dialog ───────────────────────────────────────────────────
 
 type EditField =
-    | 'position'
-    | 'date_hired'
-    | 'unit_division_department'
-    | 'employment_classification'
-    | 'date_applied'
-    | 'work_schedule'
-    | 'break_time'
-    | null;
+    | "position" | "date_hired" | "unit_division_department"
+    | "employment_classification" | "date_applied" | "work_schedule" | "break_time"
+    | null
 
 const employmentFieldLabels: Record<NonNullable<EditField>, string> = {
-    position: 'Position updated successfully.',
-    date_hired: 'Date hired updated successfully.',
-    unit_division_department: 'Unit / Division / Department updated.',
-    employment_classification:
-        'Employment classification updated successfully.',
-    date_applied: 'Date applied updated successfully.',
-    work_schedule: 'Work schedule updated successfully.',
-    break_time: 'Break time updated successfully.',
-};
+    position: "Position updated successfully.",
+    date_hired: "Date hired updated successfully.",
+    unit_division_department: "Unit / Division / Department updated.",
+    employment_classification: "Employment classification updated successfully.",
+    date_applied: "Date applied updated successfully.",
+    work_schedule: "Work schedule updated successfully.",
+    break_time: "Break time updated successfully.",
+}
 
-function EmploymentEditDialog({
-    employee,
-    field,
-    onClose,
-    items,
-}: {
-    employee: Employee;
-    field: EditField;
-    onClose: () => void;
-    items: Item[];
+function EmploymentEditDialog({ employee, field, onClose, items }: {
+    employee: Employee; field: EditField; onClose: () => void; items: Item[]
 }) {
-    const open = field !== null;
-    const allPositionGroups = useMemo(
-        () => buildPositionGroups(items),
-        [items],
-    );
-    const currentItemId = employee.item?.item_id?.toString() ?? '';
-    const currentPositionName = useMemo(
-        () =>
-            items.find((i) => i.item_id.toString() === currentItemId)?.position
-                ?.position_name ?? '',
-        [items, currentItemId],
-    );
+    const open = field !== null
+    const allPositionGroups = useMemo(() => buildPositionGroups(items), [items])
+    const currentItemId = employee.item?.item_id?.toString() ?? ""
+    const currentPositionName = useMemo(() =>
+        items.find(i => i.item_id.toString() === currentItemId)?.position?.position_name ?? "",
+        [items, currentItemId])
 
     const [form, setForm] = useState({
         item_id: currentItemId,
         selected_position_name: currentPositionName,
         date_hired: toInputDate(employee.date_hired),
         date_applied: toInputDate(employee.date_applied),
-        employment_classification: employee.employment_classification ?? '',
+        employment_classification: employee.employment_classification ?? "",
         work_schedule_start: toInputTime(employee.work_schedule_start),
         work_schedule_end: toInputTime(employee.work_schedule_end),
         break_start: toInputTime(employee.break_start),
         break_end: toInputTime(employee.break_end),
-    });
-    const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
+    })
+    const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
-    // ── Classification-aware position filtering (mirrors Create.tsx) ──────────
-
-    /** Positions filtered by whichever classification is currently selected */
     const filteredPositionGroups = useMemo(() => {
-        const cls =
-            field === 'employment_classification'
-                ? form.employment_classification
-                : employee.employment_classification;
+        const cls = field === "employment_classification"
+            ? form.employment_classification
+            : employee.employment_classification
+        if (!cls) return allPositionGroups
+        const isJO = cls === JOB_ORDER_CLASSIFICATION
+        return allPositionGroups.filter(grp => isJO ? isJobOrderPosition(grp) : !isJobOrderPosition(grp))
+    }, [allPositionGroups, form.employment_classification, field, employee.employment_classification])
 
-        if (!cls) return allPositionGroups;
-
-        const isJO = cls === JOB_ORDER_CLASSIFICATION;
-        return allPositionGroups.filter((grp) =>
-            isJO ? isJobOrderPosition(grp) : !isJobOrderPosition(grp),
-        );
-    }, [
-        allPositionGroups,
-        form.employment_classification,
-        field,
-        employee.employment_classification,
-    ]);
-
-    /** When the classification changes, reset the position so the user is forced to re-pick */
     const handleClassificationChange = (value: string) => {
-        set('employment_classification', value);
-        set('selected_position_name', '');
-        set('item_id', '');
-    };
+        set("employment_classification", value)
+        set("selected_position_name", "")
+        set("item_id", "")
+    }
 
     const handlePositionSelect = (displayLabel: string) => {
-        const grp = filteredPositionGroups.find(
-            (g) => g.displayLabel === displayLabel,
-        );
-        if (!grp) return;
-        const ownSlot = grp.items.find(
-            (i) => i.item_id.toString() === currentItemId,
-        );
+        const grp = filteredPositionGroups.find(g => g.displayLabel === displayLabel)
+        if (!grp) return
+        const ownSlot = grp.items.find(i => i.item_id.toString() === currentItemId)
         if (ownSlot) {
-            setForm((p) => ({
-                ...p,
-                selected_position_name: displayLabel,
-                item_id: ownSlot.item_id.toString(),
-            }));
-            return;
+            setForm(p => ({ ...p, selected_position_name: displayLabel, item_id: ownSlot.item_id.toString() }))
+            return
         }
-        const firstAvailable = grp.items.find((i) => !i.is_occupied);
-        setForm((p) => ({
-            ...p,
-            selected_position_name: displayLabel,
-            item_id: firstAvailable ? firstAvailable.item_id.toString() : '',
-        }));
-    };
+        const firstAvailable = grp.items.find(i => !i.is_occupied)
+        setForm(p => ({ ...p, selected_position_name: displayLabel, item_id: firstAvailable ? firstAvailable.item_id.toString() : "" }))
+    }
 
-    const selectedGroup = useMemo(
-        () =>
-            filteredPositionGroups.find(
-                (g) => g.displayLabel === form.selected_position_name,
-            ),
-        [filteredPositionGroups, form.selected_position_name],
-    );
-
-    // ── Save ──────────────────────────────────────────────────────────────────
+    const selectedGroup = useMemo(() =>
+        filteredPositionGroups.find(g => g.displayLabel === form.selected_position_name),
+        [filteredPositionGroups, form.selected_position_name])
 
     const save = () => {
-        let data: Record<string, string> = {};
-        if (field === 'position') data = { item_id: form.item_id };
-        if (field === 'date_hired') data = { date_hired: form.date_hired };
-        if (field === 'date_applied')
-            data = { date_applied: form.date_applied };
-        if (field === 'employment_classification')
-            data = {
-                employment_classification: form.employment_classification,
-                item_id: form.item_id, // always send the new position together
-            };
-        if (field === 'work_schedule')
-            data = {
-                work_schedule_start: form.work_schedule_start,
-                work_schedule_end: form.work_schedule_end,
-            };
-        if (field === 'break_time')
-            data = { break_start: form.break_start, break_end: form.break_end };
-        router.put(route('employee.update', employee.employee_id), data, {
+        let data: Record<string, string> = {}
+        if (field === "position") data = { item_id: form.item_id }
+        if (field === "date_hired") data = { date_hired: form.date_hired }
+        if (field === "date_applied") data = { date_applied: form.date_applied }
+        if (field === "employment_classification") data = { employment_classification: form.employment_classification, item_id: form.item_id }
+        if (field === "work_schedule") data = { work_schedule_start: form.work_schedule_start, work_schedule_end: form.work_schedule_end }
+        if (field === "break_time") data = { break_start: form.break_start, break_end: form.break_end }
+        router.put(route("employee.update", employee.employee_id), data, {
             preserveScroll: true,
-            onSuccess: () => {
-                toast.success(
-                    field
-                        ? employmentFieldLabels[field]
-                        : 'Updated successfully.',
-                );
-                onClose();
-            },
-            onError: () =>
-                toast.error('Failed to save changes. Please try again.'),
-        });
-    };
+            onSuccess: () => { toast.success(field ? employmentFieldLabels[field] : "Updated successfully."); onClose() },
+            onError: () => toast.error("Failed to save changes. Please try again."),
+        })
+    }
 
     const titles: Record<NonNullable<EditField>, string> = {
-        position: 'Edit Position',
-        date_hired: 'Edit Date Hired',
-        unit_division_department: 'Unit / Division / Department',
-        employment_classification: 'Edit Employment Classification',
-        date_applied: 'Edit Date Applied',
-        work_schedule: 'Edit Work Schedule',
-        break_time: 'Edit Break Time',
-    };
+        position: "Edit Position", date_hired: "Edit Date Hired",
+        unit_division_department: "Unit / Division / Department",
+        employment_classification: "Edit Employment Classification",
+        date_applied: "Edit Date Applied", work_schedule: "Edit Work Schedule", break_time: "Edit Break Time",
+    }
 
-    // ── Whether the save button should be disabled ────────────────────────────
     const saveDisabled = (() => {
-        if (field === 'position') return !form.item_id;
-        if (field === 'employment_classification')
-            return !form.employment_classification || !form.item_id;
-        return false;
-    })();
+        if (field === "position") return !form.item_id
+        if (field === "employment_classification") return !form.employment_classification || !form.item_id
+        return false
+    })()
 
-    // ── Shared position picker JSX (used for both "position" and "employment_classification" fields) ──
     const PositionPicker = (
         <div className="space-y-3">
-            <div>
-                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                    Position
-                </Label>
-                <Select
-                    value={form.selected_position_name}
-                    onValueChange={handlePositionSelect}
-                    disabled={filteredPositionGroups.length === 0}
-                >
-                    <SelectTrigger>
-                        <SelectValue
-                            placeholder={
-                                filteredPositionGroups.length === 0
-                                    ? 'No positions available'
-                                    : 'Select a position…'
-                            }
-                        />
+            <div className="min-w-0 w-full overflow-hidden">
+                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position</Label>
+                <Select value={form.selected_position_name} onValueChange={handlePositionSelect} disabled={filteredPositionGroups.length === 0}>
+                    <SelectTrigger className="min-w-0 overflow-hidden">
+                        <span className="min-w-0 block text-left text-sm">
+                            {form.selected_position_name
+                                ? form.selected_position_name
+                                : filteredPositionGroups.length === 0 ? "No positions available" : "Select a position…"}
+                        </span>
                     </SelectTrigger>
                     <SelectContent className="max-h-72">
-                        {filteredPositionGroups.map((grp) => {
-                            const employeeIsInGroup = grp.items.some(
-                                (i) => i.item_id.toString() === currentItemId,
-                            );
-                            const isDisabled = grp.isFull && !employeeIsInGroup;
+                        {filteredPositionGroups.map(grp => {
+                            const employeeIsInGroup = grp.items.some(i => i.item_id.toString() === currentItemId)
+                            const isDisabled = grp.isFull && !employeeIsInGroup
                             return (
-                                <SelectItem
-                                    key={grp.displayLabel}
-                                    value={grp.displayLabel}
-                                    disabled={isDisabled}
-                                    className="py-2.5"
-                                >
-                                    <div className="flex w-full items-center justify-between gap-3">
-                                        <span
-                                            className={
-                                                isDisabled
-                                                    ? 'text-muted-foreground/50'
-                                                    : ''
-                                            }
-                                        >
-                                            {grp.displayLabel}
-                                        </span>
-                                        {grp.totalSlots > 1 &&
-                                            (isDisabled ? (
-                                                <Badge
-                                                    variant="outline"
-                                                    className="shrink-0 border-destructive/20 bg-destructive/10 text-[10px] font-bold text-destructive"
-                                                >
-                                                    Full
-                                                </Badge>
-                                            ) : (
-                                                <Badge
-                                                    variant="secondary"
-                                                    className="shrink-0 text-[10px]"
-                                                >
-                                                    {grp.availableSlots}/
-                                                    {grp.totalSlots} open
-                                                </Badge>
-                                            ))}
+                                <SelectItem key={grp.displayLabel} value={grp.displayLabel} disabled={isDisabled} className="py-2.5">
+                                    <div className="flex items-center justify-between gap-3 w-full">
+                                        <span className={isDisabled ? "text-muted-foreground/50" : ""}>{grp.displayLabel}</span>
+                                        {grp.totalSlots > 1 && (
+                                            isDisabled
+                                                ? <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
+                                                : <Badge variant="secondary" className="text-[10px] shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
+                                        )}
                                         {grp.totalSlots === 1 && isDisabled && (
-                                            <Badge
-                                                variant="outline"
-                                                className="shrink-0 border-destructive/20 bg-destructive/10 text-[10px] font-bold text-destructive"
-                                            >
-                                                Full
-                                            </Badge>
+                                            <Badge variant="outline" className="text-[10px] font-bold text-destructive bg-destructive/10 border-destructive/20 shrink-0">Full</Badge>
                                         )}
                                     </div>
                                 </SelectItem>
-                            );
+                            )
                         })}
                     </SelectContent>
                 </Select>
                 {filteredPositionGroups.length === 0 && (
-                    <p className="mt-1.5 text-xs text-muted-foreground italic">
-                        No positions available for this classification.
-                    </p>
+                    <p className="text-xs text-muted-foreground italic mt-1.5">No positions available for this classification.</p>
                 )}
                 {selectedGroup && selectedGroup.totalSlots > 1 && (
-                    <p className="mt-1.5 text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-1.5">
                         {selectedGroup.availableSlots === 0
-                            ? 'All slots are currently occupied.'
+                            ? "All slots are currently occupied."
                             : `${selectedGroup.availableSlots} of ${selectedGroup.totalSlots} slots available — a slot will be auto-assigned.`}
                     </p>
                 )}
             </div>
             {selectedGroup?.position && (
-                <div className="divide-y divide-border rounded-lg border border-border bg-muted/20">
+                <div className="rounded-lg border border-border divide-y divide-border bg-muted/20">
                     {selectedGroup.position.department && (
                         <div className="flex justify-between px-4 py-2">
-                            <span className="text-xs text-muted-foreground">
-                                Department
-                            </span>
-                            <span className="text-xs font-medium">
-                                {
-                                    selectedGroup.position.department
-                                        .department_name
-                                }
-                            </span>
+                            <span className="text-xs text-muted-foreground">Department</span>
+                            <span className="text-xs font-medium">{selectedGroup.position.department.department_name}</span>
                         </div>
                     )}
                     {selectedGroup.position.division && (
                         <div className="flex justify-between px-4 py-2">
-                            <span className="text-xs text-muted-foreground">
-                                Division
-                            </span>
-                            <span className="text-xs font-medium">
-                                {selectedGroup.position.division.division_name}
-                            </span>
+                            <span className="text-xs text-muted-foreground">Division</span>
+                            <span className="text-xs font-medium">{selectedGroup.position.division.division_name}</span>
                         </div>
                     )}
                     {selectedGroup.position.unit && (
                         <div className="flex justify-between px-4 py-2">
-                            <span className="text-xs text-muted-foreground">
-                                Unit
-                            </span>
-                            <span className="text-xs font-medium">
-                                {selectedGroup.position.unit.unit_name}
-                            </span>
+                            <span className="text-xs text-muted-foreground">Unit</span>
+                            <span className="text-xs font-medium">{selectedGroup.position.unit.unit_name}</span>
                         </div>
                     )}
                 </div>
             )}
         </div>
-    );
+    )
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                    <DialogTitle>{field ? titles[field] : ''}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3 py-2">
-                    {/* ── Position only ── */}
-                    {field === 'position' && PositionPicker}
-
-                    {/* ── Employment Classification + forced position re-pick ── */}
-                    {field === 'employment_classification' && (
+                <DialogHeader><DialogTitle>{field ? titles[field] : ""}</DialogTitle></DialogHeader>
+                <div className="py-2 space-y-3">
+                    {field === "position" && PositionPicker}
+                    {field === "employment_classification" && (
                         <div className="space-y-3">
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Employment Classification
-                                </Label>
-                                <Select
-                                    value={form.employment_classification}
-                                    onValueChange={handleClassificationChange}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select…" />
-                                    </SelectTrigger>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Employment Classification</Label>
+                                <Select value={form.employment_classification} onValueChange={handleClassificationChange}>
+                                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Regular">
-                                            Regular
-                                        </SelectItem>
-                                        <SelectItem value="Job Order">
-                                            Job Order
-                                        </SelectItem>
-                                        <SelectItem value="Casual">
-                                            Casual
-                                        </SelectItem>
+                                        <SelectItem value="Regular">Regular</SelectItem>
+                                        <SelectItem value="Job Order">Job Order</SelectItem>
+                                        <SelectItem value="Casual">Casual</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-
-                            {/* Always show position picker; hint text changes when classification changed */}
                             <div className="space-y-1.5">
-                                {form.employment_classification !==
-                                    employee.employment_classification && (
-                                    <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                                        Classification changed — please select a
-                                        new position.
-                                    </p>
+                                {form.employment_classification !== employee.employment_classification && (
+                                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Classification changed — please select a new position.</p>
                                 )}
                                 {PositionPicker}
                             </div>
                         </div>
                     )}
-
-                    {field === 'date_hired' && (
+                    {field === "date_hired" && (
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Date Hired
-                            </Label>
-                            <Input
-                                type="date"
-                                value={form.date_hired}
-                                onChange={(e) =>
-                                    set('date_hired', e.target.value)
-                                }
-                                autoFocus
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Hired</Label>
+                            <Input type="date" value={form.date_hired} onChange={e => set("date_hired", e.target.value)} autoFocus />
                         </div>
                     )}
-                    {field === 'unit_division_department' && (
+                    {field === "unit_division_department" && (
                         <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground">
-                                Unit, Division, and Department are determined by
-                                the assigned <strong>Position</strong>. To
-                                change them, update the Position.
-                            </p>
-                            <div className="divide-y divide-border rounded-lg border border-border">
-                                <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-sm text-muted-foreground">
-                                        Unit
-                                    </span>
-                                    <span className="text-sm font-medium">
-                                        {employee.item?.position?.unit
-                                            ?.unit_name ?? '—'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-sm text-muted-foreground">
-                                        Division
-                                    </span>
-                                    <span className="text-sm font-medium">
-                                        {employee.item?.position?.division
-                                            ?.division_name ?? '—'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between px-4 py-2.5">
-                                    <span className="text-sm text-muted-foreground">
-                                        Department
-                                    </span>
-                                    <span className="text-sm font-medium">
-                                        {employee.item?.position?.department
-                                            ?.department_name ?? '—'}
-                                    </span>
-                                </div>
+                            <p className="text-sm text-muted-foreground">Unit, Division, and Department are determined by the assigned <strong>Position</strong>. To change them, update the Position.</p>
+                            <div className="rounded-lg border border-border divide-y divide-border">
+                                <div className="flex justify-between px-4 py-2.5"><span className="text-sm text-muted-foreground">Unit</span><span className="text-sm font-medium">{employee.item?.position?.unit?.unit_name ?? "—"}</span></div>
+                                <div className="flex justify-between px-4 py-2.5"><span className="text-sm text-muted-foreground">Division</span><span className="text-sm font-medium">{employee.item?.position?.division?.division_name ?? "—"}</span></div>
+                                <div className="flex justify-between px-4 py-2.5"><span className="text-sm text-muted-foreground">Department</span><span className="text-sm font-medium">{employee.item?.position?.department?.department_name ?? "—"}</span></div>
                             </div>
                         </div>
                     )}
-                    {field === 'date_applied' && (
+                    {field === "date_applied" && (
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Date Applied
-                            </Label>
-                            <Input
-                                type="date"
-                                value={form.date_applied}
-                                onChange={(e) =>
-                                    set('date_applied', e.target.value)
-                                }
-                                autoFocus
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Applied</Label>
+                            <Input type="date" value={form.date_applied} onChange={e => set("date_applied", e.target.value)} autoFocus />
                         </div>
                     )}
-                    {field === 'work_schedule' && (
+                    {field === "work_schedule" && (
                         <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Start Time
-                                </Label>
-                                <Input
-                                    type="time"
-                                    value={form.work_schedule_start}
-                                    onChange={(e) =>
-                                        set(
-                                            'work_schedule_start',
-                                            e.target.value,
-                                        )
-                                    }
-                                    autoFocus
-                                />
-                            </div>
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    End Time
-                                </Label>
-                                <Input
-                                    type="time"
-                                    value={form.work_schedule_end}
-                                    onChange={(e) =>
-                                        set('work_schedule_end', e.target.value)
-                                    }
-                                />
-                            </div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Start Time</Label><Input type="time" value={form.work_schedule_start} onChange={e => set("work_schedule_start", e.target.value)} autoFocus /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">End Time</Label><Input type="time" value={form.work_schedule_end} onChange={e => set("work_schedule_end", e.target.value)} /></div>
                         </div>
                     )}
-                    {field === 'break_time' && (
+                    {field === "break_time" && (
                         <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Break Start
-                                </Label>
-                                <Input
-                                    type="time"
-                                    value={form.break_start}
-                                    onChange={(e) =>
-                                        set('break_start', e.target.value)
-                                    }
-                                    autoFocus
-                                />
-                            </div>
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Break End
-                                </Label>
-                                <Input
-                                    type="time"
-                                    value={form.break_end}
-                                    onChange={(e) =>
-                                        set('break_end', e.target.value)
-                                    }
-                                />
-                            </div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Break Start</Label><Input type="time" value={form.break_start} onChange={e => set("break_start", e.target.value)} autoFocus /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Break End</Label><Input type="time" value={form.break_end} onChange={e => set("break_end", e.target.value)} /></div>
                         </div>
                     )}
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>
-                        Cancel
-                    </Button>
-                    {field !== 'unit_division_department' && (
-                        <Button onClick={save} disabled={saveDisabled}>
-                            <Save className="mr-1.5 h-3.5 w-3.5" />
-                            Save Changes
-                        </Button>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    {field !== "unit_division_department" && (
+                        <Button onClick={save} disabled={saveDisabled}><Save className="w-3.5 h-3.5 mr-1.5" />Save Changes</Button>
                     )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    );
-}
-
-// ─── DetailCard ───────────────────────────────────────────────────────────────
-
-function DetailCard({
-    title,
-    value,
-    onEdit,
-    isStatus,
-    statusValue,
-    onToggleStatus,
-}: {
-    title: string;
-    value?: string;
-    onEdit?: () => void;
-    isStatus?: boolean;
-    statusValue?: boolean;
-    onToggleStatus?: () => void;
-}) {
-    return (
-        <div className="group flex flex-col gap-1.5 rounded-xl border border-border bg-card px-4 py-3.5">
-            <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-                {title}
-            </p>
-            {isStatus ? (
-                <div className="flex items-center justify-between gap-2">
-                    <ActiveBadge active={statusValue ?? false} />
-                    {onToggleStatus && (
-                        <Switch
-                            checked={statusValue ?? false}
-                            onCheckedChange={onToggleStatus}
-                        />
-                    )}
-                </div>
-            ) : (
-                <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">
-                        {value ?? (
-                            <span className="text-xs font-normal text-muted-foreground/40 italic">
-                                Not provided
-                            </span>
-                        )}
-                    </p>
-                    {onEdit && (
-                        <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            onClick={onEdit}
-                            className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                        >
-                            <Pencil className="h-3 w-3" />
-                        </Button>
-                    )}
-                </div>
-            )}
-        </div>
-    );
+    )
 }
 
 // ─── Employment Tab ───────────────────────────────────────────────────────────
 
-function EmploymentDetailsTab({
-    employee,
-    items,
-}: {
-    employee: Employee;
-    items: Item[];
+function EmploymentDetailsTab({ employee, items, canEdit }: {
+    employee: Employee; items: Item[]; canEdit: boolean
 }) {
-    const position = employee.item?.position;
-    const [editField, setEditField] = useState<EditField>(null);
-    const orgs = employee.internal_organizations ?? [];
+    const position = employee.item?.position
+    const [editField, setEditField] = useState<EditField>(null)
+    const orgs = employee.internal_organizations ?? []
 
-    const toggleStatus = () =>
-        router.patch(
-            route('employee.toggleStatus', employee.employee_id),
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () =>
-                    toast.success(
-                        `Employee marked as ${employee.status ? 'inactive' : 'active'}.`,
-                    ),
-                onError: () =>
-                    toast.error(
-                        'Failed to update employee status. Please try again.',
-                    ),
-            },
-        );
+    const toggleStatus = () => router.patch(route("employee.toggleStatus", employee.employee_id), {}, {
+        preserveScroll: true,
+        onSuccess: () => toast.success(`Employee marked as ${employee.status ? "inactive" : "active"}.`),
+        onError: () => toast.error("Failed to update employee status. Please try again."),
+    })
 
     const fields = [
+        { label: "Position", value: position?.position_name, onEdit: () => setEditField("position") },
+        { label: "Department", value: position?.department?.department_name },
+        { label: "Division", value: position?.division?.division_name },
+        { label: "Unit", value: position?.unit?.unit_name },
+        { label: "Employment Classification", value: employee.employment_classification, onEdit: () => setEditField("employment_classification") },
+        { label: "Date Applied", value: fmt(employee.date_applied), onEdit: () => setEditField("date_applied") },
+        { label: "Date Hired", value: fmt(employee.date_hired), onEdit: () => setEditField("date_hired") },
         {
-            label: 'Position',
-            value: position?.position_name,
-            onEdit: () => setEditField('position'),
+            label: "Work Schedule",
+            value: employee.work_schedule_start && employee.work_schedule_end
+                ? `${employee.work_schedule_start} – ${employee.work_schedule_end}` : undefined,
+            onEdit: () => setEditField("work_schedule"),
         },
         {
-            label: 'Department',
-            value: position?.department?.department_name,
+            label: "Break Time",
+            value: employee.break_start && employee.break_end
+                ? `${employee.break_start} – ${employee.break_end}` : undefined,
+            onEdit: () => setEditField("break_time"),
         },
-        {
-            label: 'Division',
-            value: position?.division?.division_name,
-        },
-        {
-            label: 'Unit',
-            value: position?.unit?.unit_name,
-        },
-        {
-            label: 'Employment Classification',
-            value: employee.employment_classification,
-            onEdit: () => setEditField('employment_classification'),
-        },
-        {
-            label: 'Date Applied',
-            value: fmt(employee.date_applied),
-            onEdit: () => setEditField('date_applied'),
-        },
-        {
-            label: 'Date Hired',
-            value: fmt(employee.date_hired),
-            onEdit: () => setEditField('date_hired'),
-        },
-        {
-            label: 'Work Schedule',
-            value:
-                employee.work_schedule_start && employee.work_schedule_end
-                    ? `${employee.work_schedule_start} – ${employee.work_schedule_end}`
-                    : undefined,
-            onEdit: () => setEditField('work_schedule'),
-        },
-        {
-            label: 'Break Time',
-            value:
-                employee.break_start && employee.break_end
-                    ? `${employee.break_start} – ${employee.break_end}`
-                    : undefined,
-            onEdit: () => setEditField('break_time'),
-        },
-    ];
+    ]
 
     return (
-        <div className="space-y-4 p-3 sm:p-5">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <DetailCard
-                    title="Position"
-                    value={position?.position_name}
-                    onEdit={() => setEditField('position')}
-                />
-                <DetailCard
-                    title="Date Hired"
-                    value={fmt(employee.date_hired)}
-                    onEdit={() => setEditField('date_hired')}
-                />
-                <DetailCard
-                    title="Status"
-                    isStatus
-                    statusValue={employee.status}
-                    onToggleStatus={toggleStatus}
-                />
-                <DetailCard
-                    title="Unit"
-                    value={position?.unit?.unit_name}
-                    onEdit={() => setEditField('unit_division_department')}
-                />
-                <DetailCard
-                    title="Division"
-                    value={position?.division?.division_name}
-                    onEdit={() => setEditField('unit_division_department')}
-                />
-                <DetailCard
-                    title="Department"
-                    value={position?.department?.department_name}
-                    onEdit={() => setEditField('unit_division_department')}
-                />
-                <DetailCard
-                    title="Employment Classification"
-                    value={employee.employment_classification}
-                    onEdit={() => setEditField('employment_classification')}
-                />
-                <DetailCard
-                    title="Date Applied"
-                    value={fmt(employee.date_applied)}
-                    onEdit={() => setEditField('date_applied')}
-                />
-                <DetailCard
-                    title="Work Schedule"
-                    value={
-                        employee.work_schedule_start &&
-                        employee.work_schedule_end
-                            ? `${employee.work_schedule_start} – ${employee.work_schedule_end}`
-                            : undefined
-                    }
-                    onEdit={() => setEditField('work_schedule')}
-                />
-                <DetailCard
-                    title="Break Time"
-                    value={
-                        employee.break_start && employee.break_end
-                            ? `${employee.break_start} – ${employee.break_end}`
-                            : undefined
-                    }
-                    onEdit={() => setEditField('break_time')}
-                />
-            </div>
-
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
-                        Employment Details
-                    </span>
+        <div className="p-3 sm:p-5 space-y-4">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+                    <span className="text-xs text-muted-foreground w-44 shrink-0">Status</span>
+                    <div className="flex flex-1 items-center justify-between gap-2">
+                        <ActiveBadge active={employee.status} />
+                        {canEdit && <Switch checked={employee.status} onCheckedChange={toggleStatus} className="scale-90" />}
+                    </div>
                 </div>
                 {fields.map(({ label, value, onEdit }, i) => (
-                    <div
-                        key={label}
-                        className={cn(
-                            cn(
-                                'flex items-center justify-between px-5 py-3',
-                                onEdit && 'group',
-                            ),
-                            i < fields.length - 1 && 'border-b border-border',
-                        )}
-                    >
-                        <span className="w-44 shrink-0 text-xs text-muted-foreground">
-                            {label}
-                        </span>
-                        <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                            <span className="truncate text-sm font-medium text-foreground">
-                                {value ?? (
-                                    <span className="text-xs font-normal text-muted-foreground/40 italic">
-                                        N/A
-                                    </span>
-                                )}
+                    <div key={label} className={cn("flex items-center justify-between px-5 py-3", onEdit && "group", i < fields.length - 1 && "border-b border-border")}>
+                        <span className="text-xs text-muted-foreground w-44 shrink-0">{label}</span>
+                        <div className="flex flex-1 items-center justify-between gap-2 min-w-0">
+                            <span className="text-sm font-medium text-foreground truncate">
+                                {value ?? <span className="text-muted-foreground/40 italic font-normal text-xs">N/A</span>}
                             </span>
-                            {onEdit && (
-                                <Button
-                                    size="icon-xs"
-                                    variant="ghost"
-                                    onClick={onEdit}
-                                    className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                                >
-                                    <Pencil className="h-3 w-3" />
+                            {onEdit && canEdit && (
+                                <Button size="icon-xs" variant="ghost" onClick={onEdit} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                    <Pencil className="w-3 h-3" />
                                 </Button>
                             )}
                         </div>
@@ -1701,667 +866,384 @@ function EmploymentDetailsTab({
                 ))}
             </div>
 
-            {/* Internal Organizations */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="border-b border-border px-5 py-3.5">
-                    <span className="text-sm font-bold text-foreground">
-                        Internal Organizations
-                    </span>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Internal Organizations</span>
                 </div>
                 {orgs.length === 0 ? (
-                    <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">
-                        Not a member of any internal organization.
-                    </div>
+                    <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">Not a member of any internal organization.</div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {orgs.map((org) => (
-                            <div
-                                key={org.internal_organization_id}
-                                className="flex items-center gap-4 px-4 py-3 sm:px-5"
-                            >
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-medium text-foreground">
-                                        {org.name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {org.code}
-                                    </p>
+                    <div className="divide-y divide-border overflow-y-auto max-h-48">
+                        {orgs.map(org => (
+                            <div key={org.internal_organization_id} className="flex items-center gap-4 px-5 py-3">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground">{org.name}</p>
+                                    <p className="text-xs text-muted-foreground">{org.code}</p>
                                 </div>
-                                <Badge
-                                    variant="secondary"
-                                    className="shrink-0 text-[10px]"
-                                >
-                                    {org.type}
-                                </Badge>
+                                <Badge variant="secondary" className="shrink-0 text-[10px]">{org.type}</Badge>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
 
-            <EmploymentEditDialog
-                employee={employee}
-                field={editField}
-                onClose={() => setEditField(null)}
-                items={items}
-            />
+            <EmploymentEditDialog employee={employee} field={canEdit ? editField : null} onClose={() => setEditField(null)} items={items} />
         </div>
-    );
+    )
 }
 
 // ─── Allowance Edit / Add Dialog ─────────────────────────────────────────────
 
-function AllowanceEditDialog({
-    employee,
-    open,
-    target,
-    onClose,
-    masterAllowances,
-}: {
-    employee: Employee;
-    open: boolean;
-    target: Allowance | null;
-    onClose: () => void;
-    masterAllowances: MasterAllowance[];
+function AllowanceEditDialog({ employee, open, target, onClose, masterAllowances }: {
+    employee: Employee; open: boolean; target: Allowance | null; onClose: () => void; masterAllowances: MasterAllowance[]
 }) {
-    const isEdit = target !== null;
-
+    const isEdit = target !== null
     const [form, setForm] = useState({
-        selected_master_id: '',
-        allowance_name: target?.allowance_type ?? '',
-        allowance_amount: target?.amount?.toString() ?? '',
-        taxable: target?.taxable ? 'true' : 'false',
-    });
+        selected_master_id: "",
+        allowance_name: target?.allowance_type ?? "",
+        allowance_amount: target?.amount?.toString() ?? "",
+        taxable: target?.taxable ? "true" : "false",
+    })
 
-    // Reset when dialog opens
     useEffect(() => {
         setForm({
-            selected_master_id: '',
-            allowance_name: target?.allowance_type ?? '',
-            allowance_amount: target?.amount?.toString() ?? '',
-            taxable: target?.taxable ? 'true' : 'false',
-        });
-    }, [target, open]);
+            selected_master_id: "",
+            allowance_name: target?.allowance_type ?? "",
+            allowance_amount: target?.amount?.toString() ?? "",
+            taxable: target?.taxable ? "true" : "false",
+        })
+    }, [target, open])
 
-    // When a master allowance is selected, auto-fill name, amount, taxable
     const handleMasterSelect = (id: string) => {
-        const master = masterAllowances.find((a) => a.id.toString() === id);
-        if (!master) return;
-        setForm({
-            selected_master_id: id,
-            allowance_name: master.name,
-            allowance_amount: master.monthly_salary.toString(),
-            taxable: master.taxable ? 'true' : 'false',
-        });
-    };
+        const master = masterAllowances.find(a => a.id.toString() === id)
+        if (!master) return
+        setForm({ selected_master_id: id, allowance_name: master.name, allowance_amount: master.monthly_salary.toString(), taxable: master.taxable ? "true" : "false" })
+    }
 
     const handleSave = () => {
         const payload = {
             allowance_name: form.allowance_name,
             allowance_amount: parseFloat(form.allowance_amount) || 0,
-            taxable: form.taxable === 'true',
-        };
-
+            taxable: form.taxable === "true",
+        }
         if (isEdit) {
             router.put(
-                route('employee.allowance.update', {
-                    employee: employee.employee_id,
-                    allowance: target!.employee_allowance_id,
-                }),
-                payload,
-                { preserveScroll: true, onSuccess: onClose },
-            );
+                route("employee.allowance.update", { employee: employee.employee_id, allowance: target!.employee_allowance_id }),
+                payload, { preserveScroll: true, onSuccess: onClose },
+            )
         } else {
             router.post(
-                route('employee.allowance.store', {
-                    employee: employee.employee_id,
-                }),
-                payload,
-                { preserveScroll: true, onSuccess: onClose },
-            );
+                route("employee.allowance.store", { employee: employee.employee_id }),
+                payload, { preserveScroll: true, onSuccess: onClose },
+            )
         }
-    };
+    }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                    <DialogTitle>
-                        {isEdit ? 'Edit Allowance' : 'Add Allowance'}
-                    </DialogTitle>
-                </DialogHeader>
+                <DialogHeader><DialogTitle>{isEdit ? "Edit Allowance" : "Add Allowance"}</DialogTitle></DialogHeader>
                 <div className="space-y-3 py-2">
                     {!isEdit && (
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Select from Master List
-                            </Label>
-                            <Select
-                                value={form.selected_master_id}
-                                onValueChange={handleMasterSelect}
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Choose an allowance…" />
-                                </SelectTrigger>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Select from Master List</Label>
+                            <Select value={form.selected_master_id} onValueChange={handleMasterSelect}>
+                                <SelectTrigger className="w-full"><SelectValue placeholder="Choose an allowance…" /></SelectTrigger>
                                 <SelectContent className="max-h-60">
-                                    {masterAllowances.map((a) => (
-                                        <SelectItem
-                                            key={a.id}
-                                            value={a.id.toString()}
-                                        >
-                                            {a.name} — ₱
-                                            {Number(
-                                                a.monthly_salary,
-                                            ).toLocaleString('en-PH', {
-                                                minimumFractionDigits: 2,
-                                            })}
+                                    {masterAllowances.map(a => (
+                                        <SelectItem key={a.id} value={a.id.toString()}>
+                                            {a.name} — ₱{Number(a.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <p className="mt-1.5 text-xs text-muted-foreground">
-                                Selecting will auto-fill the fields below.
-                            </p>
+                            <p className="text-xs text-muted-foreground mt-1.5">Selecting will auto-fill the fields below.</p>
                         </div>
                     )}
-
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Allowance Name
-                        </Label>
-                        <Input
-                            value={form.allowance_name}
-                            onChange={(e) =>
-                                setForm((f) => ({
-                                    ...f,
-                                    allowance_name: e.target.value,
-                                }))
-                            }
-                            placeholder="e.g. PERA"
-                        />
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Allowance Name</Label>
+                        <Input value={form.allowance_name} onChange={e => setForm(f => ({ ...f, allowance_name: e.target.value }))} placeholder="e.g. PERA" />
                     </div>
-
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Amount (Monthly)
-                        </Label>
-                        <Input
-                            type="number"
-                            value={form.allowance_amount}
-                            onChange={(e) =>
-                                setForm((f) => ({
-                                    ...f,
-                                    allowance_amount: e.target.value,
-                                }))
-                            }
-                            placeholder="0.00"
-                        />
-                        <p className="mt-1.5 text-xs text-muted-foreground">
-                            Semi-monthly in payroll: ₱
-                            {(
-                                parseFloat(form.allowance_amount || '0') / 2
-                            ).toLocaleString('en-PH', {
-                                minimumFractionDigits: 2,
-                            })}
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Amount (Monthly)</Label>
+                        <Input type="number" value={form.allowance_amount} onChange={e => setForm(f => ({ ...f, allowance_amount: e.target.value }))} placeholder="0.00" />
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                            Semi-monthly in payroll: ₱{(parseFloat(form.allowance_amount || "0") / 2).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                         </p>
                     </div>
-
                     <div>
-                        <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                            Taxable?
-                        </Label>
-                        <Select
-                            value={form.taxable}
-                            onValueChange={(v) =>
-                                setForm((f) => ({ ...f, taxable: v }))
-                            }
-                        >
-                            <SelectTrigger className="w-full">
-                                <SelectValue />
-                            </SelectTrigger>
+                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Taxable?</Label>
+                        <Select value={form.taxable} onValueChange={v => setForm(f => ({ ...f, taxable: v }))}>
+                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="false">
-                                    Non-Taxable
-                                </SelectItem>
+                                <SelectItem value="false">Non-Taxable</SelectItem>
                                 <SelectItem value="true">Taxable</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleSave}
-                        disabled={
-                            !form.allowance_name || !form.allowance_amount
-                        }
-                    >
-                        <Save className="mr-1.5 h-3.5 w-3.5" />
-                        {isEdit ? 'Save Changes' : 'Add Allowance'}
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSave} disabled={!form.allowance_name || !form.allowance_amount}>
+                        <Save className="w-3.5 h-3.5 mr-1.5" />{isEdit ? "Save Changes" : "Add Allowance"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    );
+    )
 }
 
-// ─── Compensation Tab ─────────────────────────────────────────────────────────
+// ─── Payslip View Modal ───────────────────────────────────────────────────────
 
-function CompensationTab({
-    employee,
-    salaryGradeSteps,
-    masterAllowances,
-}: {
-    employee: Employee;
-    salaryGradeSteps: SalaryGradeStep[];
-    masterAllowances: MasterAllowance[];
-}) {
-    const sgs = employee.salary_grade_step;
-    const allowances = employee.allowances ?? [];
-    const [salaryEditOpen, setSalaryEditOpen] = useState(false);
-    const [allowanceDialog, setAllowanceDialog] = useState<{
-        open: boolean;
-        target: Allowance | null;
-    }>({ open: false, target: null });
-
-    return (
-        <div className="space-y-4 p-3 sm:p-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
-                    <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                        <span className="text-sm font-bold text-foreground">
-                            Salary Classification
-                        </span>
-                        <Button
-                            onClick={() => setSalaryEditOpen(true)}
-                            variant="ghost"
-                            size="icon-xs"
-                        >
-                            <Pen className="h-3 w-3" />
-                        </Button>
-                    </div>
-                    {sgs ? (
-                        <div className="space-y-4 p-5">
-                            <div className="flex items-center gap-3">
-                                <div className="flex-1 rounded-lg border border-border bg-muted/50 px-4 py-3 text-center">
-                                    <p className="mb-1 text-xs text-muted-foreground">
-                                        Salary Grade
-                                    </p>
-                                    <p className="text-lg font-bold text-foreground">
-                                        {sgs.salary_grade}
-                                    </p>
-                                </div>
-                                <div className="flex-1 rounded-lg border border-border bg-muted/50 px-4 py-3 text-center">
-                                    <p className="mb-1 text-xs text-muted-foreground">
-                                        Step
-                                    </p>
-                                    <p className="text-lg font-bold text-foreground">
-                                        {sgs.step}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
-                                <span className="text-sm text-muted-foreground">
-                                    Monthly Basic Salary
-                                </span>
-                                <span className="text-base font-bold text-foreground">
-                                    ₱
-                                    {Number(sgs.monthly_salary).toLocaleString(
-                                        'en-PH',
-                                        { minimumFractionDigits: 2 },
-                                    )}
-                                </span>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
-                            No salary data.
-                        </div>
-                    )}
-                </div>
-
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
-                    <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                        <span className="text-sm font-bold text-foreground">
-                            Allowances
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() =>
-                                setAllowanceDialog({ open: true, target: null })
-                            }
-                        >
-                            <Plus className="h-3.5 w-3.5" />
-                        </Button>
-                    </div>
-                    {allowances.length > 0 ? (
-                        <div className="divide-y divide-border">
-                            {allowances.map((a) => (
-                                <div
-                                    key={a.employee_allowance_id}
-                                    className="flex items-center justify-between px-4 py-3 sm:px-5"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm text-muted-foreground">
-                                            {a.allowance_type}
-                                        </span>
-                                        {a.taxable && (
-                                            <Badge
-                                                variant="outline"
-                                                className="border-amber-200/60 bg-amber-100 text-[10px] text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/60 dark:text-amber-400"
-                                            >
-                                                Taxable
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold">
-                                            ₱
-                                            {Number(a.amount).toLocaleString(
-                                                'en-PH',
-                                                { minimumFractionDigits: 2 },
-                                            )}
-                                        </span>
-                                        <Badge
-                                            variant="outline"
-                                            className="border-emerald-200/60 bg-emerald-100 text-[10px] text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/60 dark:text-emerald-400"
-                                        >
-                                            Present
-                                        </Badge>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-xs"
-                                            onClick={() =>
-                                                setAllowanceDialog({
-                                                    open: true,
-                                                    target: a,
-                                                })
-                                            }
-                                        >
-                                            <Pen className="h-3 w-3" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-xs"
-                                            className="text-destructive hover:text-destructive"
-                                            onClick={() =>
-                                                router.delete(
-                                                    route(
-                                                        'employee.allowance.destroy',
-                                                        {
-                                                            employee:
-                                                                employee.employee_id,
-                                                            allowance:
-                                                                a.employee_allowance_id,
-                                                        },
-                                                    ),
-                                                    { preserveScroll: true },
-                                                )
-                                            }
-                                        >
-                                            <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
-                            No allowances on file.
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
-                        Payroll Data
-                    </span>
-                </div>
-                <PayslipHistoryTable payslips={employee.payslips ?? []} />
-            </div>
-
-            <SalaryEditDialog
-                employee={employee}
-                open={salaryEditOpen}
-                onClose={() => setSalaryEditOpen(false)}
-                salaryGradeSteps={salaryGradeSteps}
-            />
-            <AllowanceEditDialog
-                employee={employee}
-                open={allowanceDialog.open}
-                target={allowanceDialog.target}
-                onClose={() =>
-                    setAllowanceDialog({ open: false, target: null })
-                }
-                masterAllowances={masterAllowances}
-            />
-        </div>
-    );
-}
-
-function fmtPeso(amount: number) {
-    return `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-}
-
-function PayslipViewModal({
-    slip,
-    open,
-    onClose,
-}: {
-    slip: Payslip | null;
-    open: boolean;
-    onClose: () => void;
-}) {
-    if (!slip) return null;
-
+function PayslipViewModal({ slip, open, onClose }: { slip: Payslip | null; open: boolean; onClose: () => void }) {
+    if (!slip) return null
     const data = {
-        employee_name: slip.employee_name,
-        position: slip.position,
-        salary_grade: slip.salary_grade,
-        step: slip.step,
+        employee_name: slip.employee_name, position: slip.position,
+        salary_grade: slip.salary_grade, step: slip.step,
         employment_classification: slip.employment_classification,
-        period_label: slip.period_label,
-        basic_pay: slip.basic_pay,
-        pera: slip.pera,
-        rice_allowance: slip.rice_allowance,
-        uniform_allowance: slip.uniform_allowance,
-        gsis_premium: slip.gsis_premium,
-        philhealth: slip.philhealth,
-        pag_ibig: slip.pag_ibig,
-        withholding_tax: slip.withholding_tax,
-        absent_days: slip.absent_days,
-        absent_deduction: slip.absent_deduction,
-        late_minutes: slip.late_minutes,
-        late_deduction: slip.late_deduction,
-        half_days: slip.half_days ?? 0,
+        period_label: slip.period_label, basic_pay: slip.basic_pay,
+        pera: slip.pera, rice_allowance: slip.rice_allowance,
+        uniform_allowance: slip.uniform_allowance, gsis_premium: slip.gsis_premium,
+        philhealth: slip.philhealth, pag_ibig: slip.pag_ibig,
+        withholding_tax: slip.withholding_tax, absent_days: slip.absent_days,
+        absent_deduction: slip.absent_deduction, late_minutes: slip.late_minutes,
+        late_deduction: slip.late_deduction, half_days: slip.half_days ?? 0,
         half_day_deduction: slip.half_day_deduction ?? 0,
         undertime_minutes: slip.undertime_minutes ?? 0,
         undertime_deduction: slip.undertime_deduction ?? 0,
         personal_slip_minutes: slip.personal_slip_minutes ?? 0,
         personal_slip_deduction: slip.personal_slip_deduction ?? 0,
-        gsis_mpl: slip.gsis_mpl,
-        gsis_emergency: slip.gsis_emergency,
+        gsis_mpl: slip.gsis_mpl, gsis_emergency: slip.gsis_emergency,
         pag_ibig_mpl: slip.pag_ibig_mpl,
         internal_org_savings: slip.internal_org_savings ?? 0,
         internal_org_second: slip.internal_org_second ?? 0,
         internal_org_loans: slip.internal_org_loans ?? 0,
         other_deductions_total: slip.other_deductions_total ?? 0,
-        water_bill: slip.water_bill,
-        net_pay: slip.net_pay,
+        water_bill: slip.water_bill, net_pay: slip.net_pay,
         floor_check_passed: slip.floor_check_passed,
-        posted_date: slip.posted_date,
-        hr_officer: slip.hr_officer,
-    };
-
+        posted_date: slip.posted_date, hr_officer: slip.hr_officer,
+    }
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className="w-[800px] !max-w-[800px] overflow-y-auto p-0">
                 <DialogHeader className="flex flex-row items-center justify-between border-b border-border px-5 py-3.5">
-                    <DialogTitle className="text-sm font-semibold">
-                        Pay Slip — {slip.period_label}
-                    </DialogTitle>
+                    <DialogTitle className="text-sm font-semibold">Pay Slip — {slip.period_label}</DialogTitle>
                 </DialogHeader>
                 <div className="p-4" id="payslip-modal-print-area">
                     <PayslipDocument data={data} printId="payslip-modal-doc" />
                 </div>
             </DialogContent>
         </Dialog>
-    );
+    )
 }
+
 function PayslipHistoryTable({ payslips }: { payslips: Payslip[] }) {
-    const [selected, setSelected] = useState<Payslip | null>(null);
-
+    const [selected, setSelected] = useState<Payslip | null>(null)
     if (payslips.length === 0) {
-        return (
-            <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">
-                No payroll data available.
-            </div>
-        );
+        return <div className="px-5 py-8 text-center text-sm text-muted-foreground italic">No payroll data available.</div>
     }
-
     return (
         <>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-border bg-muted/40">
-                            <th className="px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-muted-foreground sm:px-5">
-                                Period
-                            </th>
-                            <th className="px-4 py-2.5 text-right text-xs font-semibold tracking-wide text-muted-foreground sm:px-5">
-                                Gross Pay
-                            </th>
-                            <th className="px-4 py-2.5 text-right text-xs font-semibold tracking-wide text-muted-foreground sm:px-5">
-                                Deductions
-                            </th>
-                            <th className="px-4 py-2.5 text-right text-xs font-semibold tracking-wide text-muted-foreground sm:px-5">
-                                Net Pay
-                            </th>
+                            {["Period", "Gross Pay", "Deductions", "Net Pay"].map((h, i) => (
+                                <th key={h} className={`px-4 sm:px-5 py-2.5 text-xs font-semibold tracking-wide text-muted-foreground ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                        {payslips.map((slip) => (
-                            <tr
-                                key={slip.payroll_record_id}
-                                className="cursor-pointer transition-colors hover:bg-muted/30"
-                                onClick={() => setSelected(slip)}
-                            >
-                                <td className="px-4 py-3 sm:px-5">
-                                    <span className="font-medium text-foreground">
-                                        {slip.period_label}
-                                    </span>
-                                    {slip.pay_date && (
-                                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                            Pay date: {fmtShort(slip.pay_date)}
-                                        </p>
-                                    )}
+                        {payslips.map(slip => (
+                            <tr key={slip.payroll_record_id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setSelected(slip)}>
+                                <td className="px-4 sm:px-5 py-3">
+                                    <span className="font-medium text-foreground">{slip.period_label}</span>
+                                    {slip.pay_date && <p className="mt-0.5 text-[11px] text-muted-foreground">Pay date: {fmtShort(slip.pay_date)}</p>}
                                 </td>
-                                <td className="px-4 py-3 text-right text-foreground tabular-nums sm:px-5">
-                                    {fmtPeso(slip.gross_pay)}
-                                </td>
-                                <td className="px-4 py-3 text-right text-destructive tabular-nums sm:px-5">
-                                    − {fmtPeso(slip.total_deductions)}
-                                </td>
-                                <td className="px-4 py-3 text-right font-bold text-foreground tabular-nums sm:px-5">
-                                    {fmtPeso(slip.net_pay)}
-                                </td>
+                                <td className="px-4 sm:px-5 py-3 text-right text-foreground tabular-nums">{fmtPeso(slip.gross_pay)}</td>
+                                <td className="px-4 sm:px-5 py-3 text-right text-destructive tabular-nums">− {fmtPeso(slip.total_deductions)}</td>
+                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-foreground tabular-nums">{fmtPeso(slip.net_pay)}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
-
-            <PayslipViewModal
-                slip={selected}
-                open={selected !== null}
-                onClose={() => setSelected(null)}
-            />
+            <PayslipViewModal slip={selected} open={selected !== null} onClose={() => setSelected(null)} />
         </>
-    );
+    )
+}
+
+// ─── Compensation Tab ─────────────────────────────────────────────────────────
+
+function CompensationTab({ employee, salaryGradeSteps, masterAllowances, canEdit }: {
+    employee: Employee; salaryGradeSteps: SalaryGradeStep[]; masterAllowances: MasterAllowance[]; canEdit: boolean
+}) {
+    const sgs = employee.salary_grade_step
+    const allowances = employee.allowances ?? []
+    const [salaryEditOpen, setSalaryEditOpen] = useState(false)
+    const [allowanceDialog, setAllowanceDialog] = useState<{ open: boolean; target: Allowance | null }>({ open: false, target: null })
+
+    const totalAllowances = allowances.reduce((sum, a) => sum + Number(a.amount), 0)
+    const baseSalary = sgs ? Number(sgs.monthly_salary) : 0
+    const grossPay = baseSalary + totalAllowances
+    const fmtLocal = (n: number) => n.toLocaleString("en-PH", { minimumFractionDigits: 2 })
+
+    return (
+        <div className="p-3 sm:p-5 space-y-4">
+            <div className="bg-card border border-border rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">Estimated Gross Monthly Pay</p>
+                    <p className="text-3xl font-bold text-foreground tracking-tight">₱{fmtLocal(grossPay)}</p>
+                </div>
+                <div className="flex items-center gap-6 sm:gap-8">
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Base Salary</p><p className="text-sm font-semibold text-foreground">₱{fmtLocal(baseSalary)}</p></div>
+                    <div className="w-px h-8 bg-border" />
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Allowances</p><p className="text-sm font-semibold text-foreground">₱{fmtLocal(totalAllowances)}</p></div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                        <span className="text-sm font-bold text-foreground">Salary Classification</span>
+                        {canEdit && (
+                            <Button onClick={() => setSalaryEditOpen(true)} variant="ghost" size="icon-xs"><Pen className="w-3 h-3" /></Button>
+                        )}
+                    </div>
+                    {sgs ? (
+                        <div className="p-5 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 rounded-lg bg-muted/50 border border-border px-4 py-3 text-center">
+                                    <p className="text-xs text-muted-foreground mb-1">Salary Grade</p>
+                                    <p className="text-lg font-bold text-foreground">{sgs.salary_grade}</p>
+                                </div>
+                                <div className="flex-1 rounded-lg bg-muted/50 border border-border px-4 py-3 text-center">
+                                    <p className="text-xs text-muted-foreground mb-1">Step</p>
+                                    <p className="text-lg font-bold text-foreground">{sgs.step}</p>
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-border px-4 py-3 flex items-center justify-between">
+                                <span className="text-sm text-muted-foreground">Monthly Basic Salary</span>
+                                <span className="text-base font-bold text-foreground">₱{fmtLocal(baseSalary)}</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="px-5 py-10 text-center">
+                            <p className="text-sm text-muted-foreground italic mb-3">No salary data on file.</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                        <span className="text-sm font-bold text-foreground">Allowances</span>
+                        {canEdit && (
+                            <Button variant="ghost" size="icon-xs" onClick={() => setAllowanceDialog({ open: true, target: null })}>
+                                <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                        )}
+                    </div>
+                    {allowances.length > 0 ? (
+                        <div className="divide-y divide-border">
+                            {allowances.map(a => (
+                                <div key={a.employee_allowance_id} className="flex items-center justify-between px-5 py-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">{a.allowance_type}</span>
+                                        {a.taxable && (
+                                            <Badge variant="outline" className="border-amber-200/60 bg-amber-100 text-[10px] text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/60 dark:text-amber-400">
+                                                Taxable
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-bold">₱{fmtLocal(Number(a.amount))}</span>
+                                        {canEdit && (
+                                            <>
+                                                <Button variant="ghost" size="icon-xs" onClick={() => setAllowanceDialog({ open: true, target: a })}>
+                                                    <Pen className="w-3 h-3" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon-xs" className="text-destructive hover:text-destructive"
+                                                    onClick={() => router.delete(route("employee.allowance.destroy", { employee: employee.employee_id, allowance: a.employee_allowance_id }), { preserveScroll: true })}>
+                                                    <Trash2 className="w-3 h-3" />
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            <div className="flex items-center justify-between px-5 py-3 bg-muted/30">
+                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</span>
+                                <span className="text-sm font-bold text-foreground tabular-nums">₱{fmtLocal(totalAllowances)}</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="px-5 py-10 text-center text-sm text-muted-foreground italic">No allowances on file.</div>
+                    )}
+                </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Payroll Data</span>
+                </div>
+                <PayslipHistoryTable payslips={employee.payslips ?? []} />
+            </div>
+
+            {canEdit && (
+                <>
+                    <SalaryEditDialog employee={employee} open={salaryEditOpen} onClose={() => setSalaryEditOpen(false)} salaryGradeSteps={salaryGradeSteps} />
+                    <AllowanceEditDialog
+                        employee={employee}
+                        open={allowanceDialog.open}
+                        target={allowanceDialog.target}
+                        onClose={() => setAllowanceDialog({ open: false, target: null })}
+                        masterAllowances={masterAllowances}
+                    />
+                </>
+            )}
+        </div>
+    )
 }
 
 // ─── Leave Information Tab ────────────────────────────────────────────────────
 
 function LeaveInformationTab({ employee }: { employee: Employee }) {
-    const data = (employee.leave_balances ?? []) as LeaveBalanceRow[];
-    const table = useReactTable({
-        data,
-        columns: leaveBalanceColumns,
-        getCoreRowModel: getCoreRowModel(),
-    });
-
+    const data = (employee.leave_balances ?? []) as LeaveBalanceRow[]
+    const table = useReactTable({ data, columns: leaveBalanceColumns, getCoreRowModel: getCoreRowModel() })
     return (
-        <div className="space-y-5 p-3 sm:p-5">
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
-                        Leave Balances
-                    </span>
-                    {data.length > 0 && (
-                        <Badge
-                            variant="outline"
-                            className="rounded-full text-[10px]"
-                        >
-                            {data.length}
-                        </Badge>
-                    )}
+        <div className="p-3 sm:p-5 space-y-5">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Leave Balances</span>
+                    {data.length > 0 && <Badge variant="outline" className="text-[10px] rounded-full">{data.length}</Badge>}
                 </div>
                 {data.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-14">
-                        <CalendarDays className="h-10 w-10 text-muted-foreground/30" />
-                        <p className="text-sm text-muted-foreground italic">
-                            No leave balances on file.
-                        </p>
+                    <div className="flex flex-col items-center justify-center py-14 gap-3">
+                        <CalendarDays className="w-10 h-10 text-muted-foreground/30" />
+                        <p className="text-sm italic text-muted-foreground">No leave balances on file.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[520px]">
                             <thead>
-                                {table.getHeaderGroups().map((hg) => (
-                                    <tr
-                                        key={hg.id}
-                                        className="border-b border-border bg-muted/30"
-                                    >
+                                {table.getHeaderGroups().map(hg => (
+                                    <tr key={hg.id} className="border-b border-border bg-muted/30">
                                         {hg.headers.map((header, i) => (
-                                            <th
-                                                key={header.id}
-                                                className={`px-5 py-2.5 font-normal ${i === 0 ? 'text-left' : 'text-right'}`}
-                                            >
-                                                {flexRender(
-                                                    header.column.columnDef
-                                                        .header,
-                                                    header.getContext(),
-                                                )}
+                                            <th key={header.id} className={`px-5 py-2.5 font-normal ${i === 0 ? "text-left" : "text-right"}`}>
+                                                {flexRender(header.column.columnDef.header, header.getContext())}
                                             </th>
                                         ))}
                                     </tr>
                                 ))}
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {table.getRowModel().rows.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="transition-colors hover:bg-muted/20"
-                                    >
-                                        {row
-                                            .getVisibleCells()
-                                            .map((cell, i) => (
-                                                <td
-                                                    key={cell.id}
-                                                    className={`px-5 py-3 ${i === 0 ? 'text-left' : 'text-right'}`}
-                                                >
-                                                    {flexRender(
-                                                        cell.column.columnDef
-                                                            .cell,
-                                                        cell.getContext(),
-                                                    )}
-                                                </td>
-                                            ))}
+                                {table.getRowModel().rows.map(row => (
+                                    <tr key={row.id} className="hover:bg-muted/20 transition-colors">
+                                        {row.getVisibleCells().map((cell, i) => (
+                                            <td key={cell.id} className={`px-5 py-3 ${i === 0 ? "text-left" : "text-right"}`}>
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </td>
+                                        ))}
                                     </tr>
                                 ))}
                             </tbody>
@@ -2370,897 +1252,413 @@ function LeaveInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
         </div>
-    );
+    )
 }
 
 // ─── Whereabout Slip List ─────────────────────────────────────────────────────
 
-function WhereaboutSlipList({
-    slips,
-    hasTimedOut,
-}: {
-    slips: WhereaboutSlip[];
-    hasTimedOut: boolean;
-}) {
-    if (slips.length === 0) return null;
+function WhereaboutSlipList({ slips, hasTimedOut }: { slips: WhereaboutSlip[]; hasTimedOut: boolean }) {
+    if (slips.length === 0) return null
     return (
         <div className="flex flex-col gap-1.5">
-            {slips.map((slip) => {
-                const isPersonal = slip.purpose_type === 'personal';
-                const isReturned = slip.return_status === 'returned';
-                const isDeducted =
-                    isPersonal &&
-                    isReturned &&
-                    slip.minutes_gone != null &&
-                    hasTimedOut;
-                const isPendingDeduct =
-                    isPersonal &&
-                    isReturned &&
-                    slip.minutes_gone != null &&
-                    !hasTimedOut;
-
+            {slips.map(slip => {
+                const st = slipStatus(slip)
+                const isPersonal = slip.purpose_type === "personal"
+                const isReturned = st === "returned"
+                const isDeducted = isPersonal && isReturned && slip.minutes_gone != null && hasTimedOut
+                const isPendingDeduct = isPersonal && isReturned && slip.minutes_gone != null && !hasTimedOut
                 return (
-                    <div
-                        key={slip.whereabout_slip_id}
-                        className={cn(
-                            'overflow-hidden rounded-lg border bg-background',
-                            isDeducted
-                                ? 'border-destructive/40'
-                                : 'border-border',
-                        )}
-                    >
-                        <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-3 py-2">
-                            <div className="flex min-w-0 items-center gap-2">
-                                <MapPin className="h-3 w-3 shrink-0 text-muted-foreground" />
-                                <span className="max-w-[220px] truncate text-xs font-medium">
-                                    {slip.purpose_description}
-                                </span>
+                    <div key={slip.whereabout_slip_id} className={cn("rounded-lg border bg-background overflow-hidden", isDeducted ? "border-destructive/40" : "border-border")}>
+                        <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/20">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+                                <span className="text-xs font-medium truncate max-w-[220px]">{slip.purpose_description}</span>
                             </div>
-                            <div className="flex shrink-0 items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 shrink-0">
                                 <PurposeBadge type={slip.purpose_type} />
-                                <ReturnBadge status={slip.return_status} />
+                                <ReturnBadge status={st} />
                             </div>
                         </div>
-
                         <div className="grid grid-cols-3 gap-px bg-border/40">
                             {[
-                                {
-                                    label: 'Left At',
-                                    value: fmtTime(slip.time_out),
-                                },
-                                {
-                                    label: 'Returned At',
-                                    value: slip.time_returned
-                                        ? fmtTime(slip.time_returned)
-                                        : '—',
-                                },
-                                {
-                                    label: 'Duration',
-                                    value:
-                                        slip.minutes_gone != null
-                                            ? fmtMinutes(slip.minutes_gone)
-                                            : '—',
-                                    highlight: isDeducted,
-                                },
+                                { label: "Left At", value: fmtTime(slip.time_out) },
+                                { label: "Returned At", value: slip.time_returned ? fmtTime(slip.time_returned) : "—" },
+                                { label: "Duration", value: slip.minutes_gone != null ? fmtMinutes(slip.minutes_gone) : "—", highlight: isDeducted },
                             ].map(({ label, value, highlight }) => (
-                                <div
-                                    key={label}
-                                    className="flex flex-col gap-0.5 bg-background px-3 py-2"
-                                >
-                                    <span className="text-[9px] tracking-wide text-muted-foreground uppercase">
-                                        {label}
-                                    </span>
-                                    <span
-                                        className={cn(
-                                            'font-mono text-xs font-medium',
-                                            highlight && 'text-destructive',
-                                        )}
-                                    >
-                                        {value}
-                                    </span>
+                                <div key={label} className="flex flex-col gap-0.5 px-3 py-2 bg-background">
+                                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</span>
+                                    <span className={cn("text-xs font-mono font-medium", highlight && "text-destructive")}>{value}</span>
                                 </div>
                             ))}
                         </div>
-
                         {isPersonal ? (
-                            <div
-                                className={cn(
-                                    'flex items-center gap-1.5 border-t px-3 py-1.5 text-[10px] font-semibold',
-                                    isDeducted
-                                        ? 'border-destructive/20 bg-destructive/10 text-destructive'
-                                        : isPendingDeduct
-                                          ? 'border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-400'
-                                          : 'border-border/40 bg-muted/30 text-muted-foreground',
-                                )}
-                            >
-                                <AlertTriangle className="h-3 w-3 shrink-0" />
-                                {isDeducted
-                                    ? `${fmtMinutes(slip.minutes_gone)} deducted from work hours`
-                                    : isPendingDeduct
-                                      ? 'Will be deducted once employee clocks out'
-                                      : 'No deduction — employee has not returned yet'}
+                            <div className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold border-t",
+                                isDeducted ? "bg-destructive/10 text-destructive border-destructive/20"
+                                    : isPendingDeduct ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60"
+                                        : "bg-muted/30 text-muted-foreground border-border/40",
+                            )}>
+                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                {isDeducted ? `${fmtMinutes(slip.minutes_gone)} deducted from work hours`
+                                    : isPendingDeduct ? "Will be deducted once employee clocks out"
+                                        : "No deduction — employee has not returned yet"}
                             </div>
                         ) : (
-                            <div className="flex items-center gap-1.5 border-t border-border/40 bg-muted/10 px-3 py-1.5 text-[10px] text-muted-foreground">
-                                <ClipboardList className="h-3 w-3 shrink-0" />
-                                Official — no deduction applied
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/40 bg-muted/10">
+                                <ClipboardList className="w-3 h-3 shrink-0" />Official — no deduction applied
                             </div>
                         )}
                     </div>
-                );
+                )
             })}
         </div>
-    );
+    )
 }
 
 // ─── Attendance Table Row ─────────────────────────────────────────────────────
 
 function AttendanceRow({ record }: { record: AttendanceRecord }) {
-    const [expanded, setExpanded] = useState(false);
-    const slips = record.whereabout_slips ?? [];
-    const hasTimedOut = !!record.time_out;
-    const isLate = (record.late_minutes ?? 0) > 0;
-    const hasSlips = slips.length > 0;
+    const [expanded, setExpanded] = useState(false)
+    const slips = record.whereabout_slips ?? []
+    const hasTimedOut = !!record.time_out
+    const isLate = (record.late_minutes ?? 0) > 0
+    const hasSlips = slips.length > 0
 
+    // Use slipStatus() normaliser so both status and return_status API shapes work
     const personalDeductionMins = hasTimedOut
-        ? slips
-              .filter(
-                  (s) =>
-                      s.purpose_type === 'personal' &&
-                      s.return_status === 'returned' &&
-                      s.minutes_gone != null,
-              )
-              .reduce((sum, s) => sum + (s.minutes_gone ?? 0), 0)
-        : 0;
+        ? slips.filter(s => s.purpose_type === "personal" && slipStatus(s) === "returned" && s.minutes_gone != null)
+            .reduce((sum, s) => sum + (s.minutes_gone ?? 0), 0)
+        : 0
 
     const dateLabel = (() => {
-        try {
-            return format(toLocalDate(record.date), 'EEE, MMM d, yyyy');
-        } catch {
-            return record.date;
-        }
-    })();
+        try { return format(toLocalDate(record.date), "EEE, MMM d, yyyy") }
+        catch { return record.date }
+    })()
 
     return (
         <>
-            <tr
-                className={cn(
-                    'border-b border-border/50 transition-colors',
-                    hasSlips
-                        ? 'cursor-pointer hover:bg-muted/40'
-                        : 'hover:bg-muted/20',
-                    expanded && 'bg-muted/30',
-                )}
-                onClick={() => hasSlips && setExpanded((e) => !e)}
-            >
-                <td className="w-8 py-2.5 pl-3">
-                    {hasSlips ? (
-                        expanded ? (
-                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                        ) : (
-                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                        )
-                    ) : (
-                        <span className="block h-3.5 w-3.5" />
-                    )}
+            <tr className={cn("border-b border-border/50 transition-colors", hasSlips ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20", expanded && "bg-muted/30")}
+                onClick={() => hasSlips && setExpanded(e => !e)}>
+                <td className="w-8 pl-3 py-2.5">
+                    {hasSlips ? expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                        : <span className="w-3.5 h-3.5 block" />}
                 </td>
-                <td className="py-2.5 pr-4 text-xs font-medium whitespace-nowrap">
-                    {dateLabel}
-                </td>
+                <td className="py-2.5 pr-4 text-xs font-medium whitespace-nowrap">{dateLabel}</td>
+                <td className="py-2.5 pr-4"><StatusBadge status={record.status} /></td>
+                <td className="py-2.5 pr-4"><span className={cn("text-xs font-mono", isLate && "text-destructive font-semibold")}>{fmtTime(record.time_in)}</span></td>
+                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{fmtTime(record.break_out)}</td>
+                <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{fmtTime(record.break_in)}</td>
+                <td className="py-2.5 pr-4 text-xs font-mono text-foreground">{fmtTime(record.time_out)}</td>
+                <td className="py-2.5 pr-4 text-xs font-mono font-semibold">{fmtMinutes(record.work_minutes)}</td>
                 <td className="py-2.5 pr-4">
-                    <span
-                        className={cn(
-                            'font-mono text-xs',
-                            isLate && 'font-semibold text-destructive',
-                        )}
-                    >
-                        {fmtTime(record.time_in)}
-                    </span>
-                </td>
-                <td className="py-2.5 pr-4 font-mono text-xs text-muted-foreground">
-                    {fmtTime(record.break_out)}
-                </td>
-                <td className="py-2.5 pr-4 font-mono text-xs text-muted-foreground">
-                    {fmtTime(record.break_in)}
-                </td>
-                <td className="py-2.5 pr-4 font-mono text-xs text-foreground">
-                    {fmtTime(record.time_out)}
-                </td>
-                <td className="py-2.5 pr-4 font-mono text-xs font-semibold">
-                    {fmtMinutes(record.work_minutes)}
-                </td>
-                <td className="py-2.5 pr-4">
-                    {isLate ? (
-                        <span className="font-mono text-xs font-semibold text-destructive">
-                            {fmtMinutes(record.late_minutes)}
-                        </span>
-                    ) : (
-                        <span className="font-mono text-xs text-muted-foreground/40">
-                            —
-                        </span>
-                    )}
+                    {isLate ? <span className="text-xs font-mono font-semibold text-destructive">{fmtMinutes(record.late_minutes)}</span>
+                        : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
                 </td>
                 <td className="py-2.5 pr-3">
-                    {personalDeductionMins > 0 ? (
-                        <span className="font-mono text-xs font-semibold text-destructive">
-                            -{fmtMinutes(personalDeductionMins)}
-                        </span>
-                    ) : slips.some(
-                          (s) =>
-                              s.purpose_type === 'personal' &&
-                              s.return_status === 'returned' &&
-                              !hasTimedOut,
-                      ) ? (
-                        <span className="text-[10px] font-semibold text-amber-500">
-                            Pending
-                        </span>
-                    ) : (
-                        <span className="font-mono text-xs text-muted-foreground/40">
-                            —
-                        </span>
-                    )}
+                    {personalDeductionMins > 0
+                        ? <span className="text-xs font-mono font-semibold text-destructive">-{fmtMinutes(personalDeductionMins)}</span>
+                        : slips.some(s => s.purpose_type === "personal" && slipStatus(s) === "returned" && !hasTimedOut)
+                            ? <span className="text-[10px] text-amber-500 font-semibold">Pending</span>
+                            : <span className="text-xs text-muted-foreground/40 font-mono">—</span>}
                 </td>
             </tr>
-
             {expanded && hasSlips && (
-                <tr className="border-b border-border/50 bg-muted/10">
-                    <td colSpan={10} className="px-4 pt-2 pb-3">
-                        <div className="mb-2 flex items-center gap-1.5 px-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                            <ClipboardList className="h-3 w-3" />
-                            Whereabout Slips
+                <tr className="bg-muted/10 border-b border-border/50">
+                    <td colSpan={10} className="px-4 pb-3 pt-2">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
+                            <ClipboardList className="w-3 h-3" />Whereabout Slips
                         </div>
-                        <WhereaboutSlipList
-                            slips={slips}
-                            hasTimedOut={hasTimedOut}
-                        />
+                        <WhereaboutSlipList slips={slips} hasTimedOut={hasTimedOut} />
                     </td>
                 </tr>
             )}
         </>
-    );
+    )
 }
 
 // ─── Attendance Record Tab ────────────────────────────────────────────────────
 
 function AttendanceRecordTab({ employee }: { employee: Employee }) {
-    const records = (employee.attendance_records ?? []) as AttendanceRecord[];
-
+    const records = (employee.attendance_records ?? []) as AttendanceRecord[]
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
         to: new Date(),
-    });
-
-    const from = dateRange?.from ?? null;
-    const to = dateRange?.to ?? null;
-
-    const filtered = records.filter((r) => {
-        const d = toLocalDate(r.date);
-        if (from && d < from) return false;
-        if (to && d > to) return false;
-        return true;
-    });
-
+    })
+    const from = dateRange?.from ?? null
+    const to = dateRange?.to ?? null
+    const filtered = records.filter(r => {
+        const d = toLocalDate(r.date)
+        if (from && d < from) return false
+        if (to && d > to) return false
+        return true
+    })
     const dateLabel = dateRange?.from
-        ? dateRange.to
-            ? `${format(dateRange.from, 'MMM d, yyyy')} – ${format(dateRange.to, 'MMM d, yyyy')}`
-            : format(dateRange.from, 'MMM d, yyyy')
-        : 'Pick a date range';
-
+        ? dateRange.to ? `${format(dateRange.from, "MMM d, yyyy")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
+        : "Pick a date range"
     const stats = [
-        {
-            label: 'Present',
-            count: records.filter((r) => statusKey(r.status) === 'PRESENT')
-                .length,
-            cls: STATUS_CLASSES.PRESENT,
-        },
-        {
-            label: 'Half Day',
-            count: records.filter((r) => statusKey(r.status) === 'HALF_DAY')
-                .length,
-            cls: STATUS_CLASSES.HALF_DAY,
-        },
-        {
-            label: 'Absent',
-            count: records.filter((r) => statusKey(r.status) === 'ABSENT')
-                .length,
-            cls: STATUS_CLASSES.ABSENT,
-        },
-        {
-            label: 'Late',
-            count: records.filter((r) => (r.late_minutes ?? 0) > 0).length,
-            cls: STATUS_CLASSES.LATE,
-        },
-    ];
-
+        { label: "Present", count: records.filter(r => statusKey(r.status) === "PRESENT").length, cls: STATUS_CLASSES.PRESENT },
+        { label: "Half Day", count: records.filter(r => statusKey(r.status) === "HALF_DAY").length, cls: STATUS_CLASSES.HALF_DAY },
+        { label: "Absent", count: records.filter(r => statusKey(r.status) === "ABSENT").length, cls: STATUS_CLASSES.ABSENT },
+        { label: "Late", count: records.filter(r => (r.late_minutes ?? 0) > 0).length, cls: STATUS_CLASSES.LATE },
+    ]
     return (
-        <div className="space-y-4 p-3 sm:p-5">
+        <div className="p-3 sm:p-5 space-y-4">
             {records.length > 0 && (
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {stats.map(({ label, count, cls }) => (
-                        <div
-                            key={label}
-                            className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3"
-                        >
-                            <span className="text-xs font-medium text-muted-foreground">
-                                {label}
-                            </span>
-                            <Badge
-                                variant="outline"
-                                className={cn(
-                                    'rounded-full text-xs font-bold',
-                                    cls,
-                                )}
-                            >
-                                {count}
-                            </Badge>
+                        <div key={label} className="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground font-medium">{label}</span>
+                            <Badge variant="outline" className={cn("text-xs font-bold rounded-full", cls)}>{count}</Badge>
                         </div>
                     ))}
                 </div>
             )}
-
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex flex-col gap-3 border-b border-border px-4 py-3.5 sm:flex-row sm:items-center sm:px-5">
-                    <div className="flex shrink-0 items-center gap-2">
-                        <span className="text-sm font-bold text-foreground">
-                            Attendance Records
-                        </span>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-border">
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-sm font-bold text-foreground">Attendance Records</span>
                         {records.length > 0 && (
-                            <Badge
-                                variant="outline"
-                                className="rounded-full text-[10px]"
-                            >
-                                {filtered.length}
-                                {filtered.length !== records.length &&
-                                    ` / ${records.length}`}
+                            <Badge variant="outline" className="text-[10px] rounded-full">
+                                {filtered.length}{filtered.length !== records.length && ` / ${records.length}`}
                             </Badge>
                         )}
                     </div>
-
                     {records.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-                            <span className="shrink-0 text-xs font-medium text-muted-foreground">
-                                Filter
-                            </span>
-
+                        <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
+                            <span className="text-xs text-muted-foreground font-medium shrink-0">Filter</span>
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 gap-1.5 text-xs font-normal"
-                                    >
-                                        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                        <span
-                                            className={
-                                                dateRange?.from
-                                                    ? 'text-foreground'
-                                                    : 'text-muted-foreground'
-                                            }
-                                        >
-                                            {dateLabel}
-                                        </span>
+                                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 font-normal">
+                                        <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <span className={dateRange?.from ? "text-foreground" : "text-muted-foreground"}>{dateLabel}</span>
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent
-                                    className="w-auto p-0"
-                                    align="start"
-                                >
-                                    <Calendar
-                                        mode="range"
-                                        defaultMonth={dateRange?.from}
-                                        selected={dateRange}
-                                        onSelect={setDateRange}
-                                        numberOfMonths={2}
-                                        disabled={(date) =>
-                                            date > new Date() ||
-                                            date < new Date('1900-01-01')
-                                        }
-                                    />
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2}
+                                        disabled={date => date > new Date() || date < new Date("1900-01-01")} />
                                 </PopoverContent>
                             </Popover>
-
                             {dateRange && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2 text-xs text-muted-foreground"
-                                    onClick={() => setDateRange(undefined)}
-                                >
-                                    <X className="mr-1 h-3 w-3" /> Clear
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => setDateRange(undefined)}>
+                                    <X className="w-3 h-3 mr-1" /> Clear
                                 </Button>
                             )}
                         </div>
                     )}
                 </div>
-
                 {records.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-14">
-                        <Clock className="h-10 w-10 text-muted-foreground/30" />
-                        <p className="text-sm text-muted-foreground italic">
-                            No attendance records found.
-                        </p>
+                    <div className="flex flex-col items-center justify-center py-14 gap-3">
+                        <Clock className="w-10 h-10 text-muted-foreground/30" />
+                        <p className="text-sm italic text-muted-foreground">No attendance records found.</p>
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-                        No records match the selected date range.
-                    </div>
+                    <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">No records match the selected date range.</div>
                 ) : (
-                    <div className="max-h-[590px] overflow-auto">
-                        <table className="w-full min-w-[760px] border-collapse text-sm">
+                    <div className="overflow-auto max-h-[590px]">
+                        <table className="w-full text-sm border-collapse min-w-[760px]">
                             <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
                                 <tr className="border-b border-border">
-                                    <th className="w-8 py-2.5 pl-3" />
+                                    <th className="w-8 pl-3 py-2.5" />
                                     {[
-                                        { label: 'Date' },
-                                        { label: 'Status' },
-                                        { label: 'Time In' },
-                                        { label: 'Break (Out)' },
-                                        { label: 'Break (In)' },
-                                        { label: 'Time Out' },
-                                        {
-                                            label: 'Work Hrs',
-                                            icon: <Timer className="h-3 w-3" />,
-                                        },
-                                        {
-                                            label: 'Late',
-                                            icon: (
-                                                <AlertTriangle className="h-3 w-3" />
-                                            ),
-                                        },
-                                        {
-                                            label: 'Slip Ded.',
-                                            icon: (
-                                                <ClipboardList className="h-3 w-3" />
-                                            ),
-                                        },
+                                        { label: "Date" }, { label: "Status" }, { label: "Time In" },
+                                        { label: "Break (Out)" }, { label: "Break (In)" }, { label: "Time Out" },
+                                        { label: "Work Hrs", icon: <Timer className="w-3 h-3" /> },
+                                        { label: "Late", icon: <AlertTriangle className="w-3 h-3" /> },
+                                        { label: "Slip Ded.", icon: <ClipboardList className="w-3 h-3" /> },
                                     ].map(({ label, icon }) => (
-                                        <th
-                                            key={label}
-                                            className="py-2.5 pr-4 text-left text-[10px] font-semibold tracking-wide whitespace-nowrap text-muted-foreground uppercase"
-                                        >
-                                            {icon ? (
-                                                <span className="flex items-center gap-1">
-                                                    {icon}
-                                                    {label}
-                                                </span>
-                                            ) : (
-                                                label
-                                            )}
+                                        <th key={label} className="py-2.5 pr-4 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                            {icon ? <span className="flex items-center gap-1">{icon}{label}</span> : label}
                                         </th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map((r) => (
-                                    <AttendanceRow
-                                        key={r.id ?? r.date}
-                                        record={r}
-                                    />
-                                ))}
+                                {filtered.map(r => <AttendanceRow key={r.id ?? r.date} record={r} />)}
                             </tbody>
                         </table>
                     </div>
                 )}
             </div>
         </div>
-    );
+    )
 }
 
 // ─── Government & Eligibility Tab ─────────────────────────────────────────────
 
-const STANDARD_GOV_ID_TYPES = ['GSIS', 'PhilHealth', 'Pag-IBIG', 'TIN'];
+const STANDARD_GOV_ID_TYPES = ["GSIS", "PhilHealth", "Pag-IBIG"]
+
+const getPlaceholder = (type: string) => {
+    switch (type.toLowerCase()) {
+        case "philhealth": return "00-000000000-0"
+        case "pag-ibig": return "0000-0000-0000"
+        case "gsis": return "10–12 digit number"
+        case "sss": return "00-0000000-0"
+        case "tin": return "000-000-000-000"
+        case "driver's license": return "A00-00-000000"
+        case "passport": return "A0000000"
+        default: return `Enter ${type} number`
+    }
+}
 
 function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
-    const govAccounts = employee.government_accounts ?? [];
-    const eligibilities = employee.eligibility_information ?? [];
+    const govAccounts = employee.government_accounts ?? []
+    const eligibilities = employee.eligibility_information ?? []
+    const [deleteEligId, setDeleteEligId] = useState<number | null>(null)
+    const confirmDeleteEligibility = () => {
+        if (!deleteEligId) return
+        router.delete(route("employee.eligibility.destroy", { employee: employee.employee_id, eligibility: deleteEligId }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success("Eligibility deleted."); setDeleteEligId(null) },
+            onError: () => toast.error("Failed to delete eligibility. Please try again."),
+        })
+    }
 
-    const [visibleIds, setVisibleIds] = useState<Record<string, boolean>>({});
-    const toggleVisibility = (key: string) =>
-        setVisibleIds((prev) => ({ ...prev, [key]: !prev[key] }));
+    const [visibleIds, setVisibleIds] = useState<Record<string, boolean>>({})
+    const toggleVisibility = (key: string) => setVisibleIds(prev => ({ ...prev, [key]: !prev[key] }))
 
     const [govDialog, setGovDialog] = useState<{
-        open: boolean;
-        mode: 'standard' | 'custom';
-        type: string;
-        id?: number;
-        value: string;
-        customTypeName: string;
-    }>({
-        open: false,
-        mode: 'standard',
-        type: '',
-        value: '',
-        customTypeName: '',
-    });
+        open: boolean; mode: "standard" | "custom"; type: string; id?: number; value: string; customTypeName: string
+    }>({ open: false, mode: "standard", type: "", value: "", customTypeName: "" })
 
     const openEditGovDialog = (type: string, existing: GovernmentAccount) =>
-        setGovDialog({
-            open: true,
-            mode: 'standard',
-            type,
-            id: existing.government_account_id,
-            value: existing.account_number,
-            customTypeName: '',
-        });
+        setGovDialog({ open: true, mode: "standard", type, id: existing.government_account_id, value: existing.account_number, customTypeName: "" })
 
     const saveGovAccount = () => {
-        if (!govDialog.value.trim()) return;
-        const accountType =
-            govDialog.mode === 'custom'
-                ? govDialog.customTypeName
-                : govDialog.type;
-        if (!accountType.trim()) return;
+        if (!govDialog.value.trim()) return
+        const accountType = govDialog.mode === "custom"
+            ? (govDialog.customTypeName === "Others" ? govDialog.type : govDialog.customTypeName)
+            : govDialog.type
+        if (!accountType.trim()) return
         if (govDialog.id) {
             router.put(
-                route('employee.government-account.update', {
-                    employee: employee.employee_id,
-                    account: govDialog.id,
-                }),
+                route("employee.government-account.update", { employee: employee.employee_id, account: govDialog.id }),
                 { account_number: govDialog.value },
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success(
-                            `${accountType} number updated successfully.`,
-                        );
-                        setGovDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to update government account. Please try again.',
-                        ),
-                },
-            );
+                { preserveScroll: true, onSuccess: () => { toast.success(`${accountType} number updated successfully.`); setGovDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update government account. Please try again.") },
+            )
         } else {
             router.post(
-                route(
-                    'employee.government-account.store',
-                    employee.employee_id,
-                ),
+                route("employee.government-account.store", employee.employee_id),
                 { account_type: accountType, account_number: govDialog.value },
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success(
-                            `${accountType} number added successfully.`,
-                        );
-                        setGovDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to add government account. Please try again.',
-                        ),
-                },
-            );
+                { preserveScroll: true, onSuccess: () => { toast.success(`${accountType} number added successfully.`); setGovDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add government account. Please try again.") },
+            )
         }
-    };
+    }
 
-    const [deleteGovId, setDeleteGovId] = useState<number | null>(null);
-    const [deleteEligId, setDeleteEligId] = useState<number | null>(null);
+    const [deleteGovId, setDeleteGovId] = useState<number | null>(null)
     const confirmDeleteGovAccount = () => {
-        if (!deleteGovId) return;
+        if (!deleteGovId) return
         router.delete(
-            route('employee.government-account.destroy', {
-                employee: employee.employee_id,
-                account: deleteGovId,
-            }),
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.success('Government account deleted.');
-                    setDeleteGovId(null);
-                },
-                onError: () =>
-                    toast.error(
-                        'Failed to delete government account. Please try again.',
-                    ),
-            },
-        );
-    };
+            route("employee.government-account.destroy", { employee: employee.employee_id, account: deleteGovId }),
+            { preserveScroll: true, onSuccess: () => { toast.success("Government account deleted."); setDeleteGovId(null) }, onError: () => toast.error("Failed to delete government account. Please try again.") },
+        )
+    }
 
-    const accountMap = Object.fromEntries(
-        govAccounts.map((g) => [g.account_type.toLowerCase(), g]),
-    );
-    const standardKeys = STANDARD_GOV_ID_TYPES.map((t) => t.toLowerCase());
-    const extraAccounts = govAccounts.filter(
-        (g) => !standardKeys.includes(g.account_type.toLowerCase()),
-    );
+    const accountMap = Object.fromEntries(govAccounts.map(g => [g.account_type.toLowerCase(), g]))
+    const standardKeys = STANDARD_GOV_ID_TYPES.map(t => t.toLowerCase())
+    const extraAccounts = govAccounts.filter(g => !standardKeys.includes(g.account_type.toLowerCase()))
 
-    const [eligDialog, setEligDialog] = useState<{
-        open: boolean;
-        id?: number;
-        name: string;
-        year: string;
-    }>({ open: false, name: '', year: '' });
+    const [eligDialog, setEligDialog] = useState<{ open: boolean; id?: number; name: string; year: string }>({ open: false, name: "", year: "" })
     const openEligDialog = (existing?: EligibilityInfo) =>
-        setEligDialog({
-            open: true,
-            id: existing?.eligibility_information_id,
-            name: existing?.eligibility_name ?? '',
-            year: existing?.year_passed?.slice(0, 10) ?? '',
-        });
+        setEligDialog({ open: true, id: existing?.eligibility_information_id, name: existing?.eligibility_name ?? "", year: existing?.year_passed?.slice(0, 10) ?? "" })
     const saveEligibility = () => {
-        if (!eligDialog.name.trim()) return;
-        const data = {
-            eligibility_name: eligDialog.name,
-            year_passed: eligDialog.year || null,
-        };
+        if (!eligDialog.name.trim()) return
+        const data = { eligibility_name: eligDialog.name, year_passed: eligDialog.year || null }
         if (eligDialog.id) {
-            router.put(
-                route('employee.eligibility.update', {
-                    employee: employee.employee_id,
-                    eligibility: eligDialog.id,
-                }),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success('Eligibility updated successfully.');
-                        setEligDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to update eligibility. Please try again.',
-                        ),
-                },
-            );
+            router.put(route("employee.eligibility.update", { employee: employee.employee_id, eligibility: eligDialog.id }), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Eligibility updated successfully."); setEligDialog(p => ({ ...p, open: false })) },
+                onError: () => toast.error("Failed to update eligibility. Please try again."),
+            })
         } else {
-            router.post(
-                route('employee.eligibility.store', employee.employee_id),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success('Eligibility added successfully.');
-                        setEligDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to add eligibility. Please try again.',
-                        ),
-                },
-            );
+            router.post(route("employee.eligibility.store", employee.employee_id), data, {
+                preserveScroll: true,
+                onSuccess: () => { toast.success("Eligibility added successfully."); setEligDialog(p => ({ ...p, open: false })) },
+                onError: () => toast.error("Failed to add eligibility. Please try again."),
+            })
         }
-    };
+    }
 
     return (
-        <div className="space-y-5 p-3 sm:p-5">
-            {/* Government IDs */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
-                        Government ID Numbers
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() =>
-                            setGovDialog({
-                                open: true,
-                                mode: 'custom',
-                                type: '',
-                                id: undefined,
-                                value: '',
-                                customTypeName: '',
-                            })
-                        }
-                    >
-                        <Plus className="h-4 w-4" />
+        <div className="p-3 sm:p-5 space-y-5">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Government ID Numbers</span>
+                    <Button variant="ghost" size="icon-xs" onClick={() => setGovDialog({ open: true, mode: "custom", type: "", id: undefined, value: "", customTypeName: "" })}>
+                        <Plus className="w-4 h-4" />
                     </Button>
                 </div>
-                <div className="divide-y divide-border">
-                    {STANDARD_GOV_ID_TYPES.map((type) => {
-                        const key = type.toLowerCase();
-                        const account = accountMap[key];
-                        const isVisible = visibleIds[key];
+                <div className="divide-y divide-border overflow-y-auto max-h-64">
+                    {STANDARD_GOV_ID_TYPES.map(type => {
+                        const key = type.toLowerCase()
+                        const account = accountMap[key]
+                        const isVisible = visibleIds[key]
                         return (
-                            <div
-                                key={type}
-                                className="flex items-center gap-2 px-4 py-3 sm:gap-4 sm:px-5"
-                            >
-                                <span className="w-20 shrink-0 text-sm font-medium text-foreground sm:w-28">
-                                    {type}
+                            <div key={type} className="flex items-center gap-2 sm:gap-4 px-4 sm:px-5 py-3">
+                                <span className="text-sm text-foreground w-20 sm:w-28 shrink-0 font-medium">{type}</span>
+                                <span className="flex-1 text-sm text-muted-foreground font-mono tracking-widest min-w-0 truncate">
+                                    {account ? (isVisible ? account.account_number : "•".repeat(10))
+                                        : <span className="italic text-muted-foreground/40 font-sans tracking-normal text-xs">Not provided</span>}
                                 </span>
-                                <span className="min-w-0 flex-1 truncate font-mono text-sm tracking-widest text-muted-foreground">
-                                    {account ? (
-                                        isVisible ? (
-                                            account.account_number
-                                        ) : (
-                                            '•'.repeat(10)
-                                        )
-                                    ) : (
-                                        <span className="font-sans text-xs tracking-normal text-muted-foreground/40 italic">
-                                            Not provided
-                                        </span>
-                                    )}
-                                </span>
-                                <div className="flex shrink-0 items-center gap-1">
+                                <div className="flex items-center gap-1 shrink-0">
                                     {account ? (
                                         <>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                onClick={() =>
-                                                    toggleVisibility(key)
-                                                }
-                                            >
-                                                {isVisible ? (
-                                                    <EyeOff className="h-3.5 w-3.5" />
-                                                ) : (
-                                                    <Eye className="h-3.5 w-3.5" />
-                                                )}
+                                            <Button variant="ghost" size="icon-xs" onClick={() => toggleVisibility(key)}>
+                                                {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                             </Button>
-                                            <Button
-                                                onClick={() =>
-                                                    openEditGovDialog(
-                                                        type,
-                                                        account,
-                                                    )
-                                                }
-                                                variant="ghost"
-                                                size="icon-xs"
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                onClick={() =>
-                                                    setDeleteGovId(
-                                                        account.government_account_id,
-                                                    )
-                                                }
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
+                                            <Button onClick={() => openEditGovDialog(type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </>
                                     ) : (
-                                        <Button
-                                            onClick={() =>
-                                                setGovDialog({
-                                                    open: true,
-                                                    mode: 'standard',
-                                                    type,
-                                                    id: undefined,
-                                                    value: '',
-                                                    customTypeName: '',
-                                                })
-                                            }
-                                            variant="ghost"
-                                            size="icon-xs"
-                                        >
-                                            <Plus className="h-3.5 w-3.5" />
+                                        <Button onClick={() => setGovDialog({ open: true, mode: "standard", type, id: undefined, value: "", customTypeName: "" })} variant="ghost" size="icon-xs">
+                                            <Plus className="w-3.5 h-3.5" />
                                         </Button>
                                     )}
                                 </div>
                             </div>
-                        );
+                        )
                     })}
-                    {extraAccounts.map((account) => {
-                        const key = account.account_type.toLowerCase();
-                        const isVisible = visibleIds[key];
+                    {extraAccounts.map(account => {
+                        const key = account.account_type.toLowerCase()
+                        const isVisible = visibleIds[key]
                         return (
-                            <div
-                                key={account.government_account_id}
-                                className="flex items-center gap-2 px-4 py-3 sm:gap-4 sm:px-5"
-                            >
-                                <span className="w-20 shrink-0 text-sm font-medium text-foreground sm:w-28">
-                                    {account.account_type}
+                            <div key={account.government_account_id} className="flex items-center gap-2 sm:gap-4 px-4 sm:px-5 py-3">
+                                <span className="text-sm text-foreground w-20 sm:w-28 shrink-0 font-medium">{account.account_type}</span>
+                                <span className="flex-1 text-sm text-muted-foreground font-mono tracking-widest min-w-0 truncate">
+                                    {isVisible ? account.account_number : "•".repeat(10)}
                                 </span>
-                                <span className="min-w-0 flex-1 truncate font-mono text-sm tracking-widest text-muted-foreground">
-                                    {isVisible
-                                        ? account.account_number
-                                        : '•'.repeat(10)}
-                                </span>
-                                <div className="flex shrink-0 items-center gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        onClick={() => toggleVisibility(key)}
-                                    >
-                                        {isVisible ? (
-                                            <EyeOff className="h-3.5 w-3.5" />
-                                        ) : (
-                                            <Eye className="h-3.5 w-3.5" />
-                                        )}
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <Button variant="ghost" size="icon-xs" onClick={() => toggleVisibility(key)}>
+                                        {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                     </Button>
-                                    <Button
-                                        onClick={() =>
-                                            openEditGovDialog(
-                                                account.account_type,
-                                                account,
-                                            )
-                                        }
-                                        variant="ghost"
-                                        size="icon-xs"
-                                    >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                        onClick={() =>
-                                            setDeleteGovId(
-                                                account.government_account_id,
-                                            )
-                                        }
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
+                                    <Button onClick={() => openEditGovDialog(account.account_type, account)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                    <Button onClick={() => setDeleteGovId(account.government_account_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
-                        );
+                        )
                     })}
                 </div>
             </div>
 
-            {/* Eligibility */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
-                        Eligibility and Credentials
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => openEligDialog()}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Eligibility and Credentials</span>
+                    <Button variant="ghost" size="icon-xs" onClick={() => openEligDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {eligibilities.length === 0 ? (
                     <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
-                            No eligibility records on file.
-                        </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEligDialog()}
-                            className="gap-1.5"
-                        >
-                            <Plus className="h-3.5 w-3.5" />
-                            Add Eligibility
-                        </Button>
+                        <p className="text-sm text-muted-foreground italic mb-3">No eligibility records on file.</p>
+                        <Button variant="outline" size="sm" onClick={() => openEligDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" />Add Eligibility</Button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                         <div className="min-w-[480px] divide-y divide-border">
-                            {eligibilities.map((e) => (
-                                <div
-                                    key={e.eligibility_information_id}
-                                    className="group flex items-center gap-4 px-5 py-3 transition-colors hover:bg-muted/20"
-                                >
-                                    <span className="flex-1 text-sm font-medium text-foreground">
-                                        {e.eligibility_name}
-                                    </span>
-                                    <span className="w-36 shrink-0 text-right text-sm text-muted-foreground">
-                                        {e.year_passed
-                                            ? fmt(e.year_passed)
-                                            : '—'}
-                                    </span>
-                                    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                        <Button
-                                            onClick={() => openEligDialog(e)}
-                                            variant="ghost"
-                                            size="icon-xs"
-                                        >
-                                            <Pencil className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                            onClick={() =>
-                                                setDeleteEligId(
-                                                    e.eligibility_information_id,
-                                                )
-                                            }
-                                            variant="ghost"
-                                            size="icon-xs"
-                                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
+                            {eligibilities.map(e => (
+                                <div key={e.eligibility_information_id} className="flex items-center gap-4 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                    <span className="text-sm text-foreground flex-1 font-medium">{e.eligibility_name}</span>
+                                    <span className="text-sm text-muted-foreground w-36 text-right shrink-0">{e.year_passed ? fmt(e.year_passed) : "—"}</span>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button onClick={() => openEligDialog(e)} variant="ghost" size="icon-xs"><Pencil className="w-3.5 h-3.5" /></Button>
+                                        <Button onClick={() => setDeleteEligId(e.eligibility_information_id)} variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
                                     </div>
                                 </div>
                             ))}
@@ -3269,716 +1667,197 @@ function GovernmentEligibilityTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* Government Account Dialog */}
-            <Dialog
-                open={govDialog.open}
-                onOpenChange={(open) => setGovDialog((p) => ({ ...p, open }))}
-            >
+            <Dialog open={govDialog.open} onOpenChange={open => setGovDialog(p => ({ ...p, open }))}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>
-                            {govDialog.id
-                                ? `Edit ${govDialog.type} Number`
-                                : govDialog.mode === 'custom'
-                                  ? 'Add Government ID'
-                                  : `Add ${govDialog.type} Number`}
-                        </DialogTitle>
+                        <DialogTitle>{govDialog.id ? `Edit ${govDialog.type} Number` : govDialog.mode === "custom" ? "Add Government ID" : `Add ${govDialog.type} Number`}</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-3 py-2">
-                        {govDialog.mode === 'custom' && !govDialog.id && (
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    ID Type / Name
-                                </Label>
-                                <Input
-                                    value={govDialog.customTypeName}
-                                    onChange={(e) =>
-                                        setGovDialog((p) => ({
-                                            ...p,
-                                            customTypeName: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="e.g. GSIS, Voter's ID…"
-                                    autoFocus
-                                />
-                            </div>
+                    <div className="py-2 space-y-3">
+                        {govDialog.mode === "custom" && !govDialog.id && (
+                            <>
+                                <div>
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">ID Type</Label>
+                                    <Select value={govDialog.customTypeName} onValueChange={v => setGovDialog(p => ({ ...p, customTypeName: v, value: "" }))}>
+                                        <SelectTrigger><SelectValue placeholder="Select ID type…" /></SelectTrigger>
+                                        <SelectContent>
+                                            {["SSS", "TIN", "Voter's ID", "Driver's License", "Passport", "PhilSys / National ID", "Postal ID", "Senior Citizen ID", "PWD ID", "OFW ID", "Others"].map(t => (
+                                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {govDialog.customTypeName === "Others" && (
+                                    <div>
+                                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Specify ID Name</Label>
+                                        <Input value={govDialog.type} onChange={e => setGovDialog(p => ({ ...p, type: e.target.value }))} placeholder="e.g. Company ID, Barangay ID…" autoFocus />
+                                    </div>
+                                )}
+                            </>
                         )}
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Account / ID Number
-                            </Label>
-                            <Input
-                                value={govDialog.value}
-                                onChange={(e) =>
-                                    setGovDialog((p) => ({
-                                        ...p,
-                                        value: e.target.value,
-                                    }))
-                                }
-                                placeholder={`Enter ${govDialog.mode === 'custom' ? govDialog.customTypeName || 'ID' : govDialog.type} number`}
-                                className="font-mono"
-                                autoFocus={govDialog.mode !== 'custom'}
-                                onKeyDown={(e) =>
-                                    e.key === 'Enter' && saveGovAccount()
-                                }
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Account / ID Number</Label>
+                            <Input value={govDialog.value} onChange={e => setGovDialog(p => ({ ...p, value: e.target.value }))}
+                                placeholder={getPlaceholder(govDialog.mode === "standard" ? govDialog.type : govDialog.customTypeName === "Others" ? govDialog.type : govDialog.customTypeName)}
+                                className="font-mono" onKeyDown={e => e.key === "Enter" && saveGovAccount()} />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setGovDialog((p) => ({ ...p, open: false }))
-                            }
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={saveGovAccount}
-                            disabled={
-                                !govDialog.value.trim() ||
-                                (govDialog.mode === 'custom' &&
-                                    !govDialog.id &&
-                                    !govDialog.customTypeName.trim())
-                            }
-                        >
-                            <Save className="mr-1.5 h-3.5 w-3.5" />
-                            Save
-                        </Button>
+                        <Button variant="outline" onClick={() => setGovDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveGovAccount} disabled={
+                            !govDialog.value.trim() ||
+                            (govDialog.mode === "custom" && !govDialog.id && !govDialog.customTypeName.trim()) ||
+                            (govDialog.mode === "custom" && !govDialog.id && govDialog.customTypeName === "Others" && !govDialog.type.trim())
+                        }><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Eligibility Dialog */}
-            <Dialog
-                open={eligDialog.open}
-                onOpenChange={(open) => setEligDialog((p) => ({ ...p, open }))}
-            >
+            <Dialog open={eligDialog.open} onOpenChange={open => setEligDialog(p => ({ ...p, open }))}>
                 <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {eligDialog.id ? 'Edit' : 'Add'} Eligibility
-                        </DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>{eligDialog.id ? "Edit" : "Add"} Eligibility</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Eligibility Name
-                            </Label>
-                            <Input
-                                value={eligDialog.name}
-                                onChange={(e) =>
-                                    setEligDialog((p) => ({
-                                        ...p,
-                                        name: e.target.value,
-                                    }))
-                                }
-                                placeholder="e.g. Career Service Professional"
-                                autoFocus
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Eligibility Name</Label>
+                            <Input value={eligDialog.name} onChange={e => setEligDialog(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Career Service Professional" autoFocus />
                         </div>
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Year Passed
-                            </Label>
-                            <Input
-                                type="date"
-                                value={eligDialog.year}
-                                onChange={(e) =>
-                                    setEligDialog((p) => ({
-                                        ...p,
-                                        year: e.target.value,
-                                    }))
-                                }
-                            />
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Passed</Label>
+                            <Input type="date" value={eligDialog.year} onChange={e => setEligDialog(p => ({ ...p, year: e.target.value }))} />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setEligDialog((p) => ({ ...p, open: false }))
-                            }
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={saveEligibility}
-                            disabled={!eligDialog.name.trim()}
-                        >
-                            <Save className="mr-1.5 h-3.5 w-3.5" />
-                            Save
-                        </Button>
+                        <Button variant="outline" onClick={() => setEligDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveEligibility} disabled={!eligDialog.name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirm */}
-            <AlertDialog
-                open={!!deleteGovId}
-                onOpenChange={(o) => !o && setDeleteGovId(null)}
-            >
+            <AlertDialog open={!!deleteGovId} onOpenChange={o => !o && setDeleteGovId(null)}>
                 <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            Delete Government Account?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently remove the account number.
-                            This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={confirmDeleteGovAccount}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
+                    <AlertDialogHeader><AlertDialogTitle>Delete Government Account?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the account number. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteGovAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
-            <AlertDialog
-                open={!!deleteEligId}
-                onOpenChange={(o) => !o && setDeleteEligId(null)}
-            >
+            <AlertDialog open={!!deleteEligId} onOpenChange={o => !o && setDeleteEligId(null)}>
                 <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Eligibility?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently remove the eligibility record.
-                            This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={() => {
-                                if (!deleteEligId) return;
-                                router.delete(
-                                    route('employee.eligibility.destroy', {
-                                        employee: employee.employee_id,
-                                        eligibility: deleteEligId,
-                                    }),
-                                    {
-                                        preserveScroll: true,
-                                        onSuccess: () => {
-                                            toast.success(
-                                                'Eligibility deleted.',
-                                            );
-                                            setDeleteEligId(null);
-                                        },
-                                        onError: () =>
-                                            toast.error(
-                                                'Failed to delete eligibility. Please try again.',
-                                            ),
-                                    },
-                                );
-                            }}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
+                    <AlertDialogHeader><AlertDialogTitle>Delete Eligibility?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the eligibility record. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteEligibility} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
         </div>
-    );
+    )
 }
 
 // ─── Background Information Tab ───────────────────────────────────────────────
 
 function BackgroundInformationTab({ employee }: { employee: Employee }) {
-    const basic = employee.basic_info;
-    const familyMembers = basic?.family_info ?? [];
-    const educations = basic?.educations ?? [];
-    const seminars = employee.seminarsAndTrainings ?? [];
-    const serviceRecs = employee.serviceRecords ?? [];
+    const basic = employee.basic_info
+    const familyMembers = basic?.family_info ?? []
+    const educations = basic?.educations ?? []
+    const seminars = employee.seminarsAndTrainings ?? []
+    const serviceRecs = employee.serviceRecords ?? []
 
     const [familyDialog, setFamilyDialog] = useState<{
-        open: boolean;
-        index?: number;
-        full_name: string;
-        relationship: string;
-        contact_number: string;
-        sex: string;
-        date_of_birth: string;
-        place_of_birth: string;
-    }>({
-        open: false,
-        full_name: '',
-        relationship: '',
-        contact_number: '',
-        sex: '',
-        date_of_birth: '',
-        place_of_birth: '',
-    });
-    const [deleteFamilyIndex, setDeleteFamilyIndex] = useState<number | null>(
-        null,
-    );
+        open: boolean; index?: number; full_name: string; relationship: string
+        contact_number: string; sex: string; date_of_birth: string; place_of_birth: string
+    }>({ open: false, full_name: "", relationship: "", contact_number: "", sex: "", date_of_birth: "", place_of_birth: "" })
+    const [deleteFamilyIndex, setDeleteFamilyIndex] = useState<number | null>(null)
 
     const openFamilyDialog = (member?: FamilyMember, index?: number) =>
-        setFamilyDialog({
-            open: true,
-            index,
-            full_name: member?.full_name ?? '',
-            relationship: member?.relationship ?? '',
-            contact_number: member?.contact_number ?? '',
-            sex: member?.sex !== undefined ? String(Number(member.sex)) : '',
-            date_of_birth: toInputDate(member?.date_of_birth),
-            place_of_birth: member?.place_of_birth ?? '',
-        });
+        setFamilyDialog({ open: true, index, full_name: member?.full_name ?? "", relationship: member?.relationship ?? "", contact_number: member?.contact_number ?? "", sex: member?.sex !== undefined ? String(Number(member.sex)) : "", date_of_birth: toInputDate(member?.date_of_birth), place_of_birth: member?.place_of_birth ?? "" })
 
     const saveFamilyMember = () => {
-        const data = {
-            full_name: familyDialog.full_name,
-            relationship: familyDialog.relationship,
-            contact_number: familyDialog.contact_number,
-            sex: familyDialog.sex,
-            date_of_birth: familyDialog.date_of_birth || null,
-            place_of_birth: familyDialog.place_of_birth,
-        };
+        const data = { full_name: familyDialog.full_name, relationship: familyDialog.relationship, contact_number: familyDialog.contact_number, sex: familyDialog.sex, date_of_birth: familyDialog.date_of_birth || null, place_of_birth: familyDialog.place_of_birth }
         if (familyDialog.index !== undefined) {
-            router.put(
-                route('employee.family.update', {
-                    employee: employee.employee_id,
-                    index: familyDialog.index,
-                }),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success('Family member updated successfully.');
-                        setFamilyDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to update family member. Please try again.',
-                        ),
-                },
-            );
+            router.put(route("employee.family.update", { employee: employee.employee_id, index: familyDialog.index }), data, { preserveScroll: true, onSuccess: () => { toast.success("Family member updated successfully."); setFamilyDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update family member. Please try again.") })
         } else {
-            router.post(
-                route('employee.family.store', employee.employee_id),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success('Family member added successfully.');
-                        setFamilyDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to add family member. Please try again.',
-                        ),
-                },
-            );
+            router.post(route("employee.family.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Family member added successfully."); setFamilyDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add family member. Please try again.") })
         }
-    };
+    }
     const confirmDeleteFamily = () => {
-        if (deleteFamilyIndex === null) return;
-        router.delete(
-            route('employee.family.destroy', {
-                employee: employee.employee_id,
-                index: deleteFamilyIndex,
-            }),
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.success('Family member removed.');
-                    setDeleteFamilyIndex(null);
-                },
-                onError: () =>
-                    toast.error(
-                        'Failed to remove family member. Please try again.',
-                    ),
-            },
-        );
-    };
+        if (deleteFamilyIndex === null) return
+        router.delete(route("employee.family.destroy", { employee: employee.employee_id, index: deleteFamilyIndex }), { preserveScroll: true, onSuccess: () => { toast.success("Family member removed."); setDeleteFamilyIndex(null) }, onError: () => toast.error("Failed to remove family member. Please try again.") })
+    }
 
-    const [educDialog, setEducDialog] = useState<{
-        open: boolean;
-        index?: number;
-        level: string;
-        school_name: string;
-        school_address: string;
-        degree: string;
-        graduation_date: string;
-    }>({
-        open: false,
-        level: '',
-        school_name: '',
-        school_address: '',
-        degree: '',
-        graduation_date: '',
-    });
-    const [deleteEducIndex, setDeleteEducIndex] = useState<number | null>(null);
-
+    const [educDialog, setEducDialog] = useState<{ open: boolean; index?: number; level: string; school_name: string; school_address: string; degree: string; graduation_date: string }>({ open: false, level: "", school_name: "", school_address: "", degree: "", graduation_date: "" })
+    const [deleteEducIndex, setDeleteEducIndex] = useState<number | null>(null)
     const openEducDialog = (edu?: Education, index?: number) =>
-        setEducDialog({
-            open: true,
-            index,
-            level: edu?.level ?? '',
-            school_name: edu?.school_name ?? '',
-            school_address: edu?.school_address ?? '',
-            degree: edu?.degree ?? '',
-            graduation_date: toInputDate(edu?.graduation_date),
-        });
-
+        setEducDialog({ open: true, index, level: edu?.level ?? "", school_name: edu?.school_name ?? "", school_address: edu?.school_address ?? "", degree: edu?.degree ?? "", graduation_date: toInputDate(edu?.graduation_date) })
     const saveEducation = () => {
-        const data = {
-            level: educDialog.level,
-            school_name: educDialog.school_name,
-            school_address: educDialog.school_address,
-            degree: educDialog.degree,
-            graduation_date: educDialog.graduation_date || null,
-        };
+        const data = { level: educDialog.level, school_name: educDialog.school_name, school_address: educDialog.school_address, degree: educDialog.degree, graduation_date: educDialog.graduation_date || null }
         if (educDialog.index !== undefined) {
-            router.put(
-                route('employee.education.update', {
-                    employee: employee.employee_id,
-                    index: educDialog.index,
-                }),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success('Education record updated successfully.');
-                        setEducDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to update education record. Please try again.',
-                        ),
-                },
-            );
+            router.put(route("employee.education.update", { employee: employee.employee_id, index: educDialog.index }), data, { preserveScroll: true, onSuccess: () => { toast.success("Education record updated successfully."); setEducDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update education record. Please try again.") })
         } else {
-            router.post(
-                route('employee.education.store', employee.employee_id),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success('Education record added successfully.');
-                        setEducDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to add education record. Please try again.',
-                        ),
-                },
-            );
+            router.post(route("employee.education.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Education record added successfully."); setEducDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add education record. Please try again.") })
         }
-    };
+    }
     const confirmDeleteEduc = () => {
-        if (deleteEducIndex === null) return;
-        router.delete(
-            route('employee.education.destroy', {
-                employee: employee.employee_id,
-                index: deleteEducIndex,
-            }),
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.success('Education record deleted.');
-                    setDeleteEducIndex(null);
-                },
-                onError: () =>
-                    toast.error(
-                        'Failed to delete education record. Please try again.',
-                    ),
-            },
-        );
-    };
-    const educByLevel = educations.reduce<Record<string, Education[]>>(
-        (acc, edu) => {
-            const key = edu.level ?? 'Other';
-            if (!acc[key]) acc[key] = [];
-            acc[key].push(edu);
-            return acc;
-        },
-        {},
-    );
+        if (deleteEducIndex === null) return
+        router.delete(route("employee.education.destroy", { employee: employee.employee_id, index: deleteEducIndex }), { preserveScroll: true, onSuccess: () => { toast.success("Education record deleted."); setDeleteEducIndex(null) }, onError: () => toast.error("Failed to delete education record. Please try again.") })
+    }
+    const educByLevel = educations.reduce<Record<string, Education[]>>((acc, edu) => { const key = edu.level ?? "Other"; if (!acc[key]) acc[key] = []; acc[key].push(edu); return acc }, {})
 
-    const [seminarDialog, setSeminarDialog] = useState<{
-        open: boolean;
-        id?: number;
-        seminar_name: string;
-        venue: string;
-        organizer: string;
-        date_attended: string;
-    }>({
-        open: false,
-        seminar_name: '',
-        venue: '',
-        organizer: '',
-        date_attended: '',
-    });
-    const [deleteSeminarId, setDeleteSeminarId] = useState<number | null>(null);
-
+    const [seminarDialog, setSeminarDialog] = useState<{ open: boolean; id?: number; seminar_name: string; venue: string; organizer: string; date_attended: string }>({ open: false, seminar_name: "", venue: "", organizer: "", date_attended: "" })
+    const [deleteSeminarId, setDeleteSeminarId] = useState<number | null>(null)
     const openSeminarDialog = (s?: SeminarTraining) =>
-        setSeminarDialog({
-            open: true,
-            id: s?.id,
-            seminar_name: s?.seminar_name ?? '',
-            venue: s?.venue ?? '',
-            organizer: s?.organizer ?? '',
-            date_attended: toInputDate(s?.date_attended),
-        });
+        setSeminarDialog({ open: true, id: s?.id, seminar_name: s?.seminar_name ?? "", venue: s?.venue ?? "", organizer: s?.organizer ?? "", date_attended: toInputDate(s?.date_attended) })
     const saveSeminar = () => {
-        const data = {
-            seminar_name: seminarDialog.seminar_name,
-            venue: seminarDialog.venue,
-            organizer: seminarDialog.organizer,
-            date_attended: seminarDialog.date_attended || null,
-        };
+        const data = { seminar_name: seminarDialog.seminar_name, venue: seminarDialog.venue, organizer: seminarDialog.organizer, date_attended: seminarDialog.date_attended || null }
         if (seminarDialog.id) {
-            router.put(
-                route('employee.seminar.update', {
-                    employee: employee.employee_id,
-                    seminar: seminarDialog.id,
-                }),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success(
-                            'Seminar / training updated successfully.',
-                        );
-                        setSeminarDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to update seminar. Please try again.',
-                        ),
-                },
-            );
+            router.put(route("employee.seminar.update", { employee: employee.employee_id, seminar: seminarDialog.id }), data, { preserveScroll: true, onSuccess: () => { toast.success("Seminar / training updated successfully."); setSeminarDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update seminar. Please try again.") })
         } else {
-            router.post(
-                route('employee.seminar.store', employee.employee_id),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success('Seminar / training added successfully.');
-                        setSeminarDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error('Failed to add seminar. Please try again.'),
-                },
-            );
+            router.post(route("employee.seminar.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Seminar / training added successfully."); setSeminarDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add seminar. Please try again.") })
         }
-    };
+    }
     const confirmDeleteSeminar = () => {
-        if (!deleteSeminarId) return;
-        router.delete(
-            route('employee.seminar.destroy', {
-                employee: employee.employee_id,
-                seminar: deleteSeminarId,
-            }),
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.success('Seminar / training deleted.');
-                    setDeleteSeminarId(null);
-                },
-                onError: () =>
-                    toast.error('Failed to delete seminar. Please try again.'),
-            },
-        );
-    };
+        if (!deleteSeminarId) return
+        router.delete(route("employee.seminar.destroy", { employee: employee.employee_id, seminar: deleteSeminarId }), { preserveScroll: true, onSuccess: () => { toast.success("Seminar / training deleted."); setDeleteSeminarId(null) }, onError: () => toast.error("Failed to delete seminar. Please try again.") })
+    }
 
-    const [serviceDialog, setServiceDialog] = useState<{
-        open: boolean;
-        id?: number;
-        position_name: string;
-        department_name: string;
-        year_start: string;
-        year_end: string;
-    }>({
-        open: false,
-        position_name: '',
-        department_name: '',
-        year_start: '',
-        year_end: '',
-    });
-    const [deleteServiceId, setDeleteServiceId] = useState<number | null>(null);
-
+    const [serviceDialog, setServiceDialog] = useState<{ open: boolean; id?: number; position_name: string; department_name: string; year_start: string; year_end: string }>({ open: false, position_name: "", department_name: "", year_start: "", year_end: "" })
+    const [deleteServiceId, setDeleteServiceId] = useState<number | null>(null)
     const openServiceDialog = (s?: ServiceRecord) =>
-        setServiceDialog({
-            open: true,
-            id: s?.id,
-            position_name: s?.position_name ?? '',
-            department_name: s?.department_name ?? '',
-            year_start: s?.year_start ?? '',
-            year_end: s?.year_end ?? '',
-        });
+        setServiceDialog({ open: true, id: s?.id, position_name: s?.position_name ?? "", department_name: s?.department_name ?? "", year_start: s?.year_start ?? "", year_end: s?.year_end ?? "" })
     const saveServiceRecord = () => {
-        const data = {
-            position_name: serviceDialog.position_name,
-            department_name: serviceDialog.department_name,
-            year_start: serviceDialog.year_start,
-            year_end: serviceDialog.year_end,
-        };
+        const data = { position_name: serviceDialog.position_name, department_name: serviceDialog.department_name, year_start: serviceDialog.year_start, year_end: serviceDialog.year_end }
         if (serviceDialog.id) {
-            router.put(
-                route('employee.service-record.update', {
-                    employee: employee.employee_id,
-                    record: serviceDialog.id,
-                }),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success('Service record updated successfully.');
-                        setServiceDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to update service record. Please try again.',
-                        ),
-                },
-            );
+            router.put(route("employee.service-record.update", { employee: employee.employee_id, record: serviceDialog.id }), data, { preserveScroll: true, onSuccess: () => { toast.success("Service record updated successfully."); setServiceDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to update service record. Please try again.") })
         } else {
-            router.post(
-                route('employee.service-record.store', employee.employee_id),
-                data,
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success('Service record added successfully.');
-                        setServiceDialog((p) => ({ ...p, open: false }));
-                    },
-                    onError: () =>
-                        toast.error(
-                            'Failed to add service record. Please try again.',
-                        ),
-                },
-            );
+            router.post(route("employee.service-record.store", employee.employee_id), data, { preserveScroll: true, onSuccess: () => { toast.success("Service record added successfully."); setServiceDialog(p => ({ ...p, open: false })) }, onError: () => toast.error("Failed to add service record. Please try again.") })
         }
-    };
+    }
     const confirmDeleteService = () => {
-        if (!deleteServiceId) return;
-        router.delete(
-            route('employee.service-record.destroy', {
-                employee: employee.employee_id,
-                record: deleteServiceId,
-            }),
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.success('Service record deleted.');
-                    setDeleteServiceId(null);
-                },
-                onError: () =>
-                    toast.error(
-                        'Failed to delete service record. Please try again.',
-                    ),
-            },
-        );
-    };
+        if (!deleteServiceId) return
+        router.delete(route("employee.service-record.destroy", { employee: employee.employee_id, record: deleteServiceId }), { preserveScroll: true, onSuccess: () => { toast.success("Service record deleted."); setDeleteServiceId(null) }, onError: () => toast.error("Failed to delete service record. Please try again.") })
+    }
 
     return (
-        <div className="space-y-5 p-3 sm:p-5">
-            {/* Family Information */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
-                        Family Information
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => openFamilyDialog()}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+        <div className="p-3 sm:p-5 space-y-5">
+            {/* Family */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Family Information</span>
+                    <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {familyMembers.length === 0 ? (
-                    <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
-                            No family information on file.
-                        </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openFamilyDialog()}
-                            className="gap-1.5"
-                        >
-                            <Plus className="h-3.5 w-3.5" /> Add Family Member
-                        </Button>
-                    </div>
+                    <div className="px-5 py-8 text-center"><p className="text-sm text-muted-foreground italic mb-3">No family information on file.</p><Button variant="outline" size="sm" onClick={() => openFamilyDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Family Member</Button></div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                         <div className="min-w-[640px]">
-                            <div className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 border-b border-border bg-muted/30 px-5 py-2.5">
-                                <div className="w-4" />
-                                {[
-                                    'Full Name',
-                                    'Relationship',
-                                    'Sex',
-                                    'Date of Birth',
-                                    'Place of Birth',
-                                    '',
-                                ].map((h) => (
-                                    <span
-                                        key={h}
-                                        className="text-xs font-semibold text-muted-foreground"
-                                    >
-                                        {h}
-                                    </span>
-                                ))}
+                            <div className="grid grid-cols-[1fr_120px_80px_120px_1fr_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                                {["Full Name", "Relationship", "Sex", "Date of Birth", "Place of Birth", ""].map(h => <span key={h} className="text-xs font-semibold text-muted-foreground">{h}</span>)}
                             </div>
                             <div className="divide-y divide-border">
                                 {familyMembers.map((member, i) => (
-                                    <div
-                                        key={i}
-                                        className="grid grid-cols-[auto_1fr_1fr_80px_140px_1fr_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
-                                    >
-                                        <Checkbox className="h-4 w-4" />
-                                        <span className="truncate text-sm font-medium text-foreground">
-                                            {member.full_name}
-                                        </span>
-                                        <span className="text-sm text-muted-foreground">
-                                            {member.relationship ?? '—'}
-                                        </span>
-                                        <span className="text-sm text-muted-foreground">
-                                            {member.sex !== undefined
-                                                ? member.sex
-                                                    ? 'Male'
-                                                    : 'Female'
-                                                : '—'}
-                                        </span>
-                                        <span className="text-sm text-muted-foreground">
-                                            {member.date_of_birth
-                                                ? fmtShort(member.date_of_birth)
-                                                : '—'}
-                                        </span>
-                                        <span className="truncate text-sm text-muted-foreground">
-                                            {member.place_of_birth ?? '—'}
-                                        </span>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                onClick={() =>
-                                                    openFamilyDialog(member, i)
-                                                }
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                onClick={() =>
-                                                    setDeleteFamilyIndex(i)
-                                                }
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
+                                    <div key={i} className="grid grid-cols-[1fr_120px_80px_120px_1fr_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                        <span className="text-sm text-foreground font-medium truncate">{member.full_name}</span>
+                                        <span className="text-sm text-muted-foreground">{member.relationship ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground">{member.sex !== undefined ? (member.sex ? "Male" : "Female") : "—"}</span>
+                                        <span className="text-sm text-muted-foreground">{member.date_of_birth ? fmtShort(member.date_of_birth) : "—"}</span>
+                                        <span className="text-sm text-muted-foreground truncate">{member.place_of_birth ?? "—"}</span>
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => openFamilyDialog(member, i)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteFamilyIndex(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </div>
                                     </div>
                                 ))}
@@ -3988,224 +1867,71 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* Educational Background */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
-                        Educational Background
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => openEducDialog()}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+            {/* Education */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Educational Background</span>
+                    <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {educations.length === 0 ? (
-                    <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
-                            No educational records on file.
-                        </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEducDialog()}
-                            className="gap-1.5"
-                        >
-                            <Plus className="h-3.5 w-3.5" /> Add Education
-                        </Button>
-                    </div>
+                    <div className="px-5 py-8 text-center"><p className="text-sm text-muted-foreground italic mb-3">No educational records on file.</p><Button variant="outline" size="sm" onClick={() => openEducDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Education</Button></div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                         <div className="min-w-[580px]">
-                            {Object.entries(educByLevel).map(
-                                ([level, edus]) => (
-                                    <div key={level}>
-                                        {/* Level group header */}
-                                        <div className="border-y border-border bg-muted/30 px-5 py-2">
-                                            <span className="text-xs font-semibold text-muted-foreground">
-                                                {level}
-                                            </span>
-                                        </div>
-                                        {/* Column header */}
-                                        <div className="grid grid-cols-[1fr_1fr_1fr_60px_72px] items-center gap-3 border-b border-border/50 bg-muted/10 px-5 py-2">
-                                            {[
-                                                'School Name',
-                                                'Address',
-                                                'Degree / Course',
-                                                'Year',
-                                                '',
-                                            ].map((h) => (
-                                                <span
-                                                    key={h}
-                                                    className={cn(
-                                                        'text-xs font-semibold text-muted-foreground',
-                                                        h === 'Year' &&
-                                                            'text-right',
-                                                    )}
-                                                >
-                                                    {h}
-                                                </span>
-                                            ))}
-                                        </div>
-                                        {/* Rows */}
-                                        <div className="divide-y divide-border">
-                                            {edus.map((edu, i) => {
-                                                const globalIndex =
-                                                    educations.indexOf(edu);
-                                                return (
-                                                    <div
-                                                        key={i}
-                                                        className="group grid grid-cols-[1fr_1fr_1fr_60px_72px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
-                                                    >
-                                                        <span className="truncate text-sm font-medium text-foreground">
-                                                            {edu.school_name}
-                                                        </span>
-                                                        <span className="truncate text-sm text-muted-foreground">
-                                                            {edu.school_address ??
-                                                                '—'}
-                                                        </span>
-                                                        <span className="truncate text-sm text-muted-foreground">
-                                                            {edu.degree ?? '—'}
-                                                        </span>
-                                                        <span className="text-right text-sm text-muted-foreground">
-                                                            {edu.graduation_date
-                                                                ? new Date(
-                                                                      edu.graduation_date,
-                                                                  ).getFullYear()
-                                                                : '—'}
-                                                        </span>
-                                                        <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon-xs"
-                                                                onClick={() =>
-                                                                    openEducDialog(
-                                                                        edu,
-                                                                        globalIndex,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Pencil className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon-xs"
-                                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                                onClick={() =>
-                                                                    setDeleteEducIndex(
-                                                                        globalIndex,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                            {Object.entries(educByLevel).map(([level, edus]) => (
+                                <div key={level}>
+                                    <div className="px-5 py-2 bg-muted/30 border-y border-border"><span className="text-xs font-semibold text-muted-foreground">{level}</span></div>
+                                    <div className="grid grid-cols-[1fr_1fr_1fr_60px_72px] items-center gap-3 px-5 py-2 border-b border-border/50 bg-muted/10">
+                                        {["School Name", "Address", "Degree / Course", "Year", ""].map(h => <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Year" && "text-right")}>{h}</span>)}
                                     </div>
-                                ),
-                            )}
+                                    <div className="divide-y divide-border">
+                                        {edus.map((edu, i) => {
+                                            const globalIndex = educations.indexOf(edu)
+                                            return (
+                                                <div key={i} className="grid grid-cols-[1fr_1fr_1fr_60px_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                                    <span className="text-sm text-foreground font-medium truncate">{edu.school_name}</span>
+                                                    <span className="text-sm text-muted-foreground truncate">{edu.school_address ?? "—"}</span>
+                                                    <span className="text-sm text-muted-foreground truncate">{edu.degree ?? "—"}</span>
+                                                    <span className="text-sm text-muted-foreground text-right">{edu.graduation_date ? new Date(edu.graduation_date).getFullYear() : "—"}</span>
+                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button variant="ghost" size="icon-xs" onClick={() => openEducDialog(edu, globalIndex)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteEducIndex(globalIndex)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Seminars and Trainings */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
-                        Seminars and Trainings
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => openSeminarDialog()}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+            {/* Seminars */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Seminars and Trainings</span>
+                    <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {seminars.length === 0 ? (
-                    <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
-                            No seminars or trainings on file.
-                        </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openSeminarDialog()}
-                            className="gap-1.5"
-                        >
-                            <Plus className="h-3.5 w-3.5" /> Add Seminar
-                        </Button>
-                    </div>
+                    <div className="px-5 py-8 text-center"><p className="text-sm text-muted-foreground italic mb-3">No seminars or trainings on file.</p><Button variant="outline" size="sm" onClick={() => openSeminarDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Seminar</Button></div>
                 ) : (
-                    <div className="max-h-64 overflow-x-auto overflow-y-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                         <div className="min-w-[700px]">
-                            {/* Header */}
-                            <div className="grid grid-cols-[2fr_1fr_1fr_140px_72px] items-center gap-3 border-b border-border bg-muted/30 px-5 py-2.5">
-                                {[
-                                    'Seminar / Training',
-                                    'Venue',
-                                    'Organizer',
-                                    'Date Attended',
-                                    '',
-                                ].map((h) => (
-                                    <span
-                                        key={h}
-                                        className={cn(
-                                            'text-xs font-semibold text-muted-foreground',
-                                            h === 'Date Attended' &&
-                                                'text-right',
-                                        )}
-                                    >
-                                        {h}
-                                    </span>
-                                ))}
+                            <div className="grid grid-cols-[2fr_1fr_1fr_140px_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                                {["Seminar / Training", "Venue", "Organizer", "Date Attended", ""].map(h => <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Date Attended" && "text-right")}>{h}</span>)}
                             </div>
-
-                            {/* Rows */}
                             <div className="divide-y divide-border">
-                                {seminars.map((s) => (
-                                    <div
-                                        key={s.id}
-                                        className="group grid grid-cols-[2fr_1fr_1fr_140px_72px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
-                                    >
-                                        <span className="truncate text-sm font-medium text-foreground">
-                                            {s.seminar_name}
-                                        </span>
-                                        <span className="truncate text-sm text-muted-foreground">
-                                            {s.venue ?? '—'}
-                                        </span>
-                                        <span className="truncate text-sm text-muted-foreground">
-                                            {s.organizer ?? '—'}
-                                        </span>
-                                        <span className="text-right text-sm text-muted-foreground">
-                                            {fmtShort(s.date_attended)}
-                                        </span>
-                                        <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                onClick={() =>
-                                                    openSeminarDialog(s)
-                                                }
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                onClick={() =>
-                                                    setDeleteSeminarId(s.id)
-                                                }
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
+                                {seminars.map(s => (
+                                    <div key={s.id} className="grid grid-cols-[2fr_1fr_1fr_140px_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                        <span className="text-sm text-foreground font-medium truncate">{s.seminar_name}</span>
+                                        <span className="text-sm text-muted-foreground truncate">{s.venue ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground truncate">{s.organizer ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground text-right">{fmtShort(s.date_attended)}</span>
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => openSeminarDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteSeminarId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </div>
                                     </div>
                                 ))}
@@ -4216,91 +1942,28 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
             </div>
 
             {/* Service Records */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
-                    <span className="text-sm font-bold text-foreground">
-                        Service Records
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => openServiceDialog()}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                    <span className="text-sm font-bold text-foreground">Service Records</span>
+                    <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog()}><Plus className="w-4 h-4" /></Button>
                 </div>
                 {serviceRecs.length === 0 ? (
-                    <div className="px-5 py-8 text-center">
-                        <p className="mb-3 text-sm text-muted-foreground italic">
-                            No service records on file.
-                        </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openServiceDialog()}
-                            className="gap-1.5"
-                        >
-                            <Plus className="h-3.5 w-3.5" /> Add Service Record
-                        </Button>
-                    </div>
+                    <div className="px-5 py-8 text-center"><p className="text-sm text-muted-foreground italic mb-3">No service records on file.</p><Button variant="outline" size="sm" onClick={() => openServiceDialog()} className="gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Service Record</Button></div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                         <div className="min-w-[480px]">
-                            <div className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 border-b border-border bg-muted/30 px-5 py-2.5">
-                                <div className="w-4" />
-                                {['Position', 'Department', 'Duration', ''].map(
-                                    (h) => (
-                                        <span
-                                            key={h}
-                                            className={cn(
-                                                'text-xs font-semibold text-muted-foreground',
-                                                h === 'Duration' &&
-                                                    'text-right',
-                                            )}
-                                        >
-                                            {h}
-                                        </span>
-                                    ),
-                                )}
+                            <div className="grid grid-cols-[1fr_1fr_140px_72px] items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/30">
+                                {["Position", "Department", "Duration", ""].map(h => <span key={h} className={cn("text-xs font-semibold text-muted-foreground", h === "Duration" && "text-right")}>{h}</span>)}
                             </div>
                             <div className="divide-y divide-border">
-                                {serviceRecs.map((s) => (
-                                    <div
-                                        key={s.id}
-                                        className="grid grid-cols-[auto_1fr_1fr_160px_80px] items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/20"
-                                    >
-                                        <Checkbox className="h-4 w-4" />
-                                        <span className="text-sm font-medium text-foreground">
-                                            {s.position_name}
-                                        </span>
-                                        <span className="text-sm text-muted-foreground">
-                                            {s.department_name ?? '—'}
-                                        </span>
-                                        <span className="text-right text-sm text-muted-foreground">
-                                            {s.year_start && s.year_end
-                                                ? `${s.year_start}–${s.year_end}`
-                                                : (s.year_start ?? '—')}
-                                        </span>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                onClick={() =>
-                                                    openServiceDialog(s)
-                                                }
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-xs"
-                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                onClick={() =>
-                                                    setDeleteServiceId(s.id)
-                                                }
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
+                                {serviceRecs.map(s => (
+                                    <div key={s.id} className="grid grid-cols-[1fr_1fr_140px_72px] items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors group">
+                                        <span className="text-sm text-foreground font-medium truncate">{s.position_name}</span>
+                                        <span className="text-sm text-muted-foreground truncate">{s.department_name ?? "—"}</span>
+                                        <span className="text-sm text-muted-foreground text-right">{s.year_start && s.year_end ? `${s.year_start}–${s.year_end}` : s.year_start ?? "—"}</span>
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon-xs" onClick={() => openServiceDialog(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteServiceId(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </div>
                                     </div>
                                 ))}
@@ -4310,1522 +1973,526 @@ function BackgroundInformationTab({ employee }: { employee: Employee }) {
                 )}
             </div>
 
-            {/* ── Family Dialog ── */}
-            <Dialog
-                open={familyDialog.open}
-                onOpenChange={(o) =>
-                    setFamilyDialog((p) => ({ ...p, open: o }))
-                }
-            >
+            {/* Dialogs */}
+            <Dialog open={familyDialog.open} onOpenChange={o => setFamilyDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {familyDialog.index !== undefined ? 'Edit' : 'Add'}{' '}
-                            Family Member
-                        </DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>{familyDialog.index !== undefined ? "Edit" : "Add"} Family Member</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Full Name *
-                            </Label>
-                            <Input
-                                value={familyDialog.full_name}
-                                onChange={(e) =>
-                                    setFamilyDialog((p) => ({
-                                        ...p,
-                                        full_name: e.target.value,
-                                    }))
-                                }
-                                autoFocus
-                                placeholder="e.g. Juan dela Cruz"
-                            />
-                        </div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Full Name *</Label><Input value={familyDialog.full_name} onChange={e => setFamilyDialog(p => ({ ...p, full_name: e.target.value }))} autoFocus placeholder="e.g. Juan dela Cruz" /></div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Relationship
-                                </Label>
-                                <Select
-                                    value={familyDialog.relationship}
-                                    onValueChange={(v) =>
-                                        setFamilyDialog((p) => ({
-                                            ...p,
-                                            relationship: v,
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select…" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {[
-                                            'Spouse',
-                                            'Child',
-                                            'Parent',
-                                            'Sibling',
-                                            'Guardian',
-                                            'Other',
-                                        ].map((r) => (
-                                            <SelectItem key={r} value={r}>
-                                                {r}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Relationship</Label>
+                                <Select value={familyDialog.relationship} onValueChange={v => setFamilyDialog(p => ({ ...p, relationship: v }))}>
+                                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                                    <SelectContent>{["Spouse", "Child", "Parent", "Sibling", "Guardian", "Other"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
                             <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Sex
-                                </Label>
-                                <Select
-                                    value={familyDialog.sex}
-                                    onValueChange={(v) =>
-                                        setFamilyDialog((p) => ({
-                                            ...p,
-                                            sex: v,
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select…" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="1">Male</SelectItem>
-                                        <SelectItem value="0">
-                                            Female
-                                        </SelectItem>
-                                    </SelectContent>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Sex</Label>
+                                <Select value={familyDialog.sex} onValueChange={v => setFamilyDialog(p => ({ ...p, sex: v }))}>
+                                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                                    <SelectContent><SelectItem value="1">Male</SelectItem><SelectItem value="0">Female</SelectItem></SelectContent>
                                 </Select>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Date of Birth
-                                </Label>
-                                <Input
-                                    type="date"
-                                    value={familyDialog.date_of_birth}
-                                    onChange={(e) =>
-                                        setFamilyDialog((p) => ({
-                                            ...p,
-                                            date_of_birth: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Contact Number
-                                </Label>
-                                <PhoneInput
-                                    defaultCountry="PH"
-                                    value={familyDialog.contact_number}
-                                    onChange={(v) =>
-                                        setFamilyDialog((p) => ({
-                                            ...p,
-                                            contact_number: v ?? '',
-                                        }))
-                                    }
-                                />
-                            </div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date of Birth</Label><Input type="date" value={familyDialog.date_of_birth} onChange={e => setFamilyDialog(p => ({ ...p, date_of_birth: e.target.value }))} /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Contact Number</Label><PhoneInput defaultCountry="PH" value={familyDialog.contact_number} onChange={v => setFamilyDialog(p => ({ ...p, contact_number: v ?? "" }))} /></div>
                         </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Place of Birth
-                            </Label>
-                            <Input
-                                value={familyDialog.place_of_birth}
-                                onChange={(e) =>
-                                    setFamilyDialog((p) => ({
-                                        ...p,
-                                        place_of_birth: e.target.value,
-                                    }))
-                                }
-                                placeholder="e.g. Manila, Philippines"
-                            />
-                        </div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Place of Birth</Label><Input value={familyDialog.place_of_birth} onChange={e => setFamilyDialog(p => ({ ...p, place_of_birth: e.target.value }))} placeholder="e.g. Manila, Philippines" /></div>
                     </div>
                     <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setFamilyDialog((p) => ({ ...p, open: false }))
-                            }
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={saveFamilyMember}
-                            disabled={!familyDialog.full_name.trim()}
-                        >
-                            <Save className="mr-1.5 h-3.5 w-3.5" />
-                            Save
-                        </Button>
+                        <Button variant="outline" onClick={() => setFamilyDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveFamilyMember} disabled={!familyDialog.full_name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            <Dialog
-                open={educDialog.open}
-                onOpenChange={(o) => setEducDialog((p) => ({ ...p, open: o }))}
-            >
+            <Dialog open={educDialog.open} onOpenChange={o => setEducDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {educDialog.index !== undefined ? 'Edit' : 'Add'}{' '}
-                            Education
-                        </DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>{educDialog.index !== undefined ? "Edit" : "Add"} Education</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Education Level
-                            </Label>
-                            <Select
-                                value={educDialog.level}
-                                onValueChange={(v) =>
-                                    setEducDialog((p) => ({ ...p, level: v }))
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select level…" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {[
-                                        'Elementary Education',
-                                        'Secondary Education',
-                                        'Vocational / Technical',
-                                        "Bachelor's Degree",
-                                        "Master's Degree",
-                                        'Doctorate',
-                                        'Other',
-                                    ].map((l) => (
-                                        <SelectItem key={l} value={l}>
-                                            {l}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Education Level</Label>
+                            <Select value={educDialog.level} onValueChange={v => setEducDialog(p => ({ ...p, level: v }))}>
+                                <SelectTrigger><SelectValue placeholder="Select level…" /></SelectTrigger>
+                                <SelectContent>{["Elementary Education", "Secondary Education", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Other"].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                School Name *
-                            </Label>
-                            <Input
-                                value={educDialog.school_name}
-                                onChange={(e) =>
-                                    setEducDialog((p) => ({
-                                        ...p,
-                                        school_name: e.target.value,
-                                    }))
-                                }
-                                autoFocus
-                                placeholder="e.g. University of the Philippines"
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                School Address
-                            </Label>
-                            <Input
-                                value={educDialog.school_address}
-                                onChange={(e) =>
-                                    setEducDialog((p) => ({
-                                        ...p,
-                                        school_address: e.target.value,
-                                    }))
-                                }
-                                placeholder="e.g. Diliman, Quezon City"
-                            />
-                        </div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Name *</Label><Input value={educDialog.school_name} onChange={e => setEducDialog(p => ({ ...p, school_name: e.target.value }))} autoFocus placeholder="e.g. University of the Philippines" /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">School Address</Label><Input value={educDialog.school_address} onChange={e => setEducDialog(p => ({ ...p, school_address: e.target.value }))} placeholder="e.g. Diliman, Quezon City" /></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Degree / Course
-                                </Label>
-                                <Input
-                                    value={educDialog.degree}
-                                    onChange={(e) =>
-                                        setEducDialog((p) => ({
-                                            ...p,
-                                            degree: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="e.g. BS Computer Science"
-                                />
-                            </div>
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Graduation Date
-                                </Label>
-                                <Input
-                                    type="date"
-                                    value={educDialog.graduation_date}
-                                    onChange={(e) =>
-                                        setEducDialog((p) => ({
-                                            ...p,
-                                            graduation_date: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Degree / Course</Label><Input value={educDialog.degree} onChange={e => setEducDialog(p => ({ ...p, degree: e.target.value }))} placeholder="e.g. BS Computer Science" /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Graduation Date</Label><Input type="date" value={educDialog.graduation_date} onChange={e => setEducDialog(p => ({ ...p, graduation_date: e.target.value }))} /></div>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setEducDialog((p) => ({ ...p, open: false }))
-                            }
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={saveEducation}
-                            disabled={!educDialog.school_name.trim()}
-                        >
-                            <Save className="mr-1.5 h-3.5 w-3.5" />
-                            Save
-                        </Button>
+                        <Button variant="outline" onClick={() => setEducDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveEducation} disabled={!educDialog.school_name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            <Dialog
-                open={seminarDialog.open}
-                onOpenChange={(o) =>
-                    setSeminarDialog((p) => ({ ...p, open: o }))
-                }
-            >
+            <Dialog open={seminarDialog.open} onOpenChange={o => setSeminarDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {seminarDialog.id ? 'Edit' : 'Add'} Seminar /
-                            Training
-                        </DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>{seminarDialog.id ? "Edit" : "Add"} Seminar / Training</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Seminar / Training Name *
-                            </Label>
-                            <Input
-                                value={seminarDialog.seminar_name}
-                                onChange={(e) =>
-                                    setSeminarDialog((p) => ({
-                                        ...p,
-                                        seminar_name: e.target.value,
-                                    }))
-                                }
-                                autoFocus
-                                placeholder="e.g. Leadership and Management Seminar"
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Venue
-                            </Label>
-                            <Input
-                                value={seminarDialog.venue}
-                                onChange={(e) =>
-                                    setSeminarDialog((p) => ({
-                                        ...p,
-                                        venue: e.target.value,
-                                    }))
-                                }
-                                placeholder="e.g. Makati City, Philippines"
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Organizer
-                            </Label>
-                            <Input
-                                value={seminarDialog.organizer}
-                                onChange={(e) =>
-                                    setSeminarDialog((p) => ({
-                                        ...p,
-                                        organizer: e.target.value,
-                                    }))
-                                }
-                                placeholder="e.g. Civil Service Commission"
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Date Attended
-                            </Label>
-                            <Input
-                                type="date"
-                                value={seminarDialog.date_attended}
-                                onChange={(e) =>
-                                    setSeminarDialog((p) => ({
-                                        ...p,
-                                        date_attended: e.target.value,
-                                    }))
-                                }
-                            />
-                        </div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Seminar / Training Name *</Label><Input value={seminarDialog.seminar_name} onChange={e => setSeminarDialog(p => ({ ...p, seminar_name: e.target.value }))} autoFocus placeholder="e.g. Leadership and Management Seminar" /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Venue</Label><Input value={seminarDialog.venue} onChange={e => setSeminarDialog(p => ({ ...p, venue: e.target.value }))} placeholder="e.g. Makati City, Philippines" /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Organizer</Label><Input value={seminarDialog.organizer} onChange={e => setSeminarDialog(p => ({ ...p, organizer: e.target.value }))} placeholder="e.g. Civil Service Commission" /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Date Attended</Label><Input type="date" value={seminarDialog.date_attended} onChange={e => setSeminarDialog(p => ({ ...p, date_attended: e.target.value }))} /></div>
                     </div>
                     <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setSeminarDialog((p) => ({ ...p, open: false }))
-                            }
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={saveSeminar}
-                            disabled={!seminarDialog.seminar_name.trim()}
-                        >
-                            <Save className="mr-1.5 h-3.5 w-3.5" />
-                            Save
-                        </Button>
+                        <Button variant="outline" onClick={() => setSeminarDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveSeminar} disabled={!seminarDialog.seminar_name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            <Dialog
-                open={serviceDialog.open}
-                onOpenChange={(o) =>
-                    setServiceDialog((p) => ({ ...p, open: o }))
-                }
-            >
+            <Dialog open={serviceDialog.open} onOpenChange={o => setServiceDialog(p => ({ ...p, open: o }))}>
                 <DialogContent className="sm:max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {serviceDialog.id ? 'Edit' : 'Add'} Service Record
-                        </DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>{serviceDialog.id ? "Edit" : "Add"} Service Record</DialogTitle></DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Position Name *
-                            </Label>
-                            <Input
-                                value={serviceDialog.position_name}
-                                onChange={(e) =>
-                                    setServiceDialog((p) => ({
-                                        ...p,
-                                        position_name: e.target.value,
-                                    }))
-                                }
-                                autoFocus
-                                placeholder="e.g. Administrative Officer"
-                            />
-                        </div>
-                        <div>
-                            <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                Department
-                            </Label>
-                            <Input
-                                value={serviceDialog.department_name}
-                                onChange={(e) =>
-                                    setServiceDialog((p) => ({
-                                        ...p,
-                                        department_name: e.target.value,
-                                    }))
-                                }
-                                placeholder="e.g. Human Resources Department"
-                            />
-                        </div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Position Name *</Label><Input value={serviceDialog.position_name} onChange={e => setServiceDialog(p => ({ ...p, position_name: e.target.value }))} autoFocus placeholder="e.g. Administrative Officer" /></div>
+                        <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Department</Label><Input value={serviceDialog.department_name} onChange={e => setServiceDialog(p => ({ ...p, department_name: e.target.value }))} placeholder="e.g. Human Resources Department" /></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Year Start
-                                </Label>
-                                <Input
-                                    type="number"
-                                    min="1900"
-                                    max="2100"
-                                    placeholder="e.g. 2020"
-                                    value={serviceDialog.year_start}
-                                    onChange={(e) =>
-                                        setServiceDialog((p) => ({
-                                            ...p,
-                                            year_start: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <Label className="mb-1.5 block text-xs tracking-widest text-muted-foreground uppercase">
-                                    Year End
-                                </Label>
-                                <Input
-                                    type="number"
-                                    min="1900"
-                                    max="2100"
-                                    placeholder="e.g. 2026"
-                                    value={serviceDialog.year_end}
-                                    onChange={(e) =>
-                                        setServiceDialog((p) => ({
-                                            ...p,
-                                            year_end: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year Start</Label><Input type="number" min="1900" max="2100" placeholder="e.g. 2020" value={serviceDialog.year_start} onChange={e => setServiceDialog(p => ({ ...p, year_start: e.target.value }))} /></div>
+                            <div><Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Year End</Label><Input type="number" min="1900" max="2100" placeholder="e.g. 2026" value={serviceDialog.year_end} onChange={e => setServiceDialog(p => ({ ...p, year_end: e.target.value }))} /></div>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setServiceDialog((p) => ({ ...p, open: false }))
-                            }
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={saveServiceRecord}
-                            disabled={!serviceDialog.position_name.trim()}
-                        >
-                            <Save className="mr-1.5 h-3.5 w-3.5" />
-                            Save
-                        </Button>
+                        <Button variant="outline" onClick={() => setServiceDialog(p => ({ ...p, open: false }))}>Cancel</Button>
+                        <Button onClick={saveServiceRecord} disabled={!serviceDialog.position_name.trim()}><Save className="w-3.5 h-3.5 mr-1.5" />Save</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Confirm delete dialogs — unified pattern */}
             {[
-                {
-                    open: deleteFamilyIndex !== null,
-                    onClose: () => setDeleteFamilyIndex(null),
-                    onConfirm: confirmDeleteFamily,
-                    label: 'family member',
-                },
-                {
-                    open: deleteEducIndex !== null,
-                    onClose: () => setDeleteEducIndex(null),
-                    onConfirm: confirmDeleteEduc,
-                    label: 'education record',
-                },
-                {
-                    open: !!deleteSeminarId,
-                    onClose: () => setDeleteSeminarId(null),
-                    onConfirm: confirmDeleteSeminar,
-                    label: 'seminar',
-                },
-                {
-                    open: !!deleteServiceId,
-                    onClose: () => setDeleteServiceId(null),
-                    onConfirm: confirmDeleteService,
-                    label: 'service record',
-                },
+                { open: deleteFamilyIndex !== null, onClose: () => setDeleteFamilyIndex(null), onConfirm: confirmDeleteFamily, label: "family member" },
+                { open: deleteEducIndex !== null, onClose: () => setDeleteEducIndex(null), onConfirm: confirmDeleteEduc, label: "education record" },
+                { open: !!deleteSeminarId, onClose: () => setDeleteSeminarId(null), onConfirm: confirmDeleteSeminar, label: "seminar" },
+                { open: !!deleteServiceId, onClose: () => setDeleteServiceId(null), onConfirm: confirmDeleteService, label: "service record" },
             ].map(({ open, onClose, onConfirm, label }) => (
-                <AlertDialog
-                    key={label}
-                    open={open}
-                    onOpenChange={(o) => !o && onClose()}
-                >
+                <AlertDialog key={label} open={open} onOpenChange={o => !o && onClose()}>
                     <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Delete {label}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action cannot be undone.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                                onClick={onConfirm}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                                Delete
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
+                        <AlertDialogHeader><AlertDialogTitle>Delete {label}?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={onConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
             ))}
         </div>
-    );
+    )
 }
 
 // ─── Documents Tab ────────────────────────────────────────────────────────────
 
 const FILE_META: Record<string, { icon: string; className: string }> = {
-    pdf: {
-        icon: 'PDF',
-        className: 'text-rose-600  bg-rose-50  dark:bg-rose-950/40',
-    },
-    doc: {
-        icon: 'DOC',
-        className: 'text-sky-600   bg-sky-50   dark:bg-sky-950/40',
-    },
-    docx: {
-        icon: 'DOCX',
-        className: 'text-sky-600   bg-sky-50   dark:bg-sky-950/40',
-    },
-    xls: {
-        icon: 'XLS',
-        className: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40',
-    },
-    xlsx: {
-        icon: 'XLSX',
-        className: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40',
-    },
-    png: {
-        icon: 'PNG',
-        className: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40',
-    },
-    jpg: {
-        icon: 'JPG',
-        className: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40',
-    },
-    jpeg: {
-        icon: 'JPEG',
-        className: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40',
-    },
-    txt: { icon: 'TXT', className: 'text-muted-foreground bg-muted' },
-    zip: {
-        icon: 'ZIP',
-        className: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40',
-    },
-};
-
-function getFileExt(name: string) {
-    return name.split('.').pop()?.toLowerCase() ?? '';
+    pdf: { icon: "PDF", className: "text-rose-600  bg-rose-50  dark:bg-rose-950/40" },
+    doc: { icon: "DOC", className: "text-sky-600   bg-sky-50   dark:bg-sky-950/40" },
+    docx: { icon: "DOCX", className: "text-sky-600   bg-sky-50   dark:bg-sky-950/40" },
+    xls: { icon: "XLS", className: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40" },
+    xlsx: { icon: "XLSX", className: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40" },
+    png: { icon: "PNG", className: "text-violet-600 bg-violet-50 dark:bg-violet-950/40" },
+    jpg: { icon: "JPG", className: "text-violet-600 bg-violet-50 dark:bg-violet-950/40" },
+    jpeg: { icon: "JPEG", className: "text-violet-600 bg-violet-50 dark:bg-violet-950/40" },
+    txt: { icon: "TXT", className: "text-muted-foreground bg-muted" },
+    zip: { icon: "ZIP", className: "text-amber-600 bg-amber-50 dark:bg-amber-950/40" },
 }
+function getFileExt(name: string) { return name.split(".").pop()?.toLowerCase() ?? "" }
 function getFileMeta(name: string) {
-    const ext = getFileExt(name);
-    return (
-        FILE_META[ext] ?? {
-            icon: ext.toUpperCase() || 'FILE',
-            className: 'text-muted-foreground bg-muted',
-        }
-    );
+    const ext = getFileExt(name)
+    return FILE_META[ext] ?? { icon: ext.toUpperCase() || "FILE", className: "text-muted-foreground bg-muted" }
 }
-function isViewable(name: string) {
-    return ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'txt'].includes(
-        getFileExt(name),
-    );
-}
-function isImage(name: string) {
-    return ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(getFileExt(name));
-}
+function isViewable(name: string) { return ["pdf", "png", "jpg", "jpeg", "gif", "webp", "txt"].includes(getFileExt(name)) }
+function isImage(name: string) { return ["png", "jpg", "jpeg", "gif", "webp"].includes(getFileExt(name)) }
 
 function DocumentsTab({ employee }: { employee: Employee }) {
-    const uploadedFiles = employee.uploadedFiles ?? [];
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
-    const [deleteFileId, setDeleteFileId] = useState<number | null>(null);
-    const [viewFile, setViewFile] = useState<UploadedFile | null>(null);
-    const [uploading, setUploading] = useState(false);
-    const [uploadError, setUploadError] = useState<string | null>(null);
-    const MAX_FILE_SIZE = 25 * 1024 * 1024;
+    const uploadedFiles = employee.uploadedFiles ?? []
+    const fileInputRef = React.useRef<HTMLInputElement>(null)
+    const [deleteFileId, setDeleteFileId] = useState<number | null>(null)
+    const [viewFile, setViewFile] = useState<UploadedFile | null>(null)
+    const [uploading, setUploading] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
+    const MAX_FILE_SIZE = 25 * 1024 * 1024
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > MAX_FILE_SIZE) {
-            setUploadError(
-                `File is too large. Maximum size is 25 MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)} MB.`,
-            );
-            e.target.value = '';
-            return;
-        }
-        setUploadError(null);
-        setUploading(true);
-        const toastId = toast.loading(`Uploading "${file.name}"…`);
-        const formData = new FormData();
-        formData.append('file', file);
-        router.post(
-            route('employee.file.store', employee.employee_id),
-            formData,
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.success(`"${file.name}" uploaded successfully.`, {
-                        id: toastId,
-                    });
-                    setUploading(false);
-                },
-                onError: (errors) => {
-                    const msg =
-                        errors?.file ?? 'Upload failed. Please try again.';
-                    toast.error(msg, { id: toastId });
-                    setUploadError(msg);
-                    setUploading(false);
-                },
-                onFinish: () => setUploading(false),
-            },
-        );
-        e.target.value = '';
-    };
+        const file = e.target.files?.[0]; if (!file) return
+        if (file.size > MAX_FILE_SIZE) { setUploadError(`File is too large. Maximum size is 25 MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)} MB.`); e.target.value = ""; return }
+        setUploadError(null); setUploading(true)
+        const toastId = toast.loading(`Uploading "${file.name}"…`)
+        const formData = new FormData(); formData.append("file", file)
+        router.post(route("employee.file.store", employee.employee_id), formData, {
+            preserveScroll: true,
+            onSuccess: () => { toast.success(`"${file.name}" uploaded successfully.`, { id: toastId }); setUploading(false) },
+            onError: (errors) => { const msg = errors?.file ?? "Upload failed. Please try again."; toast.error(msg, { id: toastId }); setUploadError(msg); setUploading(false) },
+            onFinish: () => setUploading(false),
+        })
+        e.target.value = ""
+    }
 
     const confirmDeleteFile = () => {
-        if (!deleteFileId) return;
-        const fileName = uploadedFiles.find(
-            (f) => f.id === deleteFileId,
-        )?.file_name;
-        router.delete(
-            route('employee.file.destroy', {
-                employee: employee.employee_id,
-                file: deleteFileId,
-            }),
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.success(
-                        fileName ? `"${fileName}" deleted.` : 'File deleted.',
-                    );
-                    setDeleteFileId(null);
-                },
-                onError: () =>
-                    toast.error('Failed to delete file. Please try again.'),
-            },
-        );
-    };
+        if (!deleteFileId) return
+        const fileName = uploadedFiles.find(f => f.id === deleteFileId)?.file_name
+        router.delete(route("employee.file.destroy", { employee: employee.employee_id, file: deleteFileId }), {
+            preserveScroll: true,
+            onSuccess: () => { toast.success(fileName ? `"${fileName}" deleted.` : "File deleted."); setDeleteFileId(null) },
+            onError: () => toast.error("Failed to delete file. Please try again."),
+        })
+    }
 
     const formatBytes = (bytes: number) => {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-    };
+        if (bytes < 1024) return bytes + " B"
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB"
+        return (bytes / (1024 * 1024)).toFixed(2) + " MB"
+    }
 
     return (
-        <div className="space-y-4 p-3 sm:p-5">
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+        <div className="p-3 sm:p-5 space-y-4">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border">
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-foreground">
-                            Uploaded Files
-                        </span>
-                        {uploadedFiles.length > 0 && (
-                            <Badge
-                                variant="default"
-                                className="rounded-full text-[10px]"
-                            >
-                                {uploadedFiles.length}
-                            </Badge>
-                        )}
+                        <span className="text-sm font-bold text-foreground">Uploaded Files</span>
+                        {uploadedFiles.length > 0 && <Badge variant="default" className="text-[10px] rounded-full">{uploadedFiles.length}</Badge>}
                     </div>
-                    <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
-                        className="h-7 gap-1.5 text-xs"
-                    >
-                        <Upload className="h-3.5 w-3.5" />
-                        {uploading ? 'Uploading…' : 'Upload'}
+                    <Button variant="default" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="text-xs h-7 gap-1.5">
+                        <Upload className="w-3.5 h-3.5" />{uploading ? "Uploading…" : "Upload"}
                     </Button>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        className="hidden"
-                        onChange={handleFileUpload}
-                    />
+                    <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
                 </div>
-
                 {uploadError && (
-                    <div className="mx-4 mt-3 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 sm:mx-5">
-                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                        <p className="flex-1 text-sm leading-snug text-destructive">
-                            {uploadError}
-                        </p>
-                        <button
-                            onClick={() => setUploadError(null)}
-                            className="shrink-0 text-destructive/60 transition-colors hover:text-destructive"
-                        >
-                            <XCircle className="h-3.5 w-3.5" />
-                        </button>
+                    <div className="mx-4 sm:mx-5 mt-3 rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-2.5">
+                        <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                        <p className="flex-1 text-sm text-destructive leading-snug">{uploadError}</p>
+                        <button onClick={() => setUploadError(null)} className="text-destructive/60 hover:text-destructive transition-colors shrink-0"><XCircle className="w-3.5 h-3.5" /></button>
                     </div>
                 )}
-
-                <div className="border-b border-border bg-muted/20 px-4 py-2 sm:px-5">
-                    <p className="text-[11px] text-muted-foreground">
-                        Maximum file size:{' '}
-                        <span className="font-semibold">25 MB</span>. All file
-                        types accepted.
-                    </p>
+                <div className="px-4 sm:px-5 py-2 border-b border-border bg-muted/20">
+                    <p className="text-[11px] text-muted-foreground">Maximum file size: <span className="font-semibold">25 MB</span>. All file types accepted.</p>
                 </div>
-
                 {uploadedFiles.length === 0 ? (
                     <div className="px-5 py-14 text-center">
-                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-muted">
-                            <FolderOpen className="h-7 w-7 text-muted-foreground/30" />
-                        </div>
-                        <p className="mb-1 text-sm font-medium text-foreground">
-                            No files uploaded yet
-                        </p>
-                        <p className="mb-4 text-xs text-muted-foreground">
-                            Upload documents, certificates, or any relevant
-                            files.
-                        </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="gap-1.5"
-                        >
-                            <Upload className="h-3.5 w-3.5" /> Upload First File
-                        </Button>
+                        <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center mx-auto mb-4"><FolderOpen className="w-7 h-7 text-muted-foreground/30" /></div>
+                        <p className="text-sm font-medium text-foreground mb-1">No files uploaded yet</p>
+                        <p className="text-xs text-muted-foreground mb-4">Upload documents, certificates, or any relevant files.</p>
+                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5"><Upload className="w-3.5 h-3.5" /> Upload First File</Button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
-                        {uploadedFiles.map((file) => {
-                            const { icon, className } = getFileMeta(
-                                file.file_name,
-                            );
-                            const canView = isViewable(file.file_name);
+                    <div className="divide-y divide-border overflow-y-auto max-h-64">
+                        {uploadedFiles.map(file => {
+                            const { icon, className } = getFileMeta(file.file_name)
+                            const canView = isViewable(file.file_name)
                             return (
-                                <div
-                                    key={file.id}
-                                    className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/20 sm:px-5"
-                                    onClick={() =>
-                                        canView
-                                            ? setViewFile(file)
-                                            : window.open(
-                                                  file.file_url,
-                                                  '_blank',
-                                              )
-                                    }
-                                >
-                                    <div
-                                        className={cn(
-                                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10',
-                                            className,
-                                        )}
-                                    >
-                                        <span className="text-[9px] font-black tracking-tight">
-                                            {icon}
-                                        </span>
+                                <div key={file.id} className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/20 transition-colors group cursor-pointer" onClick={() => canView ? setViewFile(file) : window.open(file.file_url, "_blank")}>
+                                    <div className={cn("w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0", className)}>
+                                        <span className="text-[9px] font-black tracking-tight">{icon}</span>
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm leading-snug font-medium text-foreground">
-                                            {file.file_name}
-                                        </p>
-                                        <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-                                            <span>
-                                                {formatBytes(file.file_size)}
-                                            </span>
-                                            <span className="hidden sm:inline">
-                                                ·
-                                            </span>
-                                            <span className="hidden sm:inline">
-                                                {fmtShort(file.created_at)}
-                                            </span>
-                                        </p>
-                                        <p className="mt-0.5 text-xs text-muted-foreground sm:hidden">
-                                            {fmtShort(file.created_at)}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-foreground truncate leading-snug">{file.file_name}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
+                                            <span>{formatBytes(file.file_size)}</span>
+                                            <span className="hidden sm:inline">·</span>
+                                            <span className="hidden sm:inline">{fmtShort(file.created_at)}</span>
                                         </p>
                                     </div>
-                                    <div
-                                        className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
+                                    <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                                         {canView && (
-                                            <a
-                                                href={file.file_url}
-                                                download={file.file_name}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                            >
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-xs"
-                                                    title="Download"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-primary sm:h-7 sm:w-7"
-                                                >
-                                                    <Download className="h-3.5 w-3.5" />
-                                                </Button>
+                                            <a href={file.file_url} download={file.file_name} target="_blank" rel="noreferrer">
+                                                <Button variant="ghost" size="icon-xs" title="Download" className="text-muted-foreground hover:text-primary w-8 h-8 sm:w-7 sm:h-7"><Download className="w-3.5 h-3.5" /></Button>
                                             </a>
                                         )}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-xs"
-                                            className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:h-7 sm:w-7"
-                                            onClick={() =>
-                                                setDeleteFileId(file.id)
-                                            }
-                                            title="Delete"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
+                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-8 h-8 sm:w-7 sm:h-7" onClick={() => setDeleteFileId(file.id)} title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
                                     </div>
                                 </div>
-                            );
+                            )
                         })}
                     </div>
                 )}
             </div>
 
-            {/* Preview Dialog */}
-            <Dialog
-                open={!!viewFile}
-                onOpenChange={(o) => !o && setViewFile(null)}
-            >
-                <DialogContent className="max-h-[90vh] gap-0 overflow-hidden rounded-lg p-0 sm:max-w-3xl">
-                    <DialogHeader className="flex shrink-0 flex-row items-center justify-between border-b border-border px-5 py-4">
-                        <div className="flex min-w-0 items-center gap-3">
-                            {viewFile &&
-                                (() => {
-                                    const { icon, className } = getFileMeta(
-                                        viewFile.file_name,
-                                    );
-                                    return (
-                                        <div
-                                            className={cn(
-                                                'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                                                className,
-                                            )}
-                                        >
-                                            <span className="text-[9px] font-black">
-                                                {icon}
-                                            </span>
-                                        </div>
-                                    );
-                                })()}
+            <Dialog open={!!viewFile} onOpenChange={o => !o && setViewFile(null)}>
+                <DialogContent className="sm:max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden rounded-lg">
+                    <DialogHeader className="px-5 py-4 border-b border-border shrink-0 flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                            {viewFile && (() => { const { icon, className } = getFileMeta(viewFile.file_name); return <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", className)}><span className="text-[9px] font-black">{icon}</span></div> })()}
                             <div className="min-w-0">
-                                <DialogTitle className="truncate text-sm font-bold">
-                                    {viewFile?.file_name}
-                                </DialogTitle>
-                                <p className="text-xs text-muted-foreground">
-                                    {viewFile
-                                        ? formatBytes(viewFile.file_size)
-                                        : ''}{' '}
-                                    · {fmtShort(viewFile?.created_at)}
-                                </p>
+                                <DialogTitle className="text-sm font-bold truncate">{viewFile?.file_name}</DialogTitle>
+                                <p className="text-xs text-muted-foreground">{viewFile ? formatBytes(viewFile.file_size) : ""} · {fmtShort(viewFile?.created_at)}</p>
                             </div>
                         </div>
                     </DialogHeader>
-                    <div
-                        className="min-h-0 flex-1 overflow-auto bg-muted/30"
-                        style={{ maxHeight: 'calc(90vh - 80px)' }}
-                    >
-                        {viewFile && isImage(viewFile.file_name) && (
-                            <div className="flex min-h-64 items-center justify-center p-6">
-                                <img
-                                    src={viewFile.file_url}
-                                    alt={viewFile.file_name}
-                                    className="max-h-[70vh] max-w-full rounded-xl object-contain shadow-lg"
-                                />
-                            </div>
-                        )}
-                        {viewFile &&
-                            getFileExt(viewFile.file_name) === 'pdf' && (
-                                <iframe
-                                    src={viewFile.file_url}
-                                    className="w-full"
-                                    style={{ height: 'calc(90vh - 80px)' }}
-                                    title={viewFile.file_name}
-                                />
-                            )}
-                        {viewFile &&
-                            getFileExt(viewFile.file_name) === 'txt' && (
-                                <div className="p-6">
-                                    <iframe
-                                        src={viewFile.file_url}
-                                        className="min-h-96 w-full rounded-xl border border-border bg-card"
-                                        title={viewFile.file_name}
-                                    />
-                                </div>
-                            )}
+                    <div className="flex-1 overflow-auto bg-muted/30 min-h-0" style={{ maxHeight: "calc(90vh - 80px)" }}>
+                        {viewFile && isImage(viewFile.file_name) && <div className="flex items-center justify-center p-6 min-h-64"><img src={viewFile.file_url} alt={viewFile.file_name} className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-lg" /></div>}
+                        {viewFile && getFileExt(viewFile.file_name) === "pdf" && <iframe src={viewFile.file_url} className="w-full" style={{ height: "calc(90vh - 80px)" }} title={viewFile.file_name} />}
+                        {viewFile && getFileExt(viewFile.file_name) === "txt" && <div className="p-6"><iframe src={viewFile.file_url} className="w-full min-h-96 rounded-xl border border-border bg-card" title={viewFile.file_name} /></div>}
                     </div>
                 </DialogContent>
             </Dialog>
 
-            <AlertDialog
-                open={!!deleteFileId}
-                onOpenChange={(o) => !o && setDeleteFileId(null)}
-            >
+            <AlertDialog open={!!deleteFileId} onOpenChange={o => !o && setDeleteFileId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete File?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete{' '}
-                            <span className="font-semibold text-foreground">
-                                {
-                                    uploadedFiles.find(
-                                        (f) => f.id === deleteFileId,
-                                    )?.file_name
-                                }
-                            </span>
-                            . This action cannot be undone.
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>This will permanently delete <span className="font-semibold text-foreground">{uploadedFiles.find(f => f.id === deleteFileId)?.file_name}</span>. This action cannot be undone.</AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={confirmDeleteFile}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
+                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteFile} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
         </div>
-    );
+    )
 }
 
-// ─── Avatar Preview Dialog ────────────────────────────────────────────────────
+// ─── Avatar Dialogs ───────────────────────────────────────────────────────────
 
-function AvatarPreviewDialog({
-    src,
-    name,
-    open,
-    onClose,
-}: {
-    src: string;
-    name?: string;
-    open: boolean;
-    onClose: () => void;
-}) {
+function AvatarPreviewDialog({ src, name, open, onClose }: { src: string; name?: string; open: boolean; onClose: () => void }) {
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="gap-0 overflow-hidden rounded-lg border border-border p-0 shadow-lg sm:max-w-xs">
-                <div className="relative flex flex-col items-center overflow-hidden rounded-lg bg-card">
-                    <img
-                        src={src}
-                        alt={name}
-                        className="aspect-square w-full object-cover"
-                    />
-                    {name && (
-                        <div className="w-full border-t border-border bg-card px-5 py-3.5">
-                            <p className="text-center text-sm font-semibold text-foreground">
-                                {name}
-                            </p>
-                        </div>
-                    )}
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+            <DialogContent className="sm:max-w-xs p-0 overflow-hidden rounded-lg border border-border shadow-lg gap-0">
+                <div className="relative flex flex-col items-center bg-card rounded-lg overflow-hidden">
+                    <img src={src} alt={name} className="w-full aspect-square object-cover" />
+                    {name && <div className="w-full px-5 py-3.5 border-t border-border bg-card"><p className="text-sm font-semibold text-foreground text-center">{name}</p></div>}
                 </div>
             </DialogContent>
         </Dialog>
-    );
+    )
 }
 
-// ─── Avatar Upload Dialog ─────────────────────────────────────────────────────
-
-const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
-const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024
+const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/jpg"]
 function validateAvatarFile(file: File): string | null {
-    if (!ALLOWED_AVATAR_TYPES.includes(file.type))
-        return 'Only JPEG, JPG, or PNG images are allowed.';
-    if (file.size > MAX_AVATAR_SIZE) return 'File size must not exceed 5 MB.';
-    return null;
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) return "Only JPEG, JPG, or PNG images are allowed."
+    if (file.size > MAX_AVATAR_SIZE) return "File size must not exceed 5 MB."
+    return null
 }
 
-function AvatarUploadDialog({
-    open,
-    onClose,
-    onFileSelected,
-}: {
-    open: boolean;
-    onClose: () => void;
-    onFileSelected: (file: File) => void;
-}) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
+function AvatarUploadDialog({ open, onClose, onFileSelected }: { open: boolean; onClose: () => void; onFileSelected: (file: File) => void }) {
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const videoRef = useRef<HTMLVideoElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const streamRef = useRef<MediaStream | null>(null)
+    const [mode, setMode] = useState<"choose" | "camera" | "crop">("choose")
+    const [cameraError, setCameraError] = useState<string | null>(null)
+    const [cameraReady, setCameraReady] = useState(false)
+    const [fileError, setFileError] = useState<string | null>(null)
+    const [rawImageSrc, setRawImageSrc] = useState<string | null>(null)
+    const [crop, setCrop] = useState({ x: 0, y: 0 })
+    const [zoom, setZoom] = useState(1)
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
 
-    const [mode, setMode] = useState<'choose' | 'camera' | 'crop'>('choose');
-    const [cameraError, setCameraError] = useState<string | null>(null);
-    const [cameraReady, setCameraReady] = useState(false);
-    const [fileError, setFileError] = useState<string | null>(null);
-    const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
-    const [crop, setCrop] = useState({ x: 0, y: 0 });
-    const [zoom, setZoom] = useState(1);
-    const [croppedAreaPixels, setCroppedAreaPixels] = useState<{
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    } | null>(null);
-
-    const stopCamera = () => {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-        setCameraReady(false);
-    };
-    const goToCrop = (src: string) => {
-        stopCamera();
-        setRawImageSrc(src);
-        setCrop({ x: 0, y: 0 });
-        setZoom(1);
-        setCroppedAreaPixels(null);
-        setMode('crop');
-    };
+    const stopCamera = () => { streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null; setCameraReady(false) }
+    const goToCrop = (src: string) => { stopCamera(); setRawImageSrc(src); setCrop({ x: 0, y: 0 }); setZoom(1); setCroppedAreaPixels(null); setMode("crop") }
 
     const startCamera = async () => {
-        setCameraError(null);
-        setCameraReady(false);
-        setMode('camera');
+        setCameraError(null); setCameraReady(false); setMode("camera")
         try {
-            const permission = await navigator.permissions.query({
-                name: 'camera' as PermissionName,
-            });
-            if (permission.state === 'denied') {
-                setCameraError(
-                    'Camera access was blocked. Please enable it in your browser or device settings, then try again.',
-                );
-                return;
-            }
-        } catch {
-            /* not supported */
-        }
+            const permission = await navigator.permissions.query({ name: "camera" as PermissionName })
+            if (permission.state === "denied") { setCameraError("Camera access was blocked. Please enable it in your browser or device settings, then try again."); return }
+        } catch { }
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user' },
-            });
-            streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.onloadedmetadata = () => {
-                    videoRef.current?.play();
-                    setCameraReady(true);
-                };
-            }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            streamRef.current = stream
+            if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.onloadedmetadata = () => { videoRef.current?.play(); setCameraReady(true) } }
         } catch (err: any) {
-            if (err?.name === 'NotAllowedError')
-                setCameraError(
-                    "Camera permission was denied. Please allow access when prompted, or use 'Select Image' instead.",
-                );
-            else if (err?.name === 'NotFoundError')
-                setCameraError('No camera was found on this device.');
-            else
-                setCameraError(
-                    "Could not access the camera. Please try again or use 'Select Image' instead.",
-                );
+            if (err?.name === "NotAllowedError") setCameraError("Camera permission was denied. Please allow access when prompted, or use 'Select Image' instead.")
+            else if (err?.name === "NotFoundError") setCameraError("No camera was found on this device.")
+            else setCameraError("Could not access the camera. Please try again or use 'Select Image' instead.")
         }
-    };
+    }
 
     const capturePhoto = () => {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        if (!video || !canvas) return;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d')?.drawImage(video, 0, 0);
-        goToCrop(canvas.toDataURL('image/jpeg', 0.92));
-    };
+        const video = videoRef.current; const canvas = canvasRef.current; if (!video || !canvas) return
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight
+        canvas.getContext("2d")?.drawImage(video, 0, 0)
+        goToCrop(canvas.toDataURL("image/jpeg", 0.92))
+    }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const error = validateAvatarFile(file);
-        if (error) {
-            setFileError(error);
-            e.target.value = '';
-            return;
-        }
-        setFileError(null);
-        const reader = new FileReader();
-        reader.onload = () => goToCrop(reader.result as string);
-        reader.readAsDataURL(file);
-        e.target.value = '';
-    };
+        const file = e.target.files?.[0]; if (!file) return
+        const error = validateAvatarFile(file); if (error) { setFileError(error); e.target.value = ""; return }
+        setFileError(null)
+        const reader = new FileReader(); reader.onload = () => goToCrop(reader.result as string); reader.readAsDataURL(file); e.target.value = ""
+    }
 
     const applyCrop = async () => {
-        if (!rawImageSrc || !croppedAreaPixels) return;
-        try {
-            const blob = await getCroppedImg(rawImageSrc, croppedAreaPixels);
-            onFileSelected(
-                new File([blob], 'avatar-cropped.jpg', { type: 'image/jpeg' }),
-            );
-            handleClose();
-        } catch {
-            toast.error('Failed to crop image. Please try again.');
-        }
-    };
+        if (!rawImageSrc || !croppedAreaPixels) return
+        try { const blob = await getCroppedImg(rawImageSrc, croppedAreaPixels); onFileSelected(new File([blob], "avatar-cropped.jpg", { type: "image/jpeg" })); handleClose() }
+        catch { toast.error("Failed to crop image. Please try again.") }
+    }
 
-    const handleClose = () => {
-        stopCamera();
-        setMode('choose');
-        setCameraError(null);
-        setFileError(null);
-        setRawImageSrc(null);
-        onClose();
-    };
-    const backToChoose = () => {
-        stopCamera();
-        setRawImageSrc(null);
-        setMode('choose');
-        setCameraError(null);
-        setFileError(null);
-    };
+    const handleClose = () => { stopCamera(); setMode("choose"); setCameraError(null); setFileError(null); setRawImageSrc(null); onClose() }
+    const backToChoose = () => { stopCamera(); setRawImageSrc(null); setMode("choose"); setCameraError(null); setFileError(null) }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-            <DialogContent className="gap-0 overflow-hidden rounded-lg p-0 sm:max-w-sm">
-                <DialogHeader className="border-b border-border px-5 pt-5 pb-3">
+        <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+            <DialogContent className="sm:max-w-sm rounded-lg overflow-hidden p-0 gap-0">
+                <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
                     <DialogTitle className="text-base font-bold">
-                        {mode === 'camera'
-                            ? 'Take a Photo'
-                            : mode === 'crop'
-                              ? 'Crop Photo'
-                              : 'Update Profile Photo'}
+                        {mode === "camera" ? "Take a Photo" : mode === "crop" ? "Crop Photo" : "Update Profile Photo"}
                     </DialogTitle>
                 </DialogHeader>
-
-                {mode === 'choose' && (
-                    <div className="space-y-4 px-5 py-5">
-                        <p className="text-sm text-muted-foreground">
-                            Choose how you'd like to update your profile photo.
-                        </p>
+                {mode === "choose" && (
+                    <div className="px-5 py-5 space-y-4">
+                        <p className="text-sm text-muted-foreground">Choose how you'd like to update your profile photo.</p>
                         <div className="grid grid-cols-2 gap-3">
                             {[
-                                {
-                                    icon: Upload,
-                                    label: 'Select Image',
-                                    sub: 'Choose from device',
-                                    action: () => fileInputRef.current?.click(),
-                                },
-                                {
-                                    icon: Camera,
-                                    label: 'Take a Photo',
-                                    sub: 'Use your camera',
-                                    action: startCamera,
-                                },
+                                { icon: Upload, label: "Select Image", sub: "Choose from device", action: () => fileInputRef.current?.click() },
+                                { icon: Camera, label: "Take a Photo", sub: "Use your camera", action: startCamera },
                             ].map(({ icon: Icon, label, sub, action }) => (
-                                <button
-                                    key={label}
-                                    onClick={action}
-                                    className="group flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-border p-5 transition-all hover:border-primary/50 hover:bg-accent/40"
-                                >
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 transition-colors group-hover:bg-primary/20">
-                                        <Icon className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-sm font-semibold">
-                                            {label}
-                                        </p>
-                                        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                                            {sub}
-                                        </p>
-                                    </div>
+                                <button key={label} onClick={action} className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-accent/40 transition-all group cursor-pointer">
+                                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors"><Icon className="w-5 h-5 text-primary" /></div>
+                                    <div className="text-center"><p className="text-sm font-semibold">{label}</p><p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{sub}</p></div>
                                 </button>
                             ))}
                         </div>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png"
-                            className="hidden"
-                            onChange={handleFileChange}
-                        />
-                        {fileError && (
-                            <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3">
-                                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                                <p className="text-sm leading-snug text-destructive">
-                                    {fileError}
-                                </p>
-                            </div>
-                        )}
+                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png" className="hidden" onChange={handleFileChange} />
+                        {fileError && <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 flex items-start gap-2.5"><XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" /><p className="text-sm text-destructive leading-snug">{fileError}</p></div>}
                     </div>
                 )}
-
-                {mode === 'camera' && (
-                    <div className="space-y-4 px-5 py-5">
+                {mode === "camera" && (
+                    <div className="px-5 py-5 space-y-4">
                         {cameraError ? (
-                            <div className="space-y-3 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-center">
-                                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
-                                    <XCircle className="h-5 w-5 text-destructive" />
-                                </div>
-                                <p className="text-sm leading-snug text-destructive">
-                                    {cameraError}
-                                </p>
+                            <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-center space-y-3">
+                                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center mx-auto"><XCircle className="w-5 h-5 text-destructive" /></div>
+                                <p className="text-sm text-destructive leading-snug">{cameraError}</p>
                             </div>
                         ) : (
-                            <div className="relative aspect-square overflow-hidden rounded-xl bg-black shadow-inner">
-                                <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                    className="h-full w-full scale-x-[-1] object-cover"
-                                />
-                                {!cameraReady && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted">
-                                        <Camera className="h-8 w-8 animate-pulse text-muted-foreground/30" />
-                                        <p className="animate-pulse text-xs text-muted-foreground">
-                                            Starting camera…
-                                        </p>
-                                    </div>
-                                )}
-                                {cameraReady && (
-                                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                        <div className="h-44 w-44 rounded-full border-2 border-white/50 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
-                                    </div>
-                                )}
+                            <div className="relative rounded-xl overflow-hidden bg-black aspect-square shadow-inner">
+                                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                                {!cameraReady && <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted gap-2"><Camera className="w-8 h-8 text-muted-foreground/30 animate-pulse" /><p className="text-xs text-muted-foreground animate-pulse">Starting camera…</p></div>}
+                                {cameraReady && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="w-44 h-44 rounded-full border-2 border-white/50 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" /></div>}
                             </div>
                         )}
                         <canvas ref={canvasRef} className="hidden" />
                         <div className="flex gap-2.5">
-                            <Button
-                                variant="outline"
-                                className="flex-1"
-                                onClick={backToChoose}
-                            >
-                                Back
-                            </Button>
-                            {!cameraError && (
-                                <Button
-                                    className="flex-1"
-                                    onClick={capturePhoto}
-                                    disabled={!cameraReady}
-                                >
-                                    <Camera className="mr-1.5 h-3.5 w-3.5" />
-                                    Capture
-                                </Button>
-                            )}
+                            <Button variant="outline" className="flex-1" onClick={backToChoose}>Back</Button>
+                            {!cameraError && <Button className="flex-1" onClick={capturePhoto} disabled={!cameraReady}><Camera className="w-3.5 h-3.5 mr-1.5" />Capture</Button>}
                         </div>
                     </div>
                 )}
-
-                {mode === 'crop' && rawImageSrc && (
-                    <div className="space-y-4 px-5 py-5">
-                        <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-black">
-                            <Cropper
-                                image={rawImageSrc}
-                                crop={crop}
-                                zoom={zoom}
-                                aspect={1}
-                                cropShape="round"
-                                showGrid={false}
-                                onCropChange={setCrop}
-                                onZoomChange={setZoom}
-                                onCropComplete={(_area, pixels) =>
-                                    setCroppedAreaPixels(pixels)
-                                }
-                            />
+                {mode === "crop" && rawImageSrc && (
+                    <div className="px-5 py-5 space-y-4">
+                        <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-black">
+                            <Cropper image={rawImageSrc} crop={crop} zoom={zoom} aspect={1} cropShape="round" showGrid={false}
+                                onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={(_area, pixels) => setCroppedAreaPixels(pixels)} />
                         </div>
                         <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-medium text-muted-foreground">
-                                    Zoom
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                    {zoom.toFixed(1)}×
-                                </span>
-                            </div>
-                            <input
-                                type="range"
-                                min={1}
-                                max={3}
-                                step={0.05}
-                                value={zoom}
-                                onChange={(e) =>
-                                    setZoom(Number(e.target.value))
-                                }
-                                className="w-full cursor-pointer accent-primary"
-                            />
+                            <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground font-medium">Zoom</span><span className="text-xs text-muted-foreground">{zoom.toFixed(1)}×</span></div>
+                            <input type="range" min={1} max={3} step={0.05} value={zoom} onChange={e => setZoom(Number(e.target.value))} className="w-full accent-primary cursor-pointer" />
                         </div>
                         <div className="flex gap-2.5">
-                            <Button
-                                variant="outline"
-                                className="flex-1"
-                                onClick={backToChoose}
-                            >
-                                Back
-                            </Button>
-                            <Button className="flex-1" onClick={applyCrop}>
-                                <Save className="mr-1.5 h-3.5 w-3.5" />
-                                Apply Crop
-                            </Button>
+                            <Button variant="outline" className="flex-1" onClick={backToChoose}>Back</Button>
+                            <Button className="flex-1" onClick={applyCrop}><Save className="w-3.5 h-3.5 mr-1.5" />Apply Crop</Button>
                         </div>
                     </div>
                 )}
             </DialogContent>
         </Dialog>
-    );
+    )
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function ShowEmployee({
-    employee,
-    items,
-    salaryGradeSteps,
-    masterAllowances,
-}: Props) {
-    const basic = employee.basic_info;
-    const position = employee.item?.position;
-    const firstAddress = (basic?.addresses ?? [])[0];
-    const addressStr = firstAddress
-        ? [firstAddress.street_address, firstAddress.city, firstAddress.state]
-              .filter(Boolean)
-              .join(', ')
-        : undefined;
+export default function ShowEmployee({ employee, items, salaryGradeSteps, masterAllowances }: Props) {
+    const { hasRole } = useAuth()
+    const canEdit = hasRole("hr_admin") || hasRole("super_admin")
 
-    const [basicEditOpen, setBasicEditOpen] = useState(false);
-    const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
-    const [avatarUploadOpen, setAvatarUploadOpen] = useState(false);
+    const basic = employee.basic_info
+    const position = employee.item?.position
+    const firstAddress = (basic?.addresses ?? [])[0]
+    const addressStr = firstAddress
+        ? [firstAddress.street_address, firstAddress.city, firstAddress.state].filter(Boolean).join(", ")
+        : undefined
+
+    const [basicEditOpen, setBasicEditOpen] = useState(false)
+    const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false)
+    const [avatarUploadOpen, setAvatarUploadOpen] = useState(false)
 
     const handleAvatarFileSelected = (file: File) => {
-        const toastId = toast.loading('Updating profile photo…');
-        const formData = new FormData();
-        formData.append('avatar', file);
-        router.post(
-            route('employee.avatar.update', employee.employee_id),
-            formData,
-            {
-                preserveScroll: true,
-                onSuccess: () =>
-                    toast.success('Profile photo updated successfully.', {
-                        id: toastId,
-                    }),
-                onError: () =>
-                    toast.error(
-                        'Failed to update profile photo. Please try again.',
-                        { id: toastId },
-                    ),
-            },
-        );
-    };
+        const toastId = toast.loading("Updating profile photo…")
+        const formData = new FormData(); formData.append("avatar", file)
+        router.post(route("employee.avatar.update", employee.employee_id), formData, {
+            preserveScroll: true,
+            onSuccess: () => toast.success("Profile photo updated successfully.", { id: toastId }),
+            onError: () => toast.error("Failed to update profile photo. Please try again.", { id: toastId }),
+        })
+    }
 
     const avatarSrc =
         employee.avatar_url ??
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(basic?.full_name ?? 'E')}&background=5854cc&color=fff&size=96`;
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(basic?.full_name ?? "E")}&background=5854cc&color=fff&size=96`
 
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Employee', href: route('employee.index') },
-        { title: 'Employee Profile', href: '#' },
-    ];
+        { title: "Employee", href: route("employee.index") },
+        { title: "Employee Profile", href: "#" },
+    ]
 
     const tabs = [
-        { value: 'employment', label: 'Employment Details', icon: Briefcase },
-        { value: 'compensation', label: 'Compensation', icon: FileText },
-        { value: 'leave', label: 'Leave Information', icon: CalendarDays },
-        { value: 'time', label: 'Attendance Record', icon: Clock },
-        {
-            value: 'government',
-            label: 'Government Eligibility',
-            icon: Landmark,
-        },
-        { value: 'background', label: 'Background Information', icon: User },
-        { value: 'documents', label: 'Documents', icon: FolderOpen },
-    ];
+        { value: "employment", label: "Employment Details", icon: Briefcase },
+        { value: "compensation", label: "Compensation", icon: FileText },
+        { value: "leave", label: "Leave Information", icon: CalendarDays },
+        { value: "time", label: "Attendance Record", icon: Clock },
+        { value: "government", label: "Government Eligibility", icon: Landmark },
+        { value: "background", label: "Background Information", icon: User },
+        { value: "documents", label: "Documents", icon: FolderOpen },
+    ]
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`${basic?.full_name ?? 'Employee'} — Profile`} />
+            <Head title={`${basic?.full_name ?? "Employee"} — Profile`} />
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 p-3 sm:p-5 bg-background">
 
-            <div className="flex flex-col gap-4 bg-background p-3 sm:p-5 lg:flex-row lg:gap-5">
-                {/* ── Left Panel ── */}
-                <div className="flex w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm lg:w-72">
-                    <div className="relative flex flex-col items-center px-5 pt-8 pb-5">
+                {/* Left Panel */}
+                <div className="w-full lg:w-72 shrink-0 bg-card rounded-lg border border-border shadow-sm overflow-hidden flex flex-col">
+                    <div className="relative flex flex-col items-center pt-8 pb-5 px-5">
                         <div className="absolute top-3 right-3">
-                            <Button
-                                size={'icon-xs'}
-                                onClick={() => setBasicEditOpen(true)}
-                                variant={'ghost'}
-                            >
-                                <Pencil className="h-3.5 w-3.5" />
+                            <Button size={"icon-xs"} onClick={() => setBasicEditOpen(true)} variant={"ghost"}>
+                                <Pencil className="w-3.5 h-3.5" />
                             </Button>
                         </div>
                         <div className="relative">
-                            <button
-                                onClick={() => setAvatarPreviewOpen(true)}
-                                className="h-24 w-24 cursor-pointer overflow-hidden rounded-full border-4 border-card bg-muted shadow-lg ring-2 ring-primary/20 transition-all hover:ring-primary/50"
-                                title="View photo"
-                            >
-                                <img
-                                    src={avatarSrc}
-                                    alt={basic?.full_name}
-                                    className="h-full w-full object-cover"
-                                />
+                            <button onClick={() => setAvatarPreviewOpen(true)}
+                                className="w-24 h-24 rounded-full overflow-hidden bg-muted border-4 border-card shadow-lg ring-2 ring-primary/20 hover:ring-primary/50 transition-all cursor-pointer"
+                                title="View photo">
+                                <img src={avatarSrc} alt={basic?.full_name} className="w-full h-full object-cover" />
                             </button>
-                            <button
-                                onClick={() => setAvatarUploadOpen(true)}
-                                title="Change photo"
-                                className="absolute -right-1 -bottom-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground shadow-md transition-opacity hover:opacity-90"
-                            >
-                                <Camera className="h-3 w-3" />
-                            </button>
+                            {canEdit && (
+                                <button onClick={() => setAvatarUploadOpen(true)} title="Change photo"
+                                    className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:opacity-90 transition-opacity border-2 border-card">
+                                    <Camera className="w-3 h-3" />
+                                </button>
+                            )}
                         </div>
                         <div className="mt-4 text-center">
-                            <h1 className="text-base leading-tight font-bold text-foreground">
-                                {basic?.full_name ?? '—'}
-                            </h1>
-                            <p className="mt-0.5 text-xs font-semibold text-primary">
-                                {position?.position_name ??
-                                    'No Position Assigned'}
-                            </p>
+                            <h1 className="text-base font-bold text-foreground leading-tight">{basic?.full_name ?? "—"}</h1>
+                            <p className="text-xs text-primary font-semibold mt-0.5">{position?.position_name ?? "No Position Assigned"}</p>
                         </div>
-                        <div className="mt-2.5">
-                            <ActiveBadge active={employee.status} />
-                        </div>
+                        <div className="mt-2.5"><ActiveBadge active={employee.status} /></div>
                     </div>
 
                     <div className="flex-1 px-4 py-3">
-                        <p className="mb-1 text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-                            Basic Information
-                        </p>
-                        <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 lg:grid-cols-1">
-                            <InfoRow
-                                icon={Mail}
-                                label="Work Email"
-                                value={employee.work_email}
-                            />
-                            <InfoRow
-                                icon={Mail}
-                                label="Personal Email"
-                                value={basic?.personal_email}
-                            />
-                            <InfoRow
-                                icon={Briefcase}
-                                label="Work ID"
-                                value={employee.work_id}
-                            />
-                            <InfoRow
-                                icon={Phone}
-                                label="Contact Number"
-                                value={basic?.phone_number}
-                            />
-                            <InfoRow
-                                icon={CalendarDays}
-                                label="Date of Birth"
-                                value={fmt(basic?.birth_date)}
-                            />
-                            <InfoRow
-                                icon={MapPin}
-                                label="Place of Birth"
-                                value={basic?.place_of_birth}
-                            />
-                            <InfoRow
-                                icon={User}
-                                label="Sex"
-                                value={
-                                    basic?.sex !== undefined
-                                        ? basic.sex
-                                            ? 'Male'
-                                            : 'Female'
-                                        : undefined
-                                }
-                            />
-                            <InfoRow
-                                icon={Heart}
-                                label="Civil Status"
-                                value={cap(basic?.civil_status)}
-                            />
-                            <InfoRow
-                                icon={Home}
-                                label="Address"
-                                value={addressStr}
-                            />
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Basic Information</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-0">
+                            <InfoRow icon={Mail} label="Work Email" value={employee.work_email} />
+                            <InfoRow icon={Mail} label="Personal Email" value={basic?.personal_email} />
+                            <InfoRow icon={Briefcase} label="Work ID" value={employee.work_id} />
+                            <InfoRow icon={Phone} label="Contact Number" value={basic?.phone_number} />
+                            <InfoRow icon={CalendarDays} label="Date of Birth" value={fmt(basic?.birth_date)} />
+                            <InfoRow icon={MapPin} label="Place of Birth" value={basic?.place_of_birth} />
+                            <InfoRow icon={User} label="Sex" value={basic?.sex !== undefined ? (basic.sex ? "Male" : "Female") : undefined} />
+                            <InfoRow icon={Heart} label="Civil Status" value={cap(basic?.civil_status)} />
+                            <InfoRow icon={Home} label="Address" value={addressStr} />
                         </div>
                     </div>
                 </div>
 
-                {/* ── Right Panel ── */}
-                <div className="min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+                {/* Right Panel */}
+                <div className="flex-1 bg-card rounded-lg border border-border shadow-sm overflow-hidden min-w-0">
                     <Tabs defaultValue="employment">
-                        <div className="shrink-0 overflow-x-auto border-b border-border px-2 pt-1 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
-                            <TabsList className="flex h-auto w-max flex-nowrap gap-0 bg-transparent p-0">
+                        <div className="border-b border-border px-2 sm:px-4 pt-1 shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+                            <TabsList className="h-auto bg-transparent gap-0 p-0 flex flex-nowrap w-max">
                                 {tabs.map(({ value, label, icon: Icon }) => (
-                                    <TabsTrigger
-                                        key={value}
-                                        value={value}
-                                        className="relative flex items-center gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
-                                    >
-                                        <Icon className="h-3.5 w-3.5 shrink-0" />
+                                    <TabsTrigger key={value} value={value}
+                                        className="relative flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs font-semibold text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent hover:text-foreground transition-colors whitespace-nowrap">
+                                        <Icon className="w-3.5 h-3.5 shrink-0" />
                                         <span>{label}</span>
                                     </TabsTrigger>
                                 ))}
@@ -5833,53 +2500,25 @@ export default function ShowEmployee({
                         </div>
 
                         <TabsContent value="employment" className="mt-0">
-                            <EmploymentDetailsTab
-                                employee={employee}
-                                items={items}
-                            />
+                            <EmploymentDetailsTab employee={employee} items={items} canEdit={canEdit} />
                         </TabsContent>
                         <TabsContent value="compensation" className="mt-0">
-                            <CompensationTab
-                                employee={employee}
-                                salaryGradeSteps={salaryGradeSteps}
-                                masterAllowances={masterAllowances}
-                            />
+                            <CompensationTab employee={employee} salaryGradeSteps={salaryGradeSteps} masterAllowances={masterAllowances} canEdit={canEdit} />
                         </TabsContent>
-                        <TabsContent value="leave" className="mt-0">
-                            <LeaveInformationTab employee={employee} />
-                        </TabsContent>
-                        <TabsContent value="time" className="mt-0">
-                            <AttendanceRecordTab employee={employee} />
-                        </TabsContent>
-                        <TabsContent value="government" className="mt-0">
-                            <GovernmentEligibilityTab employee={employee} />
-                        </TabsContent>
-                        <TabsContent value="background" className="mt-0">
-                            <BackgroundInformationTab employee={employee} />
-                        </TabsContent>
-                        <TabsContent value="documents" className="mt-0">
-                            <DocumentsTab employee={employee} />
-                        </TabsContent>
+                        <TabsContent value="leave" className="mt-0"><LeaveInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="time" className="mt-0"><AttendanceRecordTab employee={employee} /></TabsContent>
+                        <TabsContent value="government" className="mt-0"><GovernmentEligibilityTab employee={employee} /></TabsContent>
+                        <TabsContent value="background" className="mt-0"><BackgroundInformationTab employee={employee} /></TabsContent>
+                        <TabsContent value="documents" className="mt-0"><DocumentsTab employee={employee} /></TabsContent>
                     </Tabs>
                 </div>
             </div>
 
-            <AvatarPreviewDialog
-                src={avatarSrc}
-                name={basic?.full_name}
-                open={avatarPreviewOpen}
-                onClose={() => setAvatarPreviewOpen(false)}
-            />
-            <AvatarUploadDialog
-                open={avatarUploadOpen}
-                onClose={() => setAvatarUploadOpen(false)}
-                onFileSelected={handleAvatarFileSelected}
-            />
-            <BasicInfoEditDialog
-                employee={employee}
-                open={basicEditOpen}
-                onClose={() => setBasicEditOpen(false)}
-            />
+            <AvatarPreviewDialog src={avatarSrc} name={basic?.full_name} open={avatarPreviewOpen} onClose={() => setAvatarPreviewOpen(false)} />
+            {canEdit && (
+                <AvatarUploadDialog open={avatarUploadOpen} onClose={() => setAvatarUploadOpen(false)} onFileSelected={handleAvatarFileSelected} />
+            )}
+            <BasicInfoEditDialog employee={employee} open={basicEditOpen} onClose={() => setBasicEditOpen(false)} canEdit={canEdit} />
         </AppLayout>
-    );
+    )
 }

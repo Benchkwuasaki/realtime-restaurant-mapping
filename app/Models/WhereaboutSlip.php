@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class WhereaboutSlip extends Model
@@ -18,10 +19,11 @@ class WhereaboutSlip extends Model
         'purpose_description',
         'time_out',
         'time_returned',
+        'date_returned',
         'time_noted',
-        'minutes_gone',   // computed on logReturn — null until employee returns
+        'date_noted',
+        'minutes_gone',
         'status',
-        'return_status',
         'prov_code',
         'city_code',
         'brgy_code',
@@ -31,6 +33,7 @@ class WhereaboutSlip extends Model
 
     protected $casts = [
         'date_filed' => 'date',
+        'date_returned' => 'date',
         'minutes_gone' => 'integer',
     ];
 
@@ -68,7 +71,61 @@ class WhereaboutSlip extends Model
             ->where('employee_id', $employeeId)
             ->where('date_filed', $date)
             ->where('purpose_type', 'personal')
-            ->where('return_status', 'returned')
+            ->where('status', 'returned')
             ->whereNotNull('minutes_gone');
+    }
+
+    /**
+     * Slips that are still outstanding (employee has not returned).
+     * Useful for the scheduled job that flips still_out → not_returned.
+     */
+    public function scopeOutstanding($query)
+    {
+        return $query->whereIn('status', ['still_out', 'not_returned']);
+    }
+
+    // ─── Business logic ───────────────────────────────────────────────────────
+
+    /**
+     * Call from a scheduled job (e.g. every minute, or end-of-day):
+     * if the employee's work_schedule_end has passed and the slip is still
+     * still_out, escalate to not_returned.
+     *
+     * Example usage in a command / observer:
+     *   WhereaboutSlip::outstanding()
+     *       ->whereHas('employee', fn($q) => $q->whereRaw('work_schedule_end <= ?', [now()->format('H:i:s')]))
+     *       ->where('status', 'still_out')
+     *       ->update(['status' => 'not_returned']);
+     */
+    public function escalateIfOverdue(string $workScheduleEnd): void
+    {
+        if ($this->status !== 'still_out') {
+            return;
+        }
+
+        $now = Carbon::now('Asia/Manila');
+        $end = Carbon::parse($now->toDateString().' '.$workScheduleEnd, 'Asia/Manila');
+
+        if ($now->greaterThanOrEqualTo($end)) {
+            $this->update(['status' => 'not_returned']);
+        }
+    }
+
+    /**
+     * Log a return. Computes minutes_gone as the span between time_out on
+     * date_filed and time_returned on date_returned (handles overnight gaps).
+     */
+    public function logReturn(string $dateReturned, string $timeReturned, string $timeNoted): void
+    {
+        $out = Carbon::parse($this->date_filed->toDateString().' '.$this->time_out, 'Asia/Manila');
+        $ret = Carbon::parse($dateReturned.' '.$timeReturned, 'Asia/Manila');
+
+        $this->update([
+            'date_returned' => $dateReturned,
+            'time_returned' => $timeReturned,
+            'time_noted' => $timeNoted,
+            'minutes_gone' => (int) $out->diffInMinutes($ret),
+            'status' => 'returned',
+        ]);
     }
 }

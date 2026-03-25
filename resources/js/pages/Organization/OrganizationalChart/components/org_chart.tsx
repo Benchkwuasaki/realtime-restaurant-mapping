@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Users, Building2, Layers, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Layers, ChevronDown, ChevronUp, Building2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmployeeDetailModal, type EmployeeWithContext } from './employee_detail_card';
 import type { Department, Division, Position, Unit } from '../data/schema';
@@ -92,7 +92,7 @@ const PositionNode: React.FC<{
             className={`flex flex-col items-center gap-2 p-3 rounded-xl
                 border bg-card text-card-foreground
                 shadow-sm cursor-pointer transition-all duration-200
-                min-w-[130px] max-w-[160px]
+                min-w-32.5 max-w-40
                 ${isHighlighted
                     ? 'border-primary ring-2 ring-primary/40 shadow-lg shadow-primary/20'
                     : 'border-border hover:shadow-md hover:border-primary/40'
@@ -163,7 +163,7 @@ const UnitNode: React.FC<{
             className={`group flex flex-col items-center gap-2 p-3 rounded-xl
                 border bg-card text-card-foreground
                 shadow-sm cursor-pointer transition-all duration-200
-                min-w-[130px] max-w-[160px] text-center
+                min-w-32.5 max-w-40 text-center
                 ${isHighlighted
                     ? 'border-primary ring-2 ring-primary/40 shadow-lg shadow-primary/20'
                     : 'border-border hover:shadow-md hover:border-primary/40'
@@ -259,7 +259,7 @@ const DivisionNode: React.FC<{
                 data-employee-ids={allEmployees.map(e => e.id).join(',')}
                 className={`group relative flex flex-col items-center gap-2 p-4 rounded-lg
                     border bg-card text-card-foreground
-                    shadow-sm transition-all duration-200 min-w-[160px] max-w-[200px]
+                    shadow-sm transition-all duration-200 min-w-40 max-w-50
                     ${isHighlighted
                         ? 'border-primary ring-2 ring-primary/40 shadow-lg shadow-primary/20'
                         : 'border-border hover:shadow-md hover:border-primary/40'
@@ -670,20 +670,17 @@ export const OrgChart = forwardRef<OrgChartHandle, OrgChartProps>(
                                 border-2 border-primary/30 bg-card text-card-foreground
                                 shadow-md hover:shadow-lg hover:border-primary/60
                                 cursor-pointer transition-all duration-200
-                                min-w-[200px] max-w-[230px]"
+                                min-w-50 max-w-57.5"
                             >
                                 <div className="relative">
-                                    <SafeAvatar
-                                        src={deptHead?.avatarUrl}
-                                        alt={deptHeadName ?? department.name}
-                                        fallback={department.acronym?.substring(0, 2) || 'DP'}
-                                        className="h-20 w-20 ring-4 ring-primary/20
-                                        group-hover:ring-primary/40 transition-all
-                                        bg-accent text-accent-foreground font-bold text-lg"
-                                    />
+                                    <div className="h-20 w-20 rounded-full ring-4 ring-primary/20
+        group-hover:ring-primary/40 transition-all
+        bg-accent flex items-center justify-center">
+                                        <Building2 className="h-9 w-9 text-accent-foreground" />
+                                    </div>
                                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary
-                                    rounded-full ring-2 ring-background
-                                    flex items-center justify-center">
+    rounded-full ring-2 ring-background
+    flex items-center justify-center">
                                         <div className="w-2 h-2 bg-primary-foreground rounded-full" />
                                     </div>
                                 </div>

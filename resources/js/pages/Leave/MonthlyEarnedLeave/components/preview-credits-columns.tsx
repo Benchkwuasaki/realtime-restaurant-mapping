@@ -3,8 +3,8 @@
 import React, { useMemo } from "react"
 import { type DataTableHeaderGroupCell } from "@/components/shared/data-table/data-table"
 import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
-import { CreditBadge, EmployeeAvatar } from "./history-columns"
 import { type LeaveType, type PreviewRow, type CreditStatus } from "../data/schema"
+import { CreditBadge, EmployeeAvatar } from "./history-columns"
 
 // ─── Row type ─────────────────────────────────────────────────────────────────
 
@@ -60,6 +60,53 @@ export function usePreviewCreditColumns(
                     <div className="flex items-center gap-2">
                         <EmployeeAvatar url={row.original.avatar_url} name={row.original.name} />
                         <span className="text-sm">{row.original.name}</span>
+                    </div>
+                ),
+                mobileCard: (row) => (
+                    <div className="flex flex-col bg-background overflow-hidden">
+                        {/* Card body */}
+                        <div className="px-4 pt-4 pb-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                                <EmployeeAvatar url={row.avatar_url} name={row.name} />
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-semibold text-foreground truncate">{row.name}</span>
+                                    <span className="text-xs text-muted-foreground truncate">{row.department}</span>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <span className="text-xs text-muted-foreground">{row.employment_classification}</span>
+                                <span className="text-xs text-muted-foreground">{row.minutes_worked} min</span>
+                            </div>
+                        </div>
+                        {/* Per-leave-type credit rows */}
+                        <div className="border-t border-border">
+                            <div className="grid grid-cols-4 bg-muted/40 px-4 py-1.5">
+                                <span className="text-[10px] font-medium text-muted-foreground col-span-2">Leave Type</span>
+                                <span className="text-[10px] font-medium text-muted-foreground text-right">Credit</span>
+                                <span className="text-[10px] font-medium text-muted-foreground text-right">New Bal.</span>
+                            </div>
+                            <div className="divide-y divide-border">
+                                {leaveTypes.map((lt) => {
+                                    const vals = row.leaves[lt.leave_type_id]
+                                    if (!vals) return null
+                                    return (
+                                        <div key={lt.leave_type_id} className="grid grid-cols-4 items-center px-4 py-2">
+                                            <span className="text-xs text-muted-foreground col-span-2 truncate">{lt.leave_type_name}</span>
+                                            <span className="text-xs font-medium text-green-600 dark:text-green-400 text-right">
+                                                +{vals.credit.toFixed(2)}
+                                            </span>
+                                            <span className="text-xs font-semibold text-primary text-right">
+                                                {vals.after.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                        {/* Footer */}
+                        <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
+                            <CreditBadge status={row.credit_status} />
+                        </div>
                     </div>
                 ),
             },

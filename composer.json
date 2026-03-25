@@ -52,7 +52,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve --port=8000\" \"php artisan queue:listen --tries=1\" \"npm run dev\" --names='server,queue,vite'"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74,#86efac,#f9a8d4,#fcd34d\" \"php artisan serve --port=8000\" \"php artisan serve --host=0.0.0.0 --port=8001\" \"php artisan queue:listen --tries=1\" \"php artisan schedule:work\" \"npm run dev\" \"php artisan reverb:start\" --names='server,camera-api,queue,scheduler,vite,reverb'"
         ],
         "dev:ssr": [
             "npm run build:ssr",

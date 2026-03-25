@@ -43,7 +43,9 @@ return new class extends Migration
                 ->cascadeOnDelete();
             $table->foreignId('leave_type_id')
                 ->constrained('leave_types', 'leave_type_id');
-            $table->unsignedSmallInteger('attendance_days');
+            // Total Minutes Worked (TMW) by the employee in the posting period.
+            // Used in the CSC formula: accrual = 1.25 / (TWD×8×60) × TMW
+            $table->unsignedInteger('minutes_worked')->default(0);
             $table->decimal('accrual_earned', 8, 4);
 
             $table->decimal('balance_before', 8, 4)->default(0);

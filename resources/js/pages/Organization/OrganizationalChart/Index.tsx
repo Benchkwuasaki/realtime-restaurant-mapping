@@ -16,8 +16,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 function countEmployees(dept: Department): number {
-    const top  = (dept.topPositions ?? []).reduce((s, p) => s + (p.employees?.length ?? 0), 0);
-    const div  = (dept.divisions ?? []).reduce((ds, d) =>
+    const top = (dept.topPositions ?? []).reduce((s, p) => s + (p.employees?.length ?? 0), 0);
+    const div = (dept.divisions ?? []).reduce((ds, d) =>
         ds + (d.positions ?? []).reduce((ps, p) => ps + (p.employees?.length ?? 0), 0), 0);
     const unit = (dept.divisions ?? []).reduce((ds, d) =>
         ds + (d.units ?? []).reduce((us, u) =>
@@ -38,7 +38,7 @@ function getDeptHead(dept: Department) {
 }
 
 export default function OrganizationalChartIndex({ organizationalChart }: Props) {
-    const departments    = organizationalChart ?? [];
+    const departments = organizationalChart ?? [];
     const totalEmployees = departments.reduce((s, d) => s + countEmployees(d), 0);
     const totalDivisions = departments.reduce((s, d) => s + (d.divisions?.length ?? 0), 0);
 
@@ -50,22 +50,18 @@ export default function OrganizationalChartIndex({ organizationalChart }: Props)
                 <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
                     {/* Page header */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10
-                                flex items-center justify-center shrink-0">
-                                <Network className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                            </div>
-                            <h1 className="text-lg sm:text-xl font-bold text-foreground">
-                                Organizational Chart
-                            </h1>
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10
+                            flex items-center justify-center shrink-0">
+                            <Network className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                         </div>
-                        <p className="text-xs sm:text-sm text-muted-foreground ml-11">
-                            Browse departments and view their structure, divisions, and personnel.
-                        </p>
+                        <h1 className="text-lg sm:text-xl font-bold text-foreground">
+                            Organizational Chart
+                        </h1>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 max-w-300 sm:gap-3">
+                    {/* Stat cards */}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <StatCard
                             title="Departments"
                             value={departments.length}
@@ -83,6 +79,12 @@ export default function OrganizationalChartIndex({ organizationalChart }: Props)
                         />
                     </div>
 
+                    {/* Section label */}
+                    <div className="flex items-center gap-2 text-base font-semibold sm:text-lg">
+                        <Building2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                        Departments
+                    </div>
+
                     {/* Department grid */}
                     {departments.length === 0 ? (
                         <div className="bg-card border border-border rounded-lg shadow-sm
@@ -94,13 +96,10 @@ export default function OrganizationalChartIndex({ organizationalChart }: Props)
                             </p>
                         </div>
                     ) : (
-                        /* 1 col mobile → 2 col sm → 3 col lg → 4 col xl */
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {departments.map(dept => {
-                                const head     = getDeptHead(dept);
                                 const empCount = countEmployees(dept);
                                 const divCount = dept.divisions?.length ?? 0;
-                                const acronym  = dept.acronym?.substring(0, 2) || 'DP';
 
                                 return (
                                     <Link
@@ -114,25 +113,13 @@ export default function OrganizationalChartIndex({ organizationalChart }: Props)
                                             transition-colors duration-200" />
 
                                         <div className="p-3 sm:p-4">
-                                            {/* Avatar + badge */}
+                                            {/* Icon + badge */}
                                             <div className="flex items-start justify-between mb-3">
-                                                <div className="relative">
-                                                    {head?.avatarUrl ? (
-                                                        <img
-                                                            src={head.avatarUrl}
-                                                            alt={head.name}
-                                                            className="h-11 w-11 sm:h-12 sm:w-12 rounded-full
-                                                                object-cover ring-2 ring-border"
-                                                        />
-                                                    ) : (
-                                                        <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-full
-                                                            bg-accent ring-2 ring-border flex items-center
-                                                            justify-center text-sm font-bold text-accent-foreground">
-                                                            {head ? head.initials : acronym}
-                                                        </div>
-                                                    )}
+                                                <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-full
+                                                    bg-accent ring-2 ring-border flex items-center justify-center shrink-0">
+                                                    <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-accent-foreground" />
                                                 </div>
-                                                <Badge variant="outline" className="font-mono text-xs shrink-0">
+                                                <Badge variant="outline" className="font-mono text-xs shrink-0 ml-2">
                                                     {dept.acronym}
                                                 </Badge>
                                             </div>
@@ -146,24 +133,24 @@ export default function OrganizationalChartIndex({ organizationalChart }: Props)
 
                                             {/* Stats + arrow */}
                                             <div className="flex items-center justify-between
-                                                pt-2.5 border-t border-border">
+                                                pt-2.5 border-t border-border mt-2.5">
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex items-center gap-1.5">
                                                         <Layers className="h-3 w-3 text-muted-foreground" />
                                                         <span className="text-xs text-muted-foreground">
-                                                            {divCount}
+                                                            {divCount} {divCount === 1 ? 'division' : 'divisions'}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5">
                                                         <Users className="h-3 w-3 text-muted-foreground" />
                                                         <span className="text-xs text-muted-foreground">
-                                                            {empCount}
+                                                            {empCount} {empCount === 1 ? 'employee' : 'employees'}
                                                         </span>
                                                     </div>
                                                 </div>
                                                 <ChevronRight className="h-4 w-4 text-muted-foreground/40
                                                     group-hover:text-primary group-hover:translate-x-0.5
-                                                    transition-all duration-200" />
+                                                    transition-all duration-200 shrink-0" />
                                             </div>
                                         </div>
                                     </Link>

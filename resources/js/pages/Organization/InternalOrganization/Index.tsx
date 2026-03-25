@@ -9,7 +9,7 @@ import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
 
 import { columns } from "./components/columns"
-import { OrganizationDialog, type InternalOrgType } from "./components/OrganizationDialog"
+import { OrganizationDialog, type InternalOrgType, type EmployeeOption } from "./components/OrganizationDialog"
 import { type InternalOrganization } from "./data/schema"
 
 // ─── Breadcrumbs ──────────────────────────────────────────────────────────────
@@ -34,6 +34,7 @@ const canBeDeductedFilterOptions = [
 interface Props {
   organizations: InternalOrganization[]
   orgTypes: InternalOrgType[]
+  employees: EmployeeOption[]
   totalOrganizations: number
   activeOrganizations: number
   inactiveOrganizations: number
@@ -44,11 +45,17 @@ interface Props {
 export default function Index({
   organizations,
   orgTypes,
+  employees,
   totalOrganizations,
   activeOrganizations,
   inactiveOrganizations,
 }: Props) {
   const [dialogOrg, setDialogOrg] = useState<InternalOrganization | null | undefined>(undefined)
+
+  const orgTypeFilterOptions = useMemo(
+    () => orgTypes.map((t) => ({ value: t.internal_org_type, label: t.internal_org_type })),
+    [orgTypes]
+  )
 
   const tableColumns = useMemo(
     () => columns({ onEdit: (org) => setDialogOrg(org) }),
@@ -61,7 +68,7 @@ export default function Index({
 
       <div className="flex h-full flex-1 flex-col gap-8 p-8">
 
-        <div className="max-w-300 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="max-w-300 grid grid-cols-1 gap-4 sm:grid-cols-1">
           <StatCard
             title="Total Organizations"
             value={totalOrganizations}
@@ -95,6 +102,11 @@ export default function Index({
           searchPlaceholder="Search organizations..."
           filters={[
             {
+              columnId: 'type',           
+              title: 'Type',
+              options: orgTypeFilterOptions,
+            },
+            {
               columnId: 'status',
               title: 'Status',
               options: statusFilterOptions,
@@ -123,6 +135,8 @@ export default function Index({
         onOpenChange={(open) => { if (!open) setDialogOrg(undefined) }}
         organization={dialogOrg}
         orgTypes={orgTypes}
+        employees={employees}
+        redirectTo={route("internal-organization.index")}
       />
     </AppLayout>
   )

@@ -40,6 +40,7 @@ const CATEGORY_BADGE_VARIANTS: Record<ServiceCategory, string> = {
     Share_Capital: 'bg-purple-100 text-purple-700 border-purple-200',
 };
 
+
 function CategoryBadge({ category }: { category: ServiceCategory | null | undefined }) {
     if (!category) {
         return <span className="text-xs text-muted-foreground">—</span>;

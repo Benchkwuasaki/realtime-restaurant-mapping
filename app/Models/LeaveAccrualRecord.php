@@ -13,7 +13,7 @@ class LeaveAccrualRecord extends Model
         'leave_accrual_posting_id',
         'employee_id',
         'leave_type_id',
-        'attendance_days',
+        'minutes_worked',   // Total Minutes Worked (TMW) for the posting period
         'accrual_earned',
         'balance_before',
         'balance_after',
@@ -24,7 +24,7 @@ class LeaveAccrualRecord extends Model
         'accrual_earned' => 'decimal:4',
         'balance_before' => 'decimal:4',
         'balance_after'  => 'decimal:4',
-        'attendance_days'=> 'integer',
+        'minutes_worked' => 'integer',
     ];
 
     public function posting(): BelongsTo

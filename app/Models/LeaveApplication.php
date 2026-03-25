@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Observers\LeaveApplicationObserver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -10,6 +11,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class LeaveApplication extends Model
 {
     use SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::observe(LeaveApplicationObserver::class);
+    }
 
     protected $primaryKey = 'leave_application_id';
 
@@ -33,7 +39,7 @@ class LeaveApplication extends Model
         'status',
         'for_disapproval_reason',
         'disapproved_reason',
-        
+
     ];
 
     protected $casts = [

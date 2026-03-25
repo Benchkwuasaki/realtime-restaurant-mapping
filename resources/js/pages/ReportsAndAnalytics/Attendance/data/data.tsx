@@ -3,46 +3,56 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react"
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface DepartmentStat {
-    department: string
-    total: number
-    present: number
-    late: number
-    absent: number
-    half_day: number
-    rate: number   // attendance rate %
+    department:  string
+    total:       number
+    present:     number
+    late:        number
+    absent:      number
+    half_day:    number
+    on_leave_wp: number   // Approved leave with pay
+    on_leave_np: number   // Approved leave no pay
+    on_leave:    number   // Combined total (wp + np)
+    rate:        number   // Attendance rate % (PRESENT + HALF_DAY / total)
 }
 
 export interface DailyStat {
-    day: string    // e.g. "Mon"
-    date: string   // ISO date
-    present: number
-    late: number
-    absent: number
-    half_day: number
+    day:         string   // e.g. "Mon 18"
+    date:        string   // ISO date
+    present:     number
+    late:        number
+    absent:      number
+    half_day:    number
+    on_leave_wp: number
+    on_leave_np: number
 }
 
 export interface WeeklyStat {
-    week: string   // e.g. "Wk 1"
-    present: number
-    absent: number
-    late: number
-    rate: number
+    week:     string   // e.g. "Apr 14"
+    present:  number
+    absent:   number
+    on_leave: number
+    late:     number
+    rate:     number
 }
 
 export interface MonthlyTrend {
-    month: string  // e.g. "Jan"
-    rate: number
-    trend: number
+    month:    string   // e.g. "Jan 2026"
+    rate:     number
+    trend:    number
+    on_leave: number
 }
 
 export interface Summary {
-    total_employees: number
-    present_today: number
-    late_today: number
-    absent_today: number
-    half_day_today: number
-    attendance_rate: number
-    rate_delta: number
+    total_employees:      number
+    present_today:        number
+    late_today:           number
+    absent_today:         number
+    half_day_today:       number
+    on_leave_today:       number
+    on_leave_wp_today:    number
+    on_leave_np_today:    number
+    attendance_rate:      number
+    rate_delta:           number
     rate_delta_direction: "up" | "down" | "same"
 }
 
@@ -56,12 +66,12 @@ export function rateCategory(rate: number): RateCategory {
     return "poor"
 }
 
-// ─── Filter options (for DataTableFacetedFilter) ──────────────────────────────
+// ─── Filter options ───────────────────────────────────────────────────────────
 
 export const ratingOptions = [
-    { value: "good",    label: "Good (≥ 92%)"     },
-    { value: "average", label: "Average (85–91%)"  },
-    { value: "poor",    label: "Poor (< 85%)"      },
+    { value: "good",    label: "Good (≥ 92%)"    },
+    { value: "average", label: "Average (85–91%)" },
+    { value: "poor",    label: "Poor (< 85%)"     },
 ]
 
 // ─── Rate category display maps ───────────────────────────────────────────────
@@ -102,12 +112,15 @@ export const RATE_ICON = {
 export function computeDeptTotals(rows: DepartmentStat[] | undefined | null) {
     const safe = rows ?? []
     return {
-        total:    safe.reduce((s, r) => s + r.total,    0),
-        present:  safe.reduce((s, r) => s + r.present,  0),
-        late:     safe.reduce((s, r) => s + r.late,     0),
-        half_day: safe.reduce((s, r) => s + r.half_day, 0),
-        absent:   safe.reduce((s, r) => s + r.absent,   0),
-        avgRate:  safe.length > 0
+        total:       safe.reduce((s, r) => s + r.total,       0),
+        present:     safe.reduce((s, r) => s + r.present,     0),
+        late:        safe.reduce((s, r) => s + r.late,        0),
+        half_day:    safe.reduce((s, r) => s + r.half_day,    0),
+        absent:      safe.reduce((s, r) => s + r.absent,      0),
+        on_leave_wp: safe.reduce((s, r) => s + r.on_leave_wp, 0),
+        on_leave_np: safe.reduce((s, r) => s + r.on_leave_np, 0),
+        on_leave:    safe.reduce((s, r) => s + r.on_leave,    0),
+        avgRate: safe.length > 0
             ? safe.reduce((s, r) => s + r.rate, 0) / safe.length
             : 0,
     }

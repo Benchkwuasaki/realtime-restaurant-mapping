@@ -15,14 +15,42 @@ class InternalOrganizationController extends Controller
 
     public function index(): Response
     {
-        $organizations = InternalOrganization::with('orgType')->orderBy('name')->get();
+        $organizations = InternalOrganization::with([
+            'orgType',
+            'headEmployee.basicInfo',
+        ])->get()->map(fn($org) => [
+                'internal_organization_id' => $org->internal_organization_id,
+                'code' => $org->code,
+                'name' => $org->name,
+                'type' => $org->orgType?->internal_org_type,  // ← was 'orgType'
+                'head_employee_id' => $org->head_employee_id,
+                'head_name' => $org->headEmployee?->basicInfo
+                    ? trim(
+                        $org->headEmployee->basicInfo->first_name
+                        . ' '
+                        . $org->headEmployee->basicInfo->last_name
+                    )
+                    : null,
+                'payroll_deduction_linked' => (bool) $org->payroll_deduction_linked,
+                'status' => (bool) $org->status,
+                'created_at' => $org->created_at,
+                'updated_at' => $org->updated_at,
+            ]);
 
         return Inertia::render('Organization/InternalOrganization/Index', [
-            'organizations'        => $organizations,
-            'orgTypes'             => InternalOrgType::orderBy('internal_org_type')->get(),
-            'totalOrganizations'   => $organizations->count(),
-            'activeOrganizations'  => $organizations->where('status', true)->count(),
-            'inactiveOrganizations'=> $organizations->where('status', false)->count(),
+            'organizations' => $organizations,
+            'orgTypes' => InternalOrgType::orderBy('internal_org_type')->get(),
+            'employees' => Employee::with('basicInfo')
+                ->get()
+                ->map(fn($e) => [
+                    'id' => (string) $e->employee_id,
+                    'name' => optional($e->basicInfo)->full_name ?? '—',
+                ])
+                ->sortBy('name')
+                ->values(),
+            'totalOrganizations' => $organizations->count(),
+            'activeOrganizations' => $organizations->where('status', true)->count(),
+            'inactiveOrganizations' => $organizations->where('status', false)->count(),
         ]);
     }
 
@@ -36,8 +64,6 @@ class InternalOrganizationController extends Controller
 
         $orgType = InternalOrgType::create($validated);
 
-        // Share the newly created type back as an Inertia prop so the
-        // dialog's onSuccess(page) callback can read it from page.props
         return back()->with('newOrgType', $orgType);
     }
 
@@ -53,15 +79,21 @@ class InternalOrganizationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code'                    => 'required|string|max:50|unique:internal_organizations,code',
-            'name'                    => 'required|string|max:255',
-            'internal_org_type_id'    => 'required|exists:internal_org_types,internal_org_type_id',
-            'head'                    => 'required|string|max:255',
-            'payroll_deduction_linked'=> 'required|boolean',
-            'status'                  => 'required|boolean',
+            'code' => 'required|string|max:50|unique:internal_organizations,code',
+            'name' => 'required|string|max:255',
+            'internal_org_type_id' => 'required|exists:internal_org_types,internal_org_type_id',
+            'head_employee_id' => 'required|exists:employees,employee_id',
+            'payroll_deduction_linked' => 'required|boolean',
+            'status' => 'required|boolean',
         ]);
 
-        InternalOrganization::create($validated);
+        if (!$validated['status']) {
+            $validated['payroll_deduction_linked'] = false;
+        }
+
+        $organization = InternalOrganization::create($validated);
+
+        $organization->members()->syncWithoutDetaching([$validated['head_employee_id']]);
 
         return redirect()->route('internal-organization.index')
             ->with('success', 'Organization created successfully.');
@@ -70,7 +102,7 @@ class InternalOrganizationController extends Controller
     public function storeMembers(Request $request, InternalOrganization $internalOrganization)
     {
         $request->validate([
-            'employee_ids'   => 'required|array|min:1',
+            'employee_ids' => 'required|array|min:1',
             'employee_ids.*' => 'exists:employees,employee_id',
         ]);
 
@@ -85,16 +117,17 @@ class InternalOrganizationController extends Controller
     {
         $internalOrganization->load([
             'orgType',
+            'headEmployee.basicInfo',
             'members.basicInfo',
             'members.item.position.department',
         ]);
 
         $members = $internalOrganization->members->map(fn(Employee $employee) => [
-            'id'         => (string) $employee->employee_id,
-            'name'       => optional($employee->basicInfo)->full_name ?? null,
-            'position'   => optional(optional($employee->item)->position)->position_name ?? null,
+            'id' => (string) $employee->employee_id,
+            'name' => optional($employee->basicInfo)->full_name ?? null,
+            'position' => optional(optional($employee->item)->position)->position_name ?? null,
             'department' => optional(optional(optional($employee->item)->position)->department)->department_name ?? null,
-            'status'     => $employee->status,
+            'status' => $employee->status,
         ]);
 
         $memberIds = $internalOrganization->members->pluck('employee_id');
@@ -103,17 +136,34 @@ class InternalOrganizationController extends Controller
             ->whereNotIn('employee_id', $memberIds)
             ->get()
             ->map(fn(Employee $employee) => [
-                'id'         => (string) $employee->employee_id,
-                'name'       => optional($employee->basicInfo)->full_name ?? null,
-                'position'   => optional(optional($employee->item)->position)->position_name ?? null,
+                'id' => (string) $employee->employee_id,
+                'name' => optional($employee->basicInfo)->full_name ?? null,
+                'position' => optional(optional($employee->item)->position)->position_name ?? null,
                 'department' => optional(optional(optional($employee->item)->position)->department)->department_name ?? null,
             ]);
 
         return Inertia::render('Organization/InternalOrganization/Show', [
-            'organization'       => array_merge($internalOrganization->toArray(), [
+            'organization' => array_merge($internalOrganization->toArray(), [
+                'type' => $internalOrganization->orgType?->internal_org_type,  // ← ensure type is set here too
                 'members' => $members,
+                'head' => $internalOrganization->headEmployee?->basicInfo
+                    ? trim(
+                        $internalOrganization->headEmployee->basicInfo->first_name
+                        . ' '
+                        . $internalOrganization->headEmployee->basicInfo->last_name
+                      )
+                    : null,
             ]),
             'availableEmployees' => $availableEmployees,
+            'orgTypes' => InternalOrgType::orderBy('internal_org_type')->get(),
+            'employees' => Employee::with('basicInfo')
+                ->get()
+                ->map(fn($e) => [
+                    'id' => (string) $e->employee_id,
+                    'name' => optional($e->basicInfo)->full_name ?? '—',
+                ])
+                ->sortBy('name')
+                ->values(),
         ]);
     }
 
@@ -123,26 +173,32 @@ class InternalOrganizationController extends Controller
     {
         return Inertia::render('Organization/InternalOrganization/Edit', [
             'organization' => $internalOrganization->load('orgType'),
-            'orgTypes'     => InternalOrgType::orderBy('internal_org_type')->get(),
+            'orgTypes' => InternalOrgType::orderBy('internal_org_type')->get(),
         ]);
     }
 
     public function update(Request $request, InternalOrganization $internalOrganization)
     {
         $validated = $request->validate([
-            'code'                    => 'required|string|max:50|unique:internal_organizations,code,'
-                                         . $internalOrganization->internal_organization_id
-                                         . ',internal_organization_id',
-            'name'                    => 'required|string|max:255',
-            'internal_org_type_id'    => 'required|exists:internal_org_types,internal_org_type_id',
-            'head'                    => 'required|string|max:255',
-            'payroll_deduction_linked'=> 'required|boolean',
-            'status'                  => 'required|boolean',
+            'code' => 'required|string|max:50|unique:internal_organizations,code,'
+                . $internalOrganization->internal_organization_id
+                . ',internal_organization_id',
+            'name' => 'required|string|max:255',
+            'internal_org_type_id' => 'required|exists:internal_org_types,internal_org_type_id',
+            'head_employee_id' => 'required|exists:employees,employee_id',
+            'payroll_deduction_linked' => 'required|boolean',
+            'status' => 'required|boolean',
         ]);
+
+        if (!$validated['status']) {
+            $validated['payroll_deduction_linked'] = false;
+        }
 
         $internalOrganization->update($validated);
 
-        return redirect()->route('internal-organization.index')
+        $internalOrganization->members()->syncWithoutDetaching([$validated['head_employee_id']]);
+
+        return redirect()->route('internal-organization.show', $internalOrganization->internal_organization_id)
             ->with('success', 'Organization updated successfully.');
     }
 
@@ -150,7 +206,12 @@ class InternalOrganizationController extends Controller
 
     public function toggleStatus(InternalOrganization $internalOrganization)
     {
-        $internalOrganization->update(['status' => !$internalOrganization->status]);
+        $newStatus = !$internalOrganization->status;
+
+        $internalOrganization->update([
+            'status' => $newStatus,
+            'payroll_deduction_linked' => $newStatus ? $internalOrganization->payroll_deduction_linked : false,
+        ]);
 
         return back()->with('success', 'Organization status updated.');
     }
@@ -168,7 +229,7 @@ class InternalOrganizationController extends Controller
     public function bulkDestroy(Request $request)
     {
         $request->validate([
-            'ids'   => 'required|array',
+            'ids' => 'required|array',
             'ids.*' => 'exists:internal_organizations,internal_organization_id',
         ]);
 

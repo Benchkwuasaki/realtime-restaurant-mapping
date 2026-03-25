@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { ChevronLeft, Building2, Layers, Users, FileText, Smartphone, Search, X } from 'lucide-react';
-import React, { useRef, useState, useMemo, useLayoutEffect, useCallback } from 'react';
+import React, { useRef, useState, useMemo, useLayoutEffect } from 'react';
 import { StatCard } from '@/components/shared/stat-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,6 @@ const SafeAvatar: React.FC<{
     </Avatar>
 );
 
-// Collect every employee in the department with their context
 interface EmployeeEntry {
     id: number;
     fullName: string;
@@ -71,16 +70,25 @@ export default function OrganizationalChartShow({ department }: Props) {
     const inputRef   = useRef<HTMLInputElement>(null);
     const searchWrap = useRef<HTMLDivElement>(null);
 
-    const [query, setQuery]             = useState('');
-    const [showDropdown, setDropdown]   = useState(false);
-    const [highlightIds, setHighlight]  = useState<Set<number>>(new Set());
+    const [query, setQuery]               = useState('');
+    const [showDropdown, setDropdown]     = useState(false);
+    const [highlightIds, setHighlight]    = useState<Set<number>>(new Set());
     const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
+    // Track if dropdown should open upward (when near bottom of viewport)
+    const [dropUp, setDropUp]             = useState(false);
 
-    // Reposition dropdown to fixed coords whenever it opens
     useLayoutEffect(() => {
         if (showDropdown && searchWrap.current) {
             const r = searchWrap.current.getBoundingClientRect();
-            setDropdownRect({ top: r.bottom + 6, left: r.left, width: r.width });
+            const spaceBelow = window.innerHeight - r.bottom;
+            const dropHeight = 320; // approximate max dropdown height
+            const shouldDropUp = spaceBelow < dropHeight && r.top > dropHeight;
+            setDropUp(shouldDropUp);
+            setDropdownRect({
+                top: shouldDropUp ? r.top - 6 : r.bottom + 6,
+                left: r.left,
+                width: r.width,
+            });
         }
     }, [showDropdown, query]);
 
@@ -142,7 +150,7 @@ export default function OrganizationalChartShow({ department }: Props) {
                         All Departments
                     </Link>
 
-                    {/* ── Department header card ─────────────────────────────── */}
+                    {/* ── Department header card ── */}
                     <div className="bg-card text-card-foreground rounded-lg border border-border shadow-sm">
                         <div className="p-4 sm:p-5">
 
@@ -181,8 +189,8 @@ export default function OrganizationalChartShow({ department }: Props) {
                                 </div>
                             </div>
 
-                            {/* ── Stats — full width stretched cards ─────────── */}
-                            <div className="grid grid-cols-2 gap-2 max-w-full sm:gap-3 pt-3 border-t border-border">
+                            {/* Stats */}
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-3 border-t border-border">
                                 <StatCard
                                     title="Divisions"
                                     value={divCount}
@@ -192,12 +200,12 @@ export default function OrganizationalChartShow({ department }: Props) {
                                 <StatCard
                                     title="Employees"
                                     value={empCount}
-                                    description='All registered employees'
+                                    description="All registered employees"
                                     icon={<Users className="h-4 w-4 text-primary" />}
                                 />
                             </div>
 
-                            {/* ── Search bar ──────────────────────────────── */}
+                            {/* Search bar */}
                             <div className="relative mt-3" ref={searchWrap}>
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2
                                     h-4 w-4 text-muted-foreground pointer-events-none z-10" />
@@ -225,16 +233,13 @@ export default function OrganizationalChartShow({ department }: Props) {
                                     </button>
                                 )}
                             </div>
-
                         </div>
                     </div>
 
-                    {/* ── Org chart canvas ───────────────────────────────────── */}
-                    <div className="bg-card text-card-foreground rounded-lg border border-border
-                        shadow-sm overflow-hidden"
-                        style={{ height: 'calc(100svh - 360px)', minHeight: '320px' }}
-                    >
-                        {/* Toolbar — simple title + hint only */}
+                    {/* ── Org chart canvas ── */}
+                    <div className="bg-card text-card-foreground rounded-lg border border-border shadow-sm overflow-hidden">
+
+                        {/* Toolbar */}
                         <div className="flex items-center justify-between px-3 sm:px-4 py-2.5
                             border-b border-border bg-muted/30">
                             <div className="flex items-center gap-2">
@@ -252,7 +257,11 @@ export default function OrganizationalChartShow({ department }: Props) {
                             </p>
                         </div>
 
-                        <div className="relative w-full h-[calc(100%-41px)]">
+                        {/* Chart area — needs a concrete height so OrgChart (canvas/SVG) can initialise */}
+                        <div
+                            className="relative w-full"
+                            style={{ height: 'calc(100svh - 360px)', minHeight: '320px' }}
+                        >
                             {!hasData ? (
                                 <div className="flex items-center justify-center h-full">
                                     <div className="text-center px-4">
@@ -274,14 +283,17 @@ export default function OrganizationalChartShow({ department }: Props) {
 
                 </div>
             </div>
-            {/* ── Fixed dropdown portal — renders outside all overflow:hidden parents ── */}
+
+            {/* ── Fixed dropdown portal ── */}
             {showDropdown && dropdownRect && (results.length > 0 || query.trim().length >= 2) && (
                 <div
                     style={{
                         position: 'fixed',
-                        top: dropdownRect.top,
-                        left: dropdownRect.left,
-                        width: dropdownRect.width,
+                        ...(dropUp
+                            ? { bottom: window.innerHeight - dropdownRect.top, top: 'auto' }
+                            : { top: dropdownRect.top }),
+                        left: Math.max(8, Math.min(dropdownRect.left, window.innerWidth - dropdownRect.width - 8)),
+                        width: Math.min(dropdownRect.width, window.innerWidth - 16),
                         zIndex: 9999,
                     }}
                     className="bg-popover border border-border rounded-lg shadow-lg overflow-hidden"
@@ -291,15 +303,15 @@ export default function OrganizationalChartShow({ department }: Props) {
                         <button
                             key={emp.id}
                             onMouseDown={() => handleSelect(emp)}
-                            className={`w-full flex items-center gap-3 px-4 py-2.5
+                            className={`w-full flex items-center gap-3 px-3 sm:px-4 py-2.5
                                 hover:bg-accent transition-colors text-left
                                 ${i > 0 ? 'border-t border-border/40' : ''}`}
                         >
                             {emp.avatarUrl ? (
                                 <img src={emp.avatarUrl} alt={emp.fullName}
-                                    className="h-9 w-9 rounded-full object-cover ring-1 ring-border shrink-0" />
+                                    className="h-8 w-8 sm:h-9 sm:w-9 rounded-full object-cover ring-1 ring-border shrink-0" />
                             ) : (
-                                <div className="h-9 w-9 rounded-full bg-accent shrink-0
+                                <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-accent shrink-0
                                     flex items-center justify-center
                                     text-xs font-bold text-accent-foreground ring-1 ring-border">
                                     {emp.initials}

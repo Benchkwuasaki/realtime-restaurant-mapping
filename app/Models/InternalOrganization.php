@@ -19,8 +19,8 @@ class InternalOrganization extends Model
     protected $fillable = [
         'code',
         'name',
-        'internal_org_type_id',  // FK replaces the old 'type' string
-        'head',
+        'internal_org_type_id',
+        'head_employee_id',
         'payroll_deduction_linked',
         'status',
     ];
@@ -35,6 +35,11 @@ class InternalOrganization extends Model
     public function orgType(): BelongsTo
     {
         return $this->belongsTo(InternalOrgType::class, 'internal_org_type_id', 'internal_org_type_id');
+    }
+
+    public function headEmployee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'head_employee_id', 'employee_id');
     }
 
     public function members(): BelongsToMany
