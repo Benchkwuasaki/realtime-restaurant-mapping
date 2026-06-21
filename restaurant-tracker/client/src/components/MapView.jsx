@@ -43,7 +43,6 @@ function NearbyLoader({ onLoad, onLoading }) {
       const center = map.getCenter();
       const zoom = map.getZoom();
 
-      // Adjust radius based on zoom level
       const radius = zoom >= 15 ? 2000 : zoom >= 13 ? 5000 : zoom >= 11 ? 15000 : 30000;
 
       const query = `
@@ -97,7 +96,20 @@ export default function MapView({ restaurants, onMapClick, onSelect, tileType, f
     satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   };
 
-  const savedIds = new Set(restaurants.map(r => r.name.toLowerCase()));
+  const savedNames = new Set(restaurants.map(r => r.name.toLowerCase()));
+
+  // Returns true if an OSM node is within ~50m of any saved restaurant
+  const isNearSaved = (lat, lon) =>
+    restaurants.some(r => {
+      const dlat = r.location.coordinates[1] - lat;
+      const dlng = r.location.coordinates[0] - lon;
+      return Math.sqrt(dlat * dlat + dlng * dlng) < 0.0005;
+    });
+
+  // An OSM node is "already tracked" if name matches OR coordinates are very close
+  const isAlreadyTracked = (n) =>
+    (n.tags?.name && savedNames.has(n.tags.name.toLowerCase())) ||
+    isNearSaved(n.lat, n.lon);
 
   return (
     <div style={{ height: '100%', width: '100%', position: 'relative' }}>
@@ -125,8 +137,9 @@ export default function MapView({ restaurants, onMapClick, onSelect, tileType, f
         <NearbyLoader onLoad={setNearby} onLoading={setLoading} />
         <FlyController flyTo={flyTo} />
 
+        {/* Orange markers: OSM places NOT yet in your tracker */}
         {nearby
-          .filter(n => n.tags?.name && !savedIds.has(n.tags.name.toLowerCase()))
+          .filter(n => n.tags?.name && !isAlreadyTracked(n))
           .map(n => (
             <Marker
               key={`osm-${n.id}`}
@@ -154,6 +167,7 @@ export default function MapView({ restaurants, onMapClick, onSelect, tileType, f
             </Marker>
           ))}
 
+        {/* Purple/Green markers: your saved restaurants */}
         {restaurants.map(r => (
           <Marker
             key={r._id}
