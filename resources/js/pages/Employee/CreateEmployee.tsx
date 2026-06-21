@@ -1,0 +1,1685 @@
+import { useForm, router, Head } from "@inertiajs/react"
+import {
+    Plus, Trash2, List, Save, Pencil,
+    EyeOff,
+    Eye,
+} from "lucide-react"
+import { type FormEventHandler, useState, useMemo, useEffect } from "react"
+import { toast } from "sonner"
+import { route } from "ziggy-js"
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog"
+import {
+    DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
+import { Stepper } from "@/components/ui/stepper"
+import AppLayout from "@/layouts/app-layout"
+import type { BreadcrumbItem } from "@/types"
+import { PhoneInput } from "@/components/phone-input"
+import { isValidPhoneNumber } from 'react-phone-number-input'
+
+// ─── Interfaces ───────────────────────────────────────────────────────────────
+
+export interface Position {
+    position_name: string
+    position_type: "Regular" | "Casual" | "Job Order"
+    department_id?: number | null
+    division_id?: number | null
+    unit_id?: number | null
+    department?: { department_name: string }
+    division?: { division_name: string }
+    unit?: { unit_name: string }
+}
+
+export interface Item {
+    item_id: number
+    is_occupied: boolean
+    position?: Position
+}
+
+export interface SalaryGradeStep {
+    salary_grade_step_id: number
+    salary_grade: number
+    step: number
+    monthly_salary: number
+}
+
+export interface EmploymentClassification {
+    id: number
+    name: string
+    description?: string
+}
+
+export interface Role {
+    id: number
+    name: string
+}
+
+export interface CreateEmployeeProps {
+    items: Item[]
+    salaryGradeSteps: SalaryGradeStep[]
+    employmentClassifications: EmploymentClassification[]
+    roles: Role[]
+}
+
+// ─── Collection row types ─────────────────────────────────────────────────────
+
+interface AddressRow { [key: string]: string; street_address: string; city: string; state: string; zip_code: string }
+interface FamilyRow {
+    [key: string]: string
+    full_name: string
+    contact_number: string
+    relationship: string
+    sex: string
+    date_of_birth: string
+    place_of_birth: string
+}
+interface GovernmentRow { [key: string]: string; account_type: string; account_number: string; custom_type_name: string }
+interface EducationRow { [key: string]: string; level: string; school_name: string; school_address: string; graduation_date: string; degree: string }
+interface EligibilityRow { [key: string]: string; eligibility_name: string; year_passed: string }
+
+// ─── Position group ───────────────────────────────────────────────────────────
+
+interface PositionGroup {
+    groupKey: string
+    positionName: string
+    displayLabel: string
+    position: Position | undefined
+    items: Item[]
+    totalSlots: number
+    availableSlots: number
+    isFull: boolean
+}
+
+function formatRoleLabel(roleName: string): string {
+    if (roleName === "document_tracking_operator") return "Document Tracking Operator"
+    return roleName
+        .split("_")
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ")
+}
+
+function buildPositionGroups(items: Item[]): PositionGroup[] {
+    const map = new Map<string, PositionGroup>()
+    for (const item of items) {
+        const pos = item.position
+        const key = pos
+            ? [pos.position_name, pos.department_id ?? "null", pos.division_id ?? "null", pos.unit_id ?? "null"].join("::")
+            : `__item_${item.item_id}`
+
+        if (!map.has(key)) {
+            const parts: string[] = []
+            if (pos?.department?.department_name) parts.push(pos.department.department_name)
+            if (pos?.division?.division_name) parts.push(pos.division.division_name)
+            if (pos?.unit?.unit_name) parts.push(pos.unit.unit_name)
+            const orgLabel = parts.join(" / ")
+            const displayLabel = orgLabel
+                ? `${pos?.position_name ?? `Item #${item.item_id}`} — ${orgLabel}`
+                : (pos?.position_name ?? `Item #${item.item_id}`)
+
+            map.set(key, {
+                groupKey: key,
+                positionName: pos?.position_name ?? `Item #${item.item_id}`,
+                displayLabel,
+                position: pos,
+                items: [],
+                totalSlots: 0,
+                availableSlots: 0,
+                isFull: false,
+            })
+        }
+        const grp = map.get(key)!
+        grp.items.push(item)
+        grp.totalSlots++
+        if (!item.is_occupied) grp.availableSlots++
+    }
+    for (const grp of map.values()) grp.isFull = grp.availableSlots === 0
+    return Array.from(map.values()).sort((a, b) => a.displayLabel.localeCompare(b.displayLabel))
+}
+
+// ─── Position type helpers ────────────────────────────────────────────────────
+
+const JOB_ORDER_CLASSIFICATION = "Job Order"
+
+function isJobOrderPosition(grp: PositionGroup): boolean {
+    return grp.position?.position_type === "Job Order"
+}
+
+// ─── Validation helpers ───────────────────────────────────────────────────────
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*\-_=+[\]{};:'",.<>?/\\|`~])[A-Za-z\d!@#$%^&*\-_=+[\]{};:'",.<>?/\\|`~]{8,}$/
+
+function validateEmail(email: string): boolean {
+    return EMAIL_REGEX.test(email)
+}
+
+function validatePassword(password: string): boolean {
+    return PASSWORD_REGEX.test(password)
+}
+
+// ─── Steps ────────────────────────────────────────────────────────────────────
+
+const steps = [
+    { title: "Personal Information", description: "Step 1" },
+    { title: "Employment Details", description: "Step 2" },
+    { title: "Address", description: "Step 3" },
+    { title: "Family Information", description: "Step 4" },
+    { title: "Government Accounts", description: "Step 5" },
+    { title: "Education", description: "Step 6" },
+    { title: "Eligibility", description: "Step 7" },
+    { title: "Review & Submit", description: "Step 8" },
+]
+
+const REQUIRED: Record<number, { field: string; label: string }[]> = {
+    0: [
+        { field: "first_name", label: "First Name" },
+        { field: "last_name", label: "Last Name" },
+        { field: "birth_date", label: "Date of Birth" },
+        { field: "sex", label: "Sex" },
+        { field: "civil_status", label: "Civil Status" },
+        { field: "phone_number", label: "Phone Number" },
+    ],
+    1: [
+        { field: "item_id", label: "Position" },
+        { field: "salary_grade", label: "Salary Grade" },
+        { field: "salary_grade_step_id", label: "Step" },
+        { field: "employment_classification", label: "Employment Classification" },
+        { field: "work_id", label: "Work ID" },
+        { field: "work_email", label: "Work Email" },
+        { field: "password", label: "Password" },
+        { field: "date_applied", label: "Date Applied" },
+        { field: "date_hired", label: "Date Hired" },
+        { field: "work_schedule_start", label: "Schedule Start" },
+        { field: "work_schedule_end", label: "Schedule End" },
+        { field: "break_start", label: "Break Start" },
+        { field: "break_end", label: "Break End" },
+        { field: "status", label: "Status" },
+    ],
+}
+
+type ErrFn = (field: string) => string | undefined
+type SetDataFn = (field: string, value: string | string[]) => void
+
+// ─── Small helpers ────────────────────────────────────────────────────────────
+
+function Req() {
+    return <span className="text-destructive ml-0.5">*</span>
+}
+
+function FieldError({ message }: { message?: string }) {
+    if (!message) return null
+    return <p className="text-xs text-destructive mt-1">{message}</p>
+}
+
+function ReviewRow({ label, value }: { label: string; value?: string }) {
+    return (
+        <div className="flex flex-col gap-0.5 text-sm py-0.5 sm:flex-row sm:gap-2">
+            <span className="w-56 shrink-0 font-medium text-muted-foreground">{label}</span>
+            <span className="text-foreground">
+                {value || <span className="italic text-muted-foreground/50">—</span>}
+            </span>
+        </div>
+    )
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+    return (
+        <h3 className="mt-5 mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground border-b pb-1">
+            {children}
+        </h3>
+    )
+}
+
+function EmptyState({ label }: { label: string }) {
+    return <p className="text-sm text-muted-foreground italic py-2">{label}</p>
+}
+
+function CollectionSection({ title, onAdd, addLabel, children }: {
+    title?: string; onAdd: () => void; addLabel: string; children: React.ReactNode
+}) {
+    return (
+        <div className="space-y-4">
+            {title && <p className="text-sm text-muted-foreground">{title}</p>}
+            {children}
+            <Button type="button" variant="outline" size="sm" onClick={onAdd} className="gap-1.5">
+                <Plus className="w-3.5 h-3.5" /> {addLabel}
+            </Button>
+        </div>
+    )
+}
+
+function RowCard({ onRemove, children }: { onRemove: () => void; children: React.ReactNode }) {
+    return (
+        <div className="relative border rounded-md p-4 bg-muted/30">
+            <button
+                type="button"
+                onClick={onRemove}
+                className="absolute top-3 right-3 text-muted-foreground hover:text-destructive transition-colors"
+                aria-label="Remove"
+            >
+                <Trash2 className="w-4 h-4" />
+            </button>
+            {children}
+        </div>
+    )
+}
+
+// ─── Manage Classifications Dialog ────────────────────────────────────────────
+
+function ManageClassificationsDialog({
+    open, onClose, classifications, onCreated,
+}: {
+    open: boolean
+    onClose: () => void
+    classifications: EmploymentClassification[]
+    onCreated: (name: string) => void
+}) {
+    const [addForm, setAddForm] = useState({ name: "", description: "" })
+    const [editId, setEditId] = useState<number | null>(null)
+    const [editForm, setEditForm] = useState({ name: "", description: "" })
+    const [deleteId, setDeleteId] = useState<number | null>(null)
+    const [loading, setLoading] = useState(false)
+
+    const openEdit = (c: EmploymentClassification) => {
+        setEditId(c.id)
+        setEditForm({ name: c.name, description: c.description ?? "" })
+    }
+
+    const handleAdd = () => {
+        if (!addForm.name.trim()) return
+        setLoading(true)
+        const nameToSelect = addForm.name.trim()
+        router.post(route("employee.employment-classification.store"), addForm, {
+            preserveScroll: true,
+            onSuccess: () => { setAddForm({ name: "", description: "" }); onCreated(nameToSelect) },
+            onFinish: () => setLoading(false),
+        })
+    }
+
+    const handleUpdate = () => {
+        if (!editId || !editForm.name.trim()) return
+        setLoading(true)
+        router.put(route("employee.employment-classification.update", editId), editForm, {
+            preserveScroll: true,
+            onSuccess: () => setEditId(null),
+            onFinish: () => setLoading(false),
+        })
+    }
+
+    const handleDelete = () => {
+        if (!deleteId) return
+        setLoading(true)
+        router.delete(route("employee.employment-classification.destroy", deleteId), {
+            preserveScroll: true,
+            onSuccess: () => setDeleteId(null),
+            onFinish: () => setLoading(false),
+        })
+    }
+
+    return (
+        <>
+            <Dialog open={open} onOpenChange={v => !v && onClose()}>
+                <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                    <DialogHeader><DialogTitle>Manage Employment Classifications</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="bg-card border border-border rounded-xl overflow-hidden">
+                            {classifications.length === 0 ? (
+                                <div className="px-5 py-6 text-center text-sm text-muted-foreground italic">No classifications yet. Add one below.</div>
+                            ) : (
+                                <div className="divide-y divide-border">
+                                    {classifications.map(c => (
+                                        <div key={c.id}>
+                                            {editId === c.id ? (
+                                                <div className="px-4 py-3 space-y-2 bg-muted/20">
+                                                    <div>
+                                                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Name</Label>
+                                                        <Input value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} autoFocus />
+                                                    </div>
+                                                    <div>
+                                                        <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Description</Label>
+                                                        <Input value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional…" />
+                                                    </div>
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button size="sm" variant="outline" onClick={() => setEditId(null)}>Cancel</Button>
+                                                        <Button size="sm" onClick={handleUpdate} disabled={loading || !editForm.name.trim()}>
+                                                            <Save className="w-3.5 h-3.5 mr-1.5" />Save
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-start gap-3 px-4 py-3 hover:bg-muted/20 transition-colors group">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-foreground">{c.name}</p>
+                                                        {c.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{c.description}</p>}
+                                                    </div>
+                                                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button variant="ghost" size="icon-xs" onClick={() => openEdit(c)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(c.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border border-border rounded-xl p-4 space-y-3 bg-muted/10">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Add New Classification</p>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Name *</Label>
+                                <Input value={addForm.name} onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Contract of Service" onKeyDown={e => e.key === "Enter" && handleAdd()} />
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 block">Description</Label>
+                                <Input value={addForm.description} onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional description…" onKeyDown={e => e.key === "Enter" && handleAdd()} />
+                            </div>
+                            <div className="flex justify-end">
+                                <Button type="button" size="sm" onClick={handleAdd} disabled={loading || !addForm.name.trim()} className="gap-1.5">
+                                    <Plus className="w-3.5 h-3.5" />Add Classification
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter><Button variant="outline" onClick={onClose}>Done</Button></DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Classification?</AlertDialogTitle>
+                        <AlertDialogDescription>Existing employees already assigned will keep their current value.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    )
+}
+
+// ─── PersonalStep ─────────────────────────────────────────────────────────────
+
+function PersonalStep({ data, setData, err }: {
+    data: {
+        first_name: string; last_name: string; middle_name: string; name_extension: string
+        birth_date: string; sex: string; civil_status: string; place_of_birth: string
+        personal_email: string; phone_number: string
+    }
+    setData: SetDataFn; err: ErrFn
+}) {
+    return (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-5">
+            <div className="space-y-2">
+                <FieldLabel htmlFor="first_name">First Name <Req /></FieldLabel>
+                <Input id="first_name" value={data.first_name} onChange={e => setData("first_name", e.target.value)} placeholder="John" />
+                <FieldError message={err("first_name")} />
+            </div>
+            <div className="space-y-2">
+                <FieldLabel htmlFor="last_name">Last Name <Req /></FieldLabel>
+                <Input id="last_name" value={data.last_name} onChange={e => setData("last_name", e.target.value)} placeholder="Doe" />
+                <FieldError message={err("last_name")} />
+            </div>
+            <div className="space-y-2">
+                <FieldLabel htmlFor="middle_name">Middle Name</FieldLabel>
+                <Input id="middle_name" value={data.middle_name} onChange={e => setData("middle_name", e.target.value)} placeholder="Santos" />
+            </div>
+            <div className="space-y-2">
+                <FieldLabel htmlFor="name_extension">Name Extension</FieldLabel>
+                <Input id="name_extension" value={data.name_extension} onChange={e => setData("name_extension", e.target.value)} placeholder="Jr., Sr., III" />
+            </div>
+            <div className="space-y-2">
+                <FieldLabel htmlFor="birth_date">Date of Birth <Req /></FieldLabel>
+                <Input id="birth_date" type="date" value={data.birth_date} onChange={e => setData("birth_date", e.target.value)} />
+                <FieldError message={err("birth_date")} />
+            </div>
+            <div className="space-y-2">
+                <FieldLabel htmlFor="sex">Sex <Req /></FieldLabel>
+                <Select value={data.sex} onValueChange={v => setData("sex", v)}>
+                    <SelectTrigger id="sex"><SelectValue placeholder="Select sex" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="1">Male</SelectItem>
+                        <SelectItem value="0">Female</SelectItem>
+                    </SelectContent>
+                </Select>
+                <FieldError message={err("sex")} />
+            </div>
+            <div className="space-y-2">
+                <FieldLabel htmlFor="civil_status">Civil Status <Req /></FieldLabel>
+                <Select value={data.civil_status} onValueChange={v => setData("civil_status", v)}>
+                    <SelectTrigger id="civil_status"><SelectValue placeholder="Select civil status" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="single">Single</SelectItem>
+                        <SelectItem value="married">Married</SelectItem>
+                        <SelectItem value="divorced">Divorced</SelectItem>
+                        <SelectItem value="widowed">Widowed</SelectItem>
+                    </SelectContent>
+                </Select>
+                <FieldError message={err("civil_status")} />
+            </div>
+            <div className="space-y-2">
+                <FieldLabel htmlFor="place_of_birth">Place of Birth</FieldLabel>
+                <Input id="place_of_birth" value={data.place_of_birth} onChange={e => setData("place_of_birth", e.target.value)} placeholder="Manila, Philippines" />
+            </div>
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-1 lg:gap-3 w-full">
+                <div className="space-y-2 w-full">
+                    <FieldLabel htmlFor="personal_email">Personal Email</FieldLabel>
+                    <Input id="personal_email" type="email" value={data.personal_email} onChange={e => setData("personal_email", e.target.value)} placeholder="johndoe@gmail.com" />
+                    <FieldError message={err("personal_email")} />
+                </div>
+                <div className="space-y-2 w-full sm:col-span-2 lg:col-span-1">
+                    <FieldLabel htmlFor="phone_number">Phone Number <Req /></FieldLabel>
+                    <PhoneInput
+                        defaultCountry="PH"
+                        value={data.phone_number}
+                        onChange={v => setData("phone_number", v)}
+                    />
+                    <FieldError message={err("phone_number")} />
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─── EmploymentStep ───────────────────────────────────────────────────────────
+
+function EmploymentStep({ data, setData, err, items, salaryGradeSteps, employmentClassifications, roles }: {
+    data: {
+        item_id: string; selected_position_name: string; salary_grade_step_id: string; work_id: string
+        employment_classification: string; roles: string[]; work_email: string; password: string
+        date_applied: string; date_hired: string; work_schedule_start: string
+        work_schedule_end: string; status: string; salary_grade: string; step: string
+        break_start: string; break_end: string
+    }
+    setData: SetDataFn; err: ErrFn
+    items: Item[]; salaryGradeSteps: SalaryGradeStep[]; employmentClassifications: EmploymentClassification[]; roles: Role[]
+}) {
+    const [manageOpen, setManageOpen] = useState(false)
+    const [pendingSelection, setPendingSelection] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (!pendingSelection) return
+        const found = employmentClassifications.find(c => c.name === pendingSelection)
+        if (found) {
+            setData("employment_classification", found.name)
+            setPendingSelection(null)
+        }
+    }, [employmentClassifications, pendingSelection])
+
+    const handleCreated = (name: string) => {
+        setPendingSelection(name)
+        setManageOpen(false)
+    }
+
+    const allPositionGroups = useMemo(() => buildPositionGroups(items), [items])
+
+    const positionGroups = useMemo(() => {
+        if (!data.employment_classification) return []
+        const isJOClassification = data.employment_classification === JOB_ORDER_CLASSIFICATION
+        return allPositionGroups.filter(grp =>
+            isJOClassification ? isJobOrderPosition(grp) : !isJobOrderPosition(grp)
+        )
+    }, [allPositionGroups, data.employment_classification])
+
+    const handleClassificationSelect = (value: string) => {
+        setData("employment_classification", value)
+        setData("selected_position_name", "")
+        setData("item_id", "")
+    }
+
+    const handlePositionSelect = (groupKey: string) => {
+        const grp = positionGroups.find(g => g.groupKey === groupKey)
+        if (!grp) return
+        const firstAvailable = grp.items.find(i => !i.is_occupied)
+        setData("selected_position_name", groupKey)
+        setData("item_id", firstAvailable ? firstAvailable.item_id.toString() : "")
+    }
+
+    const positionDisabled = !data.employment_classification
+
+    const selectedRolesLabel = data.roles.length === 0
+        ? "Select role(s)"
+        : data.roles.length === 1
+            ? formatRoleLabel(data.roles[0])
+            : `${data.roles.length} roles selected`
+
+    const toggleRole = (roleName: string, checked: boolean) => {
+        const nextRoles = checked
+            ? Array.from(new Set([...data.roles, roleName]))
+            : data.roles.filter(role => role !== roleName)
+        setData("roles", nextRoles)
+    }
+
+    const [showPassword, setShowPassword] = useState(false)
+
+    return (
+        <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+
+                {/* Employment Classification */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="employment_classification">Employment Classification <Req /></FieldLabel>
+                    <div className="flex gap-2">
+                        <Select value={data.employment_classification} onValueChange={handleClassificationSelect}>
+                            <SelectTrigger id="employment_classification" className="flex-1">
+                                <SelectValue placeholder="Select classification" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {employmentClassifications.map(c => (
+                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button type="button" variant="outline" size="icon" onClick={() => setManageOpen(true)} title="Manage classifications" className="shrink-0">
+                            <List className="w-4 h-4" />
+                        </Button>
+                    </div>
+                    <FieldError message={err("employment_classification")} />
+                </div>
+
+                {/* Position */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="position">Position <Req /></FieldLabel>
+                    <Select value={data.selected_position_name} onValueChange={handlePositionSelect} disabled={positionDisabled}>
+                        <SelectTrigger id="position">
+                            <SelectValue placeholder={
+                                positionDisabled
+                                    ? "Select a classification first…"
+                                    : positionGroups.length === 0
+                                        ? "No positions available for this classification"
+                                        : "Select a position…"
+                            } />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72">
+                            {!positionDisabled && positionGroups.length === 0 && (
+                                <SelectItem value="_none" disabled>No positions available for this classification</SelectItem>
+                            )}
+                            {positionGroups.map(grp => {
+                                const isDisabled = grp.isFull
+                                return (
+                                    <SelectItem key={grp.groupKey} value={grp.groupKey} disabled={isDisabled} className="py-2.5">
+                                        <div className="flex items-center justify-between gap-3 w-full min-w-0">
+                                            <span className={`truncate ${isDisabled ? "text-muted-foreground/50" : ""}`}>
+                                                {grp.displayLabel}
+                                            </span>
+                                            {grp.totalSlots > 1 && (
+                                                isDisabled
+                                                    ? <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">Full</Badge>
+                                                    : <Badge className="text-[10px] font-semibold bg-accent text-accent-foreground border-0 rounded-md px-2 py-0.5 shrink-0">{grp.availableSlots}/{grp.totalSlots} open</Badge>
+                                            )}
+                                            {grp.totalSlots === 1 && isDisabled && (
+                                                <Badge className="text-[10px] font-bold bg-destructive/10 text-destructive border-0 rounded-md px-2 py-0.5 shrink-0">Full</Badge>
+                                            )}
+                                        </div>
+                                    </SelectItem>
+                                )
+                            })}
+                        </SelectContent>
+                    </Select>
+                    <FieldError message={err("item_id")} />
+                </div>
+
+                {/* Roles */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="roles">Roles <Req /></FieldLabel>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button id="roles" type="button" variant="outline" className="w-full justify-between">
+                                <span className="truncate">{selectedRolesLabel}</span>
+                                <List className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-[260px] max-h-72 overflow-auto">
+                            <DropdownMenuLabel>Select one or more roles</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {roles.map(role => (
+                                <DropdownMenuCheckboxItem
+                                    key={role.id}
+                                    checked={data.roles.includes(role.name)}
+                                    onCheckedChange={checked => toggleRole(role.name, checked === true)}
+                                    onSelect={event => event.preventDefault()}
+                                >
+                                    {formatRoleLabel(role.name)}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <FieldError message={err("roles")} />
+                </div>
+
+                {/* Salary Grade */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="salary_grade">Salary Grade <Req /></FieldLabel>
+                    <Select value={data.salary_grade} onValueChange={v => { setData("salary_grade", v); setData("salary_grade_step_id", "") }}>
+                        <SelectTrigger id="salary_grade"><SelectValue placeholder="Select salary grade" /></SelectTrigger>
+                        <SelectContent>
+                            {salaryGradeSteps.length === 0 && <SelectItem value="_empty" disabled>No salary grades available</SelectItem>}
+                            {[...new Set(salaryGradeSteps.map(s => s.salary_grade))].sort((a, b) => a - b).map(grade => (
+                                <SelectItem key={grade} value={String(grade)}>SG {grade}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <FieldError message={err("salary_grade")} />
+                </div>
+
+                {/* Step */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="salary_grade_step_id">Step <Req /></FieldLabel>
+                    <Select value={data.salary_grade_step_id} onValueChange={v => setData("salary_grade_step_id", v)} disabled={!data.salary_grade}>
+                        <SelectTrigger id="salary_grade_step_id">
+                            <SelectValue placeholder={data.salary_grade ? "Select step" : "Select a grade first"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {salaryGradeSteps
+                                .filter(s => String(s.salary_grade) === data.salary_grade)
+                                .sort((a, b) => a.step - b.step)
+                                .map(sgs => (
+                                    <SelectItem key={sgs.salary_grade_step_id} value={String(sgs.salary_grade_step_id)}>
+                                        Step {sgs.step} — ₱{Number(sgs.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                                    </SelectItem>
+                                ))}
+                        </SelectContent>
+                    </Select>
+                    <FieldError message={err("salary_grade_step_id")} />
+                </div>
+
+                {/* Status */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="status">Status <Req /></FieldLabel>
+                    <Select value={data.status} onValueChange={v => setData("status", v)}>
+                        <SelectTrigger id="status"><SelectValue placeholder="Select status" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="1">Active</SelectItem>
+                            <SelectItem value="0">Inactive</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FieldError message={err("status")} />
+                </div>
+
+                {/* Work ID */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="work_id">Work ID <Req /></FieldLabel>
+                    <Input id="work_id" value={data.work_id} onChange={e => setData("work_id", e.target.value)} placeholder="e.g. EMP-2024-001" />
+                    <FieldError message={err("work_id")} />
+                </div>
+
+                {/* Work Email */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="work_email">Work Email <Req /></FieldLabel>
+                    <Input id="work_email" type="email" value={data.work_email} onChange={e => setData("work_email", e.target.value)} placeholder="johndoe@agency.gov.ph" />
+                    <FieldError message={err("work_email")} />
+                </div>
+
+                {/* Password */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="password">Password <Req /></FieldLabel>
+                    <div className="relative">
+                        <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            value={data.password}
+                            onChange={e => setData("password", e.target.value)}
+                            placeholder="Min. 8 characters"
+                            className="pr-10"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(prev => !prev)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            tabIndex={-1}
+                        >
+                            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                    </div>
+                    <FieldError message={err("password")} />
+                </div>
+
+                {/* Date Applied */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="date_applied">Date Applied <Req /></FieldLabel>
+                    <Input id="date_applied" type="date" value={data.date_applied} onChange={e => setData("date_applied", e.target.value)} />
+                    <FieldError message={err("date_applied")} />
+                </div>
+
+                {/* Date Hired */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="date_hired">Date Hired <Req /></FieldLabel>
+                    <Input id="date_hired" type="date" value={data.date_hired} onChange={e => setData("date_hired", e.target.value)} />
+                    <FieldError message={err("date_hired")} />
+                </div>
+
+                {/* Schedule Start */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="work_schedule_start">Schedule Start <Req /></FieldLabel>
+                    <Input id="work_schedule_start" type="time" value={data.work_schedule_start} onChange={e => setData("work_schedule_start", e.target.value)} />
+                    <FieldError message={err("work_schedule_start")} />
+                </div>
+
+                {/* Schedule End */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="work_schedule_end">Schedule End <Req /></FieldLabel>
+                    <Input id="work_schedule_end" type="time" value={data.work_schedule_end} onChange={e => setData("work_schedule_end", e.target.value)} />
+                    <FieldError message={err("work_schedule_end")} />
+                </div>
+
+                {/* Break Start */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="break_start">Break Start</FieldLabel>
+                    <Input id="break_start" type="time" value={data.break_start} onChange={e => setData("break_start", e.target.value)} />
+                    <FieldError message={err("break_start")} />
+                </div>
+
+                {/* Break End */}
+                <div className="space-y-2">
+                    <FieldLabel htmlFor="break_end">Break End</FieldLabel>
+                    <Input id="break_end" type="time" value={data.break_end} onChange={e => setData("break_end", e.target.value)} />
+                    <FieldError message={err("break_end")} />
+                </div>
+            </div>
+
+            <ManageClassificationsDialog
+                open={manageOpen}
+                onClose={() => setManageOpen(false)}
+                classifications={employmentClassifications}
+                onCreated={handleCreated}
+            />
+        </>
+    )
+}
+
+// ─── AddressStep ──────────────────────────────────────────────────────────────
+
+function AddressStep({ rows, setRows, err }: { rows: AddressRow[]; setRows: (r: AddressRow[]) => void; err: ErrFn }) {
+    const add = () => setRows([...rows, { street_address: "", city: "", state: "", zip_code: "" }])
+    const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
+    const update = (i: number, field: keyof AddressRow, value: string) => {
+        const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
+    }
+    return (
+        <CollectionSection title="Add one or more addresses for this employee." onAdd={add} addLabel="Add Address">
+            {rows.length === 0 && (<><EmptyState label="No addresses added yet." /><FieldError message={err("addresses")} /></>)}
+            {rows.map((row, i) => (
+                <RowCard key={i} onRemove={() => remove(i)}>
+                    <div className="grid grid-cols-1 gap-3 pr-8 sm:grid-cols-2 sm:gap-4">
+                        <div className="sm:col-span-2 space-y-1.5">
+                            <FieldLabel>Street Address <Req /></FieldLabel>
+                            <Input value={row.street_address} onChange={e => update(i, "street_address", e.target.value)} placeholder="123 Rizal Street" className={err(`addresses.${i}.street_address`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`addresses.${i}.street_address`)} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>City <Req /></FieldLabel>
+                            <Input value={row.city} onChange={e => update(i, "city", e.target.value)} placeholder="Manila" className={err(`addresses.${i}.city`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`addresses.${i}.city`)} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>Province / State <Req /></FieldLabel>
+                            <Input value={row.state} onChange={e => update(i, "state", e.target.value)} placeholder="Metro Manila" className={err(`addresses.${i}.state`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`addresses.${i}.state`)} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>ZIP Code <Req /></FieldLabel>
+                            <Input value={row.zip_code} onChange={e => update(i, "zip_code", e.target.value)} placeholder="1000" className={err(`addresses.${i}.zip_code`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`addresses.${i}.zip_code`)} />
+                        </div>
+                    </div>
+                </RowCard>
+            ))}
+        </CollectionSection>
+    )
+}
+
+// ─── FamilyStep ───────────────────────────────────────────────────────────────
+
+const RELATIONSHIPS = ["Spouse", "Father", "Mother", "Sibling", "Child", "Guardian"]
+
+function FamilyStep({ rows, setRows, err }: { rows: FamilyRow[]; setRows: (r: FamilyRow[]) => void; err: ErrFn }) {
+    const add = () => setRows([...rows, { full_name: "", contact_number: "", relationship: "", sex: "", date_of_birth: "", place_of_birth: "" }])
+    const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
+    const update = (i: number, field: keyof FamilyRow, value: string) => {
+        const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
+    }
+    return (
+        <CollectionSection title="Add family members or emergency contacts. You can skip this and add them later." onAdd={add} addLabel="Add Family Member">
+            {rows.length === 0 && (<><EmptyState label="No family members added yet. You can add them later." /><FieldError message={err("family")} /></>)}
+            {rows.map((row, i) => (
+                <RowCard key={i} onRemove={() => remove(i)}>
+                    <div className="grid grid-cols-1 gap-3 pr-8 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                        <div className="space-y-1.5">
+                            <FieldLabel>Full Name <Req /></FieldLabel>
+                            <Input value={row.full_name} onChange={e => update(i, "full_name", e.target.value)} placeholder="Maria Santos" className={err(`family.${i}.full_name`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`family.${i}.full_name`)} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>Relationship <Req /></FieldLabel>
+                            <Select value={row.relationship} onValueChange={v => update(i, "relationship", v)}>
+                                <SelectTrigger className={err(`family.${i}.relationship`) ? "border-destructive" : ""}><SelectValue placeholder="Select relationship" /></SelectTrigger>
+                                <SelectContent>
+                                    {RELATIONSHIPS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FieldError message={err(`family.${i}.relationship`)} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>Sex</FieldLabel>
+                            <Select value={row.sex} onValueChange={v => update(i, "sex", v)}>
+                                <SelectTrigger><SelectValue placeholder="Select sex" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">Male</SelectItem>
+                                    <SelectItem value="0">Female</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>Date of Birth</FieldLabel>
+                            <Input type="date" value={row.date_of_birth} onChange={e => update(i, "date_of_birth", e.target.value)} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>Contact Number</FieldLabel>
+                            <PhoneInput
+                                defaultCountry="PH"
+                                value={row.contact_number}
+                                onChange={v => update(i, "contact_number", v)}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>Place of Birth</FieldLabel>
+                            <Input value={row.place_of_birth} onChange={e => update(i, "place_of_birth", e.target.value)} placeholder="e.g. Manila, Philippines" />
+                        </div>
+                    </div>
+                </RowCard>
+            ))}
+        </CollectionSection>
+    )
+}
+
+// ─── GovernmentStep ───────────────────────────────────────────────────────────
+// Mirrors Show.tsx layout: fixed rows for standard IDs + expandable extras.
+// This entire step is optional — the user can leave everything blank.
+
+/** Standard IDs always shown as fixed rows (matching Show.tsx) */
+const STANDARD_GOV_ID_TYPES_CREATE = ["GSIS", "PhilHealth", "Pag-IBIG"]
+
+/** Selectable types for extra rows. "Others" triggers a free-text name input. */
+const EXTRA_GOV_ID_TYPES_CREATE = [
+    "SSS", "TIN", "Voter's ID", "Driver's License", "Passport",
+    "PhilSys / National ID", "Postal ID", "Senior Citizen ID", "PWD ID", "OFW ID",
+    "Others",
+]
+
+/** Format rules for ID types that have a known pattern. Returns an error string or null. */
+function validateGovIdFormat(type: string, number: string): string | null {
+    if (!number.trim()) return null // blank is always ok (optional)
+    const t = type.toLowerCase()
+    const patterns: Record<string, { regex: RegExp; hint: string }> = {
+        "gsis": { regex: /^\d{10,12}$/, hint: "Must be 10–12 digits (e.g. 1234567890)." },
+        "philhealth": { regex: /^\d{2}-\d{9}-\d$/, hint: "Format: 00-000000000-0" },
+        "pag-ibig": { regex: /^\d{4}-\d{4}-\d{4}$/, hint: "Format: 0000-0000-0000" },
+        "sss": { regex: /^\d{2}-\d{7}-\d$/, hint: "Format: 00-0000000-0" },
+        "tin": { regex: /^\d{3}-\d{3}-\d{3}(-\d{3})?$/, hint: "Format: 000-000-000 or 000-000-000-000" },
+        "driver's license": { regex: /^[A-Z]\d{2}-\d{2}-\d{6}$/, hint: "Format: A00-00-000000" },
+        "passport": { regex: /^[A-Z]\d{7}$/, hint: "Format: A0000000" },
+    }
+    const rule = patterns[t]
+    if (!rule) return null // no strict format for this type
+    return rule.regex.test(number) ? null : rule.hint
+}
+
+function getGovPlaceholder(type: string): string {
+    switch (type.toLowerCase()) {
+        case "philhealth": return "00-000000000-0"
+        case "pag-ibig": return "0000-0000-0000"
+        case "gsis": return "10–12 digit number"
+        case "sss": return "00-0000000-0"
+        case "tin": return "000-000-000-000"
+        case "driver's license": return "A00-00-000000"
+        case "passport": return "A0000000"
+        case "others": return "Enter ID number"
+        default: return `Enter ${type || "ID"} number`
+    }
+}
+
+function GovernmentStep({ rows, setRows, err }: {
+    rows: GovernmentRow[]
+    setRows: React.Dispatch<React.SetStateAction<GovernmentRow[]>>
+    err: ErrFn
+}) {
+    const getStdValue = (type: string) =>
+        rows.find(r => r.account_type === type)?.account_number ?? ""
+
+    const updateStandard = (type: string, value: string) =>
+        setRows(prev => prev.map(r => r.account_type === type ? { ...r, account_number: value } : r))
+
+    const extraRows = rows.filter(r => !STANDARD_GOV_ID_TYPES_CREATE.includes(r.account_type))
+
+    const addExtra = () =>
+        setRows(prev => [...prev, { account_type: "", account_number: "", custom_type_name: "" }])
+
+    const removeExtra = (extraIdx: number) => {
+        setRows(prev => {
+            let count = -1
+            return prev.filter(r => {
+                if (!STANDARD_GOV_ID_TYPES_CREATE.includes(r.account_type)) {
+                    count++
+                    return count !== extraIdx
+                }
+                return true
+            })
+        })
+    }
+
+    const updateExtra = (extraIdx: number, field: keyof GovernmentRow, value: string) => {
+        setRows(prev => {
+            let count = -1
+            return prev.map(r => {
+                if (!STANDARD_GOV_ID_TYPES_CREATE.includes(r.account_type)) {
+                    count++
+                    if (count === extraIdx) {
+                        const updated = { ...r, [field]: value }
+                        if (field === "account_type" && value !== "Others") {
+                            updated.custom_type_name = ""
+                        }
+                        return updated
+                    }
+                }
+                return r
+            })
+        })
+    }
+
+    return (
+        <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+                Fill in available government ID numbers. All fields are optional — you can update them later on the employee profile.
+            </p>
+
+            {/* ── Standard IDs (always visible) ── */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-border bg-muted/20 sm:px-5">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Standard Government IDs</p>
+                </div>
+                <div className="divide-y divide-border">
+                    {STANDARD_GOV_ID_TYPES_CREATE.map(type => {
+                        const globalIdx = rows.findIndex(r => r.account_type === type)
+                        const errMsg = err(`government.${globalIdx}.account_number`)
+                        return (
+                            <div key={type} className="px-4 py-3 sm:px-5">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                                    <span className="text-sm font-medium text-foreground sm:w-28 shrink-0">{type}</span>
+                                    <Input
+                                        value={getStdValue(type)}
+                                        onChange={e => updateStandard(type, e.target.value)}
+                                        placeholder={getGovPlaceholder(type)}
+                                        className={`flex-1 font-mono${errMsg ? " border-destructive focus-visible:ring-destructive" : ""}`}
+                                    />
+                                </div>
+                                {errMsg && (
+                                    <p className="mt-1.5 text-xs text-destructive sm:ml-32">{errMsg}</p>
+                                )}
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+
+            {/* ── Additional IDs ── */}
+            {extraRows.length > 0 && (
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-border bg-muted/20 sm:px-5">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Additional IDs</p>
+                    </div>
+                    <div className="divide-y divide-border">
+                        {extraRows.map((row, extraIdx) => {
+                            // Resolve the global index for error key lookups
+                            let count = -1
+                            const globalIdx = rows.findIndex(r => {
+                                if (!STANDARD_GOV_ID_TYPES_CREATE.includes(r.account_type)) {
+                                    count++
+                                    return count === extraIdx
+                                }
+                                return false
+                            })
+                            const isOthers = row.account_type === "Others"
+                            const typeErr = err(`government.${globalIdx}.account_type`)
+                            const nameErr = err(`government.${globalIdx}.custom_type_name`)
+                            const numErr = err(`government.${globalIdx}.account_number`)
+
+                            return (
+                                <div key={extraIdx} className="px-4 py-3 space-y-2 sm:px-5">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                                        {isOthers ? (
+                                            <>
+                                                {/* Custom name input — takes the "type" slot */}
+                                                <div className="sm:w-44 shrink-0 space-y-1">
+                                                    <Input
+                                                        value={row.custom_type_name}
+                                                        onChange={e => updateExtra(extraIdx, "custom_type_name", e.target.value)}
+                                                        placeholder="ID name (e.g. Barangay ID…)"
+                                                        className={nameErr ? "border-destructive" : ""}
+                                                        autoFocus
+                                                    />
+                                                    <FieldError message={nameErr} />
+                                                </div>
+
+                                                {/* ID Number input */}
+                                                <div className="flex-1 space-y-1">
+                                                    <Input
+                                                        value={row.account_number}
+                                                        onChange={e => updateExtra(extraIdx, "account_number", e.target.value)}
+                                                        placeholder="Enter ID number"
+                                                        className={`font-mono${numErr ? " border-destructive" : ""}`}
+                                                    />
+                                                    <FieldError message={numErr} />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {/* ID Type selector */}
+                                                <div className="sm:w-44 shrink-0 space-y-1">
+                                                    <Select
+                                                        value={row.account_type}
+                                                        onValueChange={v => updateExtra(extraIdx, "account_type", v)}
+                                                    >
+                                                        <SelectTrigger className={`h-9 text-sm${typeErr ? " border-destructive" : ""}`}>
+                                                            <SelectValue placeholder="Select ID type…" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {EXTRA_GOV_ID_TYPES_CREATE.map(t => (
+                                                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FieldError message={typeErr} />
+                                                </div>
+
+                                                {/* ID Number input */}
+                                                <div className="flex-1 space-y-1">
+                                                    <Input
+                                                        value={row.account_number}
+                                                        onChange={e => updateExtra(extraIdx, "account_number", e.target.value)}
+                                                        placeholder={getGovPlaceholder(row.account_type)}
+                                                        className={`font-mono${numErr ? " border-destructive" : ""}`}
+                                                    />
+                                                    <FieldError message={numErr} />
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Remove button — always visible */}
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            onClick={() => removeExtra(extraIdx)}
+                                            className="mt-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
+
+            <Button type="button" variant="outline" size="sm" onClick={addExtra} className="gap-1.5">
+                <Plus className="w-3.5 h-3.5" /> Add More ID
+            </Button>
+        </div>
+    )
+}
+
+// ─── EducationStep ────────────────────────────────────────────────────────────
+
+const EDUCATION_LEVELS = ["Elementary", "Secondary", "Vocational / Technical", "Bachelor's Degree", "Master's Degree", "Doctorate", "Post-Doctorate"]
+
+function EducationStep({ rows, setRows, err }: { rows: EducationRow[]; setRows: (r: EducationRow[]) => void; err: ErrFn }) {
+    const add = () => setRows([...rows, { level: "", school_name: "", school_address: "", graduation_date: "", degree: "" }])
+    const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
+    const update = (i: number, field: keyof EducationRow, value: string) => {
+        const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
+    }
+    return (
+        <CollectionSection title="Add educational attainment records. You can skip this and add them later." onAdd={add} addLabel="Add Education Record">
+            {rows.length === 0 && (<><EmptyState label="No education records added yet. You can add them later." /><FieldError message={err("education")} /></>)}
+            {rows.map((row, i) => (
+                <RowCard key={i} onRemove={() => remove(i)}>
+                    <div className="grid grid-cols-1 gap-3 pr-8 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                        <div className="space-y-1.5">
+                            <FieldLabel>Level <Req /></FieldLabel>
+                            <Select value={row.level} onValueChange={v => update(i, "level", v)}>
+                                <SelectTrigger className={err(`education.${i}.level`) ? "border-destructive" : ""}><SelectValue placeholder="Select level" /></SelectTrigger>
+                                <SelectContent>
+                                    {EDUCATION_LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FieldError message={err(`education.${i}.level`)} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>School Name <Req /></FieldLabel>
+                            <Input value={row.school_name} onChange={e => update(i, "school_name", e.target.value)} placeholder="University of the Philippines" className={err(`education.${i}.school_name`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`education.${i}.school_name`)} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>School Address</FieldLabel>
+                            <Input value={row.school_address} onChange={e => update(i, "school_address", e.target.value)} placeholder="Diliman, Quezon City" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>Degree / Course</FieldLabel>
+                            <Input value={row.degree} onChange={e => update(i, "degree", e.target.value)} placeholder="BS Computer Science" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>Graduation Date</FieldLabel>
+                            <Input type="date" value={row.graduation_date} onChange={e => update(i, "graduation_date", e.target.value)} />
+                        </div>
+                    </div>
+                </RowCard>
+            ))}
+        </CollectionSection>
+    )
+}
+
+// ─── EligibilityStep ──────────────────────────────────────────────────────────
+
+function EligibilityStep({ rows, setRows, err }: { rows: EligibilityRow[]; setRows: (r: EligibilityRow[]) => void; err: ErrFn }) {
+    const add = () => setRows([...rows, { eligibility_name: "", year_passed: "" }])
+    const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i))
+    const update = (i: number, field: keyof EligibilityRow, value: string) => {
+        const next = [...rows]; next[i] = { ...next[i], [field]: value }; setRows(next)
+    }
+    return (
+        <CollectionSection title="Add civil service eligibilities or professional licenses. You can skip this and add them later." onAdd={add} addLabel="Add Eligibility">
+            {rows.length === 0 && (<><EmptyState label="No eligibility records added yet. You can add them later." /><FieldError message={err("eligibility")} /></>)}
+            {rows.map((row, i) => (
+                <RowCard key={i} onRemove={() => remove(i)}>
+                    <div className="grid grid-cols-1 gap-3 pr-8 sm:grid-cols-2 sm:gap-4">
+                        <div className="space-y-1.5">
+                            <FieldLabel>Eligibility Name <Req /></FieldLabel>
+                            <Input value={row.eligibility_name} onChange={e => update(i, "eligibility_name", e.target.value)} placeholder="Career Service Professional" className={err(`eligibility.${i}.eligibility_name`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`eligibility.${i}.eligibility_name`)} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <FieldLabel>Date Passed <Req /></FieldLabel>
+                            <Input type="date" value={row.year_passed} onChange={e => update(i, "year_passed", e.target.value)} className={err(`eligibility.${i}.year_passed`) ? "border-destructive" : ""} />
+                            <FieldError message={err(`eligibility.${i}.year_passed`)} />
+                        </div>
+                    </div>
+                </RowCard>
+            ))}
+        </CollectionSection>
+    )
+}
+
+// ─── ReviewStep ───────────────────────────────────────────────────────────────
+
+function ReviewStep({ data, items, salaryGradeSteps, addresses, family, government, education, eligibility }: {
+    data: {
+        first_name: string; last_name: string; middle_name: string; name_extension: string; work_id: string
+        birth_date: string; sex: string; civil_status: string; place_of_birth: string
+        personal_email: string; phone_number: string; item_id: string
+        selected_position_name: string; salary_grade_step_id: string
+        employment_classification: string; roles: string[]; work_email: string
+        date_applied: string; date_hired: string
+        work_schedule_start: string; work_schedule_end: string
+        break_start: string; break_end: string
+        status: string
+    }
+    items: Item[]; salaryGradeSteps: SalaryGradeStep[]
+    addresses: AddressRow[]; family: FamilyRow[]; government: GovernmentRow[]
+    education: EducationRow[]; eligibility: EligibilityRow[]
+}) {
+    const selectedSGS = salaryGradeSteps.find(s => String(s.salary_grade_step_id) === data.salary_grade_step_id)
+    const positionGroups = useMemo(() => buildPositionGroups(items), [items])
+    const selectedGroup = positionGroups.find(g => g.groupKey === data.selected_position_name)
+    // Only show non-empty government accounts in review
+    const filledGovAccounts = government
+        .filter(g => g.account_number.trim() !== "")
+        .map(g => ({
+            display_type: g.account_type === "Others" && g.custom_type_name?.trim()
+                ? g.custom_type_name.trim()
+                : g.account_type,
+            account_number: g.account_number,
+        }))
+
+    const positionDisplay = selectedGroup?.positionName
+
+    return (
+        <div className="space-y-0.5">
+            <p className="text-sm text-muted-foreground mb-1">
+                Review all information below. Use <strong>Previous</strong> to go back and make changes.
+            </p>
+
+            <SectionHeading>Personal Information</SectionHeading>
+            <ReviewRow label="First Name" value={data.first_name} />
+            <ReviewRow label="Last Name" value={data.last_name} />
+            <ReviewRow label="Middle Name" value={data.middle_name} />
+            <ReviewRow label="Name Extension" value={data.name_extension} />
+            <ReviewRow label="Date of Birth" value={data.birth_date} />
+            <ReviewRow label="Sex" value={data.sex === "1" ? "Male" : data.sex === "0" ? "Female" : undefined} />
+            <ReviewRow label="Civil Status" value={data.civil_status ? data.civil_status.charAt(0).toUpperCase() + data.civil_status.slice(1) : undefined} />
+            <ReviewRow label="Place of Birth" value={data.place_of_birth} />
+            <ReviewRow label="Personal Email" value={data.personal_email} />
+            <ReviewRow label="Phone Number" value={data.phone_number} />
+
+            <SectionHeading>Employment Details</SectionHeading>
+            <ReviewRow label="Position" value={positionDisplay} />
+            {selectedGroup?.position?.department && <ReviewRow label="Department" value={selectedGroup.position.department.department_name} />}
+            {selectedGroup?.position?.division && <ReviewRow label="Division" value={selectedGroup.position.division.division_name} />}
+            {selectedGroup?.position?.unit && <ReviewRow label="Unit" value={selectedGroup.position.unit.unit_name} />}
+            <ReviewRow label="Work ID" value={data.work_id} />
+            <ReviewRow label="Employment Classification" value={data.employment_classification || undefined} />
+            <ReviewRow label="Roles" value={data.roles.map(formatRoleLabel).join(", ") || undefined} />
+            <ReviewRow
+                label="Salary Grade & Step"
+                value={selectedSGS
+                    ? `SG ${selectedSGS.salary_grade} — Step ${selectedSGS.step} (₱${Number(selectedSGS.monthly_salary).toLocaleString("en-PH", { minimumFractionDigits: 2 })})`
+                    : data.salary_grade_step_id || undefined}
+            />
+            <ReviewRow label="Status" value={data.status === "1" ? "Active" : data.status === "0" ? "Inactive" : undefined} />
+            <ReviewRow label="Work Email" value={data.work_email} />
+            <ReviewRow label="Date Applied" value={data.date_applied} />
+            <ReviewRow label="Date Hired" value={data.date_hired} />
+            <ReviewRow label="Work Schedule" value={data.work_schedule_start && data.work_schedule_end ? `${data.work_schedule_start} – ${data.work_schedule_end}` : undefined} />
+            <ReviewRow label="Break Time" value={data.break_start && data.break_end ? `${data.break_start} – ${data.break_end}` : undefined} />
+
+            <SectionHeading>Addresses ({addresses.length})</SectionHeading>
+            {addresses.length === 0
+                ? <EmptyState label="No addresses provided." />
+                : addresses.map((a, i) => (
+                    <div key={i} className="text-sm py-0.5">{i + 1}. {[a.street_address, a.city, a.state, a.zip_code].filter(Boolean).join(", ")}</div>
+                ))}
+
+            <SectionHeading>Family / Emergency Contacts ({family.length})</SectionHeading>
+            {family.length === 0
+                ? <EmptyState label="No family members provided." />
+                : family.map((f, i) => (
+                    <div key={i} className="text-sm py-0.5">
+                        {i + 1}. {f.full_name}
+                        {f.relationship && ` (${f.relationship})`}
+                        {f.sex && ` — ${f.sex === "1" ? "Male" : "Female"}`}
+                        {f.date_of_birth && `, b. ${f.date_of_birth}`}
+                        {f.place_of_birth && `, ${f.place_of_birth}`}
+                        {f.contact_number && ` — ${f.contact_number}`}
+                    </div>
+                ))}
+
+            <SectionHeading>Government Accounts ({filledGovAccounts.length})</SectionHeading>
+            {filledGovAccounts.length === 0
+                ? <EmptyState label="No government accounts provided." />
+                : filledGovAccounts.map((g, i) => (
+                    <div key={i} className="text-sm py-0.5">{i + 1}. {g.display_type} — {g.account_number}</div>
+                ))}
+
+            <SectionHeading>Education ({education.length})</SectionHeading>
+            {education.length === 0
+                ? <EmptyState label="No education records provided." />
+                : education.map((e, i) => (
+                    <div key={i} className="text-sm py-0.5">{i + 1}. {e.level} {e.degree && `— ${e.degree}`}, {e.school_name} {e.graduation_date && `(${e.graduation_date})`}</div>
+                ))}
+
+            <SectionHeading>Eligibility ({eligibility.length})</SectionHeading>
+            {eligibility.length === 0
+                ? <EmptyState label="No eligibility records provided." />
+                : eligibility.map((e, i) => (
+                    <div key={i} className="text-sm py-0.5">{i + 1}. {e.eligibility_name} {e.year_passed && `— Passed: ${e.year_passed}`}</div>
+                ))}
+        </div>
+    )
+}
+
+// ─── Breadcrumbs ──────────────────────────────────────────────────────────────
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Employee', href: '/employee' },
+    { title: 'Create Employee', href: '/employee/create' },
+]
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function CreateEmployee({ items, salaryGradeSteps, employmentClassifications, roles }: CreateEmployeeProps) {
+    const [currentStep, setCurrentStep] = useState(0)
+    const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
+    const [processing, setProcessing] = useState(false)
+
+    const [addresses, setAddresses] = useState<AddressRow[]>([{ street_address: "", city: "", state: "", zip_code: "" }])
+    const [family, setFamily] = useState<FamilyRow[]>([])
+    // ── Pre-populate standard gov IDs so they appear as fixed rows ──────────────
+    const [government, setGovernment] = useState<GovernmentRow[]>([
+        { account_type: "GSIS", account_number: "", custom_type_name: "" },
+        { account_type: "PhilHealth", account_number: "", custom_type_name: "" },
+        { account_type: "Pag-IBIG", account_number: "", custom_type_name: "" },
+    ])
+    const [education, setEducation] = useState<EducationRow[]>([])
+    const [eligibility, setEligibility] = useState<EligibilityRow[]>([])
+
+    const isLastStep = currentStep === steps.length - 1
+
+    const { data, setData, errors } = useForm({
+        first_name: "", last_name: "", middle_name: "", name_extension: "",
+        birth_date: "", sex: "", personal_email: "", phone_number: "",
+        civil_status: "", place_of_birth: "",
+        item_id: "",
+        selected_position_name: "",
+        salary_grade_step_id: "",
+        employment_classification: "",
+        work_id: "",
+        roles: ["employee"],
+        work_email: "", password: "", date_applied: "", date_hired: "",
+        work_schedule_start: "", work_schedule_end: "", status: "",
+        break_start: "", break_end: "",
+        salary_grade: "", step: "",
+    })
+
+    function validateStep(step: number): Record<string, string> {
+        const rules = REQUIRED[step] ?? []
+        const newErrors: Record<string, string> = {}
+
+        for (const { field, label } of rules) {
+            const value = (data as Record<string, string>)[field]
+            if (!value || value.trim() === "") newErrors[field] = `${label} is required.`
+        }
+
+        if (step === 0) {
+            if (data.birth_date) {
+                const today = new Date()
+                const birth = new Date(data.birth_date)
+                const age = today.getFullYear() - birth.getFullYear()
+                    - (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0)
+                if (age < 18) {
+                    newErrors["birth_date"] = "Employee must be at least 18 years old."
+                }
+            }
+            if (data.phone_number && !isValidPhoneNumber(data.phone_number)) {
+                newErrors["phone_number"] = "Please enter a valid phone number."
+            }
+        }
+
+        if (step === 1) {
+            if (!data.roles || data.roles.length === 0) {
+                newErrors["roles"] = "At least one role is required."
+            }
+            if (data.work_email && !validateEmail(data.work_email)) {
+                newErrors["work_email"] = "Please enter a valid email address."
+            }
+            if (data.password) {
+                if (data.password.length < 8) {
+                    newErrors["password"] = "Password must be at least 8 characters."
+                } else if (!validatePassword(data.password)) {
+                    newErrors["password"] = "Password must include uppercase, lowercase, a number, and a special character."
+                }
+            }
+            if (data.date_applied && data.date_hired) {
+                if (new Date(data.date_hired) < new Date(data.date_applied)) {
+                    newErrors["date_hired"] = "Date Hired cannot be earlier than Date Applied."
+                }
+            }
+            if (data.work_schedule_start && data.work_schedule_end) {
+                if (data.work_schedule_start === data.work_schedule_end) {
+                    newErrors["work_schedule_end"] = "Schedule End cannot be the same as Schedule Start."
+                }
+            }
+            if (data.break_start && data.break_end) {
+                if (data.break_start === data.break_end) {
+                    newErrors["break_end"] = "Break End cannot be the same as Break Start."
+                }
+            }
+        }
+
+        if (step === 2) {
+            if (addresses.length === 0) newErrors["addresses"] = "At least one address is required."
+            addresses.forEach((row, i) => {
+                if (!row.street_address.trim()) newErrors[`addresses.${i}.street_address`] = "Street Address is required."
+                if (!row.city.trim()) newErrors[`addresses.${i}.city`] = "City is required."
+                if (!row.state.trim()) newErrors[`addresses.${i}.state`] = "Province / State is required."
+                if (!row.zip_code.trim()) newErrors[`addresses.${i}.zip_code`] = "ZIP Code is required."
+            })
+        }
+
+        if (step === 3) {
+            family.forEach((row, i) => {
+                if (!row.full_name.trim()) newErrors[`family.${i}.full_name`] = "Full Name is required."
+                if (!row.relationship.trim()) newErrors[`family.${i}.relationship`] = "Relationship is required."
+            })
+        }
+
+        if (step === 4) {
+            // The entire Government Accounts step is optional.
+            // Standard rows — optional but if filled, must match the expected format.
+            // Extra rows — only validate if the row has ANY content (type or number filled).
+            const seenTypes = new Map<string, number>()
+
+            government.forEach((row, i) => {
+                const isStandard = STANDARD_GOV_ID_TYPES_CREATE.includes(row.account_type)
+
+                if (isStandard) {
+                    // Skip blank standard rows entirely
+                    if (!row.account_number.trim()) return
+                    // Validate format when a value is entered
+                    const formatErr = validateGovIdFormat(row.account_type, row.account_number)
+                    if (formatErr) {
+                        newErrors[`government.${i}.account_number`] = formatErr
+                    }
+                    return
+                }
+
+                const hasType = row.account_type.trim() !== ""
+                const hasNumber = row.account_number.trim() !== ""
+                const hasCustom = row.custom_type_name?.trim() !== ""
+
+                // Completely empty extra row — skip
+                if (!hasType && !hasNumber) return
+
+                // Partially filled — validate
+                if (!hasType) {
+                    newErrors[`government.${i}.account_type`] = "Please select an ID type."
+                } else {
+                    const isOthers = row.account_type === "Others"
+                    if (isOthers && !hasCustom) {
+                        newErrors[`government.${i}.custom_type_name`] = "Please specify the ID name."
+                    }
+                    if (!isOthers) {
+                        const type = row.account_type.trim()
+                        if (seenTypes.has(type)) {
+                            const firstIdx = seenTypes.get(type)!
+                            newErrors[`government.${firstIdx}.account_type`] = `Duplicate: ${type} already added.`
+                            newErrors[`government.${i}.account_type`] = `Duplicate: ${type} already added.`
+                        } else {
+                            seenTypes.set(type, i)
+                        }
+                    }
+                }
+
+                if (!hasNumber) {
+                    newErrors[`government.${i}.account_number`] = "Please enter the ID number."
+                } else {
+                    // Validate format for extra rows too
+                    const formatErr = validateGovIdFormat(row.account_type, row.account_number)
+                    if (formatErr) {
+                        newErrors[`government.${i}.account_number`] = formatErr
+                    }
+                }
+            })
+        }
+
+        if (step === 5) {
+            education.forEach((row, i) => {
+                if (!row.school_name.trim()) newErrors[`education.${i}.school_name`] = "School Name is required."
+                if (!row.level.trim()) newErrors[`education.${i}.level`] = "Level is required."
+            })
+        }
+
+        if (step === 6) {
+            eligibility.forEach((row, i) => {
+                if (!row.eligibility_name.trim()) newErrors[`eligibility.${i}.eligibility_name`] = "Eligibility Name is required."
+                if (!row.year_passed.trim()) newErrors[`eligibility.${i}.year_passed`] = "Date Passed is required."
+            })
+        }
+
+        setStepErrors(newErrors)
+        return newErrors
+    }
+
+    function handleNext() {
+        const errs = validateStep(currentStep)
+        if (Object.keys(errs).length === 0) {
+            setStepErrors({})
+            setCurrentStep(s => Math.min(s + 1, steps.length - 1))
+        } else {
+            toast.error("Please fill up the required fields.", { duration: 5000 })
+        }
+    }
+
+    function handlePrev() {
+        setStepErrors({})
+        setCurrentStep(s => Math.max(s - 1, 0))
+    }
+
+    function err(field: string): string | undefined {
+        return stepErrors[field] ?? (errors as Record<string, string>)[field]
+    }
+
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault()
+
+        const payload = { ...data }
+        delete payload.selected_position_name
+        delete payload.salary_grade
+        delete payload.step
+
+        // Filter out standard gov ID rows that were left empty
+        // Filter out empty rows, and resolve "Others" → custom_type_name as the account_type
+        const filledGovernmentAccounts = government
+            .filter(g => g.account_number.trim() !== "")
+            .map(({ custom_type_name, account_type, account_number }) => ({
+                account_type: account_type === "Others" && custom_type_name.trim()
+                    ? custom_type_name.trim()
+                    : account_type,
+                account_number,
+            }))
+
+        try {
+            router.post(
+                route("employee.store"),
+                {
+                    ...payload,
+                    addresses,
+                    family_info: family,
+                    government_accounts: filledGovernmentAccounts,
+                    education,
+                    eligibility_information: eligibility,
+                },
+                {
+                    onStart: () => setProcessing(true),
+                    onFinish: () => setProcessing(false),
+                    onSuccess: () => {
+                        toast.success("Employee created successfully.", {
+                            description: `${data.first_name} ${data.last_name} has been added to the system.`,
+                            duration: 5000,
+                        })
+                    },
+                    onError: (errs) => {
+                        const errMap = errs as Record<string, string>
+                        setStepErrors(errMap)
+                        const messages = Object.values(errMap)
+                        toast.error("Submission failed.", {
+                            description: (
+                                <ul className="mt-1 space-y-0.5 list-disc list-inside">
+                                    {messages.map((msg, i) => (
+                                        <li key={i} className="text-sm">{msg}</li>
+                                    ))}
+                                </ul>
+                            ),
+                            duration: 8000,
+                        })
+                    },
+                },
+            )
+        } catch (error) {
+            setProcessing(false)
+            toast.error("An unexpected error occurred.", {
+                description: error instanceof Error
+                    ? error.message
+                    : "Something went wrong. Please try again or contact support.",
+                duration: 8000,
+            })
+        }
+    }
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Create Employee" />
+            <div className="px-4 pt-4 mb-8 sm:px-6 lg:px-10 lg:pt-5">
+                <Stepper steps={steps} currentStep={currentStep} onStepChange={setCurrentStep} />
+
+                <form onSubmit={e => e.preventDefault()}>
+                    <div className="mt-8 p-4 border rounded-md sm:p-6">
+                        <h2 className="flex items-center gap-2 text-lg font-semibold mb-6">
+                            {steps[currentStep].title}
+                        </h2>
+
+                        {currentStep === 0 && <PersonalStep data={data} setData={setData} err={err} />}
+                        {currentStep === 1 && (
+                            <EmploymentStep
+                                data={data}
+                                setData={setData}
+                                err={err}
+                                items={items}
+                                salaryGradeSteps={salaryGradeSteps}
+                                employmentClassifications={employmentClassifications}
+                                roles={roles}
+                            />
+                        )}
+                        {currentStep === 2 && <AddressStep rows={addresses} setRows={setAddresses} err={err} />}
+                        {currentStep === 3 && <FamilyStep rows={family} setRows={setFamily} err={err} />}
+                        {currentStep === 4 && <GovernmentStep rows={government} setRows={setGovernment} err={err} />}
+                        {currentStep === 5 && <EducationStep rows={education} setRows={setEducation} err={err} />}
+                        {currentStep === 6 && <EligibilityStep rows={eligibility} setRows={setEligibility} err={err} />}
+                        {currentStep === 7 && (
+                            <ReviewStep
+                                data={data}
+                                items={items}
+                                salaryGradeSteps={salaryGradeSteps}
+                                addresses={addresses}
+                                family={family}
+                                government={government}
+                                education={education}
+                                eligibility={eligibility}
+                            />
+                        )}
+
+                        <div className="flex justify-between mt-8">
+                            <Button type="button" variant="outline" onClick={handlePrev} disabled={currentStep === 0}>
+                                Previous
+                            </Button>
+                            {isLastStep ? (
+                                <Button type="button" onClick={submit} disabled={processing}>
+                                    {processing ? "Submitting…" : "Submit Employee"}
+                                </Button>
+                            ) : (
+                                <Button type="button" onClick={handleNext}>Next</Button>
+                            )}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </AppLayout>
+    )
+}

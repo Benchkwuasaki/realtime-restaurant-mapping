@@ -1,0 +1,819 @@
+"use client"
+
+import { type ColumnDef } from "@tanstack/react-table"
+import { CornerDownLeft, Clock, CalendarDays, Pencil } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useForm } from "@inertiajs/react"
+import { route } from "ziggy-js"
+import { format, parseISO, isValid } from "date-fns"
+import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Calendar } from "@/components/ui/calendar"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
+import { type WhereaboutSlip } from "../data/schema"
+import { type DataTableColumnDef } from "@/components/shared/data-table/types/data-table-types"
+
+// ─── GeoRisk API base URLs ────────────────────────────────────────────────────
+
+const ARCGIS_PROV = "https://ulap-nga.georisk.gov.ph/arcgis/rest/services/PSA/Provincial/MapServer/0"
+const ARCGIS_MUNI = "https://ulap-nga.georisk.gov.ph/arcgis/rest/services/PSA/Municipal/MapServer/0"
+const ARCGIS_BRGY = "https://portal.georisk.gov.ph/arcgis/rest/services/PSA/Barangay/MapServer/4"
+
+// ─── Module-level name cache ──────────────────────────────────────────────────
+
+const provNameCache = new Map<string, Promise<string>>()
+const muniNameCache = new Map<string, Promise<string>>()
+const brgyNameCache = new Map<string, Promise<string>>()
+
+function fetchProvName(provCode: string): Promise<string> {
+    if (!provNameCache.has(provCode)) {
+        provNameCache.set(
+            provCode,
+            fetch(`${ARCGIS_PROV}/query?f=json&where=${encodeURIComponent(`prov_code='${provCode}'`)}&outFields=prov_name&returnGeometry=false`)
+                .then((r) => r.json())
+                .then((d) => (d.features?.[0]?.attributes?.prov_name as string) ?? provCode)
+                .catch(() => provCode)
+        )
+    }
+    return provNameCache.get(provCode)!
+}
+
+function fetchMuniName(cityCode: string): Promise<string> {
+    if (!muniNameCache.has(cityCode)) {
+        muniNameCache.set(
+            cityCode,
+            fetch(`${ARCGIS_MUNI}/query?f=json&where=${encodeURIComponent(`city_code='${cityCode}'`)}&outFields=city_name&returnGeometry=false`)
+                .then((r) => r.json())
+                .then((d) => (d.features?.[0]?.attributes?.city_name as string) ?? cityCode)
+                .catch(() => cityCode)
+        )
+    }
+    return muniNameCache.get(cityCode)!
+}
+
+function fetchBrgyName(brgyCode: string): Promise<string> {
+    if (!brgyNameCache.has(brgyCode)) {
+        brgyNameCache.set(
+            brgyCode,
+            fetch(`${ARCGIS_BRGY}/query?f=json&where=${encodeURIComponent(`brgy_code='${brgyCode}'`)}&outFields=brgy_name&returnGeometry=false`)
+                .then((r) => r.json())
+                .then((d) => (d.features?.[0]?.attributes?.brgy_name as string) ?? brgyCode)
+                .catch(() => brgyCode)
+        )
+    }
+    return brgyNameCache.get(brgyCode)!
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function FieldError({ message }: { message?: string }) {
+    if (!message) return null
+    return <p className="text-xs text-destructive mt-1">{message}</p>
+}
+
+export function formatEmployeeName(employee?: WhereaboutSlip["employee"]) {
+    if (!employee?.basic_info) return "—"
+    const { first_name, last_name, name_extension } = employee.basic_info
+    return [first_name, last_name, name_extension].filter(Boolean).join(" ")
+}
+
+function formatDate(value?: string | null) {
+    if (!value) return "—"
+    const date = new Date(value)
+    if (isNaN(date.getTime())) return value
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+}
+
+function formatTime(value?: string | null) {
+    if (!value) return "—"
+    const [hh, mm] = value.split(":")
+    const h = parseInt(hh, 10)
+    const m = mm ?? "00"
+    return `${h % 12 === 0 ? 12 : h % 12}:${m} ${h >= 12 ? "PM" : "AM"}`
+}
+
+function timeToMinutes(time?: string | null): number {
+    if (!time) return 0
+    const [hh, mm] = time.split(":")
+    return parseInt(hh, 10) * 60 + parseInt(mm, 10)
+}
+
+// ─── CardField ────────────────────────────────────────────────────────────────
+
+function CardField({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground text-xs">{label}</span>
+            <span>{value}</span>
+        </div>
+    )
+}
+
+// ─── LocationMobileCard ───────────────────────────────────────────────────────
+
+function LocationMobileCard({ slip }: { slip: WhereaboutSlip }) {
+    const [names, setNames] = useState<{ prov: string; muni: string; brgy: string } | null>(null)
+
+    useEffect(() => {
+        const { prov_code, city_code, brgy_code } = slip
+        if (!prov_code && !city_code && !brgy_code) return
+        let cancelled = false
+        Promise.all([
+            prov_code ? fetchProvName(prov_code) : Promise.resolve(null),
+            city_code ? fetchMuniName(city_code) : Promise.resolve(null),
+            brgy_code ? fetchBrgyName(brgy_code) : Promise.resolve(null),
+        ]).then(([prov, muni, brgy]) => {
+            if (!cancelled) setNames({ prov: prov ?? "—", muni: muni ?? "—", brgy: brgy ?? "—" })
+        })
+        return () => { cancelled = true }
+    }, [slip.prov_code, slip.city_code, slip.brgy_code])
+
+    if (!slip.prov_code && !slip.city_code && !slip.brgy_code) {
+        return <span className="text-muted-foreground text-xs">No location</span>
+    }
+    if (!names) return <span className="text-muted-foreground text-xs">Loading…</span>
+
+    return (
+        <span className="text-xs text-right">
+            {[names.brgy, names.muni, names.prov].filter(Boolean).join(", ")}
+        </span>
+    )
+}
+
+// ─── Status badge helpers ─────────────────────────────────────────────────────
+
+type SlipStatus = "still_out" | "not_returned" | "returned"
+
+const STATUS_CONFIG: Record<SlipStatus, { label: string; variant: "yellow" | "destructive" | "green" }> = {
+    still_out: { label: "Still Out", variant: "yellow" },
+    not_returned: { label: "Not Returned", variant: "destructive" },
+    returned: { label: "Returned", variant: "green" },
+}
+
+function StatusBadge({ status }: { status: string }) {
+    const cfg = STATUS_CONFIG[status as SlipStatus] ?? { label: status, variant: "yellow" as const }
+    return <Badge variant={cfg.variant}>{cfg.label}</Badge>
+}
+
+// ─── LocationCell ─────────────────────────────────────────────────────────────
+
+interface LocationNames { prov: string; muni: string; brgy: string }
+
+function LocationCell({ slip }: { slip: WhereaboutSlip }) {
+    const { prov_code, city_code, brgy_code } = slip
+    const [names, setNames] = useState<LocationNames | null>(null)
+
+    useEffect(() => {
+        if (!prov_code && !city_code && !brgy_code) return
+        let cancelled = false
+        Promise.all([
+            prov_code ? fetchProvName(prov_code) : Promise.resolve(null),
+            city_code ? fetchMuniName(city_code) : Promise.resolve(null),
+            brgy_code ? fetchBrgyName(brgy_code) : Promise.resolve(null),
+        ]).then(([prov, muni, brgy]) => {
+            if (!cancelled) setNames({ prov: prov ?? "—", muni: muni ?? "—", brgy: brgy ?? "—" })
+        })
+        return () => { cancelled = true }
+    }, [prov_code, city_code, brgy_code])
+
+    if (!prov_code && !city_code && !brgy_code) {
+        return <span className="text-muted-foreground text-sm">—</span>
+    }
+    if (!names) {
+        return (
+            <div className="space-y-1 min-w-[180px] animate-pulse">
+                <div className="h-3 w-28 rounded bg-muted" />
+                <div className="h-3 w-24 rounded bg-muted" />
+                <div className="h-3 w-20 rounded bg-muted" />
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-w-[180px] space-y-0.5">
+            {prov_code && (
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground w-[52px] shrink-0">Prov</span>
+                    <span className="text-sm font-medium text-foreground leading-tight">{names.prov}</span>
+                </div>
+            )}
+            {city_code && (
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground w-[52px] shrink-0">Muni</span>
+                    <span className="text-sm text-foreground/80 leading-tight">{names.muni}</span>
+                </div>
+            )}
+            {brgy_code && (
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground w-[52px] shrink-0">Brgy</span>
+                    <span className="text-sm text-foreground/60 leading-tight">{names.brgy}</span>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ─── DatePicker ───────────────────────────────────────────────────────────────
+
+interface DatePickerProps {
+    id?: string
+    value: string
+    onChange: (value: string) => void
+    minDate?: Date
+    maxDate?: Date
+    placeholder?: string
+}
+
+function DatePicker({ id, value, onChange, minDate, maxDate, placeholder = "Pick a date" }: DatePickerProps) {
+    const [open, setOpen] = useState(false)
+    const selected = value ? parseISO(value) : undefined
+    const isSelected = selected && isValid(selected)
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    id={id}
+                    type="button"
+                    variant="outline"
+                    className={cn("w-40 justify-start gap-2 text-sm font-normal", !isSelected && "text-muted-foreground")}
+                >
+                    <CalendarDays className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                    {isSelected ? format(selected, "MMM d, yyyy") : placeholder}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                    mode="single"
+                    selected={isSelected ? selected : undefined}
+                    onSelect={(day) => { onChange(day ? format(day, "yyyy-MM-dd") : ""); setOpen(false) }}
+                    disabled={(day) => {
+                        if (minDate && day < minDate) return true
+                        if (maxDate && day > maxDate) return true
+                        return false
+                    }}
+                    initialFocus
+                />
+            </PopoverContent>
+        </Popover>
+    )
+}
+
+// ─── TimeInput ────────────────────────────────────────────────────────────────
+
+interface TimeInputProps {
+    id?: string
+    value: string
+    onChange: (value: string) => void
+    min?: string
+}
+
+function TimeInput({ id, value, onChange, min }: TimeInputProps) {
+    return (
+        <Input
+            id={id}
+            type="time"
+            value={value ? value.slice(0, 5) : ""}
+            min={min}
+            onChange={(e) => onChange(e.target.value ? `${e.target.value}:00` : "")}
+            className="w-32 text-sm"
+        />
+    )
+}
+
+// ─── Time Returned Dialog ─────────────────────────────────────────────────────
+
+interface TimeReturnedFormData {
+    date_returned: string
+    time_returned: string
+    date_noted: string
+    time_noted: string
+}
+
+interface TimeReturnedDialogProps {
+    open: boolean
+    slip: WhereaboutSlip | null
+    onClose: () => void
+}
+
+function TimeReturnedDialog({ open, slip, onClose }: TimeReturnedDialogProps) {
+    const today = format(new Date(), "yyyy-MM-dd")
+    const dateFiled = slip?.date_filed ?? today
+
+    const { data, setData, put, processing, errors, reset } = useForm<TimeReturnedFormData>({
+        date_returned: slip?.date_returned ?? today,
+        time_returned: slip?.time_returned ?? "",
+        date_noted: slip?.date_noted ?? today,
+        time_noted: slip?.time_noted ?? "",
+    })
+
+    const [clientErrors, setClientErrors] = useState<Partial<TimeReturnedFormData>>({})
+
+    const minReturnDate = dateFiled ? parseISO(dateFiled) : undefined
+    const minNotedDate = data.date_returned ? parseISO(data.date_returned) : minReturnDate
+
+    const returnedSameDay = data.date_returned === dateFiled
+    const notedSameAsReturn = data.date_noted === data.date_returned
+
+    const timeOutMinutes = timeToMinutes(slip?.time_out)
+    const timeOutFormatted = slip?.time_out ? slip.time_out.slice(0, 5) : undefined
+
+    function validate(): boolean {
+        const errs: Partial<TimeReturnedFormData> = {}
+        if (!data.date_returned) errs.date_returned = "Return date is required."
+        if (!data.time_returned) {
+            errs.time_returned = "Time returned is required."
+        } else if (returnedSameDay && timeToMinutes(data.time_returned) <= timeOutMinutes) {
+            errs.time_returned = `Must be after time out (${formatTime(slip?.time_out)}).`
+        }
+        if (!data.date_noted) {
+            errs.date_noted = "Noted date is required."
+        } else if (data.date_noted < data.date_returned) {
+            errs.date_noted = "Noted date cannot be before the return date."
+        }
+        if (!data.time_noted) {
+            errs.time_noted = "Time noted is required."
+        } else if (notedSameAsReturn && timeToMinutes(data.time_noted) < timeToMinutes(data.time_returned)) {
+            errs.time_noted = `Must not be before time returned (${formatTime(data.time_returned)}).`
+        }
+        setClientErrors(errs)
+        return Object.keys(errs).length === 0
+    }
+
+    function handleClose() { reset(); setClientErrors({}); onClose() }
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault()
+        if (!validate()) return
+        put(route("whereabout-slip.log-return", slip!.whereabout_slip_id), { onSuccess: handleClose })
+    }
+
+    const isLateReturn = data.date_returned && data.date_returned !== dateFiled
+    const isLateNoted = data.date_noted && data.date_noted !== data.date_returned
+
+    return (
+        <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
+            <DialogContent className="p-0 gap-0 sm:max-w-sm">
+                <DialogHeader className="px-5 py-4 border-b border-border">
+                    <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <CornerDownLeft className="w-4 h-4 text-primary" />
+                        Log Return
+                        {slip && (
+                            <span className="font-normal text-muted-foreground truncate max-w-[180px]">
+                                — {formatEmployeeName(slip.employee)}
+                            </span>
+                        )}
+                    </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit}>
+                    <div className="px-5 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+                        {slip?.time_out && (
+                            <div className="rounded-md bg-muted/50 border border-border px-3 py-2.5 space-y-1">
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">Filed</span>
+                                    <span className="font-medium text-foreground">{formatDate(slip.date_filed)}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">Time Out</span>
+                                    <span className="font-medium text-foreground">{formatTime(slip.time_out)}</span>
+                                </div>
+                                {slip.purpose_type === "personal" && (
+                                    <div className="flex items-center justify-between text-xs pt-0.5">
+                                        <span className="text-muted-foreground">Type</span>
+                                        <Badge variant="secondary" className="text-[10px] h-4 px-1.5">Personal — will deduct</Badge>
+                                    </div>
+                                )}
+                                {slip.purpose_type === "official" && (
+                                    <div className="flex items-center justify-between text-xs pt-0.5">
+                                        <span className="text-muted-foreground">Type</span>
+                                        <Badge variant="default" className="text-[10px] h-4 px-1.5">Official — no deduction</Badge>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="space-y-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Employee Returned</p>
+                            <div className="rounded-md border border-border p-3 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-foreground mb-1.5">Date <span className="text-destructive">*</span></label>
+                                    <DatePicker
+                                        value={data.date_returned}
+                                        onChange={(v) => {
+                                            setData("date_returned", v)
+                                            if (data.date_noted && v && data.date_noted < v) setData("date_noted", v)
+                                            setClientErrors((prev) => ({ ...prev, date_returned: undefined }))
+                                        }}
+                                        minDate={minReturnDate}
+                                        maxDate={new Date()}
+                                        placeholder="Select date"
+                                    />
+                                    {isLateReturn && (
+                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
+                                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                            After filed date — overnight or multi-day absence.
+                                        </p>
+                                    )}
+                                    <FieldError message={clientErrors.date_returned ?? errors.date_returned} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-foreground mb-1.5">Time <span className="text-destructive">*</span></label>
+                                    <TimeInput
+                                        value={data.time_returned ?? ""}
+                                        onChange={(v) => { setData("time_returned", v); setClientErrors((prev) => ({ ...prev, time_returned: undefined })) }}
+                                        min={returnedSameDay ? timeOutFormatted : undefined}
+                                    />
+                                    {returnedSameDay && slip?.time_out && (
+                                        <p className="text-xs text-muted-foreground mt-1">Must be after {formatTime(slip.time_out)}</p>
+                                    )}
+                                    <FieldError message={clientErrors.time_returned ?? errors.time_returned} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Supervisor Noted</p>
+                            <div className="rounded-md border border-border p-3 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-foreground mb-1.5">Date <span className="text-destructive">*</span></label>
+                                    <DatePicker
+                                        value={data.date_noted}
+                                        onChange={(v) => { setData("date_noted", v); setClientErrors((prev) => ({ ...prev, date_noted: undefined })) }}
+                                        minDate={minNotedDate}
+                                        maxDate={new Date()}
+                                        placeholder="Select date"
+                                    />
+                                    {isLateNoted && (
+                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
+                                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                            Noted after the return date.
+                                        </p>
+                                    )}
+                                    <FieldError message={clientErrors.date_noted ?? errors.date_noted} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-foreground mb-1.5">Time <span className="text-destructive">*</span></label>
+                                    <TimeInput
+                                        value={data.time_noted ?? ""}
+                                        onChange={(v) => { setData("time_noted", v); setClientErrors((prev) => ({ ...prev, time_noted: undefined })) }}
+                                        min={notedSameAsReturn && data.time_returned ? data.time_returned.slice(0, 5) : undefined}
+                                    />
+                                    {notedSameAsReturn && data.time_returned && (
+                                        <p className="text-xs text-muted-foreground mt-1">Must be at or after {formatTime(data.time_returned)}</p>
+                                    )}
+                                    <FieldError message={clientErrors.time_noted ?? errors.time_noted} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="px-5 py-4 border-t border-border bg-muted/30">
+                        <Button type="button" variant="outline" size="sm" onClick={handleClose} className="text-xs">Cancel</Button>
+                        <Button type="submit" size="sm" disabled={processing} className="text-xs">
+                            {processing ? "Saving…" : "Confirm Return"}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+// ─── Time Returned Cell ───────────────────────────────────────────────────────
+
+function TimeReturnedCell({ slip }: { slip: WhereaboutSlip }) {
+    const [open, setOpen] = useState(false)
+    const isReturned = slip.status === "returned"
+
+    return (
+        <>
+            <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                disabled={isReturned}
+                title={isReturned ? "Already returned" : "Log return time"}
+                onClick={(e) => { e.stopPropagation(); setOpen(true) }}
+            >
+                <Clock className={isReturned ? "w-4 h-4 text-muted-foreground/40" : "w-4 h-4 text-primary"} />
+            </Button>
+            <TimeReturnedDialog open={open} slip={slip} onClose={() => setOpen(false)} />
+        </>
+    )
+}
+
+// ─── MobileSlipCard ───────────────────────────────────────────────────────────
+// Renders the full card layout used by DataTable's mobile card view.
+
+function MobileSlipCard({ slip }: { slip: WhereaboutSlip }) {
+    const [logReturnOpen, setLogReturnOpen] = useState(false)
+    const isReturned = slip.status === "returned"
+
+    const purposeType = slip.purpose_type
+    const mins = slip.minutes_gone
+    let timeAwayLabel: string | null = null
+    if (mins != null) {
+        const hours = Math.floor(mins / 60)
+        const minutes = mins % 60
+        timeAwayLabel = hours > 0 ? `${hours}h ${minutes > 0 ? `${minutes}m` : ""}`.trim() : `${minutes}m`
+    }
+
+    return (
+        <div className="w-full space-y-3">
+            {/* ── Header row: name + status ── */}
+            <div className="flex items-start justify-between gap-2">
+                <span className="font-semibold text-sm text-foreground leading-tight">
+                    {formatEmployeeName(slip.employee)}
+                </span>
+                <StatusBadge status={slip.status} />
+            </div>
+
+            {/* ── Fields ── */}
+            <div className="space-y-1.5 text-xs">
+                <CardField
+                    label="Date Filed"
+                    value={<span className="font-medium text-foreground">{formatDate(slip.date_filed)}</span>}
+                />
+                <CardField
+                    label="Purpose"
+                    value={
+                        <div className="flex items-center gap-1.5">
+                            <Badge variant={purposeType === "official" ? "default" : "secondary"} className="text-[10px]">
+                                {purposeType.charAt(0).toUpperCase() + purposeType.slice(1)}
+                            </Badge>
+                        </div>
+                    }
+                />
+                {slip.purpose_description && (
+                    <CardField
+                        label="Description"
+                        value={
+                            <span className="text-muted-foreground text-right max-w-[180px] line-clamp-2">
+                                {slip.purpose_description}
+                            </span>
+                        }
+                    />
+                )}
+                <CardField
+                    label="Time Out"
+                    value={
+                        <span className="tabular-nums font-medium text-foreground">
+                            {formatTime(slip.time_out)}
+                            <span className="text-muted-foreground font-normal ml-1">
+                                {formatDate(slip.date_filed)}
+                            </span>
+                        </span>
+                    }
+                />
+                {isReturned && (
+                    <CardField
+                        label="Time Returned"
+                        value={
+                            <span className="tabular-nums font-medium text-foreground">
+                                {formatTime(slip.time_returned)}
+                                <span className="text-muted-foreground font-normal ml-1">
+                                    {formatDate(slip.date_returned)}
+                                </span>
+                            </span>
+                        }
+                    />
+                )}
+                {timeAwayLabel && (
+                    <CardField
+                        label="Time Away"
+                        value={
+                            <span className={cn(
+                                "tabular-nums font-medium",
+                                purposeType === "official" ? "text-muted-foreground"
+                                    : mins! >= 60 ? "text-destructive"
+                                        : mins! >= 30 ? "text-amber-600 dark:text-amber-400"
+                                            : "text-foreground"
+                            )}>
+                                {timeAwayLabel}
+                                {purposeType === "official" && (
+                                    <span className="text-[10px] font-normal text-muted-foreground ml-1">(official)</span>
+                                )}
+                            </span>
+                        }
+                    />
+                )}
+                <CardField
+                    label="Location"
+                    value={<LocationMobileCard slip={slip} />}
+                />
+            </div>
+
+            {/* ── Divider + Actions ── */}
+            <div className="flex items-center gap-2 pt-1 border-t border-border">
+                <Button
+                    variant={isReturned ? "ghost" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs gap-1.5 flex-1"
+                    disabled={isReturned}
+                    onClick={(e) => { e.stopPropagation(); setLogReturnOpen(true) }}
+                >
+                    <Clock className={cn("w-3 h-3", isReturned ? "text-muted-foreground/40" : "text-primary")} />
+                    {isReturned ? "Returned" : "Log Return"}
+                </Button>
+            </div>
+
+            <TimeReturnedDialog open={logReturnOpen} slip={slip} onClose={() => setLogReturnOpen(false)} />
+        </div>
+    )
+}
+
+// ─── Columns ──────────────────────────────────────────────────────────────────
+
+interface ColumnOptions {
+    onDelete: (slip: WhereaboutSlip) => void
+}
+
+export function getColumns({ onDelete }: ColumnOptions): DataTableColumnDef<WhereaboutSlip>[] {
+    return [
+        {
+            id: "select",
+            header: ({ table }) => (
+                <Checkbox
+                    checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+                    onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+                    aria-label="Select all"
+                    className="translate-y-0.5"
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(v) => row.toggleSelected(!!v)}
+                    aria-label="Select row"
+                    className="translate-y-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+            // The card is rendered by the "employee" column below — skip here
+            mobileCard: () => null,
+        },
+        {
+            id: "employee",
+            accessorFn: (row) => formatEmployeeName(row.employee),
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Employee" />,
+            cell: ({ row }) => (
+                <div className="min-w-[160px] font-medium">{formatEmployeeName(row.original.employee)}</div>
+            ),
+            enableSorting: true,
+            enableHiding: true,
+            // The full card is rendered here — all other columns return null
+            mobileCard: (slip) => <MobileSlipCard slip={slip} />,
+        },
+        {
+            accessorKey: "date_filed",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Date Filed" />,
+            cell: ({ row }) => (
+                <div className="min-w-[120px] text-sm">{formatDate(row.getValue("date_filed"))}</div>
+            ),
+            enableSorting: true,
+            enableHiding: true,
+            mobileCard: () => null,
+        },
+        {
+            accessorKey: "purpose_type",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Purpose Type" />,
+            cell: ({ row }) => {
+                const v = row.getValue<string>("purpose_type")
+                return (
+                    <div className="min-w-[90px]">
+                        <Badge variant={v === "official" ? "default" : "secondary"}>
+                            {v.charAt(0).toUpperCase() + v.slice(1)}
+                        </Badge>
+                    </div>
+                )
+            },
+            enableSorting: true,
+            enableHiding: true,
+            mobileCard: () => null,
+        },
+        {
+            accessorKey: "purpose_description",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Purpose" />,
+            cell: ({ row }) => (
+                <div className="min-w-[180px] max-w-[260px] truncate text-sm text-muted-foreground">
+                    {row.getValue("purpose_description")}
+                </div>
+            ),
+            enableSorting: false,
+            enableHiding: true,
+            mobileCard: () => null,
+        },
+        {
+            accessorKey: "time_out",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Time Out" />,
+            cell: ({ row }) => {
+                const slip = row.original
+                return (
+                    <div className="min-w-[110px] tabular-nums text-sm space-y-0.5">
+                        <div>{formatTime(slip.time_out)}</div>
+                        <div className="text-[11px] text-muted-foreground">{formatDate(slip.date_filed)}</div>
+                    </div>
+                )
+            },
+            enableSorting: true,
+            enableHiding: true,
+            mobileCard: () => null,
+        },
+        {
+            id: "time_returned",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Time Returned" />,
+            cell: ({ row }) => {
+                const slip = row.original
+                if (slip.status !== "returned") {
+                    return <span className="text-muted-foreground text-sm">—</span>
+                }
+                return (
+                    <div className="min-w-[110px] tabular-nums text-sm space-y-0.5">
+                        <div>{formatTime(slip.time_returned)}</div>
+                        <div className="text-[11px] text-muted-foreground">{formatDate(slip.date_returned)}</div>
+                    </div>
+                )
+            },
+            enableSorting: false,
+            enableHiding: true,
+            mobileCard: () => null,
+        },
+        {
+            accessorKey: "minutes_gone",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Time Away" />,
+            cell: ({ row }) => {
+                const slip = row.original
+                const mins = slip.minutes_gone
+                if (mins == null) return <span className="text-muted-foreground text-sm">—</span>
+
+                const hours = Math.floor(mins / 60)
+                const minutes = mins % 60
+                const label = hours > 0 ? `${hours}h ${minutes > 0 ? `${minutes}m` : ""}`.trim() : `${minutes}m`
+                const isOfficial = slip.purpose_type === "official"
+
+                return (
+                    <div className="min-w-[80px]">
+                        <span className={cn(
+                            "inline-flex items-center gap-1 tabular-nums text-sm font-medium",
+                            isOfficial ? "text-muted-foreground"
+                                : mins >= 60 ? "text-destructive"
+                                    : mins >= 30 ? "text-amber-600 dark:text-amber-400"
+                                        : "text-foreground"
+                        )}>
+                            {label}
+                            {isOfficial && <span className="text-[10px] font-normal text-muted-foreground">(official)</span>}
+                        </span>
+                    </div>
+                )
+            },
+            sortingFn: "basic",
+            enableSorting: true,
+            enableHiding: true,
+            mobileCard: () => null,
+        },
+        {
+            id: "location",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Location" />,
+            cell: ({ row }) => <LocationCell slip={row.original} />,
+            enableSorting: false,
+            enableHiding: true,
+            mobileCard: () => null,
+        },
+        {
+            accessorKey: "status",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+            cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+            filterFn: (row, _id, value: string[]) => value.includes(row.getValue("status")),
+            enableSorting: true,
+            enableHiding: true,
+            mobileCard: () => null,
+        },
+        {
+            id: "actions",
+            header: "Actions",
+            cell: ({ row }) => (
+                <div className="flex items-center gap-1">
+                    <TimeReturnedCell slip={row.original} />
+                </div>
+            ),
+            enableHiding: false,
+            mobileCard: () => null,
+        },
+    ]
+}
